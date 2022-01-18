@@ -33,7 +33,6 @@ void GpioInit(void)
  */
 void Ctrl_LED(rt_base_t pin, rt_base_t state)
 {
-    //rt_pin_write(LED_0, PIN_LOW);
     rt_pin_write(pin, state);
 }
 
@@ -47,13 +46,13 @@ void LedTaskInit(void)
 {
     rt_err_t threadStart = RT_NULL;
 
-    /*创建led 线程*/
-    rt_thread_t thread = rt_thread_create("led task", LedTaskEnter, RT_NULL, 1024, 20, 10);
+    /* 创建led 线程 */
+    rt_thread_t thread = rt_thread_create("led task", LedTaskEntry, RT_NULL, 1024, 26, 10);
 
-    /*如果线程创建成功则开始启动线程，否则提示线程创建失败*/
+    /* 如果线程创建成功则开始启动线程，否则提示线程创建失败 */
     if (RT_NULL != thread) {
         threadStart = rt_thread_startup(thread);
-        if (RT_NULL == threadStart) {
+        if (RT_EOK != threadStart) {
             LOG_E("led task start failed");
         }
     } else {
@@ -67,7 +66,7 @@ void LedTaskInit(void)
  * @author : Qiuyijie
  * @date   : 2022.01.12
  */
-void LedTaskEnter(void* parameter)
+void LedTaskEntry(void* parameter)
 {
     static u8 ledState = 0;
     while(1)

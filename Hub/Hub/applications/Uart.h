@@ -10,6 +10,15 @@
 #ifndef APPLICATIONS_UART_H_
 #define APPLICATIONS_UART_H_
 
+#include <board.h>
+#include <rtdevice.h>
+#include <rtthread.h>
+#include <rtdbg.h>
 
+#include "typedef.h"
+
+static rt_err_t uart_input(rt_device_t dev, rt_size_t size);
+void SensorUart2TaskEntry(void* parameter);
+void SensorUart2TaskInit(void);
 
 #endif /* APPLICATIONS_UART_H_ */

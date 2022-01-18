@@ -17,6 +17,8 @@
 #include <rtdbg.h>
 
 #include "typedef.h"
+#include "Uart.h"
+#include "Ethernet.h"
 
 
 #ifdef TEST_PROGRAM
@@ -27,7 +29,7 @@
 void GpioInit(void);
 void Ctrl_LED(rt_base_t pin, rt_base_t state);
 void LedTaskInit(void);
-void LedTaskEnter(void* parameter);
+void LedTaskEntry(void* parameter);
 
 #endif
 

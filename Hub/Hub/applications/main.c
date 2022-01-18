@@ -12,6 +12,7 @@
 
 #include "Gpio.h"
 
+
 #define DBG_TAG "main"
 #define DBG_LVL DBG_LOG
 #include <rtdbg.h>
@@ -23,11 +24,15 @@ int main(void)
     int count = 1;
     static int ledState = 0;
 
-    /*初始化GPIO口*/
+    /* 初始化GPIO口 */
     GpioInit();
-    /*灯光线程*/
+    /* 初始化灯光线程,仅作为呼吸灯 */
     LedTaskInit();
-    /*串口打印线程*/
+    rt_thread_mdelay(10000);//Justin test
+    /* 初始化网络线程，处理和主机之间的交互*/
+    EthernetTaskInit();
+    /* 初始化串口接收传感器类线程 */
+    SensorUart2TaskInit();
 
     while (count++)
     {
