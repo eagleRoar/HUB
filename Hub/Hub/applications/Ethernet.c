@@ -23,7 +23,7 @@ static rt_uint8_t msg_pool[100];
  */
 void EthernetTaskEntry(void* parameter)
 {
-    int ret;
+//    int ret;
     int result;
     char *recv_data;
     struct hostent *host;
@@ -33,8 +33,7 @@ void EthernetTaskEntry(void* parameter)
     int port;
     char *test1 = "169.254.100.218";
     char *test2 = "5000";
-
-    char send_data[10];//Justin debug
+//    char send_data[10];//Justin debug
 
     url = test1;//Justin debug 测试的主机IP地址
     port = strtoul(test2, 0, 10);//Justin debug 测试的主机端口
@@ -77,6 +76,7 @@ void EthernetTaskEntry(void* parameter)
         /*释放接收缓冲 */
         rt_free(recv_data);
         return;
+
     }
     else
     {
@@ -119,40 +119,40 @@ void EthernetTaskEntry(void* parameter)
             rt_kprintf("ethernet send message ERR\n");
         }
 
-        if (strncmp(recv_data, "q", 1) == 0 || strncmp(recv_data, "Q", 1) == 0)
-        {
-            /* 如果是首字母是q或Q，关闭这个连接 */
-            closesocket(sock);
-            rt_kprintf("\n got a 'q' or 'Q',close the socket.\r\n");
-
-            /* 释放接收缓冲 */
-            rt_free(recv_data);
-            break;
-        }
-        else
-        {
-            /* 在控制终端显示收到的数E据 */
-            rt_kprintf("\nReceived data = %s ", recv_data);
-        }
-
-//        itoa(result,send_data,2);
+//        if (strncmp(recv_data, "q", 1) == 0 || strncmp(recv_data, "Q", 1) == 0)
+//        {
+//            /* 如果是首字母是q或Q，关闭这个连接 */
+//            closesocket(sock);
+//            rt_kprintf("\n got a 'q' or 'Q',close the socket.\r\n");
+//
+//            /* 释放接收缓冲 */
+//            rt_free(recv_data);
+//            break;
+//        }
+//        else
+//        {
+//            /* 在控制终端显示收到的数E据 */
+//            rt_kprintf("\nReceived data = %s ", recv_data);
+//        }
 
         /* 发送数据到sock连接 */
-        ret = send(sock, send_data, strlen(send_data), 0);
-        if (ret < 0)
-        {
-            /* 接收失败，关闭这个连接 */
-            closesocket(sock);
-            rt_kprintf("\nsend error,close the socket.\r\n");
+//        ret = send(sock, send_data, strlen(send_data), 0);
+//        if (ret < 0)
+//        {
+//            /* 接收失败，关闭这个连接 */
+//            closesocket(sock);
+//            rt_kprintf("\nsend error,close the socket.\r\n");
+//
+//            rt_free(recv_data);
+//            break;
+//        }
+//        else if (ret == 0)
+//        {
+//            /* 打印send函数返回值为0的警告信息 */
+//            rt_kprintf("\n Send warning,send function return 0.\r\n");
+//        }
 
-            rt_free(recv_data);
-            break;
-        }
-        else if (ret == 0)
-        {
-            /* 打印send函数返回值为0的警告信息 */
-            rt_kprintf("\n Send warning,send function return 0.\r\n");
-        }
+        rt_thread_mdelay(50);
     }
 }
 

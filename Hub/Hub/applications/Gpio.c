@@ -73,7 +73,7 @@ void LedTaskEntry(void* parameter)
     {
         Ctrl_LED(LED_0,ledState++ % 2);
 
-        rt_thread_mdelay(1000);
+        rt_thread_mdelay(500);
     }
 }
 

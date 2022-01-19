@@ -16,8 +16,15 @@
 #include <rtdbg.h>
 
 #include "typedef.h"
+#include "string.h"
 
-static rt_err_t uart_input(rt_device_t dev, rt_size_t size);
+/* 串口接收消息结构*/
+struct rx_msg
+{
+    rt_device_t dev;
+    rt_size_t size;
+};
+
 void SensorUart2TaskEntry(void* parameter);
 void SensorUart2TaskInit(void);
 
