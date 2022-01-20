@@ -21,7 +21,9 @@
 #define BUFSZ   1024
 
 
-void EthernetTaskInit(void);
-void EthernetTaskEntry(void* parameter);
+void tcpTaskInit(void);
+void tcpTaskEntry(void* parameter);
+void udpTaskInit(void);
+void udpTaskEntry(void* parameter);
 
 #endif /* APPLICATIONS_ETHERNET_H_ */

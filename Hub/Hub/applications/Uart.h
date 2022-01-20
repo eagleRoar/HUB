@@ -25,7 +25,7 @@ struct rx_msg
     rt_size_t size;
 };
 
-void SensorUart2TaskEntry(void* parameter);
-void SensorUart2TaskInit(void);
+void sensorUart2TaskEntry(void* parameter);
+void sensorUart2TaskInit(void);
 
 #endif /* APPLICATIONS_UART_H_ */
