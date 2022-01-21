@@ -77,10 +77,10 @@
 #define RT_SERIAL_TX_DATAQUEUE_SIZE     2048
 #define RT_SERIAL_TX_DATAQUEUE_LWM      30
 
-/* Default config for serial_configure structure */
+/* Default config for serial_configure structure *///Justin debug 修改波特率为9600
 #define RT_SERIAL_CONFIG_DEFAULT           \
 {                                          \
-    BAUD_RATE_115200, /* 115200 bits/s */  \
+    BAUD_RATE_9600/*BAUD_RATE_115200*/, /* 115200 bits/s */  \
     DATA_BITS_8,      /* 8 databits */     \
     STOP_BITS_1,      /* 1 stopbit */      \
     PARITY_NONE,      /* No parity  */     \

@@ -20,8 +20,12 @@
  */
 void GpioInit(void)
 {
-
-    rt_pin_mode(LED_0, PIN_MODE_OUTPUT);
+    //rt_pin_mode(LED_SENSOR, PIN_MODE_OUTPUT);//Justin debug 该脚暂时用作ETH_RESET脚
+    rt_pin_mode(LED_DEVICE, PIN_MODE_OUTPUT);
+    rt_pin_mode(LED_LIGHT, PIN_MODE_OUTPUT);
+    rt_pin_mode(LED_COMMS, PIN_MODE_OUTPUT);
+    rt_pin_mode(LED_BLUETOOTH, PIN_MODE_OUTPUT);
+    rt_pin_mode(LED_POWER, PIN_MODE_OUTPUT);
 }
 
 /**
@@ -47,7 +51,7 @@ void LedTaskInit(void)
     rt_err_t threadStart = RT_NULL;
 
     /* 创建led 线程 */
-    rt_thread_t thread = rt_thread_create("led task", LedTaskEntry, RT_NULL, 1024, 26, 10);
+    rt_thread_t thread = rt_thread_create("led task", LedTaskEntry, RT_NULL, 256, 26, 10);
 
     /* 如果线程创建成功则开始启动线程，否则提示线程创建失败 */
     if (RT_NULL != thread) {
@@ -71,7 +75,12 @@ void LedTaskEntry(void* parameter)
     static u8 ledState = 0;
     while(1)
     {
-        Ctrl_LED(LED_0,ledState++ % 2);
+        //Ctrl_LED(LED_SENSOR,0);//Justin debug 该脚暂时用作ETH_RESET脚
+        Ctrl_LED(LED_DEVICE,0);
+        Ctrl_LED(LED_LIGHT,ledState++ % 2);
+        Ctrl_LED(LED_COMMS,0);
+        Ctrl_LED(LED_BLUETOOTH,0);
+        Ctrl_LED(LED_POWER,0);
 
         rt_thread_mdelay(500);
     }

@@ -23,8 +23,12 @@
 
 #ifdef TEST_PROGRAM
 //LED
-#define LED_0 GET_PIN(E, 13)
-
+//#define LED_SENSOR        GET_PIN(D, 10)  //senser//Justin debug 该脚暂时用作ETH_RESET脚
+#define LED_DEVICE        GET_PIN(D, 11)  //device
+#define LED_LIGHT         GET_PIN(D, 12)  //呼吸灯
+#define LED_COMMS         GET_PIN(D, 13)  //通讯灯
+#define LED_BLUETOOTH     GET_PIN(D, 14)  //蓝牙灯
+#define LED_POWER         GET_PIN(D, 15)  //电源灯
 
 void GpioInit(void);
 void Ctrl_LED(rt_base_t pin, rt_base_t state);

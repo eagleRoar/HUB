@@ -27,5 +27,7 @@ struct rx_msg
 
 void sensorUart2TaskEntry(void* parameter);
 void sensorUart2TaskInit(void);
+u16 usModbusRTU_CRC(const u8* pucData, u32 ulLen);
+
 
 #endif /* APPLICATIONS_UART_H_ */

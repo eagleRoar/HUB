@@ -175,8 +175,8 @@ void udpTaskEntry(void* parameter)
     char send_data[] = "udp test\n";
     static int timeCnt = 0;
 
-    url = "169.254.100.218";
-    port = strtoul("5000", 0, 10);
+    url = "192.168.1.2";//"169.254.100.218";//Justin debug 测试IP地址修改
+    port = strtoul("9898"/*"5000"*/, 0, 10);//Justin debug 测试端口号修改
 
     /* 通过函数入口参数url获得host地址（如果是域名，会做域名解析） */
     host = (struct hostent *) gethostbyname(url);
@@ -204,9 +204,21 @@ void udpTaskEntry(void* parameter)
 
         if(RT_EOK == result)
         {
-            sendto(sock, recvUartBuf, sizeof(recvUartBuf), 0,
+            sendto(sock, recvUartBuf, /*sizeof(recvUartBuf)*/8, 0,
                   (struct sockaddr *)&server_addr, sizeof(struct sockaddr));
         }
+
+        /*Justin debug 基础通讯测试*/
+        /*if(timeCnt >= 20)
+        {
+            timeCnt = 0;
+            recvUartBuf[0] = 't';
+            recvUartBuf[1] = 'e';
+            recvUartBuf[2] = 's';
+            recvUartBuf[3] = 't';
+            sendto(sock, recvUartBuf, sizeof(recvUartBuf), 0,
+                              (struct sockaddr *)&server_addr, sizeof(struct sockaddr));
+        }*/
 
         /* 线程休眠一段时间 */
         rt_thread_delay(50);

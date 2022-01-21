@@ -164,9 +164,9 @@
 
 /* Static IPv4 Address */
 
-#define RT_LWIP_IPADDR "169.254.100.252"
-#define RT_LWIP_GWADDR "169.254.100.1"
-#define RT_LWIP_MSKADDR "255.255.0.0"
+#define RT_LWIP_IPADDR "192.168.1.3"
+#define RT_LWIP_GWADDR "192.168.1.1"
+#define RT_LWIP_MSKADDR "255.255.255.0"
 /* end of Static IPv4 Address */
 #define RT_LWIP_UDP
 #define RT_LWIP_TCP
@@ -314,12 +314,6 @@
 
 /* samples: kernel and components samples */
 
-#define PKG_USING_NETWORK_SAMPLES
-#define PKG_USING_NETWORK_SAMPLES_LATEST_VERSION
-#define NETWORK_SAMPLES_USING_UDP_CLIENT
-#define PKG_USING_PERIPHERAL_SAMPLES
-#define PKG_USING_PERIPHERAL_SAMPLES_LATEST_VERSION
-#define PERIPHERAL_SAMPLES_USING_SERIAL_DMA
 /* end of samples: kernel and components samples */
 
 /* entertainment: terminal games and other interesting software packages */
