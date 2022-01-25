@@ -18,7 +18,7 @@ extern struct rt_messagequeue uartSendMsg;
  * @author : Qiuyijie
  * @date   : 2022.01.17
  */
-void tcpTaskEntry(void* parameter)
+void TcpTaskEntry(void* parameter)
 {
     rt_err_t result;
     char *recv_data;
@@ -125,7 +125,7 @@ void tcpTaskEntry(void* parameter)
  * @author : Qiuyijie
  * @date   : 2022.01.17
  */
-void tcpTaskInit(void)
+void TcpTaskInit(void)
 {
     rt_err_t threadStart = RT_NULL;
     rt_thread_t thread = RT_NULL;
@@ -145,7 +145,7 @@ void tcpTaskInit(void)
     }
 
     /* 创建以太网线程 */
-    thread = rt_thread_create("ethernet task", tcpTaskEntry, RT_NULL, 2048, 20, 10);
+    thread = rt_thread_create("ethernet task", TcpTaskEntry, RT_NULL, 2048, 20, 10);
 
     /* 如果线程创建成功则开始启动线程，否则提示线程创建失败 */
     if (RT_NULL != thread) {
@@ -164,7 +164,7 @@ void tcpTaskInit(void)
  * @author : Qiuyijie
  * @date   : 2022.01.19
  */
-void udpTaskEntry(void* parameter)
+void UdpTaskEntry(void* parameter)
 {
     rt_err_t result;
     int sock, port;
@@ -172,11 +172,12 @@ void udpTaskEntry(void* parameter)
     struct sockaddr_in server_addr;
     const char *url;
     char recvUartBuf[65];
-    char send_data[] = "udp test\n";
     static int timeCnt = 0;
 
-    url = "192.168.1.2";//"169.254.100.218";//Justin debug 测试IP地址修改
-    port = strtoul("9898"/*"5000"*/, 0, 10);//Justin debug 测试端口号修改
+    //url = "192.168.0.171";//Justin debug 测试IP地址修改
+    //port = strtoul("9898", 0, 10);//Justin debug 测试端口号修改
+    url = "192.168.0.33";//Justin debug 测试IP地址修改
+    port = strtoul("5000", 0, 10);//Justin debug 测试端口号修改
 
     /* 通过函数入口参数url获得host地址（如果是域名，会做域名解析） */
     host = (struct hostent *) gethostbyname(url);
@@ -208,20 +209,8 @@ void udpTaskEntry(void* parameter)
                   (struct sockaddr *)&server_addr, sizeof(struct sockaddr));
         }
 
-        /*Justin debug 基础通讯测试*/
-        /*if(timeCnt >= 20)
-        {
-            timeCnt = 0;
-            recvUartBuf[0] = 't';
-            recvUartBuf[1] = 'e';
-            recvUartBuf[2] = 's';
-            recvUartBuf[3] = 't';
-            sendto(sock, recvUartBuf, sizeof(recvUartBuf), 0,
-                              (struct sockaddr *)&server_addr, sizeof(struct sockaddr));
-        }*/
-
         /* 线程休眠一段时间 */
-        rt_thread_delay(50);
+        rt_thread_mdelay(50);
     }
     /* 关闭这个socket */
     closesocket(sock);
@@ -233,14 +222,13 @@ void udpTaskEntry(void* parameter)
  * @author : Qiuyijie
  * @date   : 2022.01.19
  */
-void udpTaskInit(void)
+void UdpTaskInit(void)
 {
     rt_err_t threadStart = RT_NULL;
     rt_thread_t thread = RT_NULL;
-    rt_err_t result = RT_NULL;
 
     /* 创建以太网,UDP线程 */
-    thread = rt_thread_create("ethernet task", udpTaskEntry, RT_NULL, 2048, 22, 10);
+    thread = rt_thread_create("ethernet task", UdpTaskEntry, RT_NULL, 2048, 22, 10);
 
     /* 如果线程创建成功则开始启动线程，否则提示线程创建失败 */
     if (RT_NULL != thread) {

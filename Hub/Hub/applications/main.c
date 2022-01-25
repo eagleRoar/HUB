@@ -28,14 +28,20 @@ int main(void)
     GpioInit();
     /* 初始化灯光线程,仅作为呼吸灯 */
     LedTaskInit();
-    /* 初始化网络线程，处理和主机之间的交互，TCP协议*/
-    rt_thread_mdelay(5000);//等待lwip准备完毕，该操作需要优化
-    tcpTaskInit();
-    /* 初始化网络线程，发送设备信息给主机*/
-    udpTaskInit();
-    /* 初始化串口接收传感器类线程 */
-    sensorUart2TaskInit();
 
+    rt_thread_mdelay(5000);         //等待lwip准备完毕，该操作需要优化
+    /* 初始化网络线程，处理和主机之间的交互，TCP协议*/
+    TcpTaskInit();
+    /* 初始化网络线程，发送设备信息给主机*/
+    UdpTaskInit();
+    /* 初始化串口接收传感器类线程 */
+    SensorUart2TaskInit();
+    /* oled1309屏初始化*/
+    oledInit();
+    /* 初始化oled1309 UI处理线程*/
+
+    /* 初始化SD卡处理线程 */
+    SDCardTaskInit();
 
     while (count++)
     {

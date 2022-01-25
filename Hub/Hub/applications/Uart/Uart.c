@@ -8,7 +8,7 @@
  * 2022-01-12     Qiuyijie     the first version
  */
 
-#include "uart.h"
+#include "Uart.h"
 
 
 static rt_mutex_t recvUartMutex = RT_NULL;    //指向互斥量的指针
@@ -17,8 +17,14 @@ static struct rt_messagequeue uartRecvMsg;    //串口接收数据消息队列
 struct rt_messagequeue uartSendMsg;           //串口发送数据消息队列
 extern struct rt_messagequeue ethMsg;         //接收网口数据消息队列
 
-/* 接收数据回调函数 */
-static rt_err_t uart_input(rt_device_t dev, rt_size_t size)
+/**
+ * @brief  : 接收回调函数
+ * @para   : dev   ：接收数据部分等
+ *         : size  : 接收的数据长度
+ * @author : Qiuyijie
+ * @date   : 2022.01.12
+ */
+static rt_err_t Uart_input(rt_device_t dev, rt_size_t size)
 {
     struct rx_msg msg;
 
@@ -45,7 +51,7 @@ static rt_err_t uart_input(rt_device_t dev, rt_size_t size)
  * @author : Qiuyijie
  * @date   : 2022.01.12
  */
-void sensorUart2TaskEntry(void* parameter)
+void SensorUart2TaskEntry(void* parameter)
 {
     char recvEthBuf[30];                  //接收以太网数据缓存
     struct rx_msg msg;                    //接收串口数据结构体
@@ -67,7 +73,7 @@ void sensorUart2TaskEntry(void* parameter)
     /* 以 DMA 接收及轮询发送方式打开串口设备 */
     rt_device_open(serial, RT_DEVICE_FLAG_DMA_RX);
     /* 设置接收回调函数 */
-    rt_device_set_rx_indicate(serial, uart_input);
+    rt_device_set_rx_indicate(serial, Uart_input);
     while (1)
     {
         rt_mutex_take(recvUartMutex, RT_WAITING_FOREVER);       //加锁保护
@@ -139,7 +145,7 @@ void sensorUart2TaskEntry(void* parameter)
  * @author : Qiuyijie
  * @date   : 2022.01.17
  */
-void sensorUart2TaskInit(void)
+void SensorUart2TaskInit(void)
 {
     rt_err_t threadStart = RT_NULL;
     static char recvMsgPool[256];
@@ -168,7 +174,7 @@ void sensorUart2TaskInit(void)
                RT_IPC_FLAG_FIFO);               // 如果有多个线程等待，按照先来先得到的方法分配消息
 
     /* 创建串口 线程 */
-    rt_thread_t thread = rt_thread_create("sensor task", sensorUart2TaskEntry, RT_NULL, 2048, 25, 10);
+    rt_thread_t thread = rt_thread_create("sensor task", SensorUart2TaskEntry, RT_NULL, 2048, 25, 10);
 
     /* 如果线程创建成功则开始启动线程，否则提示线程创建失败 */
     if (RT_NULL != thread) {

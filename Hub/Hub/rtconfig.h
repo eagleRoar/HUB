@@ -164,8 +164,8 @@
 
 /* Static IPv4 Address */
 
-#define RT_LWIP_IPADDR "192.168.1.3"
-#define RT_LWIP_GWADDR "192.168.1.1"
+#define RT_LWIP_IPADDR "192.168.0.34"
+#define RT_LWIP_GWADDR "192.168.0.1"
 #define RT_LWIP_MSKADDR "255.255.255.0"
 /* end of Static IPv4 Address */
 #define RT_LWIP_UDP
@@ -266,6 +266,20 @@
 
 /* u8g2: a monochrome graphic library */
 
+#define PKG_USING_U8G2
+
+/* U8G2 Examples */
+
+/* end of U8G2 Examples */
+#define PKG_USING_U8G2_C_LATEST_VERSION
+
+/* C     version: v1.x.x */
+
+/* C++   version: v2.x.x */
+
+/* C/C++ version: v3.x.x */
+
+#define PKG_U8G2_VER_NUM 0x19999
 /* end of u8g2: a monochrome graphic library */
 
 /* PainterEngine: A cross-platform graphics application framework written in C language */
@@ -302,8 +316,6 @@
 
 /* peripheral libraries and drivers */
 
-#define PKG_USING_AT24CXX
-#define PKG_USING_AT24CXX_LATEST_VERSION
 /* end of peripheral libraries and drivers */
 
 /* AI packages */
@@ -314,6 +326,9 @@
 
 /* samples: kernel and components samples */
 
+#define PKG_USING_PERIPHERAL_SAMPLES
+#define PKG_USING_PERIPHERAL_SAMPLES_LATEST_VERSION
+#define PERIPHERAL_SAMPLES_USING_SD
 /* end of samples: kernel and components samples */
 
 /* entertainment: terminal games and other interesting software packages */

@@ -25,8 +25,8 @@ struct rx_msg
     rt_size_t size;
 };
 
-void sensorUart2TaskEntry(void* parameter);
-void sensorUart2TaskInit(void);
+void SensorUart2TaskEntry(void* parameter);
+void SensorUart2TaskInit(void);
 u16 usModbusRTU_CRC(const u8* pucData, u32 ulLen);
 
 

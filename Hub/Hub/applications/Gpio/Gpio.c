@@ -20,12 +20,31 @@
  */
 void GpioInit(void)
 {
+    /* led引脚设置*/
     //rt_pin_mode(LED_SENSOR, PIN_MODE_OUTPUT);//Justin debug 该脚暂时用作ETH_RESET脚
     rt_pin_mode(LED_DEVICE, PIN_MODE_OUTPUT);
     rt_pin_mode(LED_LIGHT, PIN_MODE_OUTPUT);
     rt_pin_mode(LED_COMMS, PIN_MODE_OUTPUT);
     rt_pin_mode(LED_BLUETOOTH, PIN_MODE_OUTPUT);
     rt_pin_mode(LED_POWER, PIN_MODE_OUTPUT);
+
+    /* oled 1309屏设置引脚*/
+    rt_pin_mode(LCD_DB0, PIN_MODE_OUTPUT);
+    rt_pin_mode(LCD_DB1, PIN_MODE_OUTPUT);
+    rt_pin_mode(LCD_DB2, PIN_MODE_OUTPUT);
+    rt_pin_mode(LCD_DB3, PIN_MODE_OUTPUT);
+    rt_pin_mode(LCD_DB4, PIN_MODE_OUTPUT);
+    rt_pin_mode(LCD_DB5, PIN_MODE_OUTPUT);
+    rt_pin_mode(LCD_DB6, PIN_MODE_OUTPUT);
+    rt_pin_mode(LCD_DB7, PIN_MODE_OUTPUT);
+    //rt_pin_mode(RST_CTR, PIN_MODE_OUTPUT);
+    rt_pin_mode(LCD_WR, PIN_MODE_OUTPUT);
+    rt_pin_mode(LCD_RD, PIN_MODE_OUTPUT);
+    rt_pin_mode(LCD_CS, PIN_MODE_OUTPUT);
+    rt_pin_mode(LCD_DC, PIN_MODE_OUTPUT);
+
+    //手动启动OLCD的PIN脚
+    rt_pin_write(LCD_RD, PIN_HIGH);
 }
 
 /**

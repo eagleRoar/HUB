@@ -5,8 +5,13 @@
   "name": "CJSON"
  }, 
  {
-  "path": "/packages/peripherals/at24cxx", 
+  "path": "/packages/multimedia/u8g2/u8g2", 
+  "ver": "c-latest", 
+  "name": "U8G2"
+ }, 
+ {
+  "path": "/packages/misc/samples/peripheral_samples", 
   "ver": "latest", 
-  "name": "AT24CXX"
+  "name": "PERIPHERAL_SAMPLES"
  }
 ]

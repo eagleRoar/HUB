@@ -16,6 +16,7 @@
 #include <rthw.h>
 #include <drv_common.h>
 #include "drv_dma.h"
+#include "stm32f4xx_hal_spi.h"
 
 rt_err_t rt_hw_spi_device_attach(const char *bus_name, const char *device_name, GPIO_TypeDef* cs_gpiox, uint16_t cs_gpio_pin);
 
