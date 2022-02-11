@@ -21,6 +21,7 @@
 #include "Uart.h"
 #include "Ethernet.h"
 #include "Oled1309.h"
+#include "Ble.h"
 
 #ifdef TEST_PROGRAM
 //LED

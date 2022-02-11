@@ -42,6 +42,8 @@ int main(void)
 
     /* 初始化SD卡处理线程 */
     SDCardTaskInit();
+    /* 初始化蓝牙Ble线程,蓝牙是通过uart发送数据控制*/
+    //BleUart6TaskInit();
 
     while (count++)
     {

@@ -77,7 +77,6 @@
 #define FINSH_CMD_SIZE 80
 #define FINSH_USING_MSH
 #define FINSH_USING_MSH_DEFAULT
-#define FINSH_USING_MSH_ONLY
 #define FINSH_ARG_MAX 10
 /* end of Command shell */
 
@@ -115,6 +114,11 @@
 #define RT_MMCSD_MAX_PARTITION 16
 #define RT_USING_SPI
 #define RT_USING_SPI_MSD
+#define RT_USING_SFUD
+#define RT_SFUD_USING_SFDP
+#define RT_SFUD_USING_FLASH_INFO_TABLE
+#define RT_SFUD_SPI_MAX_HZ 50000000
+#define RT_USING_WDT
 #define RT_USING_PULSE_ENCODER
 
 /* Using USB */
@@ -210,6 +214,8 @@
 
 /* Utilities */
 
+#define RT_USING_RYM
+#define YMODEM_USING_FILE_TRANSFER
 #define RT_USING_ULOG
 #define ULOG_OUTPUT_LVL_D
 #define ULOG_OUTPUT_LVL 7
@@ -231,8 +237,6 @@
 
 /* IoT - internet of things */
 
-#define PKG_USING_CJSON
-#define PKG_USING_CJSON_V1715
 
 /* Wi-Fi */
 
@@ -248,10 +252,21 @@
 /* IoT Cloud */
 
 /* end of IoT Cloud */
+#define PKG_USING_OTA_DOWNLOADER
+#define PKG_USING_YMODEM_OTA
+#define PKG_USING_OTA_DOWNLOADER_LATEST_VERSION
 /* end of IoT - internet of things */
 
 /* security packages */
 
+#define PKG_USING_TINYCRYPT
+#define PKG_USING_TINYCRYPT_LATEST_VERSION
+#define TINY_CRYPT_MD5
+#define TINY_CRYPT_BASE64
+#define TINY_CRYPT_AES
+#define TINY_CRYPT_AES_ROM_TABLES
+#define TINY_CRYPT_SHA1
+#define TINY_CRYPT_SHA256
 /* end of security packages */
 
 /* language packages */
@@ -312,10 +327,61 @@
 /* Micrium: Micrium software products porting for RT-Thread */
 
 /* end of Micrium: Micrium software products porting for RT-Thread */
+#define PKG_USING_FAL
+#define FAL_DEBUG_CONFIG
+#define FAL_DEBUG 1
+#define FAL_PART_HAS_TABLE_CFG
+#define FAL_USING_SFUD_PORT
+#define FAL_USING_NOR_FLASH_DEV_NAME "norflash0"
+#define PKG_USING_FAL_LATEST_VERSION
+#define PKG_FAL_VER_NUM 0x99999
+#define PKG_USING_SYSWATCH
+#define SYSWATCH_EXCEPT_RESOLVE_MODE_2
+#define SYSWATCH_EXCEPT_RESOLVE_MODE 2
+#define SYSWATCH_EXCEPT_TIMEOUT 60
+#define SYSWATCH_EXCEPT_CONFIRM_TMO 15
+#define SYSWATCH_EXCEPT_RESUME_DLY 15
+#define SYSWATCH_THREAD_PRIO 0
+#define SYSWATCH_THREAD_STK_SIZE 512
+#define SYSWATCH_THREAD_NAME "syswatch"
+#define SYSWATCH_WDT_NAME "wdt"
+#define SYSWATCH_WDT_TIMEOUT 5
+#define PKG_USING_SYSWATCH_LATEST_VERSION
+#define PKG_USING_QBOOT
+#define QBOOT_USING_PRODUCT_CODE
+#define QBOOT_PRODUCT_CODE "00010203040506070809"
+#define QBOOT_APP_PART_NAME "app"
+#define QBOOT_DOWNLOAD_PART_NAME "download"
+#define QBOOT_FACTORY_PART_NAME "factory"
+#define QBOOT_USING_AES
+#define QBOOT_AES_IV "0123456789ABCDEF"
+#define QBOOT_AES_KEY "0123456789ABCDEF0123456789ABCDEF"
+#define QBOOT_USING_QUICKLZ
+#define QBOOT_USING_SHELL
+#define QBOOT_SHELL_KEY_CHK_TMO 5
+#define QBOOT_USING_SYSWATCH
+#define QBOOT_USING_OTA_DOWNLOADER
+#define QBOOT_USING_PRODUCT_INFO
+#define QBOOT_PRODUCT_NAME "Qboot test device"
+#define QBOOT_PRODUCT_VER "v1.00 2020.07.27"
+#define QBOOT_PRODUCT_MCU "stm32l4r5zi"
+#define QBOOT_USING_STATUS_LED
+#define QBOOT_STATUS_LED_PIN 77//0 Justin
+#define QBOOT_STATUS_LED_LEVEL 1
+#define QBOOT_THREAD_STACK_SIZE 4096
+#define QBOOT_THREAD_PRIO 5
+#define PKG_USING_QBOOT_LATEST_VERSION
 /* end of system packages */
 
 /* peripheral libraries and drivers */
 
+#define PKG_USING_QLED
+#define QLED_TOTAL 5
+#define QLED_TIME_UNIT_MS 10
+#define QLED_THREAD_NAME "qled"
+#define QLED_THREAD_STACK_SIZE 512
+#define QLED_THREAD_PRIO 3
+#define PKG_USING_QLED_LATEST_VERSION
 /* end of peripheral libraries and drivers */
 
 /* AI packages */
@@ -326,14 +392,28 @@
 
 /* samples: kernel and components samples */
 
-#define PKG_USING_PERIPHERAL_SAMPLES
-#define PKG_USING_PERIPHERAL_SAMPLES_LATEST_VERSION
-#define PERIPHERAL_SAMPLES_USING_SD
 /* end of samples: kernel and components samples */
 
 /* entertainment: terminal games and other interesting software packages */
 
 /* end of entertainment: terminal games and other interesting software packages */
+#define PKG_USING_QUICKLZ
+#define QLZ_COMPRESSION_LEVEL 3
+#define PKG_USING_QUICKLZ_V101
+#define PKG_USING_CRCLIB
+#define CRCLIB_USING_CRC8
+#define CRC8_USING_CONST_TABLE
+#define CRC8_POLY_8C
+#define CRC8_POLY 140
+#define CRCLIB_USING_CRC16
+#define CRC16_USING_CONST_TABLE
+#define CRC16_POLY_A001
+#define CRC16_POLY 40961
+#define CRCLIB_USING_CRC32
+#define CRC32_USING_CONST_TABLE
+#define CRC32_POLY_EDB88320
+#define CRC32_POLY 3988292384
+#define PKG_USING_CRCLIB_V100
 /* end of miscellaneous packages */
 /* end of RT-Thread online packages */
 
