@@ -5,11 +5,10 @@
  *
  * Change Logs:
  * Date           Author       Notes
- * 2022-01-21     Administrator       the first version
+ * 2022-03-05     Administrator       the first version
  */
-#ifndef APPLICATIONS_OLED1309_H_
-
-#define APPLICATIONS_OLED1309_H_
+#ifndef APPLICATIONS_SPI_SPI_H_
+#define APPLICATIONS_SPI_SPI_H_
 
 #include <board.h>
 #include <rtdevice.h>
@@ -18,10 +17,8 @@
 
 #include "GlobalConfig.h"
 #include "typedef.h"
-#include "Gpio.h"
 
-void oledInit(void);
-void OledTaskEntry(void* parameter);
-void OledTaskInit(void);
+void SpiTaskEntry(void*);
+void SpiTaskInit(void);
 
-#endif /* APPLICATIONS_OLED1309_H_ */
+#endif /* APPLICATIONS_SPI_SPI_H_ */

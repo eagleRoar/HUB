@@ -8,161 +8,235 @@
  * 2022-01-24     Administrator       the first version
  */
 
+//rt-include-------------------------------------------------------
+#include <dfs_posix.h>
+#include <rtdevice.h>
+#include <rtthread.h>
+//user-include-------------------------------------------------------
 #include "SDCard.h"
+#include "drv_flash.h"
+#define DBG_TAG "u.sd"
+#define DBG_LVL DBG_INFO
+#include <rtdbg.h>
+//extern---------------------------------------------------------------
+static rt_mutex_t sd_dfs_mutex = RT_NULL;
 
-#define SD_DEVICE_NAME    "sd0"
+//---------------------------------------------------------------------
 
-rt_uint8_t *write_buff, *read_buff;                  //Justin debug
-extern struct rt_messagequeue uartSendMsg;           //串口发送数据消息队列
+#ifndef bool
+typedef enum {FALSE = 0, TRUE = !FALSE} bool;
+#endif
 
-void fill_buffer1(rt_uint8_t *buff, rt_uint32_t buff_length)
-{
-    rt_uint32_t index;
-    /* 往缓冲区填充随机数 */
-    for (index = 0; index < buff_length; index++)
-    {
-        buff[index] = ((rt_uint8_t)rand()) & 0xff;
-    }
-}
 
-static int sd_sample1(void)
-{
-    rt_err_t ret;
-    rt_device_t sd_device;
-    char sd_name[RT_NAME_MAX];
-    //rt_uint8_t *write_buff, *read_buff;
-    struct rt_device_blk_geometry geo;
-    rt_uint8_t block_num;
-    /* 判断命令行参数是否给定了设备名称 */
-//    if (argc == 2)
-//    {
-//        rt_strncpy(sd_name, argv[1], RT_NAME_MAX);
-//    }
-//    else
-//    {
-//        rt_strncpy(sd_name, SD_DEVICE_NAME, RT_NAME_MAX);
-//    }
-    /* 查找设备获取设备句柄 */
-    sd_device = rt_device_find(/*sd_name*/SD_DEVICE_NAME);
-    if (sd_device == RT_NULL)
-    {
-        rt_kprintf("find device %s failed!\n", sd_name);
-        return RT_ERROR;
-    }
-    /* 打开设备 */
-    ret = rt_device_open(sd_device, RT_DEVICE_OFLAG_RDWR);
-    if (ret != RT_EOK)
-    {
-        rt_kprintf("open device %s failed!\n", sd_name);
-        return ret;
-    }
-
-    rt_memset(&geo, 0, sizeof(geo));
-    /* 获取块设备信息 */
-    ret = rt_device_control(sd_device, RT_DEVICE_CTRL_BLK_GETGEOME, &geo);
-    if (ret != RT_EOK)
-    {
-        rt_kprintf("control device %s failed!\n", sd_name);
-        return ret;
-    }
-    rt_kprintf("device information:\n");
-    rt_kprintf("sector  size : %d byte\n", geo.bytes_per_sector);
-    rt_kprintf("sector count : %d \n", geo.sector_count);
-    rt_kprintf("block   size : %d byte\n", geo.block_size);
-    /* 准备读写缓冲区空间，大小为一个块 */
-    read_buff = rt_malloc(geo.block_size);
-    if (read_buff == RT_NULL)
-    {
-        rt_kprintf("no memory for read buffer!\n");
-        return RT_ERROR;
-    }
-    write_buff = rt_malloc(geo.block_size);
-    if (write_buff == RT_NULL)
-    {
-        rt_kprintf("no memory for write buffer!\n");
-        rt_free(read_buff);
-        return RT_ERROR;
-    }
-
-    /* 填充写数据缓冲区，为写操作做准备 */
-    //fill_buffer1(write_buff, geo.block_size);
-
-    /* 把写数据缓冲的数据写入SD卡中，大小为一个块，size参数以块为单位 */
-    /*block_num = rt_device_write(sd_device, 0, write_buff, 1);
-    if (1 != block_num)
-    {
-        rt_kprintf("write device %s failed!\n", sd_name);
-    }*/
-
-    /* 从SD卡中读出数据，并保存在读数据缓冲区中 */
-    block_num = rt_device_read(sd_device, 0, read_buff, 1);
-
-    if (1 != block_num)
-    {
-        rt_kprintf("read %s device failed!\n", sd_name);
-    }
-
-    /* 比较写数据缓冲区和读数据缓冲区的内容是否完全一致 */
-    if (rt_memcmp(write_buff, read_buff, geo.block_size) == 0)
-    {
-        rt_kprintf("Block test OK!\n");
-    }
-    else
-    {
-        rt_kprintf("Block test Fail!\n");
-    }
-    /* 释放缓冲区空间 */
-    //rt_free(read_buff);    //Justin debug
-    rt_free(write_buff);
-
-    return RT_EOK;
-}
-
-/*
- * @brief  : SD卡处理线程入口
- * @para   : NULL
- * @author : Qiuyijie
- * @date   : 2022.01.24
+/**
+ * @brief SD处理线程初始化
+ * @return
  */
-void SDCardTaskEntry(void* parameter)
+int SDCardTaskInit(void)
 {
-    static u8 timeCnt = 0;
+    rt_err_t ret = RT_EOK;
 
-    sd_sample1();
+    /* 创建一个SD-DFS互斥量 */
+    sd_dfs_mutex = rt_mutex_create("sd_dfs", RT_IPC_FLAG_FIFO);
 
-    while(1)
-    {
-        /* 1s定时触发 */
-        if(0 == (timeCnt % 20))
+    /* 创建 SD卡线程 */
+    rt_thread_t thread = rt_thread_create("et_dfs", sd_dfs_event_entry,
+    RT_NULL, 4000, 26, 10);
+
+    /* 创建成功则启动线程 */
+    if (thread != RT_NULL) {
+        rt_thread_startup(thread);
+        LOG_I("start Thread [event dfs] sucess");
+    } else {
+        LOG_E("start Thread [event dfs] failed");
+        ret = RT_ERROR;
+    }
+
+    return ret;
+}
+
+//INIT_APP_EXPORT(SDCardTaskInit);
+
+/**
+ * @brief SD卡相关处理处理事件
+ *
+ * @param parameter
+ */
+
+void sd_dfs_event_entry(void* parameter)
+{
+    rt_device_t dev;
+
+    static int dfsMountFlag = RT_ERROR;
+
+    while (1) {
+
+        rt_mutex_take(sd_dfs_mutex, RT_WAITING_FOREVER);
+
+        /* 检查SD卡是否存在 */
+        if(sd_card_is_vaild())
         {
-            rt_mq_send(&uartSendMsg, read_buff, 8);
+            /* 寻找SD设备 */
+            dev = rt_device_find("sd0");
+
+            if (dev != RT_NULL)
+            {
+                /* 将SD卡挂载在根目录下 */
+                if(RT_EOK != dfsMountFlag)//如果还没挂载，尝试挂载
+                {
+                    if (dfs_mount("sd0", "/", "elm", 0, 0) == 0)//SD挂载在根目录下
+                    {
+                        dfsMountFlag = RT_EOK;
+
+                        sd_file_init();//寻找文件夹，不存在则创建
+
+                        LOG_I("sd card mount to / success!\r\n");
+                    }
+                    else //挂载失败
+                    {
+
+                        LOG_E("sd card mount to / failed!\r\n");
+                    }
+                }
+            }
+            else
+            {
+
+                LOG_E("sd card find failed!\r\n");
+            }
+        }
+        else
+        {
+
+            LOG_E("The SD card slot is empty!\r\n");
         }
 
-        timeCnt++;
+        rt_mutex_release(sd_dfs_mutex);
         rt_thread_mdelay(50);
     }
 }
 
-/*
- * @brief  : SD卡处理线程
- * @para   : NULL
- * @author : Qiuyijie
- * @date   : 2022.01.24
+/**
+ * @brief 检测SD是否存在
+ * @return 返回SD卡读取的电平，高为卡有效，低为卡无效
  */
-void SDCardTaskInit(void)
+int sd_card_is_vaild(void)
 {
-    rt_err_t threadStart = RT_NULL;
+    return (rt_pin_read(SD_CHK_PIN) == PIN_LOW) ? (1) : (0);
+}
 
-    /* 创建串口 线程 */
-    rt_thread_t thread = rt_thread_create("sd card task", SDCardTaskEntry, RT_NULL, 1024, 26, 10);
+/**
+ * @brief SD内文件和文件夹有效性
+ */
+void sd_file_init(void)
+{
+    //检测文件夹可读性
+    rt_access_dir(DOWNLOADFILE);
+}
 
-    /* 如果线程创建成功则开始启动线程，否则提示线程创建失败 */
-    if (RT_NULL != thread) {
-        threadStart = rt_thread_startup(thread);
-        if (RT_EOK != threadStart) {
-            LOG_E("sensor task start failed");
-        }
+/**
+ * @brief 检测文件是否存在,并获取文件长度
+ * @param name:相关文件名称
+ * @return 返回相关文件长度
+ */
+u32 length_file(char* name)
+{
+    int ret;
+    struct stat buf;
+
+    ret = stat(name, &buf);
+
+    if (ret == 0) {
+        LOG_D("%s file size = %d", name, buf.st_size);
+        return buf.st_size;
     } else {
-        LOG_E("sensor task create failed");
+        LOG_E("%s file not fonud");
+        return 0;
     }
 }
+
+/**
+ * @brief 检测文件夹是否存在
+ *
+ * @param name:文件夹名称
+ * @return 返回是否有效,成功为RT_EOK
+ */
+u8 rt_access_dir(char* name)
+{
+    int ret;
+
+    ret = access(name, 0);
+    if (ret < 0) {
+        LOG_E("\"%s\" error, reset the dir", name);
+        //创建文件夹
+        ret = mkdir(name, 0x777);
+        if (ret < 0) {
+            LOG_E("mkdir \"%s\" error", name);
+            return RT_ERROR;
+        } else {
+            return RT_EOK;
+        }
+    } else {
+        return RT_EOK;
+    }
+}
+
+/**
+ * @brief 从文件中读取到固定位置的数据
+ *
+ * @param name 需要读取的文件
+ * @param text 返回的数据
+ * @param offset 偏移量
+ * @param l 文件读取的长度
+ * @return u8
+ */
+u8 read_data(char* name, void* text, u32 offset,u32 l)
+{
+    int fd;
+    int size;
+
+    /*生成文件名称*/
+    /* 以创建和读写模式打开 /text.txt 文件，如果该文件不存在则创建该文件*/
+    fd = open(name, O_WRONLY | O_CREAT);
+    if (fd >= 0) {
+        lseek(fd,offset,SEEK_SET);//设置偏移地址
+        size = read(fd, text, l);
+        close(fd);
+        if (size > 0) {
+            LOG_D("read done[%d].", size);
+            return RT_EOK;
+        }
+    }
+
+    return RT_ERROR;
+}
+
+/**
+ * @brief 将数据写入相应文件
+ *
+ * @param name 写入的文件名称
+ * @param offset 偏移量
+ * @param text 需要写入的数据内容
+ * @param l 写入长度
+ * @return
+ */
+u8 write_data(char* name, u8* text, u32 offset, u32 l)
+{
+    int fd;
+
+    if (text != NULL) {
+        /*生成文件名称*/
+        /* 以创建和读写模式打开 name 文件，如果该文件不存在则创建该文件*/
+        fd = open(name, O_WRONLY | O_CREAT);
+        if (fd >= 0) {
+            lseek(fd,offset,SEEK_SET);//设置偏移地址
+            write(fd, text, l);
+            close(fd);
+
+            return RT_EOK;
+        }
+    }
+    return RT_ERROR;
+}
+
+

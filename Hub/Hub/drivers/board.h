@@ -26,7 +26,6 @@ extern "C"
 #define CHIP_SERIES_STM32F4
 #define CHIP_NAME_STM32F407VE
 
-#define TEST_PROGRAM
 /*-------------------------- CHIP CONFIG END --------------------------*/
 
 /*-------------------------- ROM/RAM CONFIG BEGIN --------------------------*/
@@ -121,7 +120,7 @@ extern "C"
  *                 such as     #define HAL_SPI_MODULE_ENABLED
  */
 
-/*#define BSP_USING_SPI1*/
+#define BSP_USING_SPI1
 /*#define BSP_USING_SPI2*/
 /*#define BSP_USING_SPI3*/
 
@@ -248,7 +247,7 @@ extern "C"
  *                 such as     #define HAL_RTC_MODULE_ENABLED
  *
  */
-/*#define BSP_USING_ONCHIP_RTC*/
+#define BSP_USING_ONCHIP_RTC
 
 /*-------------------------- RTC CONFIG END --------------------------*/
 

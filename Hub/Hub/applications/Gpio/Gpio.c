@@ -10,7 +10,6 @@
 
 #include "Gpio.h"
 
-#ifdef TEST_PROGRAM
 
 /**
  * @brief  : GPIO口初始化
@@ -21,7 +20,7 @@
 void GpioInit(void)
 {
     /* led引脚设置*/
-    //rt_pin_mode(LED_SENSOR, PIN_MODE_OUTPUT);//Justin debug 该脚暂时用作ETH_RESET脚
+    rt_pin_mode(LED_SENSOR, PIN_MODE_OUTPUT);
     rt_pin_mode(LED_DEVICE, PIN_MODE_OUTPUT);
     rt_pin_mode(LED_LIGHT, PIN_MODE_OUTPUT);
     rt_pin_mode(LED_COMMS, PIN_MODE_OUTPUT);
@@ -45,6 +44,9 @@ void GpioInit(void)
 
     //手动启动OLCD的PIN脚
     rt_pin_write(LCD_RD, PIN_HIGH);
+
+    //SD卡检测脚
+    rt_pin_mode(SD_CHK_PIN, PIN_MODE_INPUT);
 }
 
 /**
@@ -94,7 +96,7 @@ void LedTaskEntry(void* parameter)
     static u8 ledState = 0;
     while(1)
     {
-        //Ctrl_LED(LED_SENSOR,0);//Justin debug 该脚暂时用作ETH_RESET脚
+        Ctrl_LED(LED_SENSOR,0);
         Ctrl_LED(LED_DEVICE,0);
         Ctrl_LED(LED_LIGHT,ledState++ % 2);
         Ctrl_LED(LED_COMMS,0);
@@ -105,4 +107,3 @@ void LedTaskEntry(void* parameter)
     }
 }
 
-#endif

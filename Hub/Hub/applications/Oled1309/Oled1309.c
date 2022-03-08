@@ -14,6 +14,9 @@
 
 #include "Oled1309.h"
 
+#define  GO_RIGHT  1
+#define  GO_LEFT   2
+
 u8g2_t u8g2_el2;
 
 #define SSD1309_8080_PIN_D0                    64  // PE0
@@ -27,7 +30,7 @@ u8g2_t u8g2_el2;
 #define SSD1309_8080_PIN_EN                    74  // PE10
 #define SSD1309_8080_PIN_CS                    72  // PE8
 #define SSD1309_8080_PIN_DC                    73  // PE9
-#define SSD1309_8080_PIN_RST                   23 //0   // PB7//Justin debug 仅仅测试代用
+#define SSD1309_8080_PIN_RST                   76  // PE12
 
 void u8x8_SetPin_8Bit_8080(u8x8_t *u8x8, uint8_t d0, uint8_t d1, uint8_t d2, uint8_t d3, uint8_t d4, uint8_t d5,
         uint8_t d6, uint8_t d7, uint8_t wr, uint8_t cs, uint8_t dc, uint8_t reset)
@@ -64,13 +67,76 @@ void oledInit(void)
 
     // Draw Graphics
     /* full buffer example, setup procedure ends in _f */
-    /*Justin debug*/
     u8g2_ClearBuffer(&u8g2_el2);
     u8g2_SetFont(&u8g2_el2, u8g2_font_baby_tf);
     u8g2_DrawStr(&u8g2_el2, 1, 18, "U8g2 on RT-Thread");
     u8g2_SendBuffer(&u8g2_el2);
 
     u8g2_SetFont(&u8g2_el2, u8g2_font_unifont_t_symbols);
-    u8g2_DrawGlyph(&u8g2_el2, 100, 56, 0x2603);
+    u8g2_DrawGlyph(&u8g2_el2, /*100*/1, 56, 0x2603); //Justin debug
     u8g2_SendBuffer(&u8g2_el2);
 }
+
+void OledTaskEntry(void* parameter)
+{
+    static u8 rightFlag = GO_RIGHT;
+    static u32 changeView = 1;
+
+    oledInit();
+
+    while(1)
+    {
+        /* 图像向右移动，该图像为unicode编码 */
+        if(GO_RIGHT == rightFlag)
+        {
+            if(changeView < 110)
+            {
+                changeView++;
+                u8g2_ClearBuffer(&u8g2_el2);
+                u8g2_SetFont(&u8g2_el2, u8g2_font_unifont_t_symbols);
+                u8g2_DrawGlyph(&u8g2_el2, changeView, 56, 0x2603); //Justin debug
+                u8g2_SendBuffer(&u8g2_el2);
+            }
+            else
+            {
+                rightFlag = GO_LEFT;
+            }
+        }
+        else if(GO_LEFT == rightFlag)
+        {
+            if(changeView > 1)
+            {
+                changeView--;
+                u8g2_ClearBuffer(&u8g2_el2);
+                u8g2_SetFont(&u8g2_el2, u8g2_font_unifont_t_symbols);
+                u8g2_DrawGlyph(&u8g2_el2, changeView, 56, 0x2603); //Justin debug
+                u8g2_SendBuffer(&u8g2_el2);
+            }
+            else
+            {
+                rightFlag = GO_RIGHT;
+            }
+        }
+
+        rt_thread_mdelay(50);
+    }
+}
+
+void OledTaskInit(void)
+{
+    rt_err_t threadStart = RT_NULL;
+
+    /* 创建串口 线程 */
+    rt_thread_t thread = rt_thread_create("oled task", OledTaskEntry, RT_NULL, 1024, 26, 10);
+
+    /* 如果线程创建成功则开始启动线程，否则提示线程创建失败 */
+    if (RT_NULL != thread) {
+        threadStart = rt_thread_startup(thread);
+        if (RT_EOK != threadStart) {
+            LOG_E("sensor task start failed");
+        }
+    } else {
+        LOG_E("sensor task create failed");
+    }
+}
+

@@ -66,18 +66,6 @@
 
 /* Command shell */
 
-#define RT_USING_FINSH
-#define FINSH_THREAD_NAME "tshell"
-#define FINSH_USING_HISTORY
-#define FINSH_HISTORY_LINES 5
-#define FINSH_USING_SYMTAB
-#define FINSH_USING_DESCRIPTION
-#define FINSH_THREAD_PRIORITY 20
-#define FINSH_THREAD_STACK_SIZE 4096
-#define FINSH_CMD_SIZE 80
-#define FINSH_USING_MSH
-#define FINSH_USING_MSH_DEFAULT
-#define FINSH_ARG_MAX 10
 /* end of Command shell */
 
 /* Device virtual file system */
@@ -87,6 +75,21 @@
 #define DFS_FILESYSTEMS_MAX 2
 #define DFS_FILESYSTEM_TYPES_MAX 2
 #define DFS_FD_MAX 16
+#define RT_USING_DFS_ELMFAT
+
+/* elm-chan's FatFs, Generic FAT Filesystem Module */
+
+#define RT_DFS_ELM_CODE_PAGE 437
+#define RT_DFS_ELM_WORD_ACCESS
+#define RT_DFS_ELM_USE_LFN_3
+#define RT_DFS_ELM_USE_LFN 3
+#define RT_DFS_ELM_LFN_UNICODE_0
+#define RT_DFS_ELM_LFN_UNICODE 0
+#define RT_DFS_ELM_MAX_LFN 255
+#define RT_DFS_ELM_DRIVES 2
+#define RT_DFS_ELM_MAX_SECTOR_SIZE 512
+#define RT_DFS_ELM_REENTRANT
+/* end of elm-chan's FatFs, Generic FAT Filesystem Module */
 #define RT_USING_DFS_DEVFS
 /* end of Device virtual file system */
 
@@ -100,12 +103,9 @@
 #define RT_USING_SERIAL
 #define RT_SERIAL_USING_DMA
 #define RT_SERIAL_RB_BUFSZ 64
-#define RT_USING_I2C
-#define RT_USING_I2C_BITOPS
 #define RT_USING_PHY
 #define RT_USING_PIN
 #define RT_USING_RTC
-#define RT_USING_SOFT_RTC
 #define RT_USING_SDIO
 #define RT_SDIO_STACK_SIZE 512
 #define RT_SDIO_THREAD_PRIORITY 15
@@ -113,7 +113,6 @@
 #define RT_MMCSD_THREAD_PREORITY 22
 #define RT_MMCSD_MAX_PARTITION 16
 #define RT_USING_SPI
-#define RT_USING_SPI_MSD
 #define RT_USING_SFUD
 #define RT_SFUD_USING_SFDP
 #define RT_SFUD_USING_FLASH_INFO_TABLE
@@ -143,7 +142,7 @@
 
 #define SAL_USING_LWIP
 /* end of protocol stack implement */
-#define SAL_SOCKETS_NUM 16
+#define SAL_USING_POSIX
 /* end of Socket abstraction layer */
 
 /* Network interface device */
@@ -165,6 +164,9 @@
 #define RT_LWIP_IGMP
 #define RT_LWIP_ICMP
 #define RT_LWIP_DNS
+#define RT_LWIP_DHCP
+#define IP_SOF_BROADCAST 1
+#define IP_SOF_BROADCAST_RECV 1
 
 /* Static IPv4 Address */
 
@@ -189,6 +191,7 @@
 #define RT_LWIP_ETHTHREAD_PRIORITY 12
 #define RT_LWIP_ETHTHREAD_STACKSIZE 1024
 #define RT_LWIP_ETHTHREAD_MBOX_SIZE 8
+#define RT_LWIP_REASSEMBLY_FRAG
 #define LWIP_NETIF_STATUS_CALLBACK 1
 #define LWIP_NETIF_LINK_CALLBACK 1
 #define SO_REUSE 1
@@ -199,13 +202,16 @@
 #define LWIP_NETIF_LOOPBACK 0
 #define RT_LWIP_STATS
 #define RT_LWIP_USING_PING
-#define RT_LWIP_DEBUG
-#define RT_LWIP_TCP_DEBUG
 /* end of light weight TCP/IP stack */
 
 /* AT commands */
 
 /* end of AT commands */
+#define LWIP_USING_DHCPD
+#define DHCPD_SERVER_IP "192.168.0.1"
+#define DHCPD_USING_ROUTER
+#define LWIP_USING_CUSTOMER_DNS_SERVER
+#define DHCP_DNS_SERVER_IP "192.168.0.1"
 /* end of Network */
 
 /* VBUS(Virtual Software BUS) */
@@ -214,22 +220,6 @@
 
 /* Utilities */
 
-#define RT_USING_RYM
-#define YMODEM_USING_FILE_TRANSFER
-#define RT_USING_ULOG
-#define ULOG_OUTPUT_LVL_D
-#define ULOG_OUTPUT_LVL 7
-#define ULOG_ASSERT_ENABLE
-#define ULOG_LINE_BUF_SIZE 128
-
-/* log format */
-
-#define ULOG_USING_COLOR
-#define ULOG_OUTPUT_TIME
-#define ULOG_OUTPUT_LEVEL
-#define ULOG_OUTPUT_TAG
-/* end of log format */
-#define ULOG_BACKEND_USING_CONSOLE
 /* end of Utilities */
 /* end of RT-Thread Components */
 
@@ -252,21 +242,10 @@
 /* IoT Cloud */
 
 /* end of IoT Cloud */
-#define PKG_USING_OTA_DOWNLOADER
-#define PKG_USING_YMODEM_OTA
-#define PKG_USING_OTA_DOWNLOADER_LATEST_VERSION
 /* end of IoT - internet of things */
 
 /* security packages */
 
-#define PKG_USING_TINYCRYPT
-#define PKG_USING_TINYCRYPT_LATEST_VERSION
-#define TINY_CRYPT_MD5
-#define TINY_CRYPT_BASE64
-#define TINY_CRYPT_AES
-#define TINY_CRYPT_AES_ROM_TABLES
-#define TINY_CRYPT_SHA1
-#define TINY_CRYPT_SHA256
 /* end of security packages */
 
 /* language packages */
@@ -327,61 +306,10 @@
 /* Micrium: Micrium software products porting for RT-Thread */
 
 /* end of Micrium: Micrium software products porting for RT-Thread */
-#define PKG_USING_FAL
-#define FAL_DEBUG_CONFIG
-#define FAL_DEBUG 1
-#define FAL_PART_HAS_TABLE_CFG
-#define FAL_USING_SFUD_PORT
-#define FAL_USING_NOR_FLASH_DEV_NAME "norflash0"
-#define PKG_USING_FAL_LATEST_VERSION
-#define PKG_FAL_VER_NUM 0x99999
-#define PKG_USING_SYSWATCH
-#define SYSWATCH_EXCEPT_RESOLVE_MODE_2
-#define SYSWATCH_EXCEPT_RESOLVE_MODE 2
-#define SYSWATCH_EXCEPT_TIMEOUT 60
-#define SYSWATCH_EXCEPT_CONFIRM_TMO 15
-#define SYSWATCH_EXCEPT_RESUME_DLY 15
-#define SYSWATCH_THREAD_PRIO 0
-#define SYSWATCH_THREAD_STK_SIZE 512
-#define SYSWATCH_THREAD_NAME "syswatch"
-#define SYSWATCH_WDT_NAME "wdt"
-#define SYSWATCH_WDT_TIMEOUT 5
-#define PKG_USING_SYSWATCH_LATEST_VERSION
-#define PKG_USING_QBOOT
-#define QBOOT_USING_PRODUCT_CODE
-#define QBOOT_PRODUCT_CODE "00010203040506070809"
-#define QBOOT_APP_PART_NAME "app"
-#define QBOOT_DOWNLOAD_PART_NAME "download"
-#define QBOOT_FACTORY_PART_NAME "factory"
-#define QBOOT_USING_AES
-#define QBOOT_AES_IV "0123456789ABCDEF"
-#define QBOOT_AES_KEY "0123456789ABCDEF0123456789ABCDEF"
-#define QBOOT_USING_QUICKLZ
-#define QBOOT_USING_SHELL
-#define QBOOT_SHELL_KEY_CHK_TMO 5
-#define QBOOT_USING_SYSWATCH
-#define QBOOT_USING_OTA_DOWNLOADER
-#define QBOOT_USING_PRODUCT_INFO
-#define QBOOT_PRODUCT_NAME "Qboot test device"
-#define QBOOT_PRODUCT_VER "v1.00 2020.07.27"
-#define QBOOT_PRODUCT_MCU "stm32l4r5zi"
-#define QBOOT_USING_STATUS_LED
-#define QBOOT_STATUS_LED_PIN 77//0 Justin
-#define QBOOT_STATUS_LED_LEVEL 1
-#define QBOOT_THREAD_STACK_SIZE 4096
-#define QBOOT_THREAD_PRIO 5
-#define PKG_USING_QBOOT_LATEST_VERSION
 /* end of system packages */
 
 /* peripheral libraries and drivers */
 
-#define PKG_USING_QLED
-#define QLED_TOTAL 5
-#define QLED_TIME_UNIT_MS 10
-#define QLED_THREAD_NAME "qled"
-#define QLED_THREAD_STACK_SIZE 512
-#define QLED_THREAD_PRIO 3
-#define PKG_USING_QLED_LATEST_VERSION
 /* end of peripheral libraries and drivers */
 
 /* AI packages */
@@ -390,6 +318,10 @@
 
 /* miscellaneous packages */
 
+/* project laboratory */
+
+/* end of project laboratory */
+
 /* samples: kernel and components samples */
 
 /* end of samples: kernel and components samples */
@@ -397,23 +329,6 @@
 /* entertainment: terminal games and other interesting software packages */
 
 /* end of entertainment: terminal games and other interesting software packages */
-#define PKG_USING_QUICKLZ
-#define QLZ_COMPRESSION_LEVEL 3
-#define PKG_USING_QUICKLZ_V101
-#define PKG_USING_CRCLIB
-#define CRCLIB_USING_CRC8
-#define CRC8_USING_CONST_TABLE
-#define CRC8_POLY_8C
-#define CRC8_POLY 140
-#define CRCLIB_USING_CRC16
-#define CRC16_USING_CONST_TABLE
-#define CRC16_POLY_A001
-#define CRC16_POLY 40961
-#define CRCLIB_USING_CRC32
-#define CRC32_USING_CONST_TABLE
-#define CRC32_POLY_EDB88320
-#define CRC32_POLY 3988292384
-#define PKG_USING_CRCLIB_V100
 /* end of miscellaneous packages */
 /* end of RT-Thread online packages */
 

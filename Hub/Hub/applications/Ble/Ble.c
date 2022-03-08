@@ -17,11 +17,11 @@
  */
 void BleUart6TaskEntry(void* parameter)
 {
-    static u8 timeCnt = 0;
 
     while(1)
     {
 
+        rt_thread_mdelay(50);
     }
 }
 

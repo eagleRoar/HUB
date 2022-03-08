@@ -15,7 +15,9 @@ static rt_mutex_t recvUartMutex = RT_NULL;    //指向互斥量的指针
 static rt_device_t serial;
 static struct rt_messagequeue uartRecvMsg;    //串口接收数据消息队列
 struct rt_messagequeue uartSendMsg;           //串口发送数据消息队列
+//#ifdef Ethernet_MODULE_ENABLE
 extern struct rt_messagequeue ethMsg;         //接收网口数据消息队列
+//#endif
 
 /**
  * @brief  : 接收回调函数
@@ -37,7 +39,7 @@ static rt_err_t Uart_input(rt_device_t dev, rt_size_t size)
     if ( result == -RT_EFULL)
     {
         /* 消息队列满 */
-        rt_kprintf("message queue full！\n");
+        LOG_E("message queue full！\n");
     }
 
 
@@ -67,7 +69,7 @@ void SensorUart2TaskEntry(void* parameter)
     serial = rt_device_find("uart2");
     if (!serial)
     {
-        rt_kprintf("find uart2 failed!\n");
+        LOG_E("find uart2 failed!");
     }
 
     /* 以 DMA 接收及轮询发送方式打开串口设备 */
@@ -81,7 +83,7 @@ void SensorUart2TaskEntry(void* parameter)
         /* 清空接收串口数据结构体 */
         rt_memset(&msg, 0, sizeof(msg));
         /* 从串口消息队列中读取消息 */
-        result = rt_mq_recv(&uartRecvMsg, &msg, sizeof(msg), RT_WAITING_NO);//Justin debug 需要将等待时间改为可以设置的
+        result = rt_mq_recv(&uartRecvMsg, &msg, sizeof(msg), RT_WAITING_NO);
         if (result == RT_EOK)
         {
             /* 从串口读取数据*/
@@ -125,17 +127,19 @@ void SensorUart2TaskEntry(void* parameter)
             sendUartBuf[7] = (crc16Result>>8);                  //CRC16高位
 
             rt_device_write(serial, 0, sendUartBuf, 8);
-//            rt_mq_send(&uartSendMsg, sendUartBuf, 8);//Justin debug
+//            rt_mq_send(&uartSendMsg, sendUartBuf, 8);
         }
 
+//#ifdef Ethernet_MODULE_ENABLE
         /* 从以太网消息队列中接收消息 */
         if (rt_mq_recv(&ethMsg, &recvEthBuf[0], sizeof(recvEthBuf), RT_WAITING_NO) == RT_EOK)
         {
             rt_device_write(serial, 0, &recvEthBuf[0], (sizeof(recvEthBuf) - 1));
         }
+//#endif
         rt_mutex_release(recvUartMutex);                        //解锁
 
-        rt_thread_mdelay(50);//Justin debug
+        rt_thread_mdelay(50);
     }
 }
 

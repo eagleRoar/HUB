@@ -17,15 +17,12 @@
 #include <rtthread.h>
 #include <rtdbg.h>
 
+#include "GlobalConfig.h"
 #include "typedef.h"
-#include "Uart.h"
-#include "Ethernet.h"
-#include "Oled1309.h"
-#include "Ble.h"
 
-#ifdef TEST_PROGRAM
+
 //LED
-//#define LED_SENSOR        GET_PIN(D, 10)  //senser//Justin debug 该脚暂时用作ETH_RESET脚
+#define LED_SENSOR        GET_PIN(D, 10)  //senser
 #define LED_DEVICE        GET_PIN(D, 11)  //device
 #define LED_LIGHT         GET_PIN(D, 12)  //呼吸灯
 #define LED_COMMS         GET_PIN(D, 13)  //通讯灯
@@ -47,11 +44,14 @@
 #define LCD_DB7 GET_PIN(E, 7)
 #define LCD_CS GET_PIN(E, 8)
 
+//SD
+#define SD_CHK_PIN GET_PIN(D, 3)
+#define SD_CTL_PIN GET_PIN(B, 14)
+
 void GpioInit(void);
 void Ctrl_LED(rt_base_t pin, rt_base_t state);
 void LedTaskInit(void);
 void LedTaskEntry(void* parameter);
 
-#endif
 
 #endif /* APPLICATIONS_GPIO_H_ */

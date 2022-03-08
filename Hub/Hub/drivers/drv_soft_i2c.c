@@ -21,7 +21,7 @@
 #include <drv_log.h>
 
 #if !defined(BSP_USING_I2C1) && !defined(BSP_USING_I2C2) && !defined(BSP_USING_I2C3) && !defined(BSP_USING_I2C4)
-//#error "Please define at least one BSP_USING_I2Cx"//Justin debug
+//#error "Please define at least one BSP_USING_I2Cx"
 #endif
 
 static const struct stm32_soft_i2c_config soft_i2c_config[] =

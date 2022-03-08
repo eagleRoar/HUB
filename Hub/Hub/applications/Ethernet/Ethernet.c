@@ -12,6 +12,9 @@
 struct rt_messagequeue ethMsg;                 //消息队列控制块
 extern struct rt_messagequeue uartSendMsg;
 
+rt_uint8_t fileBuffer[10];
+
+
 /**
  * @brief  : 以太网线程入口,TCP协议
  * @para   : NULL
@@ -31,8 +34,8 @@ void TcpTaskEntry(void* parameter)
     char *test2 = "5000";
     //static int timeCnt = 0;
 
-    url = test1;//Justin debug 测试的主机IP地址
-    port = strtoul(test2, 0, 10);//Justin debug 测试的主机端口
+    url = test1;
+    port = strtoul(test2, 0, 10);
 
     /* 通过函数入口参数url获得host地址（如果是域名，会做域名解析） */
     host = gethostbyname(url);
@@ -41,7 +44,7 @@ void TcpTaskEntry(void* parameter)
     recv_data = rt_malloc(BUFSZ);
     if (recv_data == RT_NULL)
     {
-        rt_kprintf("No memory\n");
+        LOG_E("No memory");
         return;
     }
 
@@ -49,7 +52,7 @@ void TcpTaskEntry(void* parameter)
     if ((sock = socket(AF_INET, SOCK_STREAM, 0)) == -1)
     {
         /* 创建socket失败 */
-        rt_kprintf("Socket error\n");
+        LOG_E("Socket error");
 
         /* 释放接收缓冲 */
         rt_free(recv_data);
@@ -66,7 +69,7 @@ void TcpTaskEntry(void* parameter)
     if (connect(sock, (struct sockaddr *)&server_addr, sizeof(struct sockaddr)) == -1)
     {
         /* 连接失败 */
-        rt_kprintf("Connect fail!\n");
+        LOG_E("Connect fail!");
         closesocket(sock);
 
         /*释放接收缓冲 */
@@ -77,7 +80,7 @@ void TcpTaskEntry(void* parameter)
     else
     {
         /* 连接成功 */
-        rt_kprintf("Connect successful\n");
+        LOG_I("Connect successful");
     }
 
     while (1)
@@ -89,7 +92,7 @@ void TcpTaskEntry(void* parameter)
         {
             /* 接收失败，关闭这个连接 */
             closesocket(sock);
-            rt_kprintf("\nreceived error,close the socket.\r\n");
+            LOG_E("received error,close the socket.");
 
             /* 释放接收缓冲 */
             rt_free(recv_data);
@@ -99,7 +102,7 @@ void TcpTaskEntry(void* parameter)
         {
             /* 默认 recv 为阻塞模式，此时收到0认为连接出错，关闭这个连接 */
             closesocket(sock);
-            rt_kprintf("\nreceived error,close the socket.\r\n");
+            LOG_E("received error,close the socket.");
 
             /* 释放接收缓冲 */
             rt_free(recv_data);
@@ -112,7 +115,7 @@ void TcpTaskEntry(void* parameter)
         result = rt_mq_send(&ethMsg, recv_data, strlen(recv_data));
         if (result != RT_EOK)
         {
-            rt_kprintf("ethernet send message ERR\n");
+            LOG_E("ethernet send message ERR");
         }
 
         rt_thread_mdelay(50);
@@ -141,7 +144,7 @@ void TcpTaskInit(void)
                         RT_IPC_FLAG_FIFO);          /* 如果有多个线程等待，按照先来先得到的方法分配消息 */
     if (result != RT_EOK)
     {
-        rt_kprintf("init message queue failed.\n");
+        LOG_E("init message queue failed.");
     }
 
     /* 创建以太网线程 */
@@ -159,8 +162,32 @@ void TcpTaskInit(void)
 }
 
 /**
+ * @brief   : 获取当前的Ip地址
+ * @param   :
+ * @return  : RT_ERROR 获取失败 ; RT_EOK 获取成功
+ * @author  : Qiuyijie
+ * @date    : 2022.03.03
+ */
+rt_err_t getIPAddress(void)
+{
+    u8  ip[4];
+    u32 ipAddress;
+
+    ipAddress = netdev_default->ip_addr.addr;
+
+    ip[3] = ipAddress;
+    ip[2] = ipAddress >> 8;
+    ip[1] = ipAddress >> 16;
+    ip[0] = ipAddress >> 24;
+
+    LOG_D("ip address = %d.%d.%d.%d",ip[3],ip[2],ip[1],ip[0]);
+
+    return RT_EOK;
+}
+
+/**
  * @brief  : 与主机以太网通讯线程入口,UDP协议
- * @para   : NULL
+ * @param   : NULL
  * @author : Qiuyijie
  * @date   : 2022.01.19
  */
@@ -174,10 +201,8 @@ void UdpTaskEntry(void* parameter)
     char recvUartBuf[65];
     static int timeCnt = 0;
 
-    //url = "192.168.0.171";//Justin debug 测试IP地址修改
-    //port = strtoul("9898", 0, 10);//Justin debug 测试端口号修改
-    url = "192.168.0.33";//Justin debug 测试IP地址修改
-    port = strtoul("5000", 0, 10);//Justin debug 测试端口号修改
+    url = "192.168.0.69";
+    port = strtoul("5000", 0, 10);
 
     /* 通过函数入口参数url获得host地址（如果是域名，会做域名解析） */
     host = (struct hostent *) gethostbyname(url);
@@ -185,7 +210,7 @@ void UdpTaskEntry(void* parameter)
     /* 创建一个socket，类型是SOCK_DGRAM，UDP类型 */
     if ((sock = socket(AF_INET, SOCK_DGRAM, 0)) == -1)
     {
-        LOG_E("Socket error\n");
+        LOG_E("Socket error");
         return;
     }
 
@@ -207,6 +232,15 @@ void UdpTaskEntry(void* parameter)
         {
             sendto(sock, recvUartBuf, /*sizeof(recvUartBuf)*/8, 0,
                   (struct sockaddr *)&server_addr, sizeof(struct sockaddr));
+        }
+
+        //Justin debug
+        if(0 == (timeCnt % 20))
+        {
+            sendto(sock, fileBuffer, 10, 0,
+                              (struct sockaddr *)&server_addr, sizeof(struct sockaddr));
+
+            //getIPAddress();
         }
 
         /* 线程休眠一段时间 */
@@ -240,3 +274,5 @@ void UdpTaskInit(void)
        LOG_E("udp task create failed");
     }
 }
+
+
