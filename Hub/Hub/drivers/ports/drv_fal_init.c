@@ -5,10 +5,9 @@
  *
  * Change Logs:
  * Date           Author       Notes
- * 2022-02-11     Administrator       the first version
+ * 2022-02-12     Administrator       the first version
  */
 #include <rtthread.h>
-
 #ifdef PKG_USING_FAL
 #include <fal.h>
 extern int fal_init(void);

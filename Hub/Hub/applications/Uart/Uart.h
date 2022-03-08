@@ -15,8 +15,10 @@
 #include <rtthread.h>
 #include <rtdbg.h>
 
+#include "GlobalConfig.h"
 #include "typedef.h"
 #include "string.h"
+#include "Gpio.h"
 
 /* 串口接收消息结构*/
 struct rx_msg

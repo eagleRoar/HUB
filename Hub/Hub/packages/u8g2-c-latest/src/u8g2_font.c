@@ -35,6 +35,8 @@
 
 #include "u8g2.h"
 
+#include <rtdbg.h>
+
 /* size of the font data structure, there is no struct or class... */
 /* this is the size for the new font format */
 #define U8G2_FONT_DATA_STRUCT_SIZE 23

@@ -1186,7 +1186,7 @@ tcp_slowtmr_start:
       ++prev->polltmr;
       if (prev->polltmr >= prev->pollinterval) {
         prev->polltmr = 0;
-        //LWIP_DEBUGF(TCP_DEBUG, ("tcp_slowtmr: polling application\n"));//Justin debug
+        //LWIP_DEBUGF(TCP_DEBUG, ("tcp_slowtmr: polling application\n"));
         tcp_active_pcbs_changed = 0;
         TCP_EVENT_POLL(prev, err);
         if (tcp_active_pcbs_changed) {

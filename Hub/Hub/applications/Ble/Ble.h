@@ -16,7 +16,9 @@
 #include <rtdbg.h>
 #include <stdlib.h>
 
+#include "GlobalConfig.h"
 #include "typedef.h"
+#include "Gpio.h"
 
 void BleUart6TaskInit(void);
 void BleUart6TaskEntry(void* parameter);

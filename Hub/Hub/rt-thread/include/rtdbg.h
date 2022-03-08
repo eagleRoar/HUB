@@ -77,7 +77,7 @@ extern "C" {
 #else
 /* compatible with old version */
 #ifndef DBG_LEVEL
-#define DBG_LEVEL         DBG_WARNING
+#define DBG_LEVEL         DBG_LOG
 #endif
 #endif /* DBG_LVL */
 
