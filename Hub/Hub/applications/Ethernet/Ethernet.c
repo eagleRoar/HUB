@@ -11,6 +11,7 @@
 #include "TcpClient.h"
 #include "TcpProgram.h"
 #include "TcpPersistence.h"
+#include "UdpProgram.h"
 #include "Udp.h"
 #include "Hub.h"
 #include "Sensor.h"
@@ -197,7 +198,7 @@ void TcpTaskEntry(void* parameter)
                 if((OFF == eth->tcp.GetConnectTry()) &&
                    (ON == eth->tcp.GetConnectStatus()))
                 {
-                    SendMesgToMasterProgram(handle); //Justin debug 仅仅测试  这个函数会引起bug
+                    SendMesgToMasterProgram(handle);
 
                     /* 接收数据并解析 */
                     if(ON == eth->tcp.GetRecvDataFlag())
@@ -324,7 +325,7 @@ void UdpTaskEntry(void* parameter)
         if(ON == Timer1sTouch)
         {
             /* 向主机发送sensor数据 */
-            //TransmitSensorData();
+            TransmitSensorData(masterUdpSock, &masterUdpSerAddr);
 
         }
 

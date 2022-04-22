@@ -34,14 +34,6 @@ struct rx_msg
     u8 data[UART_MSG_SIZE];                 //保存串口数据
 };
 
-struct rt_msg_BhsCo2
-{
-    u16 co2;                //二氧化碳
-    u16 humidity;           //湿度
-    u16 temperature;        //温度
-    u16 light;              //灯光
-};
-
 void SensorUart2TaskEntry(void* parameter);
 void SensorUart2TaskInit(void);
 type_monitor_t *GetMonitor(void);

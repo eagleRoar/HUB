@@ -26,7 +26,7 @@ u8 GetDeviceTableSize(type_monitor_t *monitor)
 /* 向device列表插入新的device */
 void InsertDeviceToTable(type_monitor_t *monitor, type_module_t device)
 {
-    type_module_t *new = RT_NULL;     //返回申请的内存空间   //Justin debug 是否需要给new 开辟空间
+    type_module_t *new = RT_NULL;     //返回申请的内存空间
     /* 分配空间 */
     if(0 == GetDeviceTableSize(monitor))
     {

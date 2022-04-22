@@ -46,11 +46,12 @@ struct sensorReg_interface
     u8 registerAnswer;
 };
 
-struct sensorDataSend
+/** 发送sensor 数据的格式如下 **/
+struct sensorData
 {
     u32 sensor_id;              //传感器设备ID
     u16 parameter;              //传感器参数，指的是有几个传感器，比如四合一，那就填写4
-    u32 data[4];                //传感器数据以及排列参照以上sensorRegister scale_group的排列
+    u32 data[SENSOR_STR_MAX];   //传感器数据以及排列参照以上sensorRegister scale_group的排列
 };
 
 void sensorRegisterInit(void);

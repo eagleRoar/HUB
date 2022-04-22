@@ -44,6 +44,7 @@ typedef     struct sensorRegister           type_sen_reg_t;
 typedef     struct sensorReg_interface      sensor_interface;
 typedef     struct deviceRegister           type_dev_reg_t;
 
+typedef     struct sensorData               type_sendata_t;
 
 struct  storageInfo{
     char    name[MODULE_NAMESZ];
@@ -121,14 +122,16 @@ struct monitorStruct
 
 /**************************************从机 End*******************************************/
 
-/******************************************* 功能码定义 ******************************/
+/************************************** 功能码定义 **************************************/
 
+/*******hub 功能码定义***********************/
 enum{
     COMPATIBLE          = 0x00,                                     //兼容环境监控和灌溉控制
     ENV_TYPE            = 0x01,                                     //环境监控
     IRRI_TYPE           = 0x02,                                     //灌溉控制
 };
 
+/*******sensor device 功能码定义*******/
 //该功能码是根据协议的一级目录加二级目录
 enum{
     F_SYNC_SET          = 0x0401,                                   //4.1.  配置同步

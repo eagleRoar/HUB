@@ -87,13 +87,13 @@ void RegisterModule(rt_tcpclient_t *handle)
                     sensorReg.scale_group[small].small_scale = module.module_t[small].small_scale;
                     rt_memcpy(sensorReg.scale_group[small].scale_name, module.module_t[small].name, MODULE_NAMESZ);
                 }
-                //Justin debug 一下有bug 要参照device
+
                 temp = sizeof(type_sen_reg_t) - (SENSOR_STR_MAX - sensorReg.parameter)*sizeof(struct scaleGroup);
                 rt_memcpy(pack.buffer, &sensorReg, temp);
                 pack.package_top.crc = CRC16((u16*)&pack+3, sizeof(struct packTop)/2 - 3 + temp/2, 0);
                 pack.package_top.length = sizeof(struct packTop) + temp;
             }
-            else if(DEVICE_TYPE == module.s_or_d)//Justin debug
+            else if(DEVICE_TYPE == module.s_or_d)
             {
                 deviceReg.device_id = module.uuid;
                 deviceReg.type_id = module.type;
@@ -124,50 +124,5 @@ void RegisterModule(rt_tcpclient_t *handle)
         }
     }
 
-}
-
-void CollectSensorData(type_package_t* tcpSendBuffer, struct sensorDataSend* sensorData, struct rt_msg_BhsCo2* sensor)
-{
-    tcpSendBuffer->package_top.checkId = CHECKID;                       //从机识别码
-    tcpSendBuffer->package_top.answer = ANSWER_ASK;                     //应答,主动发送
-    tcpSendBuffer->package_top.function = 0x0801;                       //功能码
-    tcpSendBuffer->package_top.id = /*0x00000001*/0;                    //发送者id //这个ID要产品唯一编码 //Justin debug 暂时使用，仅仅测试
-    tcpSendBuffer->package_top.serialNum = 0x00000000;                  //序列号
-
-    sensorData->sensor_id = 0x00000002;                                 //传感器ID//Justin debug 暂时使用，仅仅测试
-    sensorData->parameter = 0x0004;                                     //传感器参数，指的是有几个传感器，比如四合一，那就填写4
-    sensorData->data[0] = sensor->co2;
-    sensorData->data[1] = sensor->humidity;
-    sensorData->data[2] = sensor->temperature;
-    sensorData->data[3] = sensor->light;
-
-    rt_memcpy(tcpSendBuffer->buffer, sensorData, sizeof(struct sensorDataSend));
-    tcpSendBuffer->package_top.crc = CRC16((u16*)tcpSendBuffer+3, 6+sizeof(struct sensorDataSend)/2, 0);
-    tcpSendBuffer->package_top.length = 18 + sizeof(struct sensorDataSend);
-}
-
-void RegisterDevice(type_package_t* tcpSendBuffer)//Justin debug 注意内容该函数应该是注册普通device
-{
-    struct ioRegister ioReg;
-
-    tcpSendBuffer->package_top.checkId = CHECKID;                       //从机识别码
-    tcpSendBuffer->package_top.answer = ANSWER_ASK;                     //应答,主动发送
-    tcpSendBuffer->package_top.function = 0x0701;                       //功能码
-    tcpSendBuffer->package_top.id = 0x00000000;                         //发送者id //这个ID要产品唯一编码 //Justin debug 暂时使用，仅仅测试
-    tcpSendBuffer->package_top.serialNum = 0x00000000;                  //序列号
-
-    ioReg.io_id = 0x00000003;                                           //执行设备ID //Justin debug 仅仅测试
-    ioReg.type_id = 0x0101;                                             //设备类型ID
-    rt_memcpy(ioReg.name, "ac_station", 16);                            //设备名称
-    rt_memcpy(ioReg.product_type, "Co2", 16);                           //产品型号,自己管控,只有同型号的产品才能分到同一组
-    ioReg.second = 0x01;                                                //采集数据频率时间，单位s
-    ioReg.parameter = 0x01;                                             //IO数量，比如AC station_4 就填写4
-    ioReg.scale_group[0].fuction = 0xFE01;                              //Justin debug 0xFE01是Co2设备，后续要修改这种方式
-    rt_memcpy(ioReg.scale_group[0].function_name, "Co2", 16);           //端口名称
-    ioReg.scale_group[0].group = 0x02;                                  //Justin debug 随便设置，后续更改
-
-    rt_memcpy(tcpSendBuffer->buffer, &ioReg, sizeof(struct ioRegister));
-    tcpSendBuffer->package_top.crc = CRC16((u16*)tcpSendBuffer+3, 6+sizeof(struct ioRegister)/2, 0);
-    tcpSendBuffer->package_top.length = 18 + sizeof(struct ioRegister);
 }
 

@@ -101,16 +101,17 @@ void SendMesgToMasterProgram(rt_tcpclient_t *handle)
     if(RECV_OK != GetHubReg().getRegisterAnswer())
     {
         /* 发送hub注册 */
-        RegisterHub(handle);//Justin debug 仅仅测试
+        RegisterHub(handle);
         GetHubReg().setRegisterAnswer(SEND_OK);
     }
     else
     {
         /* 发送sensor和device 注册 */
-        RegisterModule(handle);//Justin debug 仅仅测试
+        RegisterModule(handle);
     }
 }
 
+/** 解析收到的数据 **/
 void AnalyzeEtherData(type_package_t data)
 {
     type_module_t       module;

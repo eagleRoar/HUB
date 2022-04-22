@@ -34,7 +34,5 @@
 
 void RegisterHub(rt_tcpclient_t *);
 void RegisterModule(rt_tcpclient_t *);
-void CollectSensorData(type_package_t*, struct sensorDataSend*, struct rt_msg_BhsCo2*);
-void RegisterDevice(type_package_t*);
 
 #endif /* APPLICATIONS_ETHERNET_PERSISTENCELAYER_TCP_TCPPERSISTENCE_H_ */

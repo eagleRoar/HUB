@@ -19,7 +19,6 @@
 #include "UartBussiness.h"
 
 type_monitor_t monitor;
-struct rt_msg_BhsCo2 bHsCo2Msg;               //接收四合一二氧化碳数据
 struct rx_msg uart2_msg;                      //接收串口数据以及相关消息
 struct rx_msg uart3_msg;                      //接收串口数据以及相关消息
 
