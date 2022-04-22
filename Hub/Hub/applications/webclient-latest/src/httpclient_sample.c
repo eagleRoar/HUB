@@ -195,7 +195,7 @@ void GetUpdataFileFromWeb(void)
     rt_uint8_t *buffer = RT_NULL;
     int resp_status;
     struct webclient_session *session = RT_NULL;
-    char *weather_url = "http://pic.pro-leaf.com/down/beleaf_hub.bin";
+    char *weather_url = "http://pic.pro-leaf.com/down/beleaf_hub.bin"/*"http://192.168.0.195:8080/test.txt"*/;
     int content_length = -1, bytes_read = 0;
     u32 content_pos = 0;
     fw_info_t dest, src;
@@ -227,7 +227,7 @@ void GetUpdataFileFromWeb(void)
     sdInitFlag = RT_EOK;//SDInit();//Justin debug
 
     content_length = webclient_content_length_get(session);
-    LOG_E("get connect data length = %d-----------------",content_length);
+    LOG_I("get connect data length = %d-----------------",content_length);
 
     if(RT_EOK == sdInitFlag)
     {
@@ -239,7 +239,7 @@ void GetUpdataFileFromWeb(void)
         if(RT_EOK == checkUpdataApp(&dest, &src))
         {
             /* 删除原来位置的文件 */
-            if(RT_EOK == deleteFile(DOWNLOAD_FILE))
+            if(RT_EOK == deleteFile(DOWNLOAD_FILE))//Justin debug
             {
                 LOG_I("delete file successful");
             }

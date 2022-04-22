@@ -17,6 +17,9 @@
 
 #include "GlobalConfig.h"
 #include "typedef.h"
+#include "drv_spi.h"
+#include "Gpio.h"
+#include <string.h>
 
 void SpiTaskEntry(void*);
 void SpiTaskInit(void);

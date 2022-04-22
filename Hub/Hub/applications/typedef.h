@@ -2,9 +2,9 @@
  * @Copyright (c) 2006-2018 RT-Thread Development Team:
  * @SPDX-License-Identifier: Apache-2.0:
  * @Change Logs:
- * @Date: 2020-02-21 09:09:16
- * @LastEditors: Zhou Xiaomin
- * @LastEditTime: 2020-02-24 14:35:48
+ * @Date: 2020-03-08
+ * @LastEditors: Qiu Yijie
+ * @LastEditTime: 2020-03-08
  * @Description:
  */
 /*----------------------ANSI C语言运算优先级-----------------
@@ -74,9 +74,17 @@
 #ifndef APPLICATIONS_TYPEDEF_H_
 #define APPLICATIONS_TYPEDEF_H_
 
-//#include "stm32f4xx_hal.h"
 #include "stm32f4xx_hal.h"
-//#include "stm32f0xx_hal.h"
+
+#pragma pack(1)   //按1字节对齐
+//#include <stdarg.h>
+
+#define  ID_ADDR1  0x1FFF7A10        /*STM32F4唯一ID起始地址*/
+
+enum {
+  NO = 0x00,
+  YES = 0x01,
+}Result;
 
 typedef int32_t s32;
 typedef int16_t s16;
@@ -94,6 +102,7 @@ typedef __I int32_t vsc32;
 typedef __I int16_t vsc16;
 typedef __I int8_t vsc8;
 
+typedef uint64_t u64;
 typedef uint32_t u32;
 typedef uint16_t u16;
 typedef uint8_t u8;
@@ -115,5 +124,7 @@ typedef u16 (*getkitEvent)(u16 id);
 typedef void (*setkitEvent)(u16 id);
 
 typedef u16 (*getEvent)(void);
-
+u16 usModbusRTU_CRC(const u8* pucData, u32 ulLen);
+u16 CRC16(u16 *pdata, u16 len,  u16 random_num);
+void ReadUniqueId(u32 *id);
 #endif /* APPLICATIONS_TYPEDEF_H_ */

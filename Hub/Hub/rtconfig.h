@@ -14,10 +14,10 @@
 #define RT_USING_HOOK
 #define RT_USING_IDLE_HOOK
 #define RT_IDLE_HOOK_LIST_SIZE 4
-#define IDLE_THREAD_STACK_SIZE 256
+#define IDLE_THREAD_STACK_SIZE 512
 #define RT_USING_TIMER_SOFT
 #define RT_TIMER_THREAD_PRIO 4
-#define RT_TIMER_THREAD_STACK_SIZE 512
+#define RT_TIMER_THREAD_STACK_SIZE 1024
 #define RT_DEBUG
 #define RT_DEBUG_COLOR
 #define RT_DEBUG_INIT_CONFIG
@@ -62,6 +62,7 @@
 
 /* C++ features */
 
+#define RT_USING_CPLUSPLUS
 /* end of C++ features */
 
 /* Command shell */
@@ -227,6 +228,24 @@
 
 /* IoT - internet of things */
 
+#define PKG_USING_KAWAII_MQTT
+#define KAWAII_MQTT_NETSOCKET_USE_SAL
+#define KAWAII_MQTT_LOG_LEVEL 4
+#define KAWAII_MQTT_VERSION 4
+#define KAWAII_MQTT_KEEP_ALIVE_INTERVAL 100
+#define KAWAII_MQTT_THREAD_STACK_SIZE 4096
+#define KAWAII_MQTT_THREAD_PRIO 5
+#define KAWAII_MQTT_THREAD_TICK 50
+#define KAWAII_MQTT_MAX_PACKET_ID 0xFFFE
+#define KAWAII_MQTT_TOPIC_LEN_MAX 64
+#define KAWAII_MQTT_ACK_HANDLER_NUM_MAX 64
+#define KAWAII_MQTT_DEFAULT_BUF_SIZE 1024
+#define KAWAII_MQTT_DEFAULT_CMD_TIMEOUT 4000
+#define KAWAII_MQTT_MAX_CMD_TIMEOUT 20000
+#define KAWAII_MQTT_MIN_CMD_TIMEOUT 1000
+#define KAWAII_MQTT_RECONNECT_DEFAULT_DURATION 1000
+#define PKG_USING_KAWAII_MQTT_TEST
+#define PKG_USING_KAWAII_MQTT_LATEST_VERSION
 
 /* Wi-Fi */
 
@@ -250,6 +269,13 @@
 
 /* language packages */
 
+/* JSON: JavaScript Object Notation, a lightweight data-interchange format */
+
+/* end of JSON: JavaScript Object Notation, a lightweight data-interchange format */
+
+/* XML: Extensible Markup Language */
+
+/* end of XML: Extensible Markup Language */
 /* end of language packages */
 
 /* multimedia packages */
@@ -260,20 +286,6 @@
 
 /* u8g2: a monochrome graphic library */
 
-#define PKG_USING_U8G2
-
-/* U8G2 Examples */
-
-/* end of U8G2 Examples */
-#define PKG_USING_U8G2_C_LATEST_VERSION
-
-/* C     version: v1.x.x */
-
-/* C++   version: v2.x.x */
-
-/* C/C++ version: v3.x.x */
-
-#define PKG_U8G2_VER_NUM 0x19999
 /* end of u8g2: a monochrome graphic library */
 
 /* PainterEngine: A cross-platform graphics application framework written in C language */
@@ -306,6 +318,14 @@
 /* Micrium: Micrium software products porting for RT-Thread */
 
 /* end of Micrium: Micrium software products porting for RT-Thread */
+#define PKG_USING_FAL
+#define FAL_DEBUG_CONFIG
+#define FAL_DEBUG 1
+#define FAL_PART_HAS_TABLE_CFG
+#define FAL_USING_SFUD_PORT
+#define FAL_USING_NOR_FLASH_DEV_NAME "W25Q16BV"
+#define PKG_USING_FAL_LATEST_VERSION
+#define PKG_FAL_VER_NUM 0x99999
 /* end of system packages */
 
 /* peripheral libraries and drivers */

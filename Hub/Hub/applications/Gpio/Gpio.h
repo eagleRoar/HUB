@@ -31,27 +31,40 @@
 
 //LCD GPIO
 //#define RST_CTR GET_PIN(A, 15) //硬件上没有该脚
-#define LCD_WR GET_PIN(E, 10)
-#define LCD_RD GET_PIN(E, 11)
-#define LCD_DC GET_PIN(E, 9)
-#define LCD_DB0 GET_PIN(E, 0)
-#define LCD_DB1 GET_PIN(E, 1)
-#define LCD_DB2 GET_PIN(E, 2)
-#define LCD_DB3 GET_PIN(E, 3)
-#define LCD_DB4 GET_PIN(E, 4)
-#define LCD_DB5 GET_PIN(E, 5)
-#define LCD_DB6 GET_PIN(E, 6)
-#define LCD_DB7 GET_PIN(E, 7)
-#define LCD_CS GET_PIN(E, 8)
+#define LCD_WR            GET_PIN(E, 10)
+#define LCD_RD            GET_PIN(E, 11)
+#define LCD_DC            GET_PIN(E, 9)
+#define LCD_DB0           GET_PIN(E, 0)
+#define LCD_DB1           GET_PIN(E, 1)
+#define LCD_DB2           GET_PIN(E, 2)
+#define LCD_DB3           GET_PIN(E, 3)
+#define LCD_DB4           GET_PIN(E, 4)
+#define LCD_DB5           GET_PIN(E, 5)
+#define LCD_DB6           GET_PIN(E, 6)
+#define LCD_DB7           GET_PIN(E, 7)
+#define LCD_CS            GET_PIN(E, 8)
 
 //SD
-#define SD_CHK_PIN GET_PIN(D, 3)
-#define SD_CTL_PIN GET_PIN(B, 14)
+#define SD_CHK_PIN        GET_PIN(D, 3)
+#define SD_CTL_PIN        GET_PIN(B, 14)
+
+//SPI
+#define SPI1_CS_PIN       GET_PIN(A, 4)
+#define SPI1_MOSI_PIN     GET_PIN(B, 5)
+#define SPI1_MISO_PIN     GET_PIN(A, 6)
+#define SPI1_SCK_PIN      GET_PIN(A, 5)
+
+//BLE
+#define BLE_NRST_PIN      GET_PIN(B, 8)
+
+//Button
+#define BUTTON_MENU       GET_PIN(B, 6)
+#define BUTTON_ENTER      GET_PIN(B, 7)
 
 void GpioInit(void);
 void Ctrl_LED(rt_base_t pin, rt_base_t state);
 void LedTaskInit(void);
 void LedTaskEntry(void* parameter);
-
+u16 TimerTask(u16 *, u16 , u8 *);
 
 #endif /* APPLICATIONS_GPIO_H_ */

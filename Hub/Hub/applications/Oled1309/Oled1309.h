@@ -19,6 +19,8 @@
 #include "GlobalConfig.h"
 #include "typedef.h"
 #include "Gpio.h"
+#include "Device.h"
+#include "InformationMonitor.h"
 
 void oledInit(void);
 void OledTaskEntry(void* parameter);

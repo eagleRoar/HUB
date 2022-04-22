@@ -5,15 +5,126 @@
  *
  * Change Logs:
  * Date           Author       Notes
- * 2022-01-17     Qiuyijie     the first version
+ * 2022-01-17     Qiuyijie     V1.0.0 : tcp 和 udp 功能
  */
 #include "Ethernet.h"
+#include "TcpClient.h"
+#include "TcpProgram.h"
+#include "TcpPersistence.h"
+#include "Udp.h"
+#include "Hub.h"
+#include "Sensor.h"
+#include "device.h"
+#include "Uart.h"
 
-struct rt_messagequeue ethMsg;                 //消息队列控制块
-extern struct rt_messagequeue uartSendMsg;
+static rt_mutex_t TcpMutex = RT_NULL;           //指向互斥量的指针
+struct ethDeviceStruct *eth = RT_NULL;          //申请ethernet实例化对象
+rt_event_t tcp_event = RT_NULL;
+//type_package_t tcpSendBuffer;
+type_package_t tcpRecvBuffer;
+type_package_t udpSendBuffer;
 
-rt_uint8_t fileBuffer[10];
+extern rt_uint8_t GetEthDriverLinkStatus(void);             //获取网口连接状态
 
+void rt_tc_rx_cb(void *buff, rt_size_t len)
+{
+    if(sizeof(type_package_t) < len)
+    {
+        LOG_E("recv buffer length large than eth package");
+    }
+    else
+    {
+        if(RT_EOK == CheckPackageLegality(buff, len))
+        {
+            rt_memcpy(&tcpRecvBuffer, (u8 *)buff, len);
+
+            eth->tcp.SetRecvDataFlag(ON);
+        }
+        else
+        {
+            LOG_E("check eth buffer fail");
+        }
+    }
+}
+
+rt_err_t UdpTaskInit(void)
+{
+    rt_err_t udpThreadRes = RT_ERROR;
+    rt_thread_t udpThread = RT_NULL;
+
+    /* 创建以太网,UDP线程 */
+    udpThread = rt_thread_create(UDP_TASK, UdpTaskEntry, RT_NULL, 4096, UDP_PRIORITY, 10);
+    /* 如果线程创建成功则开始启动线程，否则提示线程创建失败 */
+    if (RT_NULL != udpThread) {
+        udpThreadRes = rt_thread_startup(udpThread);
+       if (RT_EOK != udpThreadRes) {
+           LOG_E("udp task start failed");
+           return RT_ERROR;
+       }
+    } else {
+       LOG_E("udp task create failed");
+       return RT_ERROR;
+    }
+
+    return RT_EOK;
+}
+
+rt_err_t TcpClientTaskInit()
+{
+    rt_err_t tcpThreadRes = RT_ERROR;
+    rt_thread_t tcpThread = RT_NULL;
+
+    tcp_event = rt_event_create("tcev", RT_IPC_FLAG_FIFO);
+    if (tcp_event == RT_NULL)
+    {
+        LOG_E("event create failed");
+        goto _exit;
+    }
+
+    /* 创建一个动态互斥锁 */
+    TcpMutex = rt_mutex_create("tcp_mutex", RT_IPC_FLAG_FIFO);
+    if (TcpMutex == RT_NULL)
+    {
+        LOG_E("create dynamic mutex failed.\n");
+    }
+
+    /* 创建以太网线程 */
+    tcpThread = rt_thread_create(TCP_TASK, TcpTaskEntry, /*&tcp_event*/RT_NULL, 1024*4, TCP_PRIORITY, 10);
+
+    /* 如果线程创建成功则开始启动线程，否则提示线程创建失败 */
+    if (RT_NULL != tcpThread) {
+        tcpThreadRes = rt_thread_startup(tcpThread);
+        if (RT_EOK != tcpThreadRes) {
+            LOG_E("tcp task start failed");
+        }else {
+            LOG_I("tcp task start successfully");
+        }
+    } else {
+        LOG_E("tcp task create failed");
+    }
+
+    return RT_EOK;
+
+_exit:
+    if(RT_NULL != tcp_event)
+    {
+        rt_event_delete(tcp_event);
+    }
+    return RT_ERROR;
+}
+
+void EthernetTaskInit(void)
+{
+    if(RT_NULL == eth)
+    {
+        /* 初始化Ethernet信息结构体 */
+        InitEthernetStruct();
+        eth = GetEthernetStruct();
+    }
+
+    UdpTaskInit();
+    TcpClientTaskInit();
+}
 
 /**
  * @brief  : 以太网线程入口,TCP协议
@@ -23,256 +134,204 @@ rt_uint8_t fileBuffer[10];
  */
 void TcpTaskEntry(void* parameter)
 {
-    rt_err_t result;
-    char *recv_data;
-    struct hostent *host;
-    int sock, bytes_received;
-    struct sockaddr_in server_addr;
-    const char *url;
-    int port;
-    char *test1 = "169.254.100.218";
-    char *test2 = "5000";
-    //static int timeCnt = 0;
+    rt_uint32_t e = 0;
+    rt_tcpclient_t *handle      = RT_NULL;
+//    rt_event_t event;
+    static u8 preLinkStatus     = LINKDOWN;
+    static u8 Timer1sTouch      = OFF;
+    static u16 time1S = 0;
 
-    url = test1;
-    port = strtoul(test2, 0, 10);
-
-    /* 通过函数入口参数url获得host地址（如果是域名，会做域名解析） */
-    host = gethostbyname(url);
-
-    /* 分配用于存放接收数据的缓冲 */
-    recv_data = rt_malloc(BUFSZ);
-    if (recv_data == RT_NULL)
-    {
-        LOG_E("No memory");
-        return;
-    }
-
-    /* 创建一个socket，类型是SOCKET_STREAM，TCP类型 */
-    if ((sock = socket(AF_INET, SOCK_STREAM, 0)) == -1)
-    {
-        /* 创建socket失败 */
-        LOG_E("Socket error");
-
-        /* 释放接收缓冲 */
-        rt_free(recv_data);
-        return;
-    }
-
-    /* 初始化预连接的服务端地址 */
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(port);
-    server_addr.sin_addr = *((struct in_addr *)host->h_addr);
-    rt_memset(&(server_addr.sin_zero), 0, sizeof(server_addr.sin_zero));
-
-    /* 连接到服务端 */
-    if (connect(sock, (struct sockaddr *)&server_addr, sizeof(struct sockaddr)) == -1)
-    {
-        /* 连接失败 */
-        LOG_E("Connect fail!");
-        closesocket(sock);
-
-        /*释放接收缓冲 */
-        rt_free(recv_data);
-        return;
-
-    }
-    else
-    {
-        /* 连接成功 */
-        LOG_I("Connect successful");
-    }
+//    event = *(rt_event_t *)parameter;
 
     while (1)
     {
-        /* 从sock连接中接收最大BUFSZ - 1字节数据 */
-        //Justin Question ：为什么会阻塞
-        bytes_received = recv(sock, recv_data, BUFSZ - 1, 0);
-        if (bytes_received < 0)
-        {
-            /* 接收失败，关闭这个连接 */
-            closesocket(sock);
-            LOG_E("received error,close the socket.");
+//        rt_mutex_take(TcpMutex, RT_WAITING_FOREVER);                  //加锁保护
+        /* 启用定时器 */
+        time1S = TimerTask(&time1S, 20, &Timer1sTouch);                 //1秒任务定时器
 
-            /* 释放接收缓冲 */
-            rt_free(recv_data);
-            break;
+        eth->SetethLinkStatus(GetEthDriverLinkStatus());
+        if(preLinkStatus != eth->GetethLinkStatus())
+        {
+            preLinkStatus = eth->GetethLinkStatus();
+
+            if(LINKDOWN == eth->GetethLinkStatus())
+            {
+                LOG_D("eth link dowm");
+            }
+            else if(LINKUP == eth->GetethLinkStatus())
+            {
+                LOG_D("eth link up");
+            }
         }
-        else if (bytes_received == 0)
+        else
         {
-            /* 默认 recv 为阻塞模式，此时收到0认为连接出错，关闭这个连接 */
-            closesocket(sock);
-            LOG_E("received error,close the socket.");
-
-            /* 释放接收缓冲 */
-            rt_free(recv_data);
-            break;
-        }
-        /* 有接收到数据，把末端清零 */
-        recv_data[bytes_received] = '\0';
-
-        /* 发送消息到消息队列中 */
-        result = rt_mq_send(&ethMsg, recv_data, strlen(recv_data));
-        if (result != RT_EOK)
-        {
-            LOG_E("ethernet send message ERR");
+            /* 网口断线时不执行以下功能 */
+            if(LINKDOWN == eth->GetethLinkStatus())
+            {
+                rt_thread_mdelay(1000);
+                continue;
+            }
         }
 
+        /* 如果socket 申请成功,执行以下动作 */
+        /* 1s 定时任务 */
+        if(ON == Timer1sTouch)
+        {
+            if (rt_event_recv(/*event*/tcp_event, TC_TCPCLIENT_CLOSE,
+                                      RT_EVENT_FLAG_OR | RT_EVENT_FLAG_CLEAR,
+                                      0, &e) == RT_EOK)
+            {
+                rt_event_send(/*event*/tcp_event, TC_EXIT_THREAD);
+                return;
+            }
+
+            /* 如果已经连接上主机之后要发送从机注册 */
+            if((ON == eth->tcp.GetConnectTry()) &&
+               (OFF == eth->tcp.GetConnectStatus()))
+            {
+                /* 连接新的tcp client 任务 */
+                handle = TcpClientInit(eth, rt_tc_rx_cb);
+            }
+            else
+            {
+                if((OFF == eth->tcp.GetConnectTry()) &&
+                   (ON == eth->tcp.GetConnectStatus()))
+                {
+                    SendMesgToMasterProgram(handle); //Justin debug 仅仅测试  这个函数会引起bug
+
+                    /* 接收数据并解析 */
+                    if(ON == eth->tcp.GetRecvDataFlag())
+                    {
+                        /* 执行向主机注册hub、sensor、device等相关操作 */
+                        AnalyzeEtherData(tcpRecvBuffer);
+
+                        eth->tcp.SetRecvDataFlag(OFF);                  //关闭接收到数据的标志位
+                    }
+                }
+            }
+        }
+//        rt_mutex_release(TcpMutex);                                   //解锁//不能轻易加锁否则发送网络数据的时候会引发错误
         rt_thread_mdelay(50);
     }
 }
 
 /**
- * @brief  : 与主机以太网通讯线程,TCP协议
- * @para   : NULL
- * @author : Qiuyijie
- * @date   : 2022.01.17
- */
-void TcpTaskInit(void)
-{
-    rt_err_t threadStart = RT_NULL;
-    rt_thread_t thread = RT_NULL;
-    rt_err_t result = RT_NULL;
-    static rt_uint8_t msg_pool[100];    //消息队列中用到的放置消息的内存池
-
-    /* 初始化消息队列 */
-    result = rt_mq_init(&ethMsg,
-                        "ethmessage",
-                        &msg_pool[0],               /* 内存池指向msg_pool */
-                        30,                         /* 每个消息的大小是 30 字节 */
-                        sizeof(msg_pool),           /* 内存池的大小是msg_pool的大小 */
-                        RT_IPC_FLAG_FIFO);          /* 如果有多个线程等待，按照先来先得到的方法分配消息 */
-    if (result != RT_EOK)
-    {
-        LOG_E("init message queue failed.");
-    }
-
-    /* 创建以太网线程 */
-    thread = rt_thread_create("ethernet task", TcpTaskEntry, RT_NULL, 2048, 20, 10);
-
-    /* 如果线程创建成功则开始启动线程，否则提示线程创建失败 */
-    if (RT_NULL != thread) {
-        threadStart = rt_thread_startup(thread);
-        if (RT_EOK != threadStart) {
-            LOG_E("tcp task start failed");
-        }
-    } else {
-        LOG_E("tcp task create failed");
-    }
-}
-
-/**
- * @brief   : 获取当前的Ip地址
- * @param   :
- * @return  : RT_ERROR 获取失败 ; RT_EOK 获取成功
- * @author  : Qiuyijie
- * @date    : 2022.03.03
- */
-rt_err_t getIPAddress(void)
-{
-    u8  ip[4];
-    u32 ipAddress;
-
-    ipAddress = netdev_default->ip_addr.addr;
-
-    ip[3] = ipAddress;
-    ip[2] = ipAddress >> 8;
-    ip[1] = ipAddress >> 16;
-    ip[0] = ipAddress >> 24;
-
-    LOG_D("ip address = %d.%d.%d.%d",ip[3],ip[2],ip[1],ip[0]);
-
-    return RT_EOK;
-}
-
-/**
  * @brief  : 与主机以太网通讯线程入口,UDP协议
+ *         : 该函数主要功能:
+ *           1.开启广播接收主机发送的信息(时间同步、版本号)
+ *           2.控制Tcp线程的创建和销毁
+ *           3.开启Udp线程
  * @param   : NULL
  * @author : Qiuyijie
  * @date   : 2022.01.19
  */
 void UdpTaskEntry(void* parameter)
 {
-    rt_err_t result;
-    int sock, port;
-    struct hostent *host;
-    struct sockaddr_in server_addr;
-    const char *url;
-    char recvUartBuf[65];
-    static int timeCnt = 0;
+    u8          Timer1sTouch        = OFF;
+    int         broadcastSock       = 0x00;
+    int         masterUdpSock       = 0x00;
+    int         bytes_read          = 0x00;
+    socklen_t   addr_len;
 
-    url = "192.168.0.69";
-    port = strtoul("5000", 0, 10);
+    struct sockaddr_in      broadcastSerAddr;
+    struct sockaddr_in      broadcastRecvSerAddr;
+    struct sockaddr_in      masterUdpSerAddr;
+    static u16  time1S              = 0;
 
-    /* 通过函数入口参数url获得host地址（如果是域名，会做域名解析） */
-    host = (struct hostent *) gethostbyname(url);
 
-    /* 创建一个socket，类型是SOCK_DGRAM，UDP类型 */
-    if ((sock = socket(AF_INET, SOCK_DGRAM, 0)) == -1)
+    eth->SetethLinkStatus(GetEthDriverLinkStatus());
+    if(LINKUP == eth->GetethLinkStatus())    //检查网口是否有连接
     {
-        LOG_E("Socket error");
-        return;
-    }
-
-    /* 初始化预连接的服务端地址 */
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(port);
-    server_addr.sin_addr = *((struct in_addr *)host->h_addr);
-    rt_memset(&(server_addr.sin_zero), 0, sizeof(server_addr.sin_zero));
-
-    /* 总计发送count次数据 */
-    while (1)
-    {
-        timeCnt++;
-
-        /* 接收串口发送过来的消息队列 */
-        result = rt_mq_recv(&uartSendMsg, recvUartBuf, sizeof(recvUartBuf), RT_WAITING_NO);
-
-        if(RT_EOK == result)
+        /* 注册广播类型 */
+        if(RT_EOK == UdpSetingInit(BROADCAST_SERVER, RT_NULL, UDP_BROADCAST_PORT, &broadcastSerAddr, &broadcastSock))
         {
-            sendto(sock, recvUartBuf, /*sizeof(recvUartBuf)*/8, 0,
-                  (struct sockaddr *)&server_addr, sizeof(struct sockaddr));
+            LOG_I("Udp socket init successful!");
+        }
+        else
+        {
+            closesocket(broadcastSock);
         }
 
-        //Justin debug
-        if(0 == (timeCnt % 20))
-        {
-            sendto(sock, fileBuffer, 10, 0,
-                              (struct sockaddr *)&server_addr, sizeof(struct sockaddr));
+    }
+    else if(LINKDOWN == eth->GetethLinkStatus())
+    {
+        LOG_E("eth link down,Udp socket init fail!");
+    }
 
-            //getIPAddress();
+    addr_len = sizeof(struct sockaddr);
+    while (1)
+    {
+        /* 启用定时器 */
+        time1S = TimerTask(&time1S, 20, &Timer1sTouch);           //1秒任务定时器
+
+        if(YES == eth->udp.GetNotifyChange())
+        {
+            //Justin debug 注意 如果同时两个新的ip需要注册会导致失败
+            if(RT_EOK == UdpSetingInit(NORMAL_TYPE, eth->GetIp(), eth->GetPort(), &masterUdpSerAddr, &masterUdpSock))
+            {
+                eth->udp.SetConnectStatus(SOCKET_ON);
+            }
+            else
+            {
+                eth->udp.SetConnectStatus(SOCKET_OFF);
+                LOG_E("udp socket for eth init error");
+            }
+
+            eth->udp.SetNotifyChange(NO);    //关闭通知
+        }
+
+        /* 网络掉线 */
+        if(LINKDOWN == eth->GetethLinkStatus())
+        {
+            rt_thread_mdelay(1000);
+            continue;
+        }
+
+        {
+            /* 50ms任务 */
+            bytes_read = recvfrom(broadcastSock, &udpSendBuffer, sizeof(type_package_t), 0,(struct sockaddr *)&broadcastRecvSerAddr, &addr_len);
+            if((bytes_read > 0) && (sizeof(type_package_t) >= bytes_read))
+            {
+                if(RT_EOK == CheckPackageLegality((u8 *)&udpSendBuffer, bytes_read))
+                {
+                    /* 判断主机的ip或者port为新,更新 */
+                    if(YES == eth->IsNewEthernetConnect(inet_ntoa(broadcastRecvSerAddr.sin_addr), MASTER_PORT))
+                    {
+                        /* 通知TCP和UDP需要更改socket,以监听新的网络 */
+                        eth->udp.SetNotifyChange(YES);
+                        SetIpAndPort(inet_ntoa(broadcastRecvSerAddr.sin_addr), MASTER_PORT, eth);
+                        LOG_I("recv new master register massge, ip = %s, port = %d", eth->GetIp(), eth->GetPort());
+                    }
+                    else
+                    {
+                        /* 在此获取主机的时间 */
+                    }
+
+                    if(OFF == eth->tcp.GetConnectStatus())
+                    {
+                        /* 更新网络以及申请TCP */
+                        notifyTcpAndUdpSocket(inet_ntoa(broadcastRecvSerAddr.sin_addr), MASTER_PORT, eth);
+                    }
+                }
+                else
+                {
+                    LOG_D("CRC ERR......");
+                }
+            }
+        }
+
+        /* 1s定时任务 */
+        if(ON == Timer1sTouch)
+        {
+            /* 向主机发送sensor数据 */
+            //TransmitSensorData();
+
         }
 
         /* 线程休眠一段时间 */
         rt_thread_mdelay(50);
     }
     /* 关闭这个socket */
-    closesocket(sock);
+    closesocket(broadcastSock);
 }
-
-/**
- * @brief  : 与主机以太网通讯线程,UDP协议
- * @para   : NULL
- * @author : Qiuyijie
- * @date   : 2022.01.19
- */
-void UdpTaskInit(void)
-{
-    rt_err_t threadStart = RT_NULL;
-    rt_thread_t thread = RT_NULL;
-
-    /* 创建以太网,UDP线程 */
-    thread = rt_thread_create("ethernet task", UdpTaskEntry, RT_NULL, 2048, 22, 10);
-
-    /* 如果线程创建成功则开始启动线程，否则提示线程创建失败 */
-    if (RT_NULL != thread) {
-       threadStart = rt_thread_startup(thread);
-       if (RT_EOK != threadStart) {
-           LOG_E("udp task start failed");
-       }
-    } else {
-       LOG_E("udp task create failed");
-    }
-}
-
 

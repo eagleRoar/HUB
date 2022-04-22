@@ -71,15 +71,16 @@ SECTIONS
     } > ROM = 0
 
     /* .ARM.exidx is sorted, so has to go in its own output section.  */
-    __exidx_start = .;
+    
     .ARM.exidx :
     {
+	    __exidx_start = .;
         *(.ARM.exidx* .gnu.linkonce.armexidx.*)
 
         /* This is used by the startup in order to initialize the .data secion */
         _sidata = .;
+	    __exidx_end = .;	
     } > ROM
-    __exidx_end = .;
 
     /* .data section which is used for initialized data */
 

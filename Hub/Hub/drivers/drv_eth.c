@@ -439,7 +439,7 @@ static void phy_linkchange()
         phy_speed = phy_speed_new;
         if (phy_speed & PHY_LINK)
         {
-            LOG_D("link up");
+            LOG_I("link up");
             if (phy_speed & PHY_100M)
             {
                 LOG_D("100Mbps");
@@ -467,10 +467,22 @@ static void phy_linkchange()
         }
         else
         {
-            LOG_I("link down");
+            LOG_I("Eth link down");//Justin debug
             eth_device_linkchange(&stm32_eth_device.parent, RT_FALSE);
         }
     }
+}
+
+/**
+ *
+ * @return  eth link status
+ *          0x01 link up; 0x00 link down
+ * @time    2022.03.17
+ * @author  QiuYijie
+ */
+rt_uint8_t GetEthDriverLinkStatus(void)
+{
+    return stm32_eth_device.parent.link_status;
 }
 
 #ifdef PHY_USING_INTERRUPT_MODE

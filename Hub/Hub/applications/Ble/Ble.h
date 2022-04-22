@@ -23,4 +23,12 @@
 void BleUart6TaskInit(void);
 void BleUart6TaskEntry(void* parameter);
 
+/* 串口接收消息结构*/
+struct UartMsg
+{
+    rt_device_t dev;
+    rt_size_t   size;
+    rt_bool_t   revFlg; //接收标志
+};
+
 #endif /* APPLICATIONS_BLE_BLE_H_ */

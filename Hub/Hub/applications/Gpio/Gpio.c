@@ -47,6 +47,17 @@ void GpioInit(void)
 
     //SD卡检测脚
     rt_pin_mode(SD_CHK_PIN, PIN_MODE_INPUT);
+
+    //SPI CS脚
+    rt_pin_mode(SPI1_CS_PIN, PIN_MODE_OUTPUT);
+
+    //BLE RESET脚
+//    rt_pin_mode(BLE_NRST_PIN, PIN_MODE_OUTPUT);
+//    rt_pin_write(BLE_NRST_PIN, PIN_HIGH);
+
+    //Button 设置
+    rt_pin_mode(BUTTON_MENU, PIN_MODE_INPUT);
+    rt_pin_mode(BUTTON_ENTER, PIN_MODE_INPUT);
 }
 
 /**
@@ -72,7 +83,7 @@ void LedTaskInit(void)
     rt_err_t threadStart = RT_NULL;
 
     /* 创建led 线程 */
-    rt_thread_t thread = rt_thread_create("led task", LedTaskEntry, RT_NULL, 256, 26, 10);
+    rt_thread_t thread = rt_thread_create("led task", LedTaskEntry, RT_NULL, 256, LED_PRIORITY, 10);
 
     /* 如果线程创建成功则开始启动线程，否则提示线程创建失败 */
     if (RT_NULL != thread) {
@@ -94,6 +105,7 @@ void LedTaskInit(void)
 void LedTaskEntry(void* parameter)
 {
     static u8 ledState = 0;
+
     while(1)
     {
         Ctrl_LED(LED_SENSOR,0);

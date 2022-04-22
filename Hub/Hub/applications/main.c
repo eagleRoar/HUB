@@ -17,33 +17,73 @@
 #include "SDCard.h"
 #include "Uart.h"
 #include "Spi.h"
+#include "ButtonTask.h"
+#include "hub.h"
+#include "Device.h"
+#include "Sensor.h"
+#include "UartDataLayer.h"
 
 #define DBG_TAG "main"
 #define DBG_LVL DBG_LOG
 #include <rtdbg.h>
 
-extern void GetUpdataFileFromWeb(void);
+extern struct ethDeviceStruct *eth;
 
+extern rt_uint8_t GetEthDriverLinkStatus(void);            //获取网口连接状态
+extern void GetUpdataFileFromWeb(void);
+extern int ka_mqtt(void);
+static uint16_t g_Key = 97;
 int main(void)
 {
+    rt_uint8_t ethStatus = LINKDOWN;
+    u16         index = 0;
+    static u8 monitorNum = 0;
+    static u8 Timer1sTouch = OFF;
+    static u16 time1S = 0;
+
+    /* 初始化静态变量 */
+    StorageInit();
+    hubRegisterInit();
+    deviceRegisterInit();
+    sensorRegisterInit();
+
     /* 初始化GPIO口 */
     GpioInit();
 
     /* 初始化灯光线程,仅作为呼吸灯 */
     LedTaskInit();
 
-    rt_thread_mdelay(5000); //等待lwip准备完毕，该操作需要优化
-    /* 初始化网络线程，处理和主机之间的交互，TCP协议 */
-    TcpTaskInit();
-
-    /* 初始化网络线程，发送设备信息给主机 */
-    UdpTaskInit();
-
     /* 初始化串口接收传感器类线程 */
     SensorUart2TaskInit();
 
+    /* 初始化蓝牙Ble线程,蓝牙是通过uart发送数据控制 */
+    BleUart6TaskInit();
+
     /* oled1309屏线程初始化 */
     OledTaskInit();
+
+    /* 按键线程初始化 */
+    ButtonTaskInit();
+
+    /* 等待网络部分初始化完成 */
+    do {
+        time1S = TimerTask(&time1S, 100, &Timer1sTouch);         //10秒任务定时器
+        ethStatus = GetEthDriverLinkStatus();
+        LOG_D("waitting for eth init...");
+
+        if(ON == Timer1sTouch)
+        {
+            LOG_E("Ethernet divice init fail......");
+            break;
+        }
+        rt_thread_mdelay(100);
+    } while (LINKDOWN == ethStatus);
+
+    if(LINKUP == ethStatus)
+    {
+        /*初始化网络线程，处理和主机之间的交互，Tcp和Udp协议*/
+        EthernetTaskInit();
+    }
 
     /* 初始化SD卡处理线程 */
     SDCardTaskInit();
@@ -51,17 +91,138 @@ int main(void)
     /* 从网络上获取新的app包 */
     //GetUpdataFileFromWeb();
 
-    /* 初始化蓝牙Ble线程,蓝牙是通过uart发送数据控制 */
-    BleUart6TaskInit();
-
     /* spi flash程序初始化 */ //SQL需要占用比较多的资源，250kb+的ram，310kb+的rom
-    //SpiTaskInit();
+    SpiTaskInit();
+
+    /* MQTT线程 */
+    ka_mqtt();
 
     while(1)
     {
+        /* 监视网络模块是否上线 */
+        ethStatus = GetEthDriverLinkStatus();
+        if(LINKUP == ethStatus)
+        {
+            if(RT_NULL == rt_thread_find(UDP_TASK) &&
+               RT_NULL == rt_thread_find(TCP_TASK))
+            {
+                /* 重新上线,初始化网络任务 */
+                EthernetTaskInit();
+                LOG_D("EthernetTask init OK");
+            }
+        }
+
+        if(monitorNum != GetMonitor()->monitorDeviceTable.deviceManageLength)
+        {
+            for(index = 0; index < GetMonitor()->monitorDeviceTable.deviceManageLength; index++)
+            {
+                LOG_D("table %d----------",index);
+                LOG_D("name : %s",GetMonitor()->monitorDeviceTable.deviceTable[index].module_name);
+                LOG_D("sto name : %s",GetMonitor()->monitorDeviceTable.deviceTable[index].module_t[0].name);
+                LOG_D("sto name : %s",GetMonitor()->monitorDeviceTable.deviceTable[index].module_t[1].name);
+                LOG_D("sto name : %s",GetMonitor()->monitorDeviceTable.deviceTable[index].module_t[2].name);
+                LOG_D("sto name : %s",GetMonitor()->monitorDeviceTable.deviceTable[index].module_t[3].name);
+            }
+
+            monitorNum = GetMonitor()->monitorDeviceTable.deviceManageLength;
+        }
 
         rt_thread_mdelay(1000);
     }
 
     return RT_EOK;
 }
+
+
+void ReadUniqueId(u32 *id)
+{
+    *id = *(__IO u32*)(ID_ADDR1);
+//    *(id+1) = *(__IO u32*)(ID_ADDR1+4);
+//    *(id+2) = *(__IO u32*)(ID_ADDR1+8);
+}
+
+/**
+ * @brief  : 计时器功能
+ * @param  : time      计时器
+ * @param  : touchTime 实际上定时的时间,单位ms
+ * @param  ：flag ON 定时器到了; OFF 还未达到定时器设定时间
+ * @return : 当前的计时器数
+ */
+u16 TimerTask(u16 *time, u16 touchTime, u8 *flag)
+{
+    u16 temp = 0;
+
+    temp = *time;
+
+    if(*time < touchTime)
+    {
+        temp++;
+        *time = temp;
+        *flag = OFF;
+    }
+    else
+    {
+        *flag = ON;
+        *time = 0;
+    }
+
+    return *time;
+}
+
+/*
+ * INPUT:
+ * pucData: input the data for CRC16
+ * ulLen : the length of the data
+ *
+ * OUTPUT: the value for (CRC16)
+*/
+u16 usModbusRTU_CRC(const u8* pucData, u32 ulLen)
+{
+    u8 ucIndex = 0U;
+    u16 usCRC = 0xFFFFU;
+
+    while (ulLen > 0U) {
+        usCRC ^= *pucData++;
+        while (ucIndex < 8U) {
+            if (usCRC & 0x0001U) {
+                usCRC >>= 1U;
+                usCRC ^= 0xA001U;
+            } else {
+                usCRC >>= 1U;
+            }
+            ucIndex++;
+        }
+        ucIndex = 0U;
+        ulLen--;
+    }
+    return usCRC;
+}
+
+u16 CRC16(u16 *pdata, u16 len,  u16 random_num)
+{
+    u16 crc = 0xFFFF;
+    u16 i,j=0;
+
+    random_num = (random_num*g_Key + 0xA001)&0xffff;
+
+    while(j < len)
+    {
+        crc ^= *pdata;
+        for(i = 0; i < 8; i++)
+        {
+            if(crc & 0x01)
+            {
+                crc >>= 1;
+                crc ^= random_num;
+                if(random_num != 0xA001) random_num +=g_Key;
+            }
+            else
+                crc >>= 1;
+        }
+        j++;
+        pdata++;
+    }
+
+    return crc;
+}
+

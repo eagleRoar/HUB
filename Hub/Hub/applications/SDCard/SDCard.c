@@ -40,8 +40,7 @@ int SDCardTaskInit(void)
     sd_dfs_mutex = rt_mutex_create("sd_dfs", RT_IPC_FLAG_FIFO);
 
     /* 创建 SD卡线程 */
-    rt_thread_t thread = rt_thread_create("et_dfs", sd_dfs_event_entry,
-    RT_NULL, 4000, 26, 10);
+    rt_thread_t thread = rt_thread_create(SD_CARD_TASK, sd_dfs_event_entry, RT_NULL, 1024*2, SDCARD_PRIORITY, 10);
 
     /* 创建成功则启动线程 */
     if (thread != RT_NULL) {

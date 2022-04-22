@@ -1,7 +1,12 @@
 [
  {
-  "path": "/packages/multimedia/u8g2/u8g2", 
-  "ver": "c-latest", 
-  "name": "U8G2"
+  "path": "/packages/iot/kawaii-mqtt", 
+  "ver": "latest", 
+  "name": "KAWAII_MQTT"
+ }, 
+ {
+  "path": "/packages/system/fal", 
+  "ver": "latest", 
+  "name": "FAL"
  }
 ]

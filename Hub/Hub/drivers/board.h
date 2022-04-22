@@ -70,10 +70,21 @@ extern "C"
 #define BSP_USING_UART1
 #define BSP_UART1_TX_PIN       "PA9"
 #define BSP_UART1_RX_PIN       "PA10"
+
 #define BSP_USING_UART2
 #define BSP_UART2_TX_PIN       "PD5"
-#define BSP_UART2_RX_PIN       "PA3"//"PD6"
+#define BSP_UART2_RX_PIN       "PA3"
 #define BSP_UART2_RX_USING_DMA
+
+#define BSP_USING_UART3
+#define BSP_UART3_TX_PIN       "PB10"
+#define BSP_UART3_RX_PIN       "PD9"
+#define BSP_UART3_RX_USING_DMA
+
+#define BSP_USING_UART6
+#define BSP_UART6_TX_PIN       "PC6"
+#define BSP_UART6_RX_PIN       "PC7"
+#define BSP_UART6_RX_USING_DMA
 /*-------------------------- UART CONFIG END --------------------------*/
 
 /*-------------------------- I2C CONFIG BEGIN --------------------------*/
@@ -108,7 +119,7 @@ extern "C"
 
 /** if you want to use spi bus you can use the following instructions.
  *
- * STEP 1, open spi driver framework support in the RT-Thread Settings file
+ * STEP 1, open spi driver framework support in the RT-Thread Settings file--
  *
  * STEP 2, define macro related to the spi bus
  *                 such as     #define BSP_USING_SPI1
