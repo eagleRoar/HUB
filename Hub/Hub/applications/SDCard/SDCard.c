@@ -93,7 +93,6 @@ void sd_dfs_event_entry(void* parameter)
                     }
                     else //挂载失败
                     {
-
                         LOG_E("sd card mount to / failed!\r\n");
                     }
                 }

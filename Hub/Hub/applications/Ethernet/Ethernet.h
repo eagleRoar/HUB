@@ -36,7 +36,7 @@
 
 #define TEST_PORT                 9897
 #define MASTER_PORT               9898
-#define UDP_BROADCAST_PORT        /*TEST_PORT*/9899
+#define UDP_BROADCAST_PORT        TEST_PORT/*9899*/     //Justin debug 仅仅测试
 #define RCV_ETH_BUFFSZ            512
 
 struct packTop{

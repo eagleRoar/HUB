@@ -230,7 +230,7 @@ void UdpTaskEntry(void* parameter)
 {
     u8          Timer1sTouch        = OFF;
     int         broadcastSock       = 0x00;
-    int         masterUdpSock       = 0x00;
+    int         masterUdpSock       = RT_NULL;
     int         bytes_read          = 0x00;
     socklen_t   addr_len;
 
@@ -267,7 +267,11 @@ void UdpTaskEntry(void* parameter)
 
         if(YES == eth->udp.GetNotifyChange())
         {
-            //Justin debug 注意 如果同时两个新的ip需要注册会导致失败
+            if(RT_NULL != masterUdpSock)
+            {
+                DestoryUdpSocket(masterUdpSock);
+            }
+
             if(RT_EOK == UdpSetingInit(NORMAL_TYPE, eth->GetIp(), eth->GetPort(), &masterUdpSerAddr, &masterUdpSock))
             {
                 eth->udp.SetConnectStatus(SOCKET_ON);

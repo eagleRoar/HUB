@@ -53,6 +53,11 @@ void setnonblocking(int sockfd)
     }
 }
 
+void DestoryUdpSocket( int sock)
+{
+    closesocket(sock);
+}
+
 /**
  * @brief  : 注册socket
  * @param  : ip ip地址

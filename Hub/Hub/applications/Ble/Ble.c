@@ -9,10 +9,19 @@
  */
 #include "Ble.h"
 #include "Uart.h"
+#include "InformationMonitor.h"
+
+#define  AT_ENTER       "+++a"
+#define  TEST_TO_BLE    "AT+HELLO?"
+#define  SET_NAME       "AT+NAME=Hub_Justin"
+#define  ASK_NAME       "AT+NAME?"
+#define  ENTER_TO_UART  "AT+ENTM"
 
 static rt_mutex_t recvBleMutex = RT_NULL;    //指向互斥量的指针
 static rt_device_t serial;
 static struct UartMsg uartMsg;
+
+type_package_t      recvPack;
 
 /**
  * @brief  : 接收回调函数
@@ -39,11 +48,12 @@ static rt_err_t Uart_input(rt_device_t dev, rt_size_t size)
  */
 void BleUart6TaskEntry(void* parameter)
 {
-    static u8 timeCnt = 0;
-    char sendUartBuf[8] = "+++", recvUartBuf[8];
-    u8 test[8];
-    rt_err_t result = RT_ERROR;
-    u16 crc16Result = 0;
+    u8              temp                = 0x00;
+    char            sendUartBuf[100]    = "+++a", recvUartBuf[512];
+    rt_err_t        result              = RT_ERROR;
+    static u8       Timer1sTouch        = OFF;
+    static u16      time1S              = 0;
+    static u8       testFlag            = 0;
 
     /* 查找串口设备 */
     serial = rt_device_find("uart6");
@@ -77,29 +87,88 @@ void BleUart6TaskEntry(void* parameter)
     while (1)
     {
         rt_mutex_take(recvBleMutex, RT_WAITING_FOREVER);       //加锁保护
-
-        timeCnt++;
-
-        /* 与蓝牙打招呼 */
-//        if(0 == (timeCnt % 20))
-//        {
-//            rt_device_write(serial, 0, sendUartBuf, 8);
-//
-//        }
+        time1S = TimerTask(&time1S, 20, &Timer1sTouch);
 
         /* 从串口消息队列中读取消息 */
         if(RT_TRUE == uartMsg.revFlg)
         {
-            rt_device_read(uartMsg.dev, 0, recvUartBuf, uartMsg.size);
-            LOG_D("rcv ble message %c", recvUartBuf[0]);
+            if(BLE_BUFFER_SIZE >= uartMsg.size)
+            {
+                rt_device_read(uartMsg.dev, 0, &recvPack, uartMsg.size);
+                AnalyzePack(&recvPack);
+            }
+            else
+            {
+                LOG_E("recv ble buffer is too large");
+            }
+//            rt_memset(recvUartBuf, 0, 20);
+//            rt_device_read(uartMsg.dev, 0, recvUartBuf, uartMsg.size);
+//
+//
+//            if(0 == testFlag)
+//            {
+//                if(0 == rt_memcmp(recvUartBuf, "a+ok", strlen("a+ok")))
+//                {
+//                    testFlag = 1;
+//                    LOG_D("recv Ok");
+//                }
+//                else
+//                {
+//                    LOG_D("recv err");
+//                }
+//            }
+//
+//            LOG_D("ble recv = %s --------",recvUartBuf);
 
             uartMsg.revFlg = RT_FALSE;
         }
 
+        /* 1s任务 */
+        if(ON == Timer1sTouch)
+        {
+            /* 与蓝牙打招呼 */
+            if(0 == testFlag)
+            {
+                rt_memset(sendUartBuf, 0, 20);
+                temp = strlen(AT_ENTER);
+                rt_memcpy(sendUartBuf, AT_ENTER, temp);
+                rt_device_write(serial, 0, sendUartBuf, temp);
 
-        rt_mutex_release(recvBleMutex);                        //解锁
+            }
+            else if(1 == testFlag)
+            {
+                temp = strlen(SET_NAME);
+                rt_memcpy(sendUartBuf, SET_NAME, temp);
+                sendUartBuf[temp] = 0x0d;
+                sendUartBuf[temp+1] = 0x0a;
+                rt_device_write(serial, 0, sendUartBuf, temp+2);
+                testFlag = 2;
+            }
+            else if(2 == testFlag)
+            {
+                rt_memset(sendUartBuf, 0, 20);
+                temp = strlen(ASK_NAME);
+                rt_memcpy(sendUartBuf, ASK_NAME, temp);
+                sendUartBuf[temp] = 0x0d;
+                sendUartBuf[temp+1] = 0x0a;
+                rt_device_write(serial, 0, sendUartBuf, temp+2);
+                testFlag = 3;
+            }
+            else if (3 == testFlag)
+            {
+                rt_memset(sendUartBuf, 0, 20);
+                temp = strlen(ENTER_TO_UART);
+                rt_memcpy(sendUartBuf, ENTER_TO_UART, temp);
+                sendUartBuf[temp] = 0x0d;
+                sendUartBuf[temp+1] = 0x0a;
+                rt_device_write(serial, 0, sendUartBuf, temp+2);
+                testFlag = 4;
+            }
+        }
 
         rt_thread_mdelay(50);
+        rt_mutex_release(recvBleMutex);                        //解锁
+
     }
 }
 

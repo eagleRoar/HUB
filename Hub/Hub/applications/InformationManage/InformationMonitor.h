@@ -37,7 +37,7 @@ typedef     struct monitorStruct            type_monitor_t;
 typedef     struct moduleManageStruct       type_module_t;
 typedef     struct storageInfo              storageInfo_t;
 typedef     struct storageStruct            type_storage_t;
-
+/************Ethernet    ***************************************/
 typedef     struct hubRegister              type_hubreg_t;
 typedef     struct hubRegInterface          hubreg_interface;
 typedef     struct sensorRegister           type_sen_reg_t;
@@ -45,6 +45,10 @@ typedef     struct sensorReg_interface      sensor_interface;
 typedef     struct deviceRegister           type_dev_reg_t;
 
 typedef     struct sensorData               type_sendata_t;
+/************Ble    *******************************************/
+typedef     struct blePackTop               type_blepacktop_t;
+typedef     struct blePackage               type_blepack_t;
+/**************************************************************/
 
 struct  storageInfo{
     char    name[MODULE_NAMESZ];

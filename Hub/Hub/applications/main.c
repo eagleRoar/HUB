@@ -35,11 +35,12 @@ extern int ka_mqtt(void);
 static uint16_t g_Key = 97;
 int main(void)
 {
-    rt_uint8_t ethStatus = LINKDOWN;
-    u16         index = 0;
-    static u8 monitorNum = 0;
-    static u8 Timer1sTouch = OFF;
-    static u16 time1S = 0;
+    rt_uint8_t      ethStatus       = LINKDOWN;
+    u8              storage         = 0;
+    u16             index           = 0;
+    static u8       monitorNum      = 0;
+    static u8       Timer1sTouch    = OFF;
+    static u16      time1S          = 0;
 
     /* 初始化静态变量 */
     StorageInit();
@@ -118,10 +119,10 @@ int main(void)
             {
                 LOG_D("table %d----------",index);
                 LOG_D("name : %s",GetMonitor()->monitorDeviceTable.deviceTable[index].module_name);
-                LOG_D("sto name : %s",GetMonitor()->monitorDeviceTable.deviceTable[index].module_t[0].name);
-                LOG_D("sto name : %s",GetMonitor()->monitorDeviceTable.deviceTable[index].module_t[1].name);
-                LOG_D("sto name : %s",GetMonitor()->monitorDeviceTable.deviceTable[index].module_t[2].name);
-                LOG_D("sto name : %s",GetMonitor()->monitorDeviceTable.deviceTable[index].module_t[3].name);
+                for(storage = 0; storage < GetMonitor()->monitorDeviceTable.deviceTable[index].storage_size; storage++)
+                {
+                    LOG_D("sto name : %s",GetMonitor()->monitorDeviceTable.deviceTable[index].module_t[storage].name);
+                }
             }
 
             monitorNum = GetMonitor()->monitorDeviceTable.deviceManageLength;
