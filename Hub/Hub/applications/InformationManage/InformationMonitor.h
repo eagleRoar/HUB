@@ -106,23 +106,29 @@ struct monitorStruct
 };
 
 /**************************************报头 Start*****************************************/
-#define    CHECKID              0xAABB                      //标识,0xAABB
-#define    ANSWER_ASK           0x0000                      //主动应答
-#define    ANSWER_REPLY         0x0001                      //回复应答
-#define    ANSWER_ERR           0x00FF                      //回复功能码错误
-#define    FUNCTION             0x0402                      //从机功能码
-#define    ID                   0x00000000                  //发送者id  //该ID为唯一编码 可以是产品的唯一序列号
+#define     CHECKID                 0xAABB                      //标识,0xAABB
+#define     ANSWER_ASK              0x0000                      //主动应答
+#define     ANSWER_REPLY            0x0001                      //回复应答
+#define     ANSWER_ERR              0x00FF                      //回复功能码错误
+#define     FUNCTION                0x0402                      //从机功能码
+#define     ID                      0x00000000                  //发送者id  //该ID为唯一编码 可以是产品的唯一序列号
 
 /**************************************报头 End*******************************************/
 
 /**************************************从机  Start****************************************/
-#define    TYPE_ENV_CTRL       0x0001                       //从机hub类型, 0 全能 1 环境控制 2 灌溉控制
-#define    TYPE_IRR_CTRL       0x0002                       //从机hub类型, 0 全能 1 环境控制 2 灌溉控制
-#define    VERSION             0x00000001                   //版本号 0.0.0.1, BCD 8421 编码
-#define    CONFIG_ID_NULL      0x00000000                   //默认配置ID
-#define    HEART               0x000A                       //心跳包时间,单位为秒
-#define    NAME_ENV            "hub_envirenment"            //环境控制从机hub名称
-#define    NAME_IRR            "hub_irrigation"             //灌溉控制从机hub名称
+#define     TYPE_ENV_CTRL           0x0001                       //从机hub类型, 0 全能 1 环境控制 2 灌溉控制
+#define     TYPE_IRR_CTRL           0x0002                       //从机hub类型, 0 全能 1 环境控制 2 灌溉控制
+#define     VERSION                 0x00000001                   //版本号 0.0.0.1, BCD 8421 编码
+#define     CONFIG_ID_NULL          0x00000000                   //默认配置ID
+#define     HEART                   0x000A                       //心跳包时间,单位为秒
+#define     NAME_ENV                "hub_envirenment"            //环境控制从机hub名称
+#define     NAME_IRR                "hub_irrigation"             //灌溉控制从机hub名称
+
+#if (HUB_SELECT == HUB_ENVIRENMENT)
+
+#define     HUB_NAME                  NAME_ENV
+
+#endif
 
 /**************************************从机 End*******************************************/
 

@@ -9,19 +9,16 @@
  */
 #include "Ble.h"
 #include "Uart.h"
+#include "BleDataLayer.h"
+#include "BleBusiness.h"
 #include "InformationMonitor.h"
 
-#define  AT_ENTER       "+++a"
-#define  TEST_TO_BLE    "AT+HELLO?"
-#define  SET_NAME       "AT+NAME=Hub_Justin"
-#define  ASK_NAME       "AT+NAME?"
-#define  ENTER_TO_UART  "AT+ENTM"
 
 static rt_mutex_t recvBleMutex = RT_NULL;    //指向互斥量的指针
-static rt_device_t serial;
 static struct UartMsg uartMsg;
 
-type_package_t      recvPack;
+type_blepack_t      recvPack;
+type_blepack_t      sendPack;
 
 /**
  * @brief  : 接收回调函数
@@ -35,7 +32,7 @@ static rt_err_t Uart_input(rt_device_t dev, rt_size_t size)
 {
     uartMsg.dev = dev;
     uartMsg.size = size;
-    uartMsg.revFlg = RT_TRUE;
+    uartMsg.revFlg = YES;
 
     return RT_EOK;
 }
@@ -48,12 +45,15 @@ static rt_err_t Uart_input(rt_device_t dev, rt_size_t size)
  */
 void BleUart6TaskEntry(void* parameter)
 {
-    u8              temp                = 0x00;
-    char            sendUartBuf[100]    = "+++a", recvUartBuf[512];
-    rt_err_t        result              = RT_ERROR;
-    static u8       Timer1sTouch        = OFF;
-    static u16      time1S              = 0;
-    static u8       testFlag            = 0;
+    u8                      testBuf[30];
+    u8                      step                = 0;
+    u32                     temp                = 0;
+    u32                     test                = 0;
+    rt_err_t                result              = RT_ERROR;
+    static u8               Timer1sTouch        = OFF;
+    static u16              time1S              = 0;
+    static rt_device_t      serial;
+    struct bleState         bleSta;
 
     /* 查找串口设备 */
     serial = rt_device_find("uart6");
@@ -84,86 +84,106 @@ void BleUart6TaskEntry(void* parameter)
         LOG_E("set uart6 fail");
     }
 
+    rt_memset(&uartMsg, 0, sizeof(struct UartMsg));
+    rt_memset(&bleSta, 0, sizeof(struct bleState));
+    rt_memset(&recvPack, 0, sizeof(type_blepack_t));
+    ConnectToBle(serial);
     while (1)
     {
         rt_mutex_take(recvBleMutex, RT_WAITING_FOREVER);       //加锁保护
-        time1S = TimerTask(&time1S, 20, &Timer1sTouch);
+        time1S = TimerTask(&time1S, /*20*/100, &Timer1sTouch);//Justin debug  仅仅测试
 
         /* 从串口消息队列中读取消息 */
-        if(RT_TRUE == uartMsg.revFlg)
+        if(YES == uartMsg.revFlg)
         {
             if(BLE_BUFFER_SIZE >= uartMsg.size)
             {
-                rt_device_read(uartMsg.dev, 0, &recvPack, uartMsg.size);
-                AnalyzePack(&recvPack);
+                rt_device_read(uartMsg.dev, 0, (u8 *)&recvPack, uartMsg.size);
+                if(YES != bleSta.init)
+                {
+                    if(YES != bleSta.connect)
+                    {
+                        if(0 == rt_memcmp(&recvPack, AT_ENTER_RET, strlen(AT_ENTER_RET)))
+                        {
+                            bleSta.connect = YES;
+                        }
+                    }
+                    else
+                    {
+                        if(YES != bleSta.max_buf_enable)
+                        {
+                            if(RT_NULL != rt_strstr((char *)&recvPack, SET_MAX_PUT_OK))
+                            {
+                                bleSta.max_buf_enable = YES;
+                            }
+                            LOG_D("ble maxput reply: %s",&recvPack);
+                        }
+                        else
+                        {
+                            if(MODE_BUFFER != bleSta.mode)
+                            {
+                                if(RT_NULL != rt_strstr((char *)&recvPack, ENTER_BUF_OK))
+                                {
+                                    bleSta.mode = MODE_BUFFER;
+                                    bleSta.init = YES;
+                                    LOG_D("enter to buffer mode");
+
+                                }
+                                else
+                                {
+                                    LOG_D("enter to buffer fail, buffer = %s",&recvPack);
+                                }
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    AnalyzePack(&recvPack);
+                }
             }
             else
             {
                 LOG_E("recv ble buffer is too large");
             }
-//            rt_memset(recvUartBuf, 0, 20);
-//            rt_device_read(uartMsg.dev, 0, recvUartBuf, uartMsg.size);
-//
-//
-//            if(0 == testFlag)
-//            {
-//                if(0 == rt_memcmp(recvUartBuf, "a+ok", strlen("a+ok")))
-//                {
-//                    testFlag = 1;
-//                    LOG_D("recv Ok");
-//                }
-//                else
-//                {
-//                    LOG_D("recv err");
-//                }
-//            }
-//
-//            LOG_D("ble recv = %s --------",recvUartBuf);
 
-            uartMsg.revFlg = RT_FALSE;
+            uartMsg.revFlg = NO;
         }
 
         /* 1s任务 */
         if(ON == Timer1sTouch)
         {
-            /* 与蓝牙打招呼 */
-            if(0 == testFlag)
+            if(YES != bleSta.init)
             {
-                rt_memset(sendUartBuf, 0, 20);
-                temp = strlen(AT_ENTER);
-                rt_memcpy(sendUartBuf, AT_ENTER, temp);
-                rt_device_write(serial, 0, sendUartBuf, temp);
+                if(YES == bleSta.connect)
+                {
+                    if(NO == bleSta.max_buf_enable)
+                    {
+                        SetMaxput(serial);
+                    }
+                    else
+                    {
+                        if(MODE_BUFFER != bleSta.mode)
+                        {
+                            SetBleMode(serial);
+                        }
+                    }
+                }
+            }
+            else
+            {
+                //TransmitPack(&recvPack);
+                if(RT_NULL != recvPack.top.command)
+                {
+                    if(sizeof(type_blepack_t) >= recvPack.top.pack_length)
+                    {
+                        LOG_D("recvPack.top.pack_length = %d",recvPack.top.pack_length);
+                        //rt_device_write(serial, 0, (u8 *)&recvPack, recvPack.top.pack_length);
+                        rt_memset(&recvPack, 0, sizeof(type_blepack_t));
+                    }
+                }
+            }
 
-            }
-            else if(1 == testFlag)
-            {
-                temp = strlen(SET_NAME);
-                rt_memcpy(sendUartBuf, SET_NAME, temp);
-                sendUartBuf[temp] = 0x0d;
-                sendUartBuf[temp+1] = 0x0a;
-                rt_device_write(serial, 0, sendUartBuf, temp+2);
-                testFlag = 2;
-            }
-            else if(2 == testFlag)
-            {
-                rt_memset(sendUartBuf, 0, 20);
-                temp = strlen(ASK_NAME);
-                rt_memcpy(sendUartBuf, ASK_NAME, temp);
-                sendUartBuf[temp] = 0x0d;
-                sendUartBuf[temp+1] = 0x0a;
-                rt_device_write(serial, 0, sendUartBuf, temp+2);
-                testFlag = 3;
-            }
-            else if (3 == testFlag)
-            {
-                rt_memset(sendUartBuf, 0, 20);
-                temp = strlen(ENTER_TO_UART);
-                rt_memcpy(sendUartBuf, ENTER_TO_UART, temp);
-                sendUartBuf[temp] = 0x0d;
-                sendUartBuf[temp+1] = 0x0a;
-                rt_device_write(serial, 0, sendUartBuf, temp+2);
-                testFlag = 4;
-            }
         }
 
         rt_thread_mdelay(50);
@@ -190,7 +210,7 @@ void BleUart6TaskInit(void)
     }
 
     /* 创建串口 线程 */
-    rt_thread_t thread = rt_thread_create("ble task", BleUart6TaskEntry, RT_NULL, 1024, UART6_PRIORITY, 10);
+    rt_thread_t thread = rt_thread_create("ble task", BleUart6TaskEntry, RT_NULL, 1024*2, UART6_PRIORITY, 10);
     /* 如果线程创建成功则开始启动线程，否则提示线程创建失败 */
     if (RT_NULL != thread) {
         threadStart = rt_thread_startup(thread);

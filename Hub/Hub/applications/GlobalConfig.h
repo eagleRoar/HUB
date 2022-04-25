@@ -9,6 +9,12 @@
  */
 #ifndef GLOBALCONFIG_H_
 #define GLOBALCONFIG_H_
+
+#define HUB_ENVIRENMENT                 1
+#define HUB_IRRIGSTION                  2
+
+#define HUB_SELECT                      HUB_ENVIRENMENT
+
 #define UDP_TASK                        "udp_task"
 #define TCP_TASK                        "tcp_task"
 #define TCP_CLIENT_TASK                 "tcpc"

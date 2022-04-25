@@ -31,7 +31,7 @@ void RegisterHub(rt_tcpclient_t *handle)
     hubReg.version = 0x01;                                              //版本号 BCD8421编码 需要注意
     hubReg.config_id = 0x00;                                            //配置ID
     hubReg.heart = 0x10;                                                //心跳间隔
-    rt_memcpy(hubReg.name, "hub_envirenment", HUB_NAME_SIZE);
+    rt_memcpy(hubReg.name, HUB_NAME, HUB_NAME_SIZE);
     rt_memcpy(pack.buffer, &hubReg, sizeof(type_hubreg_t));
     pack.package_top.crc = CRC16((u16*)&pack+3, 6+sizeof(type_hubreg_t)/2, 0);
     pack.package_top.length = sizeof(struct packTop) + sizeof(type_hubreg_t);

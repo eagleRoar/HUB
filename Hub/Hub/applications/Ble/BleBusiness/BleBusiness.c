@@ -12,9 +12,99 @@
 #include "BleBusiness.h"
 #include "BleDataLayer.h"
 
-void TransmitPack()
+void ConnectToBle(rt_device_t serial)
 {
+    rt_device_write(serial, 0, AT_ENTER, strlen(AT_ENTER));
+}
 
+void SetMaxput(rt_device_t serial)
+{
+    u8      temp        = 0;
+    char    *buffer     = RT_NULL;
+
+    buffer = rt_malloc(50);
+    if(RT_NULL != buffer)
+    {
+        temp = strlen(SET_MAX_PUT);
+        rt_memcpy(buffer, SET_MAX_PUT, temp);
+        buffer[temp] = 0x0d;
+        buffer[temp+1] = 0x0a;
+        rt_device_write(serial, 0, buffer, temp+2);
+    }
+    else
+    {
+        LOG_E("apply memory fail");
+    }
+
+    rt_free(buffer);
+    buffer = RT_NULL;
+}
+
+/**
+ * 设置Ble透传模式
+ * @param serial
+ */
+void SetBleMode(rt_device_t serial)
+{
+    u8      temp        = 0;
+    char    *buffer     = RT_NULL;
+
+    buffer = rt_malloc(50);
+    if(RT_NULL != buffer)
+    {
+        temp = strlen(ENTER_TO_BUF);
+        rt_memcpy(buffer, ENTER_TO_BUF, temp);
+        buffer[temp] = 0x0d;
+        buffer[temp+1] = 0x0a;
+        rt_device_write(serial, 0, buffer, temp+2);
+    }
+    else
+    {
+        LOG_E("apply memory fail");
+    }
+
+    rt_free(buffer);
+    buffer = RT_NULL;
+}
+
+void TransmitPack(type_blepack_t *pack)
+{
+    switch (pack->top.command) {
+        case REP_HUB_INFO:
+            break;
+        case REP_MESSAGE:
+            //Justin debug 仅仅测试
+
+            break;
+        case REP_DEVICE_LIST:
+            break;
+        case REP_TIMER_LIST:
+            break;
+        case REP_TIMER_SETTING:
+            break;
+        case REP_HISTORY:
+            break;
+        case REP_HUB:
+            break;
+        case REP_CO2:
+            break;
+        case REP_HUMIDITY:
+            break;
+        case REP_TEMPERATURE:
+            break;
+        case REP_LIGHT1:
+            break;
+        case REP_LIGHT2:
+            break;
+        case REP_LIGHT_TEMP:
+            break;
+        case REP_PHEC:
+            break;
+        case REP_SET_TIMER_LIST:
+            break;
+        default:
+            break;
+    }
 }
 
 
@@ -25,21 +115,27 @@ void TransmitPack()
  */
 rt_err_t AnalyzePack(type_blepack_t *pack)
 {
-    type_blepack_t infoPack;
+    u16                 crc         = 0;
+    u32                 temp        = GUIDE_CODE;
+    //type_blepack_t      infoPack;
     //CRC校验从命令码开始到结束
-    if(GUIDE_CODE != pack->top.guide_code)
+
+    if(!(((temp >> 16 & 0x000000ff) == pack->top.guide_code[2]) &&
+        ((temp >> 8 & 0x000000ff) == pack->top.guide_code[1]) &&
+        ((temp & 0x000000ff) == pack->top.guide_code[0])))
     {
         return RT_ERROR;
     }
 
-    if(pack->top.crc == usModbusRTU_CRC(&pack+9))   //guide_code[3],pack_length, crc 长度为9
+    crc = usModbusRTU_CRC((u8 *)pack+9, pack->top.pack_length - 9);
+    if(pack->top.crc == crc)   //guide_code[3],pack_length, crc 长度为9
     {
         switch(pack->top.command)
         {
             case ASK_HUB_INFO://获取hub数据
                 break;
             case ASK_MESSAGE://获取hub实时信息
-                    AskMessage(&infoPack);
+                AskMessage(/*&infoPack*/pack);
                 break;
             case ASK_DEVICE_LIST://获取设备列表
                 break;
@@ -77,6 +173,7 @@ rt_err_t AnalyzePack(type_blepack_t *pack)
     }
     else
     {
+        LOG_E("crc err,crc = %x, pack crc = %x",crc,pack->top.crc);
         return RT_ERROR;
     }
 }

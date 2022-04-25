@@ -23,6 +23,8 @@
 #include "InformationMonitor.h"
 
 #define         GUIDE_CODE              0x485542            //引导码
+#define         HUB_ID                  "BLHAABBCCDD"
+#define         HUB_ID_SIZE             11
 #define         BLE_BUFFER_SIZE         512
 
 #define         ASK_HUB_INFO            10001               //获取hub数据
@@ -57,7 +59,7 @@
 #define         REP_LIGHT2              25006               //设置灯光 2
 #define         REP_LIGHT_TEMP          25007               //设置灯光温控
 #define         REP_PHEC                25008               //设置 PHEC
-#define         REP_TIMER_LIST          25009               //设置定时设备列表
+#define         REP_SET_TIMER_LIST      25009               //设置定时设备列表
 
 struct blePackTop{
     u8      guide_code[3];
@@ -73,6 +75,24 @@ struct blePackage
     u8                          buffer[BLE_BUFFER_SIZE];
 };
 
-rt_err_t AskMessage(type_blepack_t *);
+struct bleHubInfo{
+    char    hub_name[HUB_NAME_SIZE];
+    char    hub_id[HUB_ID_SIZE];                            //HUB 设备 ID
+    u16     co2_value;                                      //Co2 实时值
+    u16     co2_state;                                      //Co2 工作状态
+    u16     humi_value;                                     //湿度实时值
+    u16     humi_state;                                     //湿度工作状态
+    u16     temp_value;                                     //温度实时值
+    u16     temp_state;                                     //温度工作状态
+    u16     light1;                                         //灯光线路 1 实时亮度值
+    u16     light2;                                         //灯光线路 2 实时亮度值
+    u16     eh;                                             //EC 实时值
+    u16     ph;                                             //PH 实时值
+    u16     water_temp;                                     //(水)温度实时值
+    u32     warning;                                        //报警信息
+};
+
+
+void AskMessage(type_blepack_t *);
 
 #endif /* APPLICATIONS_BLE_BLEDATALAYER_BLEDATALAYER_H_ */
