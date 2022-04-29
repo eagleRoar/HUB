@@ -73,24 +73,14 @@ void oledInit(void)
 
     // Draw Graphics
     /* full buffer example, setup procedure ends in _f */
-//    u8g2_ClearBuffer(&uiShow);
-//    u8g2_SetFont(&uiShow, u8g2_font_baby_tf);
-//    u8g2_DrawStr(&uiShow, 1, 18, "U8g2 on RT-Thread");
-//    u8g2_SendBuffer(&uiShow);
+    u8g2_ClearBuffer(&uiShow);
+    u8g2_SetFont(&uiShow, u8g2_font_6x12_tf);
+    u8g2_DrawStr(&uiShow, 1, 18, "BBL");
+    u8g2_SendBuffer(&uiShow);
 //
 //    u8g2_SetFont(&uiShow, u8g2_font_unifont_t_symbols);
 //    u8g2_DrawGlyph(&uiShow, /*100*/1, 56, 0x2603);
 //    u8g2_SendBuffer(&uiShow);
-}
-
-void SetCursorTest(void)
-{
-    u8g2_ClearBuffer(&uiShow);
-    u8g2_SetFont(&uiShow, u8g2_font_cursor_tf);
-    u8g2_DrawStr(&uiShow, 1, 18, "");
-    u8g2_SendBuffer(&uiShow);
-//    u8g2_SetCursor(&uiShow, 0, 15);
-//    u8g2_Print("Hello World!");
 }
 
 void OledTaskEntry(void* parameter)

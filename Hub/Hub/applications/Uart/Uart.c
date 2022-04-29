@@ -17,12 +17,14 @@
 #include "InformationMonitor.h"
 #include "UartDataLayer.h"
 #include "UartBussiness.h"
+#include "Sdcard.h"
 
 type_monitor_t monitor;
 struct rx_msg uart2_msg;                      //接收串口数据以及相关消息
 struct rx_msg uart3_msg;                      //接收串口数据以及相关消息
 
 static rt_mutex_t recvUartMutex = RT_NULL;    //指向互斥量的指针
+extern struct sdCardState      sdCard;
 /**
  * @brief  : 接收回调函数
  * @para   : dev   ：接收数据部分等
@@ -33,6 +35,11 @@ static rt_mutex_t recvUartMutex = RT_NULL;    //指向互斥量的指针
 static rt_err_t Uart2_input(rt_device_t dev, rt_size_t size)
 {
     u16 crc16 = 0x0000;
+
+    if (NO == sdCard.readInfo)
+    {
+        return;
+    }
 
     uart2_msg.dev = dev;
     uart2_msg.size = size;
@@ -59,6 +66,11 @@ static rt_err_t Uart2_input(rt_device_t dev, rt_size_t size)
 static rt_err_t Uart3_input(rt_device_t dev, rt_size_t size)
 {
     u16 crc16 = 0x0000;
+
+    if (NO == sdCard.readInfo)
+    {
+        return;
+    }
 
     uart3_msg.dev = dev;
     uart3_msg.size = size;
@@ -124,50 +136,51 @@ void SensorUart2TaskEntry(void* parameter)
 
         rt_mutex_take(recvUartMutex, RT_WAITING_FOREVER);           //加锁保护
 
-        /* 50ms 事件 */
+        if(YES == sdCard.readInfo)
         {
-            /* 接收串口2消息 */
-            if(ON == uart2_msg.messageFlag)
+            /* 50ms 事件 */
             {
-                uart2_msg.messageFlag = OFF;
-                AnalyzeData(uart2_serial, &monitor, uart2_msg.data, uart2_msg.size);
-            }
-
-            /* 接收串口3消息 */
-            if(ON == uart3_msg.messageFlag)
-            {
-                uart3_msg.messageFlag = OFF;
-                /* 读取device设备 */ //后续要移动到uart2处理
-                AnalyzeData(uart3_serial, &monitor, uart3_msg.data, uart3_msg.size);
-            }
-
-            /* 监控模块的连接状态 */
-            MonitorModuleConnect(&monitor, 50);
-        }
-
-        /* 1s 事件 */
-        if(ON == Timer1sTouch)
-        {
-            /* 周期性1s向四合一模块发送询问指令 */
-            for(int i = 0; i < monitor.monitorDeviceTable.deviceManageLength; i++)
-            {
-                if(SENSOR_TYPE == monitor.monitorDeviceTable.deviceTable[i].s_or_d)
+                /* 接收串口2消息 */
+                if(ON == uart2_msg.messageFlag)
                 {
-                    askSensorStorage(&(monitor.monitorDeviceTable.deviceTable[i]), uart2_serial, 0x04);
+                    uart2_msg.messageFlag = OFF;
+                    AnalyzeData(uart2_serial, &monitor, uart2_msg.data, uart2_msg.size);
+                }
+
+                /* 接收串口3消息 */
+                if(ON == uart3_msg.messageFlag)
+                {
+                    uart3_msg.messageFlag = OFF;
+                    /* 读取device设备 */ //后续要移动到uart2处理
+                    AnalyzeData(uart3_serial, &monitor, uart3_msg.data, uart3_msg.size);
+                }
+
+                /* 监控模块的连接状态 */
+                MonitorModuleConnect(&monitor, 50);
+            }
+
+            /* 1s 事件 */
+            if(ON == Timer1sTouch)
+            {
+                /* 周期性1s向四合一模块发送询问指令 */
+                for(int i = 0; i < monitor.monitorDeviceTable.deviceManageLength; i++)
+                {
+                    if(SENSOR_TYPE == monitor.monitorDeviceTable.deviceTable[i].s_or_d)
+                    {
+                        askSensorStorage(&(monitor.monitorDeviceTable.deviceTable[i]), uart2_serial, 0x04);
+                    }
+                }
+            }
+            /* 5s 事件 */
+            if(ON == Timer5sTouch)
+            {
+                /* 控制设备 */
+                for(int i = 0; i < monitor.monitorDeviceTable.deviceManageLength; i++)
+                {
+                    ControlDeviceStorage(&(monitor.monitorDeviceTable.deviceTable[i]), uart3_serial, 0x01, 0x00);//Justin debug 该控制为测试用
                 }
             }
         }
-        /* 5s 事件 */
-        if(ON == Timer5sTouch)
-        {
-            /* 控制设备 */
-            for(int i = 0; i < monitor.monitorDeviceTable.deviceManageLength; i++)
-            {
-                ControlDeviceStorage(&(monitor.monitorDeviceTable.deviceTable[i]), uart3_serial, 0x01, 0x00);//Justin debug 该控制为测试用
-            }
-
-        }
-
         rt_mutex_release(recvUartMutex);                            //解锁
         rt_thread_mdelay(50);
     }

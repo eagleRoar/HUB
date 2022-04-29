@@ -90,13 +90,16 @@ enum
     ON = 0x01,
 };
 
+struct allocateStruct
+{
+    u8 address[ALLOCATE_ADDRESS_SIZE];
+};
+
+/** 一下结构顺序不能打乱 否则存取SD卡的GetMonitorFromSdCard相关逻辑要改 **/
 struct monitorStruct
 {
     /* 以下为统一分配 */
-    struct allocateStruct
-    {
-        u8 address[ALLOCATE_ADDRESS_SIZE];
-    }allocateStr;
+    struct allocateStruct allocateStr;
 
     struct monitorDevice
     {

@@ -54,12 +54,6 @@ int main(void)
     /* 初始化灯光线程,仅作为呼吸灯 */
     LedTaskInit();
 
-    /* 初始化串口接收传感器类线程 */
-    SensorUart2TaskInit();
-
-    /* 初始化蓝牙Ble线程,蓝牙是通过uart发送数据控制 */
-    BleUart6TaskInit();
-
     /* oled1309屏线程初始化 */
     OledTaskInit();
 
@@ -88,6 +82,12 @@ int main(void)
 
     /* 初始化SD卡处理线程 */
     SDCardTaskInit();
+
+    /* 初始化串口接收传感器类线程 */
+    SensorUart2TaskInit();
+
+    /* 初始化蓝牙Ble线程,蓝牙是通过uart发送数据控制 */
+    //BleUart6TaskInit();   //该功能暂时删除
 
     /* 从网络上获取新的app包 */
     //GetUpdataFileFromWeb();

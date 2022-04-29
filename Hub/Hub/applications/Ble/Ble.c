@@ -45,10 +45,6 @@ static rt_err_t Uart_input(rt_device_t dev, rt_size_t size)
  */
 void BleUart6TaskEntry(void* parameter)
 {
-    u8                      testBuf[30];
-    u8                      step                = 0;
-    u32                     temp                = 0;
-    u32                     test                = 0;
     rt_err_t                result              = RT_ERROR;
     static u8               Timer1sTouch        = OFF;
     static u16              time1S              = 0;
@@ -91,7 +87,7 @@ void BleUart6TaskEntry(void* parameter)
     while (1)
     {
         rt_mutex_take(recvBleMutex, RT_WAITING_FOREVER);       //加锁保护
-        time1S = TimerTask(&time1S, /*20*/100, &Timer1sTouch);//Justin debug  仅仅测试
+        time1S = TimerTask(&time1S, 20, &Timer1sTouch);
 
         /* 从串口消息队列中读取消息 */
         if(YES == uartMsg.revFlg)
@@ -183,7 +179,6 @@ void BleUart6TaskEntry(void* parameter)
                     }
                 }
             }
-
         }
 
         rt_thread_mdelay(50);

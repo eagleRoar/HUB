@@ -9,6 +9,7 @@
  */
 #include "Device.h"
 #include "InformationMonitor.h"
+#include "SdcardBusiness.h"
 
 struct deviceRegister device_reg;
 
@@ -35,8 +36,8 @@ void InsertDeviceToTable(type_monitor_t *monitor, type_module_t device)
     }
     else
     {
-        if((NO == FindDeviceTableByuuid(monitor, &device.uuid)) &&
-           (NO == FindDeviceByAddr(monitor, device.address)))
+        if((NO == FindDeviceTableByuuid(monitor, &device.uuid)) /*&&
+           (NO == FindDeviceByAddr(monitor, device.address))*/)
         {
             monitor->monitorDeviceTable.deviceManageLength++;
             new = rt_realloc(monitor->monitorDeviceTable.deviceTable,
@@ -49,7 +50,7 @@ void InsertDeviceToTable(type_monitor_t *monitor, type_module_t device)
             {
                 monitor->monitorDeviceTable.deviceTable = new;
 
-                LOG_D("add new memory successful");
+                LOG_D("add new memory successful");//Justin debug
             }
         }
         else
@@ -60,6 +61,8 @@ void InsertDeviceToTable(type_monitor_t *monitor, type_module_t device)
 
     /* 添加列表 */
     monitor->monitorDeviceTable.deviceTable[monitor->monitorDeviceTable.deviceManageLength - 1] = device;
+    SaveAddrAndLenToFile(monitor);
+    SaveModuleToFile(&device, monitor->monitorDeviceTable.deviceManageLength - 1);
 }
 
 /* 在device列表中删除device */
