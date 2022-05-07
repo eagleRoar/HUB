@@ -7,134 +7,29 @@
  * Date           Author       Notes
  * 2022-04-27     Administrator       the first version
  */
-#include <dfs_posix.h>
-#include "SdcardBusiness.h"
-#include "rt_cjson_tools.h"
-#include "Uart.h"
 
-/**
- * @brief 检测SD是否存在
- * @return 返回SD卡读取的电平，高为卡有效，低为卡无效
- */
-int sd_card_is_vaild(void)
-{
-    return (rt_pin_read(SD_CHK_PIN) == PIN_LOW) ? (1) : (0);
-}
+#include "SdcardBusiness.h"
+#include "SdcardDataLayer.h"
+#include "Uart.h"
+#include "TcpPersistence.h"
+
+static u8 action_sum = 0;                   //action 存储的数量
+static u8 condition_sum = 0;                //condition 存储的数量
+static u8 excute_sum = 0;                   //excute 存储的数量
+static u8 dotask_sum = 0;                   //dotask 存储的数量
+
+static type_sdoperate_t     operate;        //SD卡对外开放的操作
 
 /**
  * @brief SD内文件和文件夹有效性
  */
-void sd_file_init(void)
+void SdDirInit(void)
 {
     //检测文件夹可读性
-    rt_access_dir(DOWNLOADFILE);
-    rt_access_dir(MODULEFILE);
-    rt_access_dir(TEST_FILE);
-}
-
-/**
- * @brief 检测文件是否存在,并获取文件长度
- * @param name:相关文件名称
- * @return 返回相关文件长度
- */
-u32 length_file(char* name)
-{
-    int ret;
-    struct stat buf;
-
-    ret = stat(name, &buf);
-
-    if (ret == 0) {
-        LOG_D("%s file size = %d", name, buf.st_size);
-        return buf.st_size;
-    } else {
-        LOG_E("%s file not fonud");
-        return 0;
-    }
-}
-
-/**
- * @brief 检测文件夹是否存在
- *
- * @param name:文件夹名称
- * @return 返回是否有效,成功为RT_EOK
- */
-u8 rt_access_dir(char* name)
-{
-    int ret;
-
-    ret = access(name, 0);
-    if (ret < 0) {
-        LOG_E("\"%s\" error, reset the dir", name);
-        //创建文件夹
-        ret = mkdir(name, 0x777);
-        if (ret < 0) {
-            LOG_E("mkdir \"%s\" error", name);
-            return RT_ERROR;
-        } else {
-            return RT_EOK;
-        }
-    } else {
-        return RT_EOK;
-    }
-}
-
-/**
- * @brief 从文件中读取到固定位置的数据
- *
- * @param name 需要读取的文件
- * @param text 返回的数据
- * @param offset 偏移量
- * @param l 文件读取的长度
- * @return u8
- */
-u8 read_data(char* name, void* text, u32 offset,u32 l)
-{
-    int fd;
-    int size;
-
-    /*生成文件名称*/
-    /* 以创建和读写模式打开 /text.txt 文件，如果该文件不存在则创建该文件*/
-    fd = open(name, O_WRONLY | O_CREAT);
-    if (fd >= 0) {
-        lseek(fd,offset,SEEK_SET);//设置偏移地址
-        size = read(fd, text, l);
-        close(fd);
-        if (size > 0) {
-            LOG_D("read done[%d].", size);
-            return RT_EOK;
-        }
-    }
-
-    return RT_ERROR;
-}
-
-/**
- * @brief 将数据写入相应文件
- *
- * @param name 写入的文件名称
- * @param offset 偏移量
- * @param text 需要写入的数据内容
- * @param l 写入长度
- * @return
- */
-u8 write_data(char* name, void* text, u32 offset, u32 l)
-{
-    int fd;
-
-    if (text != NULL) {
-        /*生成文件名称*/
-        /* 以创建和读写模式打开 name 文件，如果该文件不存在则创建该文件*/
-        fd = open(name, O_WRONLY | O_CREAT);
-        if (fd >= 0) {
-            lseek(fd,offset,SEEK_SET);//设置偏移地址
-            write(fd, text, l);
-            close(fd);
-
-            return RT_EOK;
-        }
-    }
-    return RT_ERROR;
+    CheckDirectory(DOWNLOAD_DIR);
+    CheckDirectory(MODULE_DIR);
+    CheckDirectory(TEST_DIR);
+    CheckDirectory(SETTING_DIR);
 }
 
 void PrintModule(type_module_t module)
@@ -152,9 +47,9 @@ void GetMonitorFromSdCard(type_monitor_t *monitor)
 {
     u8      index               = 0;
 
-    read_data(MODULEDOCUMENT, (u8 *)monitor, 0, sizeof(struct allocateStruct));
+    ReadSdData(MODULE_FILE, (u8 *)monitor, 0, sizeof(struct allocateStruct));
 
-    if(RT_ERROR == read_data(MODULEDOCUMENT, &(monitor->monitorDeviceTable.deviceManageLength), sizeof(struct allocateStruct), 1))     //该位置存储的是module长度
+    if(RT_ERROR == ReadSdData(MODULE_FILE, &(monitor->monitorDeviceTable.deviceManageLength), sizeof(struct allocateStruct), 1))     //该位置存储的是module长度
     {
         LOG_D("GetMonitor Err");
     }
@@ -172,7 +67,7 @@ void GetMonitorFromSdCard(type_monitor_t *monitor)
         }
         else
         {
-            if(RT_ERROR == read_data(MODULEDOCUMENT, monitor->monitorDeviceTable.deviceTable, sizeof(struct allocateStruct) + 1,
+            if(RT_ERROR == ReadSdData(MODULE_FILE, monitor->monitorDeviceTable.deviceTable, sizeof(struct allocateStruct) + 1,
                     monitor->monitorDeviceTable.deviceManageLength * sizeof(type_module_t)))
             {
                 LOG_D("GetMonitor Err2");
@@ -181,6 +76,9 @@ void GetMonitorFromSdCard(type_monitor_t *monitor)
             {
                 for(index = 0; index < monitor->monitorDeviceTable.deviceManageLength; index++)
                 {
+                    /* 需要重新向主机发送注册命令 */
+                    monitor->monitorDeviceTable.deviceTable[index].registerAnswer = SEND_NULL;
+
                     PrintModule(monitor->monitorDeviceTable.deviceTable[index]);
                 }
             }
@@ -190,7 +88,7 @@ void GetMonitorFromSdCard(type_monitor_t *monitor)
 
 void SaveAddrAndLenToFile(type_monitor_t *monitor)
 {
-    if(RT_ERROR == write_data(MODULEDOCUMENT, &(monitor->allocateStr), 0, sizeof(struct allocateStruct)))
+    if(RT_ERROR == WriteSdData(MODULE_FILE, &(monitor->allocateStr), 0, sizeof(struct allocateStruct)))
     {
         LOG_D("SaveModuleToFile err1");
     }
@@ -199,7 +97,7 @@ void SaveAddrAndLenToFile(type_monitor_t *monitor)
         LOG_D("SaveModuleToFile OK1");
     }
 
-    if(RT_ERROR == write_data(MODULEDOCUMENT, &(monitor->monitorDeviceTable.deviceManageLength), sizeof(struct allocateStruct), 1))
+    if(RT_ERROR == WriteSdData(MODULE_FILE, &(monitor->monitorDeviceTable.deviceManageLength), sizeof(struct allocateStruct), 1))
     {
         LOG_D("SaveModuleToFile err2");
     }
@@ -211,7 +109,7 @@ void SaveAddrAndLenToFile(type_monitor_t *monitor)
 
 void SaveModuleToFile(type_module_t *module, u8 index)
 {
-    if(RT_ERROR == write_data(MODULEDOCUMENT, module, sizeof(struct allocateStruct) + 1 + index * sizeof(type_module_t), sizeof(type_module_t)))
+    if(RT_ERROR == WriteSdData(MODULE_FILE, module, sizeof(struct allocateStruct) + 1 + index * sizeof(type_module_t), sizeof(type_module_t)))
     {
         LOG_D("SaveModuleToFile err1");
     }
@@ -221,3 +119,339 @@ void SaveModuleToFile(type_module_t *module, u8 index)
     }
 }
 
+/*******************************存储设置类***************************************************/
+/**
+ * 获取ActionSum
+ * @return
+ */
+static u8 GetActionSum(void)
+{
+    if(RT_ERROR == ReadSdData(ACTION_FILE, (u8 *)&action_sum, 0, 1))
+    {
+        action_sum = 0;
+    }
+
+    return action_sum;
+}
+
+static u8 GetConditionSum(void)
+{
+    if(RT_ERROR == ReadSdData(CONDITION_FILE, (u8 *)&condition_sum, 0, 1))
+    {
+        condition_sum = 0;
+    }
+
+    return condition_sum;
+}
+
+static u8 GetExcuteSum(void)
+{
+    if(RT_ERROR == ReadSdData(EXCUTE_FILE, (u8 *)&excute_sum, 0, 1))
+    {
+        excute_sum = 0;
+    }
+
+    return excute_sum;
+}
+
+static u8 GetDotaskSum(void)
+{
+    if(RT_ERROR == ReadSdData(DOTASK_FILE, (u8 *)&dotask_sum, 0, 1))
+    {
+        dotask_sum = 0;
+    }
+
+    return dotask_sum;
+}
+
+/**
+  *设置ActionSum
+ * @param sum
+ */
+static void SetActionSum(u8 sum)
+{
+    action_sum = sum;
+    WriteSdData(ACTION_FILE, (u8 *)&action_sum, 0, 1);
+}
+
+static void SetConditionSum(u8 sum)
+{
+    condition_sum = sum;
+    WriteSdData(CONDITION_FILE, (u8 *)&condition_sum, 0, 1);
+}
+
+static void SetExcuteSum(u8 sum)
+{
+    excute_sum = sum;
+    WriteSdData(EXCUTE_FILE, (u8 *)&excute_sum, 0, 1);
+}
+
+static void SetDotaskSum(u8 sum)
+{
+    dotask_sum = sum;
+    WriteSdData(DOTASK_FILE, (u8 *)&dotask_sum, 0, 1);
+}
+
+/**
+ * find action
+ * @param id
+ * @return 如果存在则返回该位置，否则返回最后位置
+ */
+static u8 FindActionById(u32 id)
+{
+    u8      index           = 0;
+    u8      ret             = 0;
+    u32     find_id         = 0;
+
+   for(index = 0; index < GetActionSum(); index++)
+   {
+       ReadSdData(ACTION_FILE, (u8 *)&find_id, 1 + sizeof(type_action_t) * index, 4);
+
+       if(id == find_id)
+       {
+           ret = index;
+           break;
+       }
+   }
+
+   if(index == GetActionSum())
+   {
+       return GetActionSum();
+   }
+   else
+   {
+       return ret;
+   }
+}
+
+static u8 FindConditionById(u32 id)
+{
+    u8      index           = 0;
+    u8      ret             = 0;
+    u32     find_id         = 0;
+
+   for(index = 0; index < GetConditionSum(); index++)
+   {
+       ReadSdData(CONDITION_FILE, (u8 *)&find_id, 1 + sizeof(type_condition_t) * index, 4);
+
+       if(id == find_id)
+       {
+           ret = index;
+           break;
+       }
+   }
+
+   if(index == GetConditionSum())
+   {
+       return GetConditionSum();
+   }
+   else
+   {
+       return ret;
+   }
+}
+
+static u8 FindExcuteById(u32 id)
+{
+    u8      index           = 0;
+    u8      ret             = 0;
+    u32     find_id         = 0;
+
+   for(index = 0; index < GetExcuteSum(); index++)
+   {
+       ReadSdData(EXCUTE_FILE, (u8 *)&find_id, 1 + sizeof(type_excute_t) * index, 4);
+
+       if(id == find_id)
+       {
+           ret = index;
+           break;
+       }
+   }
+
+   if(index == GetExcuteSum())
+   {
+       return GetExcuteSum();
+   }
+   else
+   {
+       return ret;
+   }
+}
+
+static u8 FindDotaskById(u32 id)
+{
+    u8      index           = 0;
+    u8      ret             = 0;
+    u32     find_id         = 0;
+
+   for(index = 0; index < GetDotaskSum(); index++)
+   {
+       ReadSdData(DOTASK_FILE, (u8 *)&find_id, 1 + sizeof(type_dotask_t) * index, 4);
+
+       if(id == find_id)
+       {
+           ret = index;
+           break;
+       }
+   }
+
+   if(index == GetDotaskSum())
+   {
+       return GetDotaskSum();
+   }
+   else
+   {
+       return ret;
+   }
+}
+
+static u8 ReadActionSum(void)
+{
+    return action_sum;
+}
+
+static u8 ReadConditionSum(void)
+{
+    return condition_sum;
+}
+
+static u8 ReadExcuteSum(void)
+{
+    return excute_sum;
+}
+
+static u8 ReadDotaskSum(void)
+{
+    return dotask_sum;
+}
+/**
+  * 增加action 结构体,该结构体对应的是梯形曲线设置
+ */
+static void AddActionToSD(type_action_t action)
+{
+    u8          index           = FindActionById(action.id);
+    u16         crc             = 0x0000;
+
+    WriteSdData(ACTION_FILE, (u8 *)&action, 1 + index * (sizeof(type_action_t) + 2), sizeof(type_action_t));
+    //加入crc校验
+    crc = usModbusRTU_CRC((u8 *)&action, sizeof(type_action_t));
+    WriteSdData(ACTION_FILE, (u8 *)&crc, 1 + index * (sizeof(type_action_t) + 2) + sizeof(type_action_t), 2);
+
+    if(index == GetActionSum())
+    {
+        SetActionSum(GetActionSum() + 1);
+    }
+}
+
+static void AddConditionToSD(type_condition_t condition)
+{
+    u8          index           = FindConditionById(condition.id);
+    u16         crc             = 0x0000;
+
+    WriteSdData(CONDITION_FILE, (u8 *)&condition, 1 + index * (sizeof(type_condition_t) + 2), sizeof(type_condition_t));
+    //加入crc校验
+    crc = usModbusRTU_CRC((u8 *)&condition, sizeof(type_condition_t));
+    WriteSdData(CONDITION_FILE, (u8 *)&crc, 1 + index * (sizeof(type_condition_t) + 2) + sizeof(type_condition_t), 2);
+
+    if(index == GetConditionSum())
+    {
+        SetConditionSum(GetConditionSum() + 1);
+    }
+}
+
+static void AddExcuteToSD(type_excute_t excute)
+{
+    u8          index           = FindExcuteById(excute.id);
+    u16         crc             = 0x0000;
+
+    WriteSdData(EXCUTE_FILE, (u8 *)&excute, 1 + index * (sizeof(type_excute_t) + 2), sizeof(type_excute_t));
+    //加入crc校验
+    crc = usModbusRTU_CRC((u8 *)&excute, sizeof(type_excute_t));
+    WriteSdData(EXCUTE_FILE, (u8 *)&crc, 1 + index * (sizeof(type_excute_t) + 2) + sizeof(type_excute_t), 2);
+
+    if(index == GetExcuteSum())
+    {
+        SetExcuteSum(GetExcuteSum() + 1);
+    }
+}
+
+static void AddDotaskToSD(type_dotask_t dotask)
+{
+    u8          index           = FindDotaskById(dotask.id);
+    u16         crc             = 0x0000;
+
+    WriteSdData(DOTASK_FILE, (u8 *)&dotask, 1 + index * (sizeof(type_dotask_t) + 2), sizeof(type_dotask_t));
+    //加入crc校验
+    crc = usModbusRTU_CRC((u8 *)&dotask, sizeof(type_dotask_t));
+    WriteSdData(DOTASK_FILE, (u8 *)&crc, 1 + index * (sizeof(type_dotask_t) + 2) + sizeof(type_dotask_t), 2);
+
+    if(index == GetDotaskSum())
+    {
+        SetDotaskSum(GetDotaskSum() + 1);
+    }
+}
+
+/**
+ * 获取SD 卡中的action
+ * @param index
+ * @return
+ */
+//Justin debug 未完待续 未验证
+void TakeAction(type_action_t *action, u8 index)
+{
+    u8 *data = RT_NULL;
+    u16 crc = 0x0000;
+
+    data = rt_malloc(sizeof(type_action_t) + 2);
+
+    if(RT_NULL != data)
+    {
+        ReadSdData(ACTION_FILE, data, 1 + index * (sizeof(type_action_t) + 2), sizeof(type_action_t) + 2);
+
+        rt_memcpy((u8 *)action, data, sizeof(type_action_t));
+
+        crc = usModbusRTU_CRC((u8 *)action, sizeof(type_action_t));
+
+        //如果crc 错误的话action为RT_NULL
+        if(0 != rt_memcmp(&data[sizeof(type_action_t)], (u8 *)&crc, 2))
+        {
+            action = RT_NULL;
+        }
+    }
+
+    rt_free(data);
+    data = RT_NULL;
+}
+
+static void SdOperateInit(void)
+{
+    operate.action_op.ReadActionSum = ReadActionSum;
+    operate.action_op.AddActionToSD = AddActionToSD;
+
+    operate.condition_op.ReadConditionSum = ReadConditionSum;
+    operate.condition_op.AddConditionToSD = AddConditionToSD;
+
+    operate.excute_op.ReadExcuteSum = ReadExcuteSum;
+    operate.excute_op.AddExcuteToSD = AddExcuteToSD;
+
+    operate.dotask_op.ReadDotaskSum = ReadDotaskSum;
+    operate.dotask_op.AddDotaskToSD = AddDotaskToSD;
+}
+
+type_sdoperate_t GetSdOperate(void)
+{
+    static u8 init = NO;
+
+    if(NO == init)
+    {
+        GetActionSum();
+        GetExcuteSum();
+        GetActionSum();
+        GetDotaskSum();
+
+        SdOperateInit();
+        init = YES;
+    }
+
+    return operate;
+}

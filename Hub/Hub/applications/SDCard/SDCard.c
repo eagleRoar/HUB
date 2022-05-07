@@ -20,13 +20,9 @@
 #include <rtdbg.h>
 #include "Uart.h"
 #include "Device.h"
-#include "InformationMonitor.h"
-#include "SdcardBusiness.h"
-#include "SdcardDataLayer.h"
-#include "rt_cjson_tools.h"
 
 //extern---------------------------------------------------------------
-static rt_mutex_t       sd_dfs_mutex = RT_NULL;
+rt_mutex_t       sd_dfs_mutex = RT_NULL;
 struct sdCardState      sdCard;
 
 //---------------------------------------------------------------------
@@ -67,16 +63,19 @@ int SDCardTaskInit(void)
 
 void sd_dfs_event_entry(void* parameter)
 {
-    rt_device_t                 dev;
-    static u8                   Timer1sTouch        = OFF;
-    static u16                  time1S              = 0;
-    static u8                   initMonitorFlag     = NO;
+    rt_device_t             dev;
+    static      u8          Timer1sTouch        = OFF;
+    static      u16         time1S              = 0;
+    static      u8          initMonitorFlag     = NO;
+    static      u8          actionSum           = 0;
+    static      u8          conditionSum        = 0;
+    static      u8          excuteSum           = 0;
+    static      u8          dotaskSum           = 0;
 
     rt_memset(&sdCard, 0, sizeof(struct sdCardState));
     //GetMonitorFromSdCard(GetMonitor());//Justin debug 测试该函数
 
     while (1) {
-        rt_mutex_take(sd_dfs_mutex, RT_WAITING_FOREVER);
         time1S = TimerTask(&time1S, 20, &Timer1sTouch);
 
         /* 还没有初始化 */
@@ -93,12 +92,14 @@ void sd_dfs_event_entry(void* parameter)
                     /* 将SD卡挂载在根目录下 */
                     if(NO == sdCard.mount)
                     {
+                        rt_mutex_take(sd_dfs_mutex, RT_WAITING_FOREVER);
                         if (dfs_mount("sd0", "/", "elm", 0, 0) == 0)//SD挂载在根目录下
                         {
                             sdCard.mount = YES;
                             sdCard.init = YES;
 
-                            sd_file_init();//寻找文件夹，不存在则创建
+                            SdDirInit();//寻找文件夹，不存在则创建
+                            sdCard.sd_operate = GetSdOperate();     //映射sd业务层操作接口
 
                             LOG_I("sd card mount to / success!\r\n");
                         }
@@ -106,6 +107,7 @@ void sd_dfs_event_entry(void* parameter)
                         {
                             LOG_E("sd card mount to / failed!\r\n");
                         }
+                        rt_mutex_release(sd_dfs_mutex);
                     }
                 }
                 else
@@ -136,11 +138,36 @@ void sd_dfs_event_entry(void* parameter)
             /* 1s事件 */
             if(ON == Timer1sTouch)
             {
+                if(actionSum != sdCard.sd_operate.action_op.ReadActionSum())
+                {
+                    actionSum = sdCard.sd_operate.action_op.ReadActionSum();
 
+
+                }
+
+                if(conditionSum != sdCard.sd_operate.condition_op.ReadConditionSum())
+                {
+                    conditionSum = sdCard.sd_operate.condition_op.ReadConditionSum();
+
+
+                }
+
+                if(excuteSum != sdCard.sd_operate.excute_op.ReadExcuteSum())
+                {
+                    excuteSum = sdCard.sd_operate.excute_op.ReadExcuteSum();
+
+
+                }
+
+                if(dotaskSum != sdCard.sd_operate.dotask_op.ReadDotaskSum())
+                {
+                    dotaskSum = sdCard.sd_operate.dotask_op.ReadDotaskSum();
+
+
+                }
             }
         }
 
-        rt_mutex_release(sd_dfs_mutex);
         rt_thread_mdelay(50);
     }
 }

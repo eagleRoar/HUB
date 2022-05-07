@@ -45,9 +45,21 @@ typedef     struct sensorReg_interface      sensor_interface;
 typedef     struct deviceRegister           type_dev_reg_t;
 
 typedef     struct sensorData               type_sendata_t;
+typedef     struct actionStruct             type_action_t;
+typedef     struct curveStruct              type_curve_t;
+
+typedef     struct conditionStruct          type_condition_t;
+
+typedef     struct excuteAction             type_excute_t;
+
+typedef     struct doTaskStruct             type_dotask_t;
+typedef     struct touchStruct              type_touch_t;
 /************Ble    *******************************************/
 typedef     struct blePackTop               type_blepacktop_t;
 typedef     struct blePackage               type_blepack_t;
+/************SD   *********************************************/
+typedef     struct operateStruct            type_sdoperate_t;
+
 /**************************************************************/
 
 struct  storageInfo{
@@ -61,10 +73,9 @@ struct  storageInfo{
 
 struct storageStruct
 {
-    u8      type;
+    u8      type;                                   //针对终端和发送给主机的映射
     char    module_name[MODULE_NAMESZ];             //模块名称
     u16     function;                               //功能码
-    u16     large_scale;                            //用途大类
     u8      s_or_d;                                 //sensor类型/device类型
     u16     storage;                                //不同类型对应的存储地址
     u8      storage_size;                           //寄存器数量
@@ -110,10 +121,6 @@ struct monitorStruct
 
 /**************************************报头 Start*****************************************/
 #define     CHECKID                 0xAABB                      //标识,0xAABB
-#define     ANSWER_ASK              0x0000                      //主动应答
-#define     ANSWER_REPLY            0x0001                      //回复应答
-#define     ANSWER_ERR              0x00FF                      //回复功能码错误
-#define     FUNCTION                0x0402                      //从机功能码
 #define     ID                      0x00000000                  //发送者id  //该ID为唯一编码 可以是产品的唯一序列号
 
 /**************************************报头 End*******************************************/
@@ -147,55 +154,36 @@ enum{
 /*******sensor device 功能码定义*******/
 //该功能码是根据协议的一级目录加二级目录
 enum{
-    F_SYNC_SET          = 0x0401,                                   //4.1.  配置同步
-    F_HUB_REGSTER       = 0x0402,                                   //4.2.  从机注册
-    F_HUB_RENAME        = 0x0403,                                   //4.3.  从机更名
-    F_HUB_HEART         = 0x0404,                                   //4.4.  从机心跳
-    F_HUB_DELETE        = 0x0405,                                   //4.5.  从机删除
-    F_GROUP_ADD         = 0x0501,                                   //5.1.  分组增加
-    F_GROUP_DELETE      = 0x0502,                                   //5.2.  分组删除
-    F_GROUP_RENAME      = 0x0503,                                   //5.3.  分组更名
-    F_GROUP_INTERVAL    = 0x0504,                                   //5.4.  分组启动间隔更改
-    F_SEN_REGSTER       = 0x0601,                                   //6.1.  普通传感设备注册
-    F_SIO_REGISTER      = 0x0602,                                   //6.2.  IO传感设备注册
-    F_SEN_RENAME        = 0x0603,                                   //6.3.  传感设备更名
-    F_SEN_PARA_RENAME   = 0x0604,                                   //6.4.  传感设备参数更名
-    F_SEN_CHANGE_G      = 0x0605,                                   //6.5.  普通传感设备更换分组
-    F_SEN_DELETE        = 0x0606,                                   //6.6.  传感设备删除
-    F_SEN_LOCATION      = 0x0607,                                   //6.7.  传感设备定位
-    F_DEV_REGISTER      = 0x0701,                                   //7.1.  普通执行设备注册
-    F_DIO_REGISTER      = 0x0702,                                   //7.2.  IO执行设备注册
-    F_DEV_SET           = 0x0703,                                   //7.3.  普通执行设备配置
-    F_DEV_RENAME        = 0x0704,                                   //7.4.  执行设备更名
-    F_DEV_CHANGE_G      = 0x0705,                                   //7.5.  普通执行设备更换分组
-    F_DEV_CHANGE_F      = 0x0706,                                   //7.6.  执行设备功能更名
-    F_DEV_CHANGE__SET   = 0x0707,                                   //7.7.  执行设备配置更名
-    F_DIO_CHANGE_G      = 0x0708,                                   //7.8.  IO执行设备端口更换分组
-    F_DEV_HAND_CTRL     = 0x0709,                                   //7.9.  普通执行设备手动控制
-    F_DIO_HAND_CTRL     = 0x070a,                                   //7.10. IO执行设备端口手动控制
-    F_DEV_DELETE        = 0x070b,                                   //7.11. 执行设备删除
-    F_DEV_LOCATION      = 0x070c,                                   //7.12. 执行设备定位
+    F_HUB_REGSTER       = 0x0401,                                   //4.1.  从机注册
+    F_HUB_RENAME        = 0x0402,                                   //4.2.  从机更名
+    F_HUB_HEART         = 0x0403,                                   //4.3.  从机心跳
+    F_DSEN_ADD          = 0x0501,                                   //5.1.  虚拟传感设备增加（双向）
+    F_DSEN_RENAME       = 0x0502,                                   //5.2.  虚拟传感设备更名（双向）
+    F_DSEN_CLRAN        = 0x0503,                                   //5.3.  虚拟传感设备参数清零（双向）
+    F_SEN_REGSTER       = 0x0601,                                   //6.1.  传感设备注册
+    F_SEN_RENAME        = 0x0602,                                   //6.2.  传感设备更名（双向）
+    F_SEN_PARA_RENAME   = 0x0603,                                   //6.3.  传感设备参数更名（双向）
+    F_SEN_LOCATION      = 0x0604,                                   //6.4.  传感设备定位
+    F_DEV_REGISTER      = 0x0701,                                   //7.1.  执行设备注册
+    F_DEV_SET           = 0x0702,                                   //7.2.  执行设备配置（双向）
+    F_DEV_RENAME        = 0x0703,                                   //7.3.  执行设备更名（双向）
+    F_DEV_CHANGE_F      = 0x0704,                                   //7.4.  执行设备功能更名（双向）
+    F_DEV_CHANGE_SET    = 0x0705,                                   //7.5.  执行设备配置更名（双向）
+    F_DEV_HAND_CTRL     = 0x0706,                                   //7.6.  执行设备手动控制（双向）
+    F_DEV_LOCATION      = 0x0707,                                   //7.7.  执行设备定位
     F_SEN_DATA          = 0x0801,                                   //8.1.  传感设备采集数据发送
-    F_SEN_INVENTED      = 0x0802,                                   //8.2.  虚拟传感设备
     F_STATE_SEND        = 0x0901,                                   //9.1.  状态发送
-    F_STEP_CURVE        = 0x0a01,                                   //10.1. 梯形曲线
-    F_TOUCH             = 0x0a02,                                   //10.2. 触发条件
-    F_DO_ACTION         = 0x0a03,                                   //10.3. 动作执行
-    F_TOUCH_ACTION      = 0x0a04,                                   //10.4. 触发与动作
+    F_STEP_CURVE        = 0x0a01,                                   //a.1.  梯形曲线（双向）
+    F_TOUCH             = 0x0a02,                                   //a.2.  触发条件（双向）
+    F_DO_ACTION         = 0x0a03,                                   //a.3.  动作执行（双向）
+    F_TOUCH_ACTION      = 0x0a04,                                   //a.4.  触发与动作（双向）
+    F_ASK_SYNC          = 0x0b01,                                   //b.1.  同步请求（双向）
+    F_ASK_DELE          = 0x0b02,                                   //b.2.  删除请求（双向）
+    F_FACTORY_RESET     = 0x0b03,                                   //b.3.  恢复出厂设置
 };
 /******************************************* 功能码定义 END***************************/
 
 /******************************************* 类型定义 ********************************/
-/* 用途大类 */
-enum{
-    /* 用途大类 */
-    TYPE_UNDEFINE       = 0x0000,                                   //自定义
-    TYPE_ATMOS_ENV      = 0x0001,                                   //大气环境控制
-    TYPE_LIGHT_ENV      = 0x0002,                                   //光照环境控制
-    TYPE_WATER_ENV      = 0x0003,                                   //水体环境控制
-    TYPE_SOIL_ENV       = 0x0004,                                   //土壤环境控制
-    TYPE_PROTECT        = 0xFF01,                                   //安全保护
-};
 
 /* 用途小类 */
 enum{
@@ -234,48 +222,69 @@ enum{
     //时间
     S_TIME              = 0x0900,                                   //时间
     S_TIME_SECOND       = 0x0901,                                   //秒
+    S_TIME_LIMIT        = 0x0901,                                   //单次运行时长限制
     //报警类
     S_ALARM             = 0x0F00,                                   //报警类
-    S_ALARM_SMOG        = 0x0F01,                                   //烟雾报警
-    S_ALARM_LEAK        = 0x0F02,                                   //漏水报警
-    S_ALARM_AC_DUMP     = 0x0F03,                                   //掉电报警
-    S_ALARM_NORMAL      = 0x0F04,                                   //普通报警
+    S_ALARM_SMOG        = 0x0F01,                                   //烟雾探测
+    S_ALARM_LEAK        = 0x0F02,                                   //漏水探测
+    S_ALARM_AC_DUMP     = 0x0F03,                                   //掉电探测
+    S_ALARM_LIGHT       = 0x0F04,                                   //声光报警 0 正常/触发条件ID 报警
     //杂项
     S_SUNDRY            = 0xF000,                                   //杂项
 };
 
-/* 设备类型 */
+/* 虚拟传感设备运算类型 */
 enum{
-    SENSOR_NORMAL       = 0x0001,                                   //普通传感设备
-    SENSOR_IO           = 0x0002,                                   //IO传感设备
-    SENSOR_INVENTED     = 0x0003,                                   //虚拟平均值传感设备
-    DEVICE_NORMAL       = 0x0101,                                   //普通执行设备
-    DEVICE_IO           = 0x0102,                                   //IO执行设备
-    DEVICE_INVENTED     = 0x0103,                                   //虚拟执行设备
+    DSENSOR_AVG          = 0x0001,                                  //平均值
+    DSENSOR_INTEGRAL_S   = 0x0002,                                  //单次运行积分
+    DSENSOR_INTEGRAL_M   = 0x0003,                                  //多次运行积分
+    DSENSOR_VARIANCE     = 0x0004,                                  //方差值
 };
 
 /* 执行设备功能 */
 enum{
     DEV_UNDEFINE        = 0x0000,                                   //自定义
-    DEV_COOL            = 0x0101,                                   //降温
-    DEV_HEAT            = 0x0102,                                   //加热
-    DEV_DEHUMIDITY      = 0x0201,                                   //除湿
-    DEV_HUMIDIFICATION  = 0x0202,                                   //加湿
-    DEV_INNER_LOOP      = 0x0301,                                   //内循环通风
-    DEV_OUTSIDE_LOOP    = 0x0302,                                   //外循环通风
-    DEV_FILL_IN_LIGHT   = 0x0401,                                   //补光
-    DEV_CO2_SWITCH      = 0xFE01,                                   //CO2开关
+    DEV_DOWN            = 0x0101,                                   //降
+    DEV_UP              = 0x0102,                                   //升
+    DEV_AUTO            = 0x0103,                                   //自动
     DEV_ALARM           = 0xFF01,                                   //发出警报
     DEV_ALARM_CLEAR     = 0xFF02,                                   //解除警报
 };
 
-/* 执行设备配置 */
+/* 执行设备属性 */
 enum{
     SET_UNDEFINE        = 0x0000,                                   //自定义
     SET_SUNRISE         = 0x0001,                                   //日升日落
     SET_DEAD_ZONE       = 0x0002,                                   //死区区间
     SET_HID_COOL_TIME   = 0x0003,                                   //HID冷却时间
+    SET_SPECTRUM        = 0x0004,                                   //光谱模式
+    SET_PPFD_MODE       = 0x0005,                                   //PPFD模式
 };
+
+/* 数据包应答码 */
+enum{
+    ASK_ACTIVE          = 0x00,                                     //主动发送
+    ASK_REPLY           = 0x01,                                     //应答回复
+    UNKNOWN_ERR         = 0xFF,                                     //未知错误
+    CRC_ERR             = 0x02,                                     //CRC检验错误
+    FUN_ERR             = 0x03,                                     //功能码不存在
+    HUB_REG_ERR         = 0x04,                                     //从机未注册
+    HUB_SEN_ERR         = 0x05,                                     //传感器未注册
+    HUB_DEV_ERR         = 0x06,                                     //执行设备未注册
+};
+
+/*配置ID类型*/
+enum{
+    SET_ID_UNDEFINE     = 0x00,                                     //未定义
+    SET_ID_SENSOR       = 0x01,                                     //传感设备
+    SET_ID_DSENSOR      = 0x02,                                     //虚拟传感设备
+    SET_ID_DEVICE       = 0x03,                                     //执行设备
+    SET_ID_TRAPEZIUM    = 0x04,                                     //梯形曲线
+    SET_ID_TOUCH        = 0x05,                                     //触发条件
+    SET_ID_ACTION       = 0x06,                                     //动作执行
+    SET_ID_TOU_ACT      = 0x07,                                     //触发与动作
+};
+
 /******************************************* 类型定义 END*****************************/
 
 #endif /* APPLICATIONS_INFORMATIONMANAGE_INFORMATIONMONITOR_H_ */

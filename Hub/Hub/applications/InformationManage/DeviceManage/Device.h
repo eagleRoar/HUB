@@ -33,7 +33,6 @@ struct moduleManageStruct
     u8      type;                                   //该产品的类型
     char    module_name[MODULE_NAMESZ];             //赋予该产品名字
     u16     function;                               //产品功能码
-    u16     large_scale;
     u8      s_or_d;                                 //sensor类型/device类型
     u8      registerAnswer;                         //是否已经向主机注册
     u8      storage_size;                           //寄存器数量
@@ -55,8 +54,8 @@ struct moduleManageStruct
 
 struct deviceScaleGroup
 {
-    u16 fuction;                                    //设备功能代号
     u16 small_scale;                                //用途小类
+    u16 fuction;                                    //设备功能代号
     char scale_name[MODULE_NAMESZ];                 //功能名称
     u32 parameter_min;                              //参数下限
     u32 parameter_max;                              //参数上限
@@ -64,34 +63,12 @@ struct deviceScaleGroup
 
 struct deviceRegister
 {
-    u32 device_id;                                  //执行设备ID
-    u32 type_id;                                    //设备类型ID
+    u32 uuid;                                       //执行设备ID
     char name[MODULE_NAMESZ];                       //设备名称
     char product_type[MODULE_NAMESZ];               //产品型号,自己管控,只有同型号的产品才能分到同一组
-    u32 group;                                      //执行设备分组
     u16 second;                                     //发送频率时间，单位s
-    u16 large_scale;                                //用途大类
     u16 parameter;                                  //功能数量
     struct deviceScaleGroup scale_group[DEVICE_STR_MAX];
-};
-
-/* io执行设备 */
-struct ioScaleGroup
-{
-    u16 fuction;                //设备功能代号
-    char function_name[16];     //功能代号
-    u32 group;                  //IO设备分组
-};
-
-struct ioRegister
-{
-    u32 io_id;                  //执行设备ID
-    u32 type_id;                //设备类型ID
-    char name[16];              //设备名称
-    char product_type[16];      //产品型号,自己管控,只有同型号的产品才能分到同一组
-    u16 second;                 //发送频率时间，单位s
-    u16 parameter;              //IO数量，比如AC station_4 就填写4
-    struct ioScaleGroup scale_group[1]; //Justin debug 1是随便设置的，后续要修改这种方式
 };
 
 void deviceRegisterInit(void);

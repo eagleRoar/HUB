@@ -21,9 +21,11 @@
 #include <dfs_posix.h>
 #include <rtdbg.h>
 #include "SdcardBusiness.h"
+#include "SdcardDataLayer.h"
+#include "SDCard.h"
 
-#define DOWNLOAD                "/download"
-#define DOWNLOAD_FILE           "/download/downloadFile.bin"
+//#define DOWNLOAD                "/download"
+//#define DOWNLOAD_FILE           "/download/downloadFile.bin"
 
 #define GET_HEADER_BUFSZ        1024        //头部大小
 #define GET_RESP_BUFSZ          1024        //响应缓冲区大小
@@ -62,7 +64,7 @@ rt_err_t SDInit(void)
             if (dfs_mount("sd0", "/", "elm", 0, 0) == 0)
             {
                 LOG_E("sd card mount to / success!");
-                rt_access_dir(DOWNLOAD);
+                CheckDirectory(DOWNLOAD_DIR);
 
                 ret = RT_EOK;
             }

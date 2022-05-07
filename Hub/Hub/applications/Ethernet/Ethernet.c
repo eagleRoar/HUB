@@ -90,7 +90,7 @@ rt_err_t TcpClientTaskInit()
     }
 
     /* 创建以太网线程 */
-    tcpThread = rt_thread_create(TCP_TASK, TcpTaskEntry, /*&tcp_event*/RT_NULL, 1024*4, TCP_PRIORITY, 10);
+    tcpThread = rt_thread_create(TCP_TASK, TcpTaskEntry, /*&tcp_event*/RT_NULL, 1024*6, TCP_PRIORITY, 10);
 
     /* 如果线程创建成功则开始启动线程，否则提示线程创建失败 */
     if (RT_NULL != tcpThread) {
@@ -127,6 +127,34 @@ void EthernetTaskInit(void)
     TcpClientTaskInit();
 }
 
+//Justin debug 该函数仅仅用于生成命令
+void testPrint(void)
+{
+    type_package_t pack;
+    u8 test[200];
+    u8 length;
+
+    pack.package_top.checkId = CHECKID;
+    pack.package_top.answer = ASK_ACTIVE;
+    pack.package_top.function = F_STEP_CURVE;
+    pack.package_top.id = 0x00000000;
+    pack.package_top.serialNum = 0;
+
+    length = strlen("[8,(0,0,10800),(0,60,7200),(60,60,7200),(60,100,5400),(100,100,15300),(100,40,5100),(40,40,13800),(0,0,21600)]");
+    rt_memset((u8 *)&(pack.buffer[0]), 0, 4);
+    rt_memcpy((u8 *)&(pack.buffer[2]), "[8,(0,0,10800),(0,60,7200),(60,60,7200),(60,100,5400),(100,100,15300),(100,40,5100),(40,40,13800),(0,0,21600)]", length);
+
+    pack.package_top.crc = CRC16((u16 *)&pack + 3, sizeof(struct packTop)/2 - 3 + 2 +(length+1)/2, 0);
+    pack.package_top.length = sizeof(struct packTop) + 4 + length;
+
+    rt_memcpy(test, (u8 *)&pack, pack.package_top.length);
+    LOG_D("print testPrint length = %d %d %d--------------------",sizeof(struct packTop),length,sizeof(struct packTop) + length);
+    for(u16 i = 0; i < pack.package_top.length; i++)
+    {
+        rt_kprintf("%02x ",test[i]);
+    }
+}
+
 /**
  * @brief  : 以太网线程入口,TCP协议
  * @para   : NULL
@@ -143,7 +171,6 @@ void TcpTaskEntry(void* parameter)
     static u16 time1S = 0;
 
 //    event = *(rt_event_t *)parameter;
-
     while (1)
     {
 //        rt_mutex_take(TcpMutex, RT_WAITING_FOREVER);                  //加锁保护
@@ -198,13 +225,14 @@ void TcpTaskEntry(void* parameter)
                 if((OFF == eth->tcp.GetConnectTry()) &&
                    (ON == eth->tcp.GetConnectStatus()))
                 {
+                    /* 发送注册等给主机 */
                     SendMesgToMasterProgram(handle);
 
                     /* 接收数据并解析 */
                     if(ON == eth->tcp.GetRecvDataFlag())
                     {
                         /* 执行向主机注册hub、sensor、device等相关操作 */
-                        AnalyzeEtherData(tcpRecvBuffer);
+                        AnalyzeEtherData(handle, tcpRecvBuffer);
 
                         eth->tcp.SetRecvDataFlag(OFF);                  //关闭接收到数据的标志位
                     }

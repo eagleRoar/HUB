@@ -35,6 +35,6 @@ rt_err_t notifyTcpAndUdpSocket(char *, int , struct  ethDeviceStruct*);
 rt_err_t CheckPackageLegality(u8 *, u8);
 rt_tcpclient_t* TcpClientInit(struct ethDeviceStruct *, rx_cb_t);
 void SendMesgToMasterProgram(rt_tcpclient_t *);
-void AnalyzeEtherData(type_package_t);
+void AnalyzeEtherData(rt_tcpclient_t *, type_package_t);
 
 #endif /* APPLICATIONS_ETHERNET_BUSINESSLAYER_TCP_TCPPROGRAM_H_ */

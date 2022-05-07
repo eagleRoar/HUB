@@ -26,16 +26,12 @@
 #include "SdcardDataLayer.h"
 #include "Uart.h"
 
-int sd_card_is_vaild(void);
 int sd_dfs_init(void);
-void sd_file_init(void);
-u8 rt_access_dir(char* name);
-u32 length_file(char* name);
-u8 read_data(char* name, /*u8*/void* text, u32 offset,u32 l);
-u8 write_data(char* name, void* text, u32 offset, u32 l);
 u8 getUpdateNewApp(void);
 void SaveModuleToFile(type_module_t *, u8);
 void SaveAddrAndLenToFile(type_monitor_t *);
 void GetMonitorFromSdCard(type_monitor_t *);
+
+type_sdoperate_t GetSdOperate(void);
 
 #endif /* APPLICATIONS_SDCARD_SDCARDBUSINESS_SDCARDBUSINESS_H_ */

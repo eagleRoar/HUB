@@ -22,5 +22,14 @@
 #include "Gpio.h"
 #include "SDCard.h"
 #include "SdcardBusiness.h"
+#include <dfs_posix.h>
+
+int sd_card_is_vaild(void);
+void SdDirInit(void);
+u8 CheckDirectory(char* name);
+u32 GetFileLength(char* name);
+u8 ReadSdData(char* name, /*u8*/void* text, u32 offset,u32 l);
+u8 WriteSdData(char* name, void* text, u32 offset, u32 l);
+
 
 #endif /* APPLICATIONS_SDCARD_SDCARDDATALAYER_SDCARDDATALAYER_H_ */

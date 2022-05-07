@@ -27,7 +27,7 @@ void TransmitSensorData(int socket, struct sockaddr *server_addr)
     ReadUniqueId(&id);
 
     pack.package_top.checkId = CHECKID;                         //从机识别码
-    pack.package_top.answer = ANSWER_ASK;                       //应答,主动发送
+    pack.package_top.answer = ASK_ACTIVE;                       //应答,主动发送
     pack.package_top.function = F_SEN_DATA;                     //功能码
     pack.package_top.id = id;                                   //发送者id
     pack.package_top.serialNum = 0;                             //序列号

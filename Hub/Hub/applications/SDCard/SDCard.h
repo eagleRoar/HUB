@@ -20,26 +20,53 @@
 #include "typedef.h"
 #include "string.h"
 #include "Gpio.h"
-
 #include "fal_cfg.h"
+#include "InformationMonitor.h"
+#include "SdcardBusiness.h"
+#include "SdcardDataLayer.h"
 
 #define         SD_DEVICE_NAME          "sd0"
 
-#define         DOWNLOADFILE            "/download"                                                 //APP升级包文件夹
-#define         DOWNLOADDOCUMENT        "download/downloadFile.bin"                                 //APP升级包文件
-#define         MODULEFILE              "/moduleInfo"                                               //模块相关信息文件夹
-#define         MODULEDOCUMENT          "moduleInfo/module.bin"                                     //模块信息文件
-#define         TEST_FILE               "/test"
-#define         TEST_DOCUMENT           "/test/test.txt"
+#define         DOWNLOAD_DIR            "/download"                                                 //APP升级包文件夹
+#define         DOWNLOAD_FILE           "download/downloadFile.bin"                                 //APP升级包文件
+#define         MODULE_DIR              "/moduleInfo"                                               //模块相关信息文件夹
+#define         MODULE_FILE             "moduleInfo/module.bin"                                     //模块信息文件
+#define         TEST_DIR                "/test"
+#define         TEST_FILE               "/test/test.txt"
+#define         SETTING_DIR             "/master"
+#define         ACTION_FILE             "master/action.bin"
+#define         CONDITION_FILE          "master/condition.bin"
+#define         EXCUTE_FILE             "master/excute.bin"
+#define         DOTASK_FILE             "master/dotask.bin"
 
-#define         UPDATA_NULL             0x00
-#define         UPDATA_SUCCEFUL         0xA5
-#define         UPDATA_NO               0x02
+struct operateStruct{
+    struct actionOpe{
+        type_action_t               (*GetAction)(u8);
+        u8                          (*ReadActionSum)(void);
+        void                        (*AddActionToSD)(type_action_t);
+    }action_op;
+
+    struct conditionOpe{
+        u8                          (*ReadConditionSum)(void);
+        void                        (*AddConditionToSD)(type_condition_t);
+    }condition_op;
+
+    struct excuteOpe{
+        u8                          (*ReadExcuteSum)(void);
+        void                        (*AddExcuteToSD)(type_excute_t);
+    }excute_op;
+
+    struct dotaskOpe{
+        u8                          (*ReadDotaskSum)(void);
+        void                        (*AddDotaskToSD)(type_dotask_t);
+    }dotask_op;
+};
 
 struct sdCardState{
-    u8 init;                    //是否初始化成功
-    u8 mount;                   //是否已经挂载
-    u8 readInfo;                //是否已经读取了信息
+    u8 init;                                                                                        //是否初始化成功
+    u8 mount;                                                                                       //是否已经挂载
+    u8 readInfo;                                                                                    //是否已经读取了信息
+    type_sdoperate_t sd_operate;                                                                    //sd业务层操作的映射
 };
 
 int SDCardTaskInit(void);

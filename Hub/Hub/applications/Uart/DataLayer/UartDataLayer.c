@@ -21,13 +21,13 @@ const storageInfo_t storageIn[STORAGE_NUM] =
         {"Humidity",            S_HUMI_ENV,         DEV_UNDEFINE,           0,          0},
         {"Temperature",         S_TEMP_ENV,         DEV_UNDEFINE,           0,          0},
         {"Light",               S_LIGHT_ENV,        DEV_UNDEFINE,           0,          0},
-        {"AC_Co2",              DEV_CO2_SWITCH,     DEV_CO2_SWITCH,         0,          1},
+        {"AC_Co2",              S_GAS_CO2,          DEV_UP,                 0,          1},
 };
 
 /**************************注册device 寄存器***************************************/
 type_storage_t storageTable[DEVICE_STORAGE_TYPE];
 
-static void AddStorageToTable(type_storage_t *table, u8 index, u8 type, char *module_name, u16 function, u16 large_scale,u8 s_or_d, u16 storage, u8 storage_size,
+static void AddStorageToTable(type_storage_t *table, u8 index, u8 type, char *module_name, u16 function, u8 s_or_d, u16 storage, u8 storage_size,
                        storageInfo_t s0,storageInfo_t s1,storageInfo_t s2,storageInfo_t s3,storageInfo_t s4,storageInfo_t s5,
                        storageInfo_t s6,storageInfo_t s7,storageInfo_t s8,storageInfo_t s9,storageInfo_t s10,storageInfo_t s11)
 {
@@ -39,7 +39,6 @@ static void AddStorageToTable(type_storage_t *table, u8 index, u8 type, char *mo
     table[index].type               = type;
     rt_memcpy(table[index].module_name, module_name, MODULE_NAMESZ);
     table[index].function           = function;
-    table[index].large_scale        = large_scale;
     table[index].s_or_d             = s_or_d;
     table[index].storage            = storage;
     table[index].storage_size       = storage_size;
@@ -62,10 +61,10 @@ static void AddStorageToTable(type_storage_t *table, u8 index, u8 type, char *mo
 void StorageInit(void)
 {
     u8 i = 0;
-    AddStorageToTable(storageTable, i, 0x03, "BHS"      , F_SEN_REGSTER, TYPE_ATMOS_ENV, SENSOR_TYPE, 0x0010, 4,
+    AddStorageToTable(storageTable, i, 0x03, "BHS"      , F_SEN_REGSTER, SENSOR_TYPE, 0x0010, 4,
                       storageIn[0], storageIn[1], storageIn[2], storageIn[3], sto_null, sto_null, sto_null, sto_null, sto_null, sto_null, sto_null, sto_null);
     i += 1;
-    AddStorageToTable(storageTable, i, 0x43, "AC_CO2"   , F_DEV_REGISTER, TYPE_ATMOS_ENV,DEVICE_TYPE, 0x0040, 1,
+    AddStorageToTable(storageTable, i, 0x43, "AC_CO2"   , F_DEV_REGISTER, DEVICE_TYPE, 0x0040, 1,
                       storageIn[4], sto_null,     sto_null,     sto_null,     sto_null, sto_null, sto_null, sto_null, sto_null, sto_null, sto_null, sto_null);
 
 }
@@ -125,21 +124,6 @@ void getStorage(u8 type, type_module_t *device)
            }
        }
     }
-}
-
-u16 getModuleLargeScale(u8 type)
-{
-    u16 i = 0;
-
-    for(i = 0; i < DEVICE_STORAGE_TYPE; i++)
-    {
-       if(type == storageTable[i].type)
-       {
-           return storageTable[i].large_scale;
-       }
-    }
-
-    return RT_NULL;
 }
 
 u16 getModuleFun(u8 type)
@@ -228,9 +212,8 @@ void AnlyzeDeviceRegister(type_monitor_t *monitor, rt_device_t serial, u8 *data,
         device.address = getAllocateAddress(monitor);
         device.type = data[8];
         device.uuid = (data[9] << 24) | (data[10] << 16) | (data[11] << 8) | data[12];
-        getModuleName(device.type, device.module_name, MODULE_NAMESZ);
+        getModuleName(device.uuid, device.module_name, MODULE_NAMESZ);
         device.function = getModuleFun(device.type);
-        device.large_scale = getModuleLargeScale(device.type);
         device.s_or_d = getDeviceOrSensortype(device.type);
         device.registerAnswer = SEND_NULL;
         getStorage(device.type, &device);
@@ -240,6 +223,7 @@ void AnlyzeDeviceRegister(type_monitor_t *monitor, rt_device_t serial, u8 *data,
         device.connect.connect_state = CONNECT_OK;
         InsertDeviceToTable(monitor, device);
 
+        /* 发送注册回复 */
         RegisterAnswer(monitor, serial, device.uuid);
     }
 }

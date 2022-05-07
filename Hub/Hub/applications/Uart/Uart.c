@@ -36,9 +36,10 @@ static rt_err_t Uart2_input(rt_device_t dev, rt_size_t size)
 {
     u16 crc16 = 0x0000;
 
+    /* 必须要等待从sd卡读取到的monitor 才能执行以下功能 */
     if (NO == sdCard.readInfo)
     {
-        return;
+        return RT_ERROR;
     }
 
     uart2_msg.dev = dev;
@@ -67,9 +68,10 @@ static rt_err_t Uart3_input(rt_device_t dev, rt_size_t size)
 {
     u16 crc16 = 0x0000;
 
+    /* 必须要等待从sd卡读取到的monitor 才能执行以下功能 */
     if (NO == sdCard.readInfo)
     {
-        return;
+        return RT_ERROR;
     }
 
     uart3_msg.dev = dev;
@@ -136,7 +138,7 @@ void SensorUart2TaskEntry(void* parameter)
 
         rt_mutex_take(recvUartMutex, RT_WAITING_FOREVER);           //加锁保护
 
-        if(YES == sdCard.readInfo)
+        if(YES == sdCard.readInfo)                                  //必须要等待从sd卡读取到的monitor 才能执行以下功能
         {
             /* 50ms 事件 */
             {
@@ -204,7 +206,7 @@ void SensorUart2TaskInit(void)
     }
 
     /* 创建串口 线程 */
-    rt_thread_t thread = rt_thread_create("sensor task", SensorUart2TaskEntry, RT_NULL, 1024*4, UART2_PRIORITY, 10);
+    rt_thread_t thread = rt_thread_create("sensor task", SensorUart2TaskEntry, RT_NULL, 1024*6, UART2_PRIORITY, 10);
 
     /* 如果线程创建成功则开始启动线程，否则提示线程创建失败 */
     if (RT_NULL != thread) {
