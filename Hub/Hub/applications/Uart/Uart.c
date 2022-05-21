@@ -109,6 +109,7 @@ void SensorUart2TaskEntry(void* parameter)
     static u16 time5S = 0;
     static rt_device_t uart2_serial;
     static rt_device_t uart3_serial;
+    type_module_t module;
 
     /* 查找串口设备 */
     uart2_serial = rt_device_find(DEVICE_UART2);
@@ -179,7 +180,9 @@ void SensorUart2TaskEntry(void* parameter)
                 /* 控制设备 */
                 for(int i = 0; i < monitor.monitorDeviceTable.deviceManageLength; i++)
                 {
-                    ControlDeviceStorage(&(monitor.monitorDeviceTable.deviceTable[i]), uart3_serial, 0x01, 0x00);//Justin debug 该控制为测试用
+                    module = monitor.monitorDeviceTable.deviceTable[i];
+
+                    ControlDeviceStorage(&module, uart3_serial, module.module_t[0].value, 0x00);//Justin debug 该控制为测试用
                 }
             }
         }

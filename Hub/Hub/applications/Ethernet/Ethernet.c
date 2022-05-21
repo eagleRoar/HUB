@@ -21,7 +21,6 @@
 static rt_mutex_t TcpMutex = RT_NULL;           //指向互斥量的指针
 struct ethDeviceStruct *eth = RT_NULL;          //申请ethernet实例化对象
 rt_event_t tcp_event = RT_NULL;
-//type_package_t tcpSendBuffer;
 type_package_t tcpRecvBuffer;
 type_package_t udpSendBuffer;
 
@@ -29,6 +28,7 @@ extern rt_uint8_t GetEthDriverLinkStatus(void);             //获取网口连接
 
 void rt_tc_rx_cb(void *buff, rt_size_t len)
 {
+//    LOG_D("rt_tc_rx_cb len = %d",len);//Justin debug
     if(sizeof(type_package_t) < len)
     {
         LOG_E("recv buffer length large than eth package");
@@ -90,7 +90,7 @@ rt_err_t TcpClientTaskInit()
     }
 
     /* 创建以太网线程 */
-    tcpThread = rt_thread_create(TCP_TASK, TcpTaskEntry, /*&tcp_event*/RT_NULL, 1024*6, TCP_PRIORITY, 10);
+    tcpThread = rt_thread_create(TCP_TASK, TcpTaskEntry, RT_NULL, 1024*6, TCP_PRIORITY, 10);
 
     /* 如果线程创建成功则开始启动线程，否则提示线程创建失败 */
     if (RT_NULL != tcpThread) {
@@ -131,28 +131,61 @@ void EthernetTaskInit(void)
 void testPrint(void)
 {
     type_package_t pack;
+//    type_excute_t excute;
+//    type_condition_t condition;
+    type_dotask_t dotask;
     u8 test[200];
     u8 length;
 
     pack.package_top.checkId = CHECKID;
     pack.package_top.answer = ASK_ACTIVE;
-    pack.package_top.function = F_STEP_CURVE;
-    pack.package_top.id = 0x00000000;
+    pack.package_top.function = /*F_STEP_CURVE*//*F_TOUCH*//*F_DO_ACTION*/F_TOUCH_ACTION;
+    pack.package_top.id = 0x00000003;
     pack.package_top.serialNum = 0;
 
-    length = strlen("[8,(0,0,10800),(0,60,7200),(60,60,7200),(60,100,5400),(100,100,15300),(100,40,5100),(40,40,13800),(0,0,21600)]");
-    rt_memset((u8 *)&(pack.buffer[0]), 0, 4);
-    rt_memcpy((u8 *)&(pack.buffer[2]), "[8,(0,0,10800),(0,60,7200),(60,60,7200),(60,100,5400),(100,100,15300),(100,40,5100),(40,40,13800),(0,0,21600)]", length);
+    length = sizeof(type_dotask_t) - 2;
 
-    pack.package_top.crc = CRC16((u16 *)&pack + 3, sizeof(struct packTop)/2 - 3 + 2 +(length+1)/2, 0);
-    pack.package_top.length = sizeof(struct packTop) + 4 + length;
+    dotask.id = 0x00000000;
+    dotask.condition_id = 0;
+    dotask.excuteAction_id = 0;
+    dotask.start = 0;
+    dotask.continue_t = 60;
+    dotask.delay = 10;
 
+    rt_memcpy((u8 *)pack.buffer, (u8 *)&dotask + 2, length);
+
+    pack.package_top.crc = CRC16((u16 *)&pack + 3, sizeof(struct packTop)/2 - 3 + (length)/2, 0);
+    pack.package_top.length = sizeof(struct packTop) + length;
     rt_memcpy(test, (u8 *)&pack, pack.package_top.length);
-    LOG_D("print testPrint length = %d %d %d--------------------",sizeof(struct packTop),length,sizeof(struct packTop) + length);
+    LOG_D("start:");
     for(u16 i = 0; i < pack.package_top.length; i++)
     {
         rt_kprintf("%02x ",test[i]);
     }
+    LOG_D("end");
+}
+
+//Justin debug
+void modbusTest(void)
+{
+    type_package_t pack;
+    u8 test[200];
+
+    pack.package_top.checkId = CHECKID;
+    pack.package_top.answer = ASK_REPLY;
+    pack.package_top.function = F_HUB_REGSTER;
+    pack.package_top.id = 0x00000000;
+    pack.package_top.serialNum = 0;
+
+    pack.package_top.crc = CRC16((u16 *)&pack + 3, sizeof(struct packTop)/2 - 3, 0);
+    pack.package_top.length = sizeof(struct packTop);
+
+    rt_memcpy(test, (u8 *)&pack, pack.package_top.length);
+    for(int i = 0; i < pack.package_top.length; i++)
+    {
+        rt_kprintf("%02x ", test[i]);
+    }
+    rt_kprintf("\r\n");
 }
 
 /**
@@ -165,15 +198,14 @@ void TcpTaskEntry(void* parameter)
 {
     rt_uint32_t e = 0;
     rt_tcpclient_t *handle      = RT_NULL;
-//    rt_event_t event;
     static u8 preLinkStatus     = LINKDOWN;
     static u8 Timer1sTouch      = OFF;
     static u16 time1S = 0;
 
-//    event = *(rt_event_t *)parameter;
+    testPrint();//Justin debug 仅仅测试
+    //modbusTest();
     while (1)
     {
-//        rt_mutex_take(TcpMutex, RT_WAITING_FOREVER);                  //加锁保护
         /* 启用定时器 */
         time1S = TimerTask(&time1S, 20, &Timer1sTouch);                 //1秒任务定时器
 
@@ -205,11 +237,11 @@ void TcpTaskEntry(void* parameter)
         /* 1s 定时任务 */
         if(ON == Timer1sTouch)
         {
-            if (rt_event_recv(/*event*/tcp_event, TC_TCPCLIENT_CLOSE,
+            if (rt_event_recv(tcp_event, TC_TCPCLIENT_CLOSE,
                                       RT_EVENT_FLAG_OR | RT_EVENT_FLAG_CLEAR,
                                       0, &e) == RT_EOK)
             {
-                rt_event_send(/*event*/tcp_event, TC_EXIT_THREAD);
+                rt_event_send(tcp_event, TC_EXIT_THREAD);
                 return;
             }
 
@@ -231,6 +263,8 @@ void TcpTaskEntry(void* parameter)
                     /* 接收数据并解析 */
                     if(ON == eth->tcp.GetRecvDataFlag())
                     {
+
+//                        LOG_D("TcpTaskEntry recv data");//Justin debug
                         /* 执行向主机注册hub、sensor、device等相关操作 */
                         AnalyzeEtherData(handle, tcpRecvBuffer);
 
@@ -239,7 +273,7 @@ void TcpTaskEntry(void* parameter)
                 }
             }
         }
-//        rt_mutex_release(TcpMutex);                                   //解锁//不能轻易加锁否则发送网络数据的时候会引发错误
+
         rt_thread_mdelay(50);
     }
 }

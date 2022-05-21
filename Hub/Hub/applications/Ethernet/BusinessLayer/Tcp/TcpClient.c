@@ -233,7 +233,7 @@ static rt_err_t tcpclient_thread_init(rt_tcpclient_t *thiz)
 {
     rt_thread_t tcpclient_tid = RT_NULL;
 
-    tcpclient_tid = rt_thread_create(TCP_CLIENT_TASK, tcpclient_thread_entry, thiz, /*2048*/1024*2, 12, 10);
+    tcpclient_tid = rt_thread_create(TCP_CLIENT_TASK, tcpclient_thread_entry, thiz, /*2048*/1024*2, 12, 10);//Justin debug
     if (tcpclient_tid == RT_NULL)
     {
         LOG_E("tcpclient_thread_init fail");
@@ -278,6 +278,8 @@ static void select_handle(rt_tcpclient_t *thiz, char *pipe_buff, char *sock_buff
                 goto exit;
             }
 
+//            LOG_D("select_handle recv data len = %d",res);//Justin debug
+
             /* have received data, clear the end */
             sock_buff[res] = '\0';
             RX_CB_HANDLE(sock_buff, res);
@@ -298,7 +300,7 @@ static void select_handle(rt_tcpclient_t *thiz, char *pipe_buff, char *sock_buff
             send(thiz->sock_fd, pipe_buff, res, 0);
         }
 
-        rt_thread_mdelay(20);
+        rt_thread_mdelay(20);//Justin debug 仅仅测试
     }
 exit:
     LOG_D("destory select");

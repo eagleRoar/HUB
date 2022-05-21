@@ -17,6 +17,11 @@
 
 extern struct sdCardState      sdCard;
 
+extern type_action_t   Action[3];
+type_condition_t    Condition;
+type_excute_t       Excute;
+type_dotask_t       Dotask;
+
 void RegisterHub(rt_tcpclient_t *handle)
 {
     u32                 id              = 0x00000000;
@@ -32,7 +37,7 @@ void RegisterHub(rt_tcpclient_t *handle)
 
     hubReg.type = ENV_TYPE;                                                                     //环境控制
     hubReg.version = 0x01;                                                                      //版本号 BCD8421编码 需要注意
-    hubReg.config_id = 0x00;                                                                    //配置ID
+    //hubReg.config_id = 0x00;                                                                    //配置ID
     hubReg.heart = 0x10;                                                                        //心跳间隔
     rt_memcpy(hubReg.name, HUB_NAME, HUB_NAME_SIZE);
     rt_memcpy(pack.buffer, &hubReg, sizeof(type_hubreg_t));
@@ -92,6 +97,8 @@ void RegisterModule(rt_tcpclient_t *handle)
                 rt_memcpy(pack.buffer, &sensorReg, temp);
                 pack.package_top.crc = CRC16((u16*)&pack+3, sizeof(struct packTop)/2 - 3 + temp/2, 0);
                 pack.package_top.length = sizeof(struct packTop) + temp;
+
+//                LOG_D("register sensor id = %x",sensorReg.uuid);//Justin debug
             }
             else if(DEVICE_TYPE == module.s_or_d)
             {
@@ -112,8 +119,12 @@ void RegisterModule(rt_tcpclient_t *handle)
 
                 temp = sizeof(type_dev_reg_t) - (SENSOR_STR_MAX - deviceReg.parameter)*sizeof(struct deviceScaleGroup);
                 rt_memcpy(&(pack.buffer[0]), &deviceReg, temp);
+                pack.buffer[temp] = 0x0000; //Justin debug 仅仅测试 需要添加该数据是因为后续还有内容，参照协议,还应该有一个小结构体写支持的设备功能
+                temp += 2;//Justin debug 仅仅测试
                 pack.package_top.crc = CRC16((u16*)&pack+3, sizeof(struct packTop)/2 - 3 + temp/2, 0);
                 pack.package_top.length = sizeof(struct packTop) + temp;
+
+//                LOG_D("register device id = %x",deviceReg.uuid);//Justin debug
             }
 
             rt_tcpclient_send(handle, &pack, pack.package_top.length);
@@ -158,32 +169,26 @@ void SetDotask(rt_tcpclient_t *handle, type_monitor_t *monitor, type_package_t d
 {
     type_dotask_t       dotask;
     u8                  ret                 = ASK_REPLY;
+    u16                 dotaskSize          = sizeof(type_dotask_t);
 
-    rt_memcpy(&(dotask.id), (u8 *)data.buffer, 4);   //buffer是u16类型
-    rt_memcpy(&(dotask.condition_id), (u8 *)&(data.buffer[2]), 4);
-    rt_memcpy(&(dotask.excuteAction_num), (u8 *)&(data.buffer[4]), 2);
+    rt_memcpy((u8 *)&dotask + 2, (u8 *)data.buffer, dotaskSize - 2);    //最开始的crc占两位
+    dotask.crc = usModbusRTU_CRC((u8 *)&dotask + 2, dotaskSize - 2);
 
-    dotask.touch = rt_malloc(dotask.excuteAction_num * sizeof(type_touch_t));
-    if(RT_NULL != dotask.touch)
-    {
-        rt_memcpy(dotask.touch, (u8 *)&(data.buffer[5]), dotask.excuteAction_num * sizeof(type_touch_t));
-    }
-
-    if(YES == sdCard.init)
-    {
-        //新增新的dotask到SD卡
-        sdCard.sd_operate.dotask_op.AddDotaskToSD(dotask);
-    }
-    else
-    {
-        ret = UNKNOWN_ERR;
-    }
+    Dotask = dotask;
+    PrintDotask(Dotask);
+    //Justin debug 仅仅测试
+//    if(YES == sdCard.init)
+//    {
+//        //新增新的dotask到SD卡
+//        sdCard.sd_operate.dotask_op.AddDotaskToSD(dotask);
+//    }
+//    else
+//    {
+//        ret = UNKNOWN_ERR;
+//    }
 
     /* 回复主机 */
     ReplyMaster(handle, data.package_top.function, ret, data.package_top.serialNum);
-
-    rt_free(dotask.touch);
-    dotask.touch = RT_NULL;
 }
 
 /**
@@ -197,31 +202,26 @@ void SetExcute(rt_tcpclient_t *handle, type_monitor_t *monitor, type_package_t d
     type_excute_t       excute;
     u8                  ret                 = ASK_REPLY;
 
-    rt_memcpy(&(excute.id), (u8 *)data.buffer, 4);   //buffer是u16类型
-    rt_memcpy(&(excute.device_id), (u8 *)&(data.buffer[2]), 4);
-    rt_memcpy(&(excute.storage), (u8 *)&(data.buffer[4]), 2);
-    rt_memcpy(&(excute.action_id_v), (u8 *)&(data.buffer[5]), 4);
+    rt_memcpy((u8 *)&excute + 2, (u8 *)data.buffer, sizeof(type_excute_t) - 2);   //最开始的crc占2位
+    excute.crc = usModbusRTU_CRC((u8 *)&excute + 2, sizeof(type_excute_t) - 2);
 
-    if(YES == sdCard.init)
-    {
-        //新增新的excute到SD卡
-        sdCard.sd_operate.excute_op.AddExcuteToSD(excute);
-    }
-    else
-    {
-        ret = UNKNOWN_ERR;
-    }
 
+    //Justin debug 仅仅测试
+//    if(YES == sdCard.init)
+//    {
+//        //新增新的excute到SD卡
+//        sdCard.sd_operate.excute_op.AddExcuteToSD(excute);
+//    }
+//    else
+//    {
+//        ret = UNKNOWN_ERR;
+//    }
+    Excute = excute;
+    PrintExcute(Excute);
     /* 回复主机 */
     ReplyMaster(handle, data.package_top.function, ret, data.package_top.serialNum);
 }
 
-/**
- * 设置触发条件
- * @param handle
- * @param monitor
- * @param data
- */
 /**
  * 解析等量关系
  * @param data
@@ -230,29 +230,47 @@ static u8 AnalyzeEqual(char *data)
 {
     char    *p;
     u8      ret = 0;
-    if((p = strchr(data, '<')) != NULL)
-    {
-        ret = LESS_THAN;
-        if(strchr(p+1, '=') != NULL)
-        {
-            ret = LESSTHAN_EQUAL;
-        }
-    }
-    else if((p = strchr(data, '>')) != NULL)
-    {
-        ret = GREATER_THAN;
-        if(strchr(p+1, '=') != NULL)
-        {
-            ret = GREATERTHAN_EQUAL;
-        }
-    }
-    else if((p = strchr(data, '=')) != NULL)
-    {
-        if(strchr(p+1, '=') != NULL)
-        {
+
+    LOG_D("AnalyzeEqual data = %s",data);//Justin debug仅仅测试
+
+    switch (*data) {
+        case '<':
+            ret = LESS_THAN;
+            break;
+        case '>':
+            ret = GREATER_THAN;
+            break;
+        case '=':
             ret = EQUAL_TO;
-        }
+            break;
+        default:
+            break;
     }
+
+//    if((p = strchr(data, '<')) != NULL)
+//    {
+//        ret = LESS_THAN;
+//        if(strchr(p+1, '=') != NULL)
+//        {
+//            ret = LESSTHAN_EQUAL;
+//        }
+//    }
+//    else if((p = strchr(data, '>')) != NULL)
+//    {
+//        ret = GREATER_THAN;
+//        if(strchr(p+1, '=') != NULL)
+//        {
+//            ret = GREATERTHAN_EQUAL;
+//        }
+//    }
+//    else if((p = strchr(data, '=')) != NULL)
+//    {
+//        ret = EQUAL_TO;
+//        if(strchr(p+1, '=') != NULL)
+//        {
+//            ret = EQUAL_TO;
+//        }
+//    }
 
     return ret;
 }
@@ -265,7 +283,7 @@ static u8 AnalyzeEqual(char *data)
  */
 void SetCondition(rt_tcpclient_t *handle, type_monitor_t *monitor, type_package_t data)
 {
-    char                *delims             = { "()=><$:" };
+    char                *delims             = { "()$#:" };
     char                *p                  = RT_NULL;
     u8                  ret                 = ASK_REPLY;
     type_condition_t    condition;
@@ -275,22 +293,33 @@ void SetCondition(rt_tcpclient_t *handle, type_monitor_t *monitor, type_package_
     //发送过来的可能是寄存器的条件的和梯形曲线ID的
     if(NULL != strchr((char *)&(data.buffer[3]), ':'))
     {
+//        LOG_D("0-----------------------data length= %s",(char *)&(data.buffer[3]));
         //($24:1$)<(梯形曲线ID 5)
         condition.analyze_type = STORAGE_TYPE;
         p = strtok((char *)&(data.buffer[3]), delims);
+//        LOG_D("1-----------------------data length= %s",p);
         if(NULL == p)
         {
             ret = UNKNOWN_ERR;
         }
+        condition.value = 0;
         condition.module_uuid = atol(p);
         p = strtok(NULL, delims);
+//        LOG_D("2-----------------------data length= %s",p);
         if(NULL == p)
         {
             ret = UNKNOWN_ERR;
         }
         condition.storage = atoi(p);
-        condition.condition = AnalyzeEqual((char *)&(data.buffer[3]));
         p = strtok(NULL, delims);
+        if(NULL == p)
+        {
+            ret = UNKNOWN_ERR;
+        }
+        condition.condition = AnalyzeEqual(p);
+
+        p = strtok(NULL, delims);
+//        LOG_D("3-----------------------data length= %s",p);
         if(NULL == p)
         {
             ret = UNKNOWN_ERR;
@@ -309,7 +338,12 @@ void SetCondition(rt_tcpclient_t *handle, type_monitor_t *monitor, type_package_
         condition.value = atoi(p);
         condition.module_uuid = 0;
         condition.storage = 0;
-        condition.condition = AnalyzeEqual((char *)&(data.buffer[3]));
+        p = strtok(NULL, delims);
+        if(NULL == p)
+        {
+            ret = UNKNOWN_ERR;
+        }
+        condition.condition = AnalyzeEqual(p);
         p = strtok(NULL, delims);
         if(NULL == p)
         {
@@ -318,15 +352,19 @@ void SetCondition(rt_tcpclient_t *handle, type_monitor_t *monitor, type_package_
         condition.action.action_id = atol(p);
     }
 
-    if(YES == sdCard.init)
-    {
-        //新增新的condition到SD卡
-        sdCard.sd_operate.condition_op.AddConditionToSD(condition);
-    }
-    else
-    {
-        ret = UNKNOWN_ERR;
-    }
+    condition.crc = usModbusRTU_CRC((u8 *)&condition + 2, sizeof(type_condition_t) - 2);
+    Condition = condition;
+    PrintCondition(Condition);
+    //Justin debug仅仅为了测试
+//    if(YES == sdCard.init)
+//    {
+//        //新增新的condition到SD卡
+//        sdCard.sd_operate.condition_op.AddConditionToSD(condition);
+//    }
+//    else
+//    {
+//        ret = UNKNOWN_ERR;
+//    }
 
     /* 回复主机 */
     ReplyMaster(handle, data.package_top.function, ret, data.package_top.serialNum);
@@ -348,40 +386,69 @@ void Set_Action(rt_tcpclient_t *handle, type_monitor_t *monitor, type_package_t 
     char            *p                  = RT_NULL;
     u8              index               = 0x00;
     u8              ret                 = ASK_REPLY;
+    u8              *temp               = RT_NULL;
+    u16             length              = 0x0000;       //需要存储的长度
+    u16             actionSize          = sizeof(type_action_t) - sizeof(type_curve_t *);
+    u16             curveLength         = 0x0000;       //curve 的长度
     type_action_t   action;
-
-    rt_memcpy(&(action.id), (u8 *)data.buffer, 4);
 
     p = strtok((char *)&(data.buffer[2]), delims);
     if(p != NULL)
     {
-        action.curve_length = atol(p);
+        curveLength = atol(p);
+        LOG_D("curve_length = %d",curveLength);
+    }
 
-        /* 动态分配空间 */
-        action.curve = rt_malloc(action.curve_length * sizeof(type_curve_t));
-        if(RT_NULL != action.curve)
+    //设置的长度不能超过规定存储的长度
+    length = actionSize + sizeof(type_curve_t) * curveLength;
+
+    if(length > SAVE_ACTION_MAX_ZISE)
+    {
+        return;
+    }
+
+    action.curve = rt_malloc(SAVE_ACTION_MAX_ZISE - actionSize);
+
+    if(RT_NULL != action.curve)
+    {
+        rt_memset((u8 *)action.curve, 0, SAVE_ACTION_MAX_ZISE - actionSize);
+
+        rt_memcpy(&(action.id), (u8 *)data.buffer, 4);
+        action.curve_length = curveLength;
+        for(index = 0; index < action.curve_length; index++)
         {
-            for(index = 0; index < action.curve_length; index++)
-            {
-                p = strtok(NULL, delims);
-                action.curve[index].start_value = atoi(p);
-                p = strtok(NULL, delims);
-                action.curve[index].end_value = atoi(p);
-                p = strtok(NULL, delims);
-                action.curve[index].time = atol(p);
-            }
+            p = strtok(NULL, delims);
+            action.curve[index].start_value = atoi(p);
+            p = strtok(NULL, delims);
+            action.curve[index].end_value = atoi(p);
+            p = strtok(NULL, delims);
+            action.curve[index].time = atol(p);
+        }
+
+        temp = rt_malloc(SAVE_ACTION_MAX_ZISE);
+        if(RT_NULL != temp)
+        {
+            rt_memcpy(temp, (u8 *)&action, actionSize);
+            rt_memcpy(&temp[actionSize], (u8 *)action.curve, SAVE_ACTION_MAX_ZISE - actionSize);
+            action.crc = usModbusRTU_CRC(temp + 2, SAVE_ACTION_MAX_ZISE - 2);//crc 占两位，crc不加入校验
+
+            rt_free(temp);
+            temp = RT_NULL;
         }
     }
 
-    if(YES == sdCard.init)
-    {
-        //新增新的action到SD卡
-        sdCard.sd_operate.action_op.AddActionToSD(action);
-    }
-    else
-    {
-        ret = UNKNOWN_ERR;
-    }
+    Action[2] = action;
+    PrintAction(Action[2]);
+    //Justin debug仅仅测试
+//    if(YES == sdCard.init)
+//    {
+//        //新增新的action到SD卡
+//        sdCard.sd_operate.action_op.AddActionToSD(action);
+//    }
+//    else
+//    {
+//        ret = UNKNOWN_ERR;
+//    }
 
     /* 回复主机 */
     ReplyMaster(handle, data.package_top.function, ret, data.package_top.serialNum);

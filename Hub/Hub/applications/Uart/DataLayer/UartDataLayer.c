@@ -207,25 +207,22 @@ void AnlyzeDeviceRegister(type_monitor_t *monitor, rt_device_t serial, u8 *data,
 {
     type_module_t device;
 
-//    if(0x80 != (data[1] & 0x80))    //如果是0x80为hub 回复终端
-    {
-        device.address = getAllocateAddress(monitor);
-        device.type = data[8];
-        device.uuid = (data[9] << 24) | (data[10] << 16) | (data[11] << 8) | data[12];
-        getModuleName(device.uuid, device.module_name, MODULE_NAMESZ);
-        device.function = getModuleFun(device.type);
-        device.s_or_d = getDeviceOrSensortype(device.type);
-        device.registerAnswer = SEND_NULL;
-        getStorage(device.type, &device);
-        getStorageSize(device.type, &device);
-        device.connect.time = 0;
-        device.connect.discon_num = 0;
-        device.connect.connect_state = CONNECT_OK;
-        InsertDeviceToTable(monitor, device);
+    device.address = getAllocateAddress(monitor);
+    device.type = data[8];
+    device.uuid = (data[9] << 24) | (data[10] << 16) | (data[11] << 8) | data[12];
+    getModuleName(device.type, device.module_name, MODULE_NAMESZ);
+    device.function = getModuleFun(device.type);
+    device.s_or_d = getDeviceOrSensortype(device.type);
+    device.registerAnswer = SEND_NULL;
+    getStorage(device.type, &device);
+    getStorageSize(device.type, &device);
+    device.connect.time = 0;
+    device.connect.discon_num = 0;
+    device.connect.connect_state = CONNECT_OK;
+    InsertDeviceToTable(monitor, device);
 
-        /* 发送注册回复 */
-        RegisterAnswer(monitor, serial, device.uuid);
-    }
+    /* 发送注册回复 */
+    RegisterAnswer(monitor, serial, device.uuid);
 }
 
 void RegisterAnswer(type_monitor_t *monitor, rt_device_t serial, u32 uuid)
@@ -233,7 +230,7 @@ void RegisterAnswer(type_monitor_t *monitor, rt_device_t serial, u32 uuid)
     u16 i = 0;
     u8 buffer[15];
     u16 crc16Result = 0x0000;
-    u32 id;//Justin debug
+    u32 id;
 
     buffer[0] = REGISTER_CODE;
     buffer[1] = 0x80;

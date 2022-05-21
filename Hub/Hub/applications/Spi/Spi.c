@@ -35,33 +35,6 @@ static int bsp_spi_attach_init(void)
 }
 INIT_DEVICE_EXPORT(bsp_spi_attach_init);
 
-void rtcTest(void)
-{
-
-    rt_err_t ret = RT_EOK;
-    //time_t now;
-
-    /* 设置日期 */
-    ret = set_date(2022, 3, 5);
-    if (ret != RT_EOK)
-    {
-        LOG_D("set RTC date failed\n");
-    }
-
-    /* 设置时间 */
-    ret = set_time(15, 15, 50);
-    if (ret != RT_EOK)
-    {
-        LOG_D("set RTC time failed\n");
-    }
-
-    /* 延时3秒 */
-    rt_thread_mdelay(3000);
-
-//    /* 获取时间 */
-//    now = time(RT_NULL);
-//    LOG_D("%s\n", ctime(&now));
-}
 
 struct rt_spi_device *spi_dev_w25q;
 void spiTest(void)

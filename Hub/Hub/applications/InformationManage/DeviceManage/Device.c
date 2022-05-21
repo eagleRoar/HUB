@@ -49,8 +49,6 @@ void InsertDeviceToTable(type_monitor_t *monitor, type_module_t device)
             else
             {
                 monitor->monitorDeviceTable.deviceTable = new;
-
-                LOG_D("add new memory successful");//Justin debug
             }
         }
         else
@@ -101,6 +99,21 @@ u8 FindDeviceTableByuuid(type_monitor_t *monitor, u32 *uuid)
         }
     }
     return NO;
+}
+
+type_module_t *GetModuleByuuid(type_monitor_t *monitor, u32 *uuid)
+{
+    int i = 0;
+
+    for(i = 0; i < monitor->monitorDeviceTable.deviceManageLength; i++)
+    {
+        if(*uuid == monitor->monitorDeviceTable.deviceTable[i].uuid)
+        {
+            return &(monitor->monitorDeviceTable.deviceTable[i]);
+        }
+    }
+
+    return RT_NULL;
 }
 
 u8 FindDeviceByAddr(type_monitor_t *monitor, u8 addr)

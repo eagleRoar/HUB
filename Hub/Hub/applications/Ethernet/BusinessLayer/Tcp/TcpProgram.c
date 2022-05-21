@@ -54,10 +54,12 @@ rt_err_t notifyTcpAndUdpSocket(char *newIp, int newPort, struct ethDeviceStruct 
 }
 
 /* 判断网络数据包的合理性 */
-rt_err_t CheckPackageLegality(u8 *buffer, u8 length)
+rt_err_t CheckPackageLegality(u8 *buffer, u16 length)
 {
     u16 res;
     type_package_t package;
+
+//    LOG_D("CheckPackageLegality len = %d",length);//Justin debug
 
     if((sizeof(struct packTop) > length) ||
        (sizeof(struct packTop) + RCV_ETH_BUFFSZ < length))
@@ -77,6 +79,7 @@ rt_err_t CheckPackageLegality(u8 *buffer, u8 length)
 
     /* 验证CRC16 */
     res = CRC16((u16 *)&package+3, package.package_top.length/2-3, 0);
+//    res = CRC16((u16 *)&package+3, (package.package_top.length+1)/2-3, 0);//Justin debug 仅仅测试
 
     if(res != package.package_top.crc)
     {
@@ -157,15 +160,19 @@ void AnalyzeEtherFunc(rt_tcpclient_t *handle, type_monitor_t *monitor, type_pack
         case F_STATE_SEND :         //9.1.  状态发送
             break;
         case F_STEP_CURVE :         //a.1.  梯形曲线（双向）
+            LOG_D("--------------------------------recv F_STEP_CURVE command");
             Set_Action(handle ,monitor, data);
             break;
         case F_TOUCH :              //a.2.  触发条件（双向）
+            LOG_D("--------------------------------recv F_TOUCH command");
             SetCondition(handle ,monitor, data);
             break;
         case F_DO_ACTION :          //a.3.  动作执行（双向）
+            LOG_D("--------------------------------recv F_DO_ACTION command");
             SetExcute(handle ,monitor, data);
             break;
         case F_TOUCH_ACTION :       //a.4.  触发与动作（双向）
+            LOG_D("--------------------------------recv F_TOUCH_ACTION command");
             SetDotask(handle ,monitor, data);
             break;
         case F_ASK_SYNC :           //b.1.  同步请求（双向）
@@ -187,6 +194,7 @@ void AnalyzeEtherData(rt_tcpclient_t *handle, type_package_t data)
     {
         if(ASK_REPLY != data.package_top.answer)
         {
+            //LOG_D("master answer = %x",data.package_top.answer);//Justin debug
             LOG_D("answer err");
         }
         else

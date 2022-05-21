@@ -25,15 +25,6 @@ void AskMessage(type_blepack_t *pack)
     u32                 temp        = GUIDE_CODE;
     struct bleHubInfo   info;
 
-    //Justin debug 仅仅测试
-//    rt_memcpy((u8 *)&test, (u8 *)pack->top.guide_code, 3);
-//    LOG_D("guide_code    = %x",test);
-//    LOG_D("crc           = %x",pack->top.crc);
-//    LOG_D("pack_length   = %x",pack->top.pack_length);
-//    LOG_D("command       = %x",pack->top.command);
-//    LOG_D("buffer_length = %x",pack->top.buffer_length);
-
-
     rt_memset(&info, 0, sizeof(struct bleHubInfo));
     rt_memset(pack->buffer, 0, BLE_BUFFER_SIZE);
 
@@ -55,20 +46,10 @@ void AskMessage(type_blepack_t *pack)
         }
     }
 
-    //info.co2_state
-    //info.humi_state
-    //info.temp_state
-    //info.light1
-    //info.light2
-    //info.eh
-    //info.ph
-    //info.water_temp
-    //info.warning
-
     rt_memcpy(pack->buffer, &info, sizeof(struct bleHubInfo));
     pack->top.pack_length = sizeof(type_blepacktop_t) + pack->top.buffer_length;
     pack->top.crc = usModbusRTU_CRC((u8 *)pack+9, pack->top.pack_length - 9);
-    //LOG_D("Co2 %x, humi %x, temp %x, crc = %x",info.co2_value, info.humi_value, info.temp_value,pack->top.crc);//Justin debug
+
 }
 
 

@@ -119,6 +119,7 @@ int main(void)
             {
                 LOG_D("table %d----------",index);
                 LOG_D("name : %s",GetMonitor()->monitorDeviceTable.deviceTable[index].module_name);
+                LOG_D("id   : %x",GetMonitor()->monitorDeviceTable.deviceTable[index].uuid);
                 for(storage = 0; storage < GetMonitor()->monitorDeviceTable.deviceTable[index].storage_size; storage++)
                 {
                     LOG_D("sto name : %s",GetMonitor()->monitorDeviceTable.deviceTable[index].module_t[storage].name);

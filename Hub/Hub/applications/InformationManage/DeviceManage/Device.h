@@ -76,6 +76,7 @@ u8 GetDeviceTableSize(type_monitor_t *);
 void InsertDeviceToTable(type_monitor_t *, type_module_t);
 void DeleteDeviceTableByName(type_monitor_t *, char *);
 u8 FindDeviceTableByuuid(type_monitor_t *, u32 *);
+type_module_t *GetModuleByuuid(type_monitor_t *, u32 *);
 u8 FindDeviceByAddr(type_monitor_t *, u8);
 
 #endif /* APPLICATIONS_INFORMATIONMANAGE_DEVICEMANAGE_DEVICE_H_ */

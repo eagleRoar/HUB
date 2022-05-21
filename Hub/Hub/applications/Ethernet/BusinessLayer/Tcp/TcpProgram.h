@@ -32,7 +32,7 @@
 
 void SetIpAndPort(char *, int , struct ethDeviceStruct *);
 rt_err_t notifyTcpAndUdpSocket(char *, int , struct  ethDeviceStruct*);
-rt_err_t CheckPackageLegality(u8 *, u8);
+rt_err_t CheckPackageLegality(u8 *, u16);
 rt_tcpclient_t* TcpClientInit(struct ethDeviceStruct *, rx_cb_t);
 void SendMesgToMasterProgram(rt_tcpclient_t *);
 void AnalyzeEtherData(rt_tcpclient_t *, type_package_t);

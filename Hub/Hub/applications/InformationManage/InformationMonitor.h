@@ -31,6 +31,9 @@
 #define     SENSOR_STR_MAX                  STORAGE_MAX
 #define     DEVICE_STR_MAX                  STORAGE_MAX
 
+#define     SAVE_ACTION_MAX_ZISE            300                 //存储单条action 的空间
+#define     SAVE_DOTASK_MAX_ZISE            300                 //存储单条dotask 的空间
+
 typedef     struct packageEth               type_package_t;
 
 typedef     struct monitorStruct            type_monitor_t;
@@ -53,7 +56,6 @@ typedef     struct conditionStruct          type_condition_t;
 typedef     struct excuteAction             type_excute_t;
 
 typedef     struct doTaskStruct             type_dotask_t;
-typedef     struct touchStruct              type_touch_t;
 /************Ble    *******************************************/
 typedef     struct blePackTop               type_blepacktop_t;
 typedef     struct blePackage               type_blepack_t;
@@ -131,8 +133,8 @@ struct monitorStruct
 #define     VERSION                 0x00000001                   //版本号 0.0.0.1, BCD 8421 编码
 #define     CONFIG_ID_NULL          0x00000000                   //默认配置ID
 #define     HEART                   0x000A                       //心跳包时间,单位为秒
-#define     NAME_ENV                "hub_envirenment"            //环境控制从机hub名称
-#define     NAME_IRR                "hub_irrigation"             //灌溉控制从机hub名称
+#define     NAME_ENV                "hub_envi"            //环境控制从机hub名称
+#define     NAME_IRR                "hub_irri"             //灌溉控制从机hub名称
 
 #if (HUB_SELECT == HUB_ENVIRENMENT)
 
@@ -173,13 +175,13 @@ enum{
     F_DEV_LOCATION      = 0x0707,                                   //7.7.  执行设备定位
     F_SEN_DATA          = 0x0801,                                   //8.1.  传感设备采集数据发送
     F_STATE_SEND        = 0x0901,                                   //9.1.  状态发送
-    F_STEP_CURVE        = 0x0a01,                                   //a.1.  梯形曲线（双向）
-    F_TOUCH             = 0x0a02,                                   //a.2.  触发条件（双向）
-    F_DO_ACTION         = 0x0a03,                                   //a.3.  动作执行（双向）
-    F_TOUCH_ACTION      = 0x0a04,                                   //a.4.  触发与动作（双向）
-    F_ASK_SYNC          = 0x0b01,                                   //b.1.  同步请求（双向）
-    F_ASK_DELE          = 0x0b02,                                   //b.2.  删除请求（双向）
-    F_FACTORY_RESET     = 0x0b03,                                   //b.3.  恢复出厂设置
+    F_STEP_CURVE        = 0x1001,                                   //a.1.  梯形曲线（双向）
+    F_TOUCH             = 0x1002,                                   //a.2.  触发条件（双向）
+    F_DO_ACTION         = 0x1003,                                   //a.3.  动作执行（双向）
+    F_TOUCH_ACTION      = 0x1004,                                   //a.4.  触发与动作（双向）
+    F_ASK_SYNC          = 0x1101,                                   //b.1.  同步请求（双向）
+    F_ASK_DELE          = 0x1102,                                   //b.2.  删除请求（双向）
+    F_FACTORY_RESET     = 0x1103,                                   //b.3.  恢复出厂设置
 };
 /******************************************* 功能码定义 END***************************/
 

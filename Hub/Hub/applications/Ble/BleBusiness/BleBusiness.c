@@ -73,7 +73,6 @@ void TransmitPack(type_blepack_t *pack)
         case REP_HUB_INFO:
             break;
         case REP_MESSAGE:
-            //Justin debug 仅仅测试
 
             break;
         case REP_DEVICE_LIST:

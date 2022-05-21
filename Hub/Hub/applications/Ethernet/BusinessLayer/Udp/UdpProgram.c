@@ -45,6 +45,7 @@ void TransmitSensorData(int socket, struct sockaddr *server_addr)
 
             if(SENSOR_TYPE == module.s_or_d)
             {
+                sensor.uuid = module.uuid;
                 sensor.parameter = module.storage_size;
 
                 for(storage = 0; storage < sensor.parameter; storage++)

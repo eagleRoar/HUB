@@ -68,6 +68,36 @@ u8 CheckDirectory(char* name)
 }
 
 /**
+ * 如果该文件还没有使用的标记返回No ,否则Yes
+ * @param file_name
+ * @return
+ */
+u8 CheckFileAndMark(char* file_name)
+{
+    u8 ret = YES;
+    u32 test = 0x00000000;
+
+    if(RT_EOK == ReadSdData(file_name, (u8 *)&test, 0, 4))
+    {
+        if(SD_HEAD_CORE != test)
+        {
+            //如果该文件未写过，需要先写入标志
+            test = SD_HEAD_CORE;
+            WriteSdData(file_name, (u8 *)&test, 0, 4);
+            ret = NO;
+        }
+    }
+    else
+    {
+        test = SD_HEAD_CORE;
+        WriteSdData(file_name, (u8 *)&test, 0, 4);
+        ret = NO;
+    }
+
+    return ret;
+}
+
+/**
  * @brief 从文件中读取到固定位置的数据
  *
  * @param name 需要读取的文件
@@ -80,22 +110,30 @@ u8 ReadSdData(char* name, void* text, u32 offset, u32 l)
 {
     int fd;
     int size;
+    u8 ret = RT_EOK;
 
     /*生成文件名称*/
     rt_mutex_take(sd_dfs_mutex, RT_WAITING_FOREVER);
-    fd = open(name, O_WRONLY | O_CREAT);
+
+    fd = open(name, /*O_WRONLY*/O_RDONLY | O_CREAT);//Justin debug
     if (fd >= 0) {
         lseek(fd,offset,SEEK_SET);//设置偏移地址
         size = read(fd, text, l);
         close(fd);
+
         if (size > 0) {
-            LOG_D("read done[%d].", size);
-            return RT_EOK;
+            //LOG_D("read done[%d].", size);
+            ret = RT_EOK;
         }
     }
-    rt_mutex_release(sd_dfs_mutex);
+    else
+    {
+        ret = RT_ERROR;
+        LOG_E("ReadSdData ERR, fd = %d",fd);//Justin debug
+    }
 
-    return RT_ERROR;
+    rt_mutex_release(sd_dfs_mutex);
+    return ret;
 }
 
 /**
@@ -110,8 +148,10 @@ u8 ReadSdData(char* name, void* text, u32 offset, u32 l)
 u8 WriteSdData(char* name, void* text, u32 offset, u32 l)
 {
     int fd;
+    u8 ret = RT_EOK;
 
     rt_mutex_take(sd_dfs_mutex, RT_WAITING_FOREVER);
+
     if (text != NULL) {
         /*生成文件名称*/
         /* 以创建和读写模式打开 name 文件，如果该文件不存在则创建该文件*/
@@ -121,10 +161,16 @@ u8 WriteSdData(char* name, void* text, u32 offset, u32 l)
             write(fd, text, l);
             close(fd);
 
-            return RT_EOK;
+            ret = RT_EOK;
         }
     }
+    else
+    {
+        ret = RT_ERROR;
+        LOG_E(" WriteSdData ERR");//Justin debug
+    }
+
     rt_mutex_release(sd_dfs_mutex);
 
-    return RT_ERROR;
+    return ret;
 }

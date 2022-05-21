@@ -26,14 +26,14 @@ struct hubRegister
 {
     u16 type;
     u32 version;
-    u32 config_id;
+//    u32 config_id;
     u16 heart;
     char name[HUB_NAME_SIZE];
 };
 
 struct hubRegInterface
 {
-    void    (*init)(u16, u32, u32, u16, char*);
+    void    (*init)(u16, u32, /*u32,*/ u16, char*);
     void    (*setRegisterAnswer)(u8);
     u8      (*getRegisterAnswer)(void);
 

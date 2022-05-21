@@ -34,6 +34,7 @@
 
 /**************梯形曲线 ******************************************/
 struct actionStruct{
+    u16                 crc;                //从这个位置以下都计算crc
     u32                 id;
     u16                 curve_length;       //梯形曲线有多少段
     u16                 current_value;      //当前的值
@@ -48,6 +49,7 @@ struct curveStruct{
 
 /**************触发条件 ******************************************/
 struct conditionStruct{
+    u16                 crc;
     u32                 id;
     u16                 priority;
     u8                  analyze_type;       //解析的方式,寄存器值/数值
@@ -76,6 +78,7 @@ enum{
 
 /**************动作执行 ******************************************/
 struct excuteAction{
+    u16                 crc;
     u32                 id;
     u32                 device_id;          //执行设备ID
     u16                 storage;            //执行的寄存器，该位置为注册时的模块storage,但是接收的可能是1，翻译到执行时为0
@@ -85,13 +88,9 @@ struct excuteAction{
 /**************触发与动作 ******************************************/
 
 struct doTaskStruct{
+    u16                 crc;
     u32                 id;                 //任务ID
     u32                 condition_id;       //触发条件ID
-    u16                 excuteAction_num;
-    type_touch_t        *touch;
-};
-
-struct touchStruct{
     u32                 excuteAction_id;    //动作执行ID
     u32                 start;              //开始时间
     u32                 continue_t;         //持续时间

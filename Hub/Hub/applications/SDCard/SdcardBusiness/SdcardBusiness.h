@@ -26,6 +26,12 @@
 #include "SdcardDataLayer.h"
 #include "Uart.h"
 
+//Justin debug仅仅测试
+#define     SD_HEAD_CORE        0xa5a55a5a                  //该core 主要是为了验证该文件是否有写过
+#define     SD_HEAD_SIZE        4
+#define     SD_INFOR_SIZE       SD_HEAD_SIZE + 1            //存储的有几段struct 数量位占据1位
+
+void SettingFileInit(char*);
 int sd_dfs_init(void);
 u8 getUpdateNewApp(void);
 void SaveModuleToFile(type_module_t *, u8);

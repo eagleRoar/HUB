@@ -12,11 +12,11 @@
 //hubreg_interface *hub_reg_int = RT_NULL;
 hubreg_interface hub_reg_int;
 
-static void init(u16 type, u32 version, u32 config_id, u16 heart, char *name)
+static void init(u16 type, u32 version, /*u32 config_id,*/ u16 heart, char *name)
 {
     hub_reg_int.hub_reg.type = type;
     hub_reg_int.hub_reg.version = version;
-    hub_reg_int.hub_reg.config_id = config_id;
+    //hub_reg_int.hub_reg.config_id = config_id;
     hub_reg_int.hub_reg.heart = heart;
     rt_memcpy(hub_reg_int.hub_reg.name, name, HUB_NAME_SIZE);
 }

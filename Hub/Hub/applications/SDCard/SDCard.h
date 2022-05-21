@@ -41,24 +41,31 @@
 
 struct operateStruct{
     struct actionOpe{
-        type_action_t               (*GetAction)(u8);
-        u8                          (*ReadActionSum)(void);
+        u8                          (*GetActionSum)(void);
         void                        (*AddActionToSD)(type_action_t);
+        rt_err_t                    (*TakeAction)(type_action_t *, u8);
+        u8                          (*FindActionById)(u32 , u8 *);
     }action_op;
 
     struct conditionOpe{
-        u8                          (*ReadConditionSum)(void);
+        u8                          (*GetConditionSum)(void);
         void                        (*AddConditionToSD)(type_condition_t);
+        rt_err_t                    (*TakeCondition)(type_condition_t *, u8);
+        u8                          (*FindConditionById)(u32 , u8 *);
     }condition_op;
 
     struct excuteOpe{
-        u8                          (*ReadExcuteSum)(void);
+        u8                          (*GetExcuteSum)(void);
         void                        (*AddExcuteToSD)(type_excute_t);
+        rt_err_t                    (*TakeExcute)(type_excute_t *, u8);
+        u8                          (*FindExcuteById)(u32 , u8 *);
     }excute_op;
 
     struct dotaskOpe{
-        u8                          (*ReadDotaskSum)(void);
+        u8                          (*GetDotaskSum)(void);
         void                        (*AddDotaskToSD)(type_dotask_t);
+        rt_err_t                    (*TakeDotask)(type_dotask_t *, u8);
+        u8                          (*FindDotaskById)(u32 , u8 *);
     }dotask_op;
 };
 

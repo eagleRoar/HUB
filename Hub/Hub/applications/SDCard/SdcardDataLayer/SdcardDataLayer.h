@@ -27,6 +27,7 @@
 int sd_card_is_vaild(void);
 void SdDirInit(void);
 u8 CheckDirectory(char* name);
+u8 CheckFileAndMark(char*);
 u32 GetFileLength(char* name);
 u8 ReadSdData(char* name, /*u8*/void* text, u32 offset,u32 l);
 u8 WriteSdData(char* name, void* text, u32 offset, u32 l);
