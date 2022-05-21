@@ -160,19 +160,19 @@ void AnalyzeEtherFunc(rt_tcpclient_t *handle, type_monitor_t *monitor, type_pack
         case F_STATE_SEND :         //9.1.  状态发送
             break;
         case F_STEP_CURVE :         //a.1.  梯形曲线（双向）
-            LOG_D("--------------------------------recv F_STEP_CURVE command");
+            LOG_D("---------------------recv F_STEP_CURVE command");
             Set_Action(handle ,monitor, data);
             break;
         case F_TOUCH :              //a.2.  触发条件（双向）
-            LOG_D("--------------------------------recv F_TOUCH command");
+            LOG_D("--------------------recv F_TOUCH command");
             SetCondition(handle ,monitor, data);
             break;
         case F_DO_ACTION :          //a.3.  动作执行（双向）
-            LOG_D("--------------------------------recv F_DO_ACTION command");
+            LOG_D("--------------------recv F_DO_ACTION command");
             SetExcute(handle ,monitor, data);
             break;
         case F_TOUCH_ACTION :       //a.4.  触发与动作（双向）
-            LOG_D("--------------------------------recv F_TOUCH_ACTION command");
+            LOG_D("----------------------recv F_TOUCH_ACTION command");
             SetDotask(handle ,monitor, data);
             break;
         case F_ASK_SYNC :           //b.1.  同步请求（双向）

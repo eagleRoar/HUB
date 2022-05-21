@@ -113,7 +113,7 @@ u8 ReadSdData(char* name, void* text, u32 offset, u32 l)
     u8 ret = RT_EOK;
 
     /*生成文件名称*/
-    rt_mutex_take(sd_dfs_mutex, RT_WAITING_FOREVER);
+//    rt_mutex_take(sd_dfs_mutex, RT_WAITING_FOREVER);
 
     fd = open(name, /*O_WRONLY*/O_RDONLY | O_CREAT);//Justin debug
     if (fd >= 0) {
@@ -132,7 +132,7 @@ u8 ReadSdData(char* name, void* text, u32 offset, u32 l)
         LOG_E("ReadSdData ERR, fd = %d",fd);//Justin debug
     }
 
-    rt_mutex_release(sd_dfs_mutex);
+//    rt_mutex_release(sd_dfs_mutex);
     return ret;
 }
 
@@ -150,7 +150,7 @@ u8 WriteSdData(char* name, void* text, u32 offset, u32 l)
     int fd;
     u8 ret = RT_EOK;
 
-    rt_mutex_take(sd_dfs_mutex, RT_WAITING_FOREVER);
+//    rt_mutex_take(sd_dfs_mutex, RT_WAITING_FOREVER);
 
     if (text != NULL) {
         /*生成文件名称*/
@@ -170,7 +170,7 @@ u8 WriteSdData(char* name, void* text, u32 offset, u32 l)
         LOG_E(" WriteSdData ERR");//Justin debug
     }
 
-    rt_mutex_release(sd_dfs_mutex);
+//    rt_mutex_release(sd_dfs_mutex);
 
     return ret;
 }

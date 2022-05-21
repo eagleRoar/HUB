@@ -100,7 +100,13 @@ void OledTaskEntry(void* parameter)
         {
             if(0 < GetMonitor()->monitorDeviceTable.deviceManageLength)
             {
-                module = GetMonitor()->monitorDeviceTable.deviceTable[0];
+                for(int i = 0; i < GetMonitor()->monitorDeviceTable.deviceManageLength; i++)
+                {
+                    if(SENSOR_TYPE == GetMonitor()->monitorDeviceTable.deviceTable[i].s_or_d)
+                    {
+                        module = GetMonitor()->monitorDeviceTable.deviceTable[i];
+                    }
+                }
 
                 u8g2_ClearBuffer(&uiShow);
                 u8g2_SetFont(&uiShow, u8g2_font_6x12_tf);

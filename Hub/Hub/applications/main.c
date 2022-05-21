@@ -47,6 +47,7 @@ int main(void)
     hubRegisterInit();
     deviceRegisterInit();
     sensorRegisterInit();
+//    initMoniter(GetMonitor());
 
     /* 初始化GPIO口 */
     GpioInit();
@@ -93,10 +94,10 @@ int main(void)
     //GetUpdataFileFromWeb();
 
     /* spi flash程序初始化 */ //SQL需要占用比较多的资源，250kb+的ram，310kb+的rom
-    SpiTaskInit();
+//    SpiTaskInit();
 
     /* MQTT线程 */
-    ka_mqtt();
+//    ka_mqtt();
 
     while(1)
     {
@@ -119,7 +120,6 @@ int main(void)
             {
                 LOG_D("table %d----------",index);
                 LOG_D("name : %s",GetMonitor()->monitorDeviceTable.deviceTable[index].module_name);
-                LOG_D("id   : %x",GetMonitor()->monitorDeviceTable.deviceTable[index].uuid);
                 for(storage = 0; storage < GetMonitor()->monitorDeviceTable.deviceTable[index].storage_size; storage++)
                 {
                     LOG_D("sto name : %s",GetMonitor()->monitorDeviceTable.deviceTable[index].module_t[storage].name);

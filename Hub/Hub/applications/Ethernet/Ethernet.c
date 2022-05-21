@@ -18,11 +18,18 @@
 #include "device.h"
 #include "Uart.h"
 
+static char udp_thread_stack[1024 * 4];
+static struct rt_thread udp_thread;
+static char tcp_thread_stack[1024 * 6];
+static struct rt_thread tcp_thread;
+
 static rt_mutex_t TcpMutex = RT_NULL;           //指向互斥量的指针
 struct ethDeviceStruct *eth = RT_NULL;          //申请ethernet实例化对象
 rt_event_t tcp_event = RT_NULL;
 type_package_t tcpRecvBuffer;
 type_package_t udpSendBuffer;
+
+
 
 extern rt_uint8_t GetEthDriverLinkStatus(void);             //获取网口连接状态
 
@@ -50,30 +57,33 @@ void rt_tc_rx_cb(void *buff, rt_size_t len)
 
 rt_err_t UdpTaskInit(void)
 {
-    rt_err_t udpThreadRes = RT_ERROR;
-    rt_thread_t udpThread = RT_NULL;
+//    rt_err_t udpThreadRes = RT_ERROR;
+//    rt_thread_t udpThread = RT_NULL;
 
     /* 创建以太网,UDP线程 */
-    udpThread = rt_thread_create(UDP_TASK, UdpTaskEntry, RT_NULL, 4096, UDP_PRIORITY, 10);
-    /* 如果线程创建成功则开始启动线程，否则提示线程创建失败 */
-    if (RT_NULL != udpThread) {
-        udpThreadRes = rt_thread_startup(udpThread);
-       if (RT_EOK != udpThreadRes) {
-           LOG_E("udp task start failed");
-           return RT_ERROR;
-       }
-    } else {
-       LOG_E("udp task create failed");
-       return RT_ERROR;
-    }
+//    udpThread = rt_thread_create(UDP_TASK, UdpTaskEntry, RT_NULL, 4096, UDP_PRIORITY, 10);
+//    /* 如果线程创建成功则开始启动线程，否则提示线程创建失败 */
+//    if (RT_NULL != udpThread) {
+//        udpThreadRes = rt_thread_startup(udpThread);
+//       if (RT_EOK != udpThreadRes) {
+//           LOG_E("udp task start failed");
+//           return RT_ERROR;
+//       }
+//    } else {
+//       LOG_E("udp task create failed");
+//       return RT_ERROR;
+//    }
+
+    rt_thread_init(&udp_thread, UDP_TASK, UdpTaskEntry, RT_NULL, &udp_thread_stack[0], sizeof(udp_thread_stack), UDP_PRIORITY, 10);
+    rt_thread_startup(&udp_thread);
 
     return RT_EOK;
 }
 
 rt_err_t TcpClientTaskInit()
 {
-    rt_err_t tcpThreadRes = RT_ERROR;
-    rt_thread_t tcpThread = RT_NULL;
+//    rt_err_t tcpThreadRes = RT_ERROR;
+//    rt_thread_t tcpThread = RT_NULL;
 
     tcp_event = rt_event_create("tcev", RT_IPC_FLAG_FIFO);
     if (tcp_event == RT_NULL)
@@ -90,19 +100,22 @@ rt_err_t TcpClientTaskInit()
     }
 
     /* 创建以太网线程 */
-    tcpThread = rt_thread_create(TCP_TASK, TcpTaskEntry, RT_NULL, 1024*6, TCP_PRIORITY, 10);
+//    tcpThread = rt_thread_create(TCP_TASK, TcpTaskEntry, RT_NULL, 1024*6, TCP_PRIORITY, 10);
 
     /* 如果线程创建成功则开始启动线程，否则提示线程创建失败 */
-    if (RT_NULL != tcpThread) {
-        tcpThreadRes = rt_thread_startup(tcpThread);
-        if (RT_EOK != tcpThreadRes) {
-            LOG_E("tcp task start failed");
-        }else {
-            LOG_I("tcp task start successfully");
-        }
-    } else {
-        LOG_E("tcp task create failed");
-    }
+//    if (RT_NULL != tcpThread) {
+//        tcpThreadRes = rt_thread_startup(tcpThread);
+//        if (RT_EOK != tcpThreadRes) {
+//            LOG_E("tcp task start failed");
+//        }else {
+//            LOG_I("tcp task start successfully");
+//        }
+//    } else {
+//        LOG_E("tcp task create failed");
+//    }
+
+    rt_thread_init(&tcp_thread, TCP_TASK, TcpTaskEntry, RT_NULL, &tcp_thread_stack[0], sizeof(tcp_thread_stack), TCP_PRIORITY, 10);
+    rt_thread_startup(&tcp_thread);
 
     return RT_EOK;
 
@@ -202,7 +215,7 @@ void TcpTaskEntry(void* parameter)
     static u8 Timer1sTouch      = OFF;
     static u16 time1S = 0;
 
-    testPrint();//Justin debug 仅仅测试
+//    testPrint();//Justin debug 仅仅测试
     //modbusTest();
     while (1)
     {
@@ -264,7 +277,7 @@ void TcpTaskEntry(void* parameter)
                     if(ON == eth->tcp.GetRecvDataFlag())
                     {
 
-//                        LOG_D("TcpTaskEntry recv data");//Justin debug
+                        LOG_D("TcpTaskEntry recv data");//Justin debug
                         /* 执行向主机注册hub、sensor、device等相关操作 */
                         AnalyzeEtherData(handle, tcpRecvBuffer);
 

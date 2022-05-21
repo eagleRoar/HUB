@@ -110,6 +110,8 @@ void SensorUart2TaskEntry(void* parameter)
     static rt_device_t uart2_serial;
     static rt_device_t uart3_serial;
     type_module_t module;
+    volatile int        state = 0;
+    int        i = 0;
 
     /* 查找串口设备 */
     uart2_serial = rt_device_find(DEVICE_UART2);
@@ -178,11 +180,16 @@ void SensorUart2TaskEntry(void* parameter)
             if(ON == Timer5sTouch)
             {
                 /* 控制设备 */
-                for(int i = 0; i < monitor.monitorDeviceTable.deviceManageLength; i++)
+                for(i = 0; i < monitor.monitorDeviceTable.deviceManageLength; i++)
                 {
+//                LOG_D("test");
                     module = monitor.monitorDeviceTable.deviceTable[i];
-
-                    ControlDeviceStorage(&module, uart3_serial, module.module_t[0].value, 0x00);//Justin debug 该控制为测试用
+                    if(DEVICE_TYPE == module.s_or_d)
+                    {
+                        state = module.module_t[0].value;
+                        LOG_D("control module name = %s,state = %d",module.module_name,module.module_t[0].value);//Justin debug为什么有这个才会执行加湿的AC station 的动作
+                        ControlDeviceStorage(&module, uart3_serial, state, 0x00);//Justin debug 该控制为测试用
+                    }
                 }
             }
         }

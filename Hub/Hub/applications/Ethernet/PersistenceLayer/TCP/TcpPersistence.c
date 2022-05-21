@@ -17,11 +17,6 @@
 
 extern struct sdCardState      sdCard;
 
-extern type_action_t   Action[3];
-type_condition_t    Condition;
-type_excute_t       Excute;
-type_dotask_t       Dotask;
-
 void RegisterHub(rt_tcpclient_t *handle)
 {
     u32                 id              = 0x00000000;
@@ -97,8 +92,6 @@ void RegisterModule(rt_tcpclient_t *handle)
                 rt_memcpy(pack.buffer, &sensorReg, temp);
                 pack.package_top.crc = CRC16((u16*)&pack+3, sizeof(struct packTop)/2 - 3 + temp/2, 0);
                 pack.package_top.length = sizeof(struct packTop) + temp;
-
-//                LOG_D("register sensor id = %x",sensorReg.uuid);//Justin debug
             }
             else if(DEVICE_TYPE == module.s_or_d)
             {
@@ -123,8 +116,6 @@ void RegisterModule(rt_tcpclient_t *handle)
                 temp += 2;//Justin debug 仅仅测试
                 pack.package_top.crc = CRC16((u16*)&pack+3, sizeof(struct packTop)/2 - 3 + temp/2, 0);
                 pack.package_top.length = sizeof(struct packTop) + temp;
-
-//                LOG_D("register device id = %x",deviceReg.uuid);//Justin debug
             }
 
             rt_tcpclient_send(handle, &pack, pack.package_top.length);
@@ -148,12 +139,12 @@ void ReplyModuleReg(type_monitor_t *monitor, type_package_t data)
             if(ASK_REPLY != data.package_top.answer)
             {
                 monitor->monitorDeviceTable.deviceTable[index].registerAnswer = REG_ERR;
-                LOG_D("sensor %d name %s register fail", index, monitor->monitorDeviceTable.deviceTable[index].module_name);
+                LOG_D("module %d name %s register fail", index, monitor->monitorDeviceTable.deviceTable[index].module_name);
             }
             else
             {
                 monitor->monitorDeviceTable.deviceTable[index].registerAnswer = RECV_OK;
-                LOG_D("sensor %d name %s register OK", index, monitor->monitorDeviceTable.deviceTable[index].module_name);
+                LOG_D("module %d name %s register OK", index, monitor->monitorDeviceTable.deviceTable[index].module_name);
             }
         }
     }
@@ -174,18 +165,16 @@ void SetDotask(rt_tcpclient_t *handle, type_monitor_t *monitor, type_package_t d
     rt_memcpy((u8 *)&dotask + 2, (u8 *)data.buffer, dotaskSize - 2);    //最开始的crc占两位
     dotask.crc = usModbusRTU_CRC((u8 *)&dotask + 2, dotaskSize - 2);
 
-    Dotask = dotask;
-    PrintDotask(Dotask);
-    //Justin debug 仅仅测试
-//    if(YES == sdCard.init)
-//    {
-//        //新增新的dotask到SD卡
-//        sdCard.sd_operate.dotask_op.AddDotaskToSD(dotask);
-//    }
-//    else
-//    {
-//        ret = UNKNOWN_ERR;
-//    }
+    PrintDotask(dotask);
+	if(YES == sdCard.init)
+    {
+        //新增新的dotask到SD卡
+        sdCard.sd_operate.dotask_op.AddDotaskToSD(dotask);
+    }
+    else
+    {
+        ret = UNKNOWN_ERR;
+    }
 
     /* 回复主机 */
     ReplyMaster(handle, data.package_top.function, ret, data.package_top.serialNum);
@@ -205,19 +194,18 @@ void SetExcute(rt_tcpclient_t *handle, type_monitor_t *monitor, type_package_t d
     rt_memcpy((u8 *)&excute + 2, (u8 *)data.buffer, sizeof(type_excute_t) - 2);   //最开始的crc占2位
     excute.crc = usModbusRTU_CRC((u8 *)&excute + 2, sizeof(type_excute_t) - 2);
 
+	PrintExcute(excute);
+    if(YES == sdCard.init)
+    {
+        //新增新的excute到SD卡
+        sdCard.sd_operate.excute_op.AddExcuteToSD(excute);
+    }
+    else
+    {
+        ret = UNKNOWN_ERR;
+    }
 
-    //Justin debug 仅仅测试
-//    if(YES == sdCard.init)
-//    {
-//        //新增新的excute到SD卡
-//        sdCard.sd_operate.excute_op.AddExcuteToSD(excute);
-//    }
-//    else
-//    {
-//        ret = UNKNOWN_ERR;
-//    }
-    Excute = excute;
-    PrintExcute(Excute);
+	
     /* 回复主机 */
     ReplyMaster(handle, data.package_top.function, ret, data.package_top.serialNum);
 }
@@ -293,11 +281,9 @@ void SetCondition(rt_tcpclient_t *handle, type_monitor_t *monitor, type_package_
     //发送过来的可能是寄存器的条件的和梯形曲线ID的
     if(NULL != strchr((char *)&(data.buffer[3]), ':'))
     {
-//        LOG_D("0-----------------------data length= %s",(char *)&(data.buffer[3]));
         //($24:1$)<(梯形曲线ID 5)
         condition.analyze_type = STORAGE_TYPE;
         p = strtok((char *)&(data.buffer[3]), delims);
-//        LOG_D("1-----------------------data length= %s",p);
         if(NULL == p)
         {
             ret = UNKNOWN_ERR;
@@ -305,7 +291,6 @@ void SetCondition(rt_tcpclient_t *handle, type_monitor_t *monitor, type_package_
         condition.value = 0;
         condition.module_uuid = atol(p);
         p = strtok(NULL, delims);
-//        LOG_D("2-----------------------data length= %s",p);
         if(NULL == p)
         {
             ret = UNKNOWN_ERR;
@@ -319,7 +304,6 @@ void SetCondition(rt_tcpclient_t *handle, type_monitor_t *monitor, type_package_
         condition.condition = AnalyzeEqual(p);
 
         p = strtok(NULL, delims);
-//        LOG_D("3-----------------------data length= %s",p);
         if(NULL == p)
         {
             ret = UNKNOWN_ERR;
@@ -353,18 +337,17 @@ void SetCondition(rt_tcpclient_t *handle, type_monitor_t *monitor, type_package_
     }
 
     condition.crc = usModbusRTU_CRC((u8 *)&condition + 2, sizeof(type_condition_t) - 2);
-    Condition = condition;
-    PrintCondition(Condition);
-    //Justin debug仅仅为了测试
-//    if(YES == sdCard.init)
-//    {
-//        //新增新的condition到SD卡
-//        sdCard.sd_operate.condition_op.AddConditionToSD(condition);
-//    }
-//    else
-//    {
-//        ret = UNKNOWN_ERR;
-//    }
+
+ 	PrintCondition(condition);
+    if(YES == sdCard.init)
+    {
+        //新增新的condition到SD卡
+        sdCard.sd_operate.condition_op.AddConditionToSD(condition);
+    }
+    else
+    {
+        ret = UNKNOWN_ERR;
+    }
 
     /* 回复主机 */
     ReplyMaster(handle, data.package_top.function, ret, data.package_top.serialNum);
@@ -437,18 +420,17 @@ void Set_Action(rt_tcpclient_t *handle, type_monitor_t *monitor, type_package_t 
         }
     }
 
-    Action[2] = action;
-    PrintAction(Action[2]);
+    PrintAction(action);
     //Justin debug仅仅测试
-//    if(YES == sdCard.init)
-//    {
-//        //新增新的action到SD卡
-//        sdCard.sd_operate.action_op.AddActionToSD(action);
-//    }
-//    else
-//    {
-//        ret = UNKNOWN_ERR;
-//    }
+    if(YES == sdCard.init)
+    {
+        //新增新的action到SD卡
+        sdCard.sd_operate.action_op.AddActionToSD(action);
+    }
+    else
+    {
+        ret = UNKNOWN_ERR;
+    }
 
     /* 回复主机 */
     ReplyMaster(handle, data.package_top.function, ret, data.package_top.serialNum);

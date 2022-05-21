@@ -34,6 +34,11 @@ struct rt_tcpclient
 #define STRCMP(a, R, b) (strcmp((a), (b)) R 0)
 #define     WRONG_NUM       -1
 
+
+
+static char tcpclient_stack[1024 * 2];
+static struct rt_thread tcpclient_thread;
+
 static rt_tcpclient_t *tcpclient_create(void);
 
 static rt_err_t socket_init(rt_tcpclient_t *thiz, const char *hostname, rt_uint32_t port);
@@ -231,16 +236,18 @@ static rt_err_t pipe_deinit(rt_tcpclient_t *thiz)
 
 static rt_err_t tcpclient_thread_init(rt_tcpclient_t *thiz)
 {
-    rt_thread_t tcpclient_tid = RT_NULL;
+//    rt_thread_t tcpclient_tid = RT_NULL;
 
-    tcpclient_tid = rt_thread_create(TCP_CLIENT_TASK, tcpclient_thread_entry, thiz, /*2048*/1024*2, 12, 10);//Justin debug
-    if (tcpclient_tid == RT_NULL)
-    {
-        LOG_E("tcpclient_thread_init fail");
-        return RT_ERROR;
-    }
+//    tcpclient_tid = rt_thread_create(TCP_CLIENT_TASK, tcpclient_thread_entry, thiz, /*2048*/1024*2, 12, 10);//Justin debug
+//    if (tcpclient_tid == RT_NULL)
+//    {
+//        LOG_E("tcpclient_thread_init fail");
+//        return RT_ERROR;
+//    }
 
-    rt_thread_startup(tcpclient_tid);
+//    rt_thread_startup(tcpclient_tid);
+    rt_thread_init(&tcpclient_thread, TCP_CLIENT_TASK, tcpclient_thread_entry, thiz, &tcpclient_stack[0], sizeof(tcpclient_stack), 12, 10);
+    rt_thread_startup(&tcpclient_thread);
 
     return RT_EOK;
 }

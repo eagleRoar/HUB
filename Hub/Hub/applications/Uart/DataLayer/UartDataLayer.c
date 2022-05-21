@@ -21,7 +21,10 @@ const storageInfo_t storageIn[STORAGE_NUM] =
         {"Humidity",            S_HUMI_ENV,         DEV_UNDEFINE,           0,          0},
         {"Temperature",         S_TEMP_ENV,         DEV_UNDEFINE,           0,          0},
         {"Light",               S_LIGHT_ENV,        DEV_UNDEFINE,           0,          0},
-        {"AC_Co2",              S_GAS_CO2,          DEV_UP,                 0,          1},
+        {"AC_Heat",             S_TEMP_ENV,         DEV_UP,                 0,          1},
+        {"AC_Humi",             S_HUMI_ENV,         DEV_UP,                 0,          1},
+        {"AC_Dehumi",           S_HUMI_ENV,         DEV_DOWN,               0,          1},
+        {"AC_Cool",             S_TEMP_ENV,         DEV_DOWN,               0,          1},
 };
 
 /**************************注册device 寄存器***************************************/
@@ -57,15 +60,26 @@ static void AddStorageToTable(type_storage_t *table, u8 index, u8 type, char *mo
     table[index].storage_in[11]     = s11;
 }
 
-/* 初始化终端设备相关映射,并相应修改AnlyzeDeviceRegister函数 */
+/* 初始化终端设备相关映射,并相应修改AnlyzeDeviceRegister函数,
+ * 增加注册后要修改DEVICE_STORAGE_TYPE数值 */
+
 void StorageInit(void)
 {
     u8 i = 0;
-    AddStorageToTable(storageTable, i, 0x03, "BHS"      , F_SEN_REGSTER, SENSOR_TYPE, 0x0010, 4,
+    AddStorageToTable(storageTable, i, 0x03, "Bhs"      , F_SEN_REGSTER, SENSOR_TYPE, 0x0010, 4,
                       storageIn[0], storageIn[1], storageIn[2], storageIn[3], sto_null, sto_null, sto_null, sto_null, sto_null, sto_null, sto_null, sto_null);
     i += 1;
-    AddStorageToTable(storageTable, i, 0x43, "AC_CO2"   , F_DEV_REGISTER, DEVICE_TYPE, 0x0040, 1,
+    AddStorageToTable(storageTable, i, 0x42, "Heat"   , F_DEV_REGISTER, DEVICE_TYPE, 0x0040, 1,
                       storageIn[4], sto_null,     sto_null,     sto_null,     sto_null, sto_null, sto_null, sto_null, sto_null, sto_null, sto_null, sto_null);
+    i += 1;
+    AddStorageToTable(storageTable, i, 0x43, "Humidification"   , F_DEV_REGISTER, DEVICE_TYPE, 0x0040, 1,
+                      storageIn[5], sto_null,     sto_null,     sto_null,     sto_null, sto_null, sto_null, sto_null, sto_null, sto_null, sto_null, sto_null);
+    i += 1;
+    AddStorageToTable(storageTable, i, 0x44, "Dehumidification"   , F_DEV_REGISTER, DEVICE_TYPE, 0x0040, 1,
+                      storageIn[6], sto_null,     sto_null,     sto_null,     sto_null, sto_null, sto_null, sto_null, sto_null, sto_null, sto_null, sto_null);
+    i += 1;
+    AddStorageToTable(storageTable, i, 0x45, "Cool"   , F_DEV_REGISTER, DEVICE_TYPE, 0x0040, 1,
+                      storageIn[7], sto_null,     sto_null,     sto_null,     sto_null, sto_null, sto_null, sto_null, sto_null, sto_null, sto_null, sto_null);
 
 }
 

@@ -20,9 +20,6 @@ static u8 dotask_sum = 0;                   //dotask 存储的数量
 
 static type_sdoperate_t     operate;        //SD卡对外开放的操作
 
-//Justin debug 定义以下全局变量为了测试
-type_action_t   Action[3];
-
 /**
  * 初始化设置类的文件
  * @param file_name
@@ -82,7 +79,7 @@ void GetMonitorFromSdCard(type_monitor_t *monitor)
                     /* 需要重新向主机发送注册命令 */
                     monitor->monitorDeviceTable.deviceTable[index].registerAnswer = SEND_NULL;
 
-                    PrintModule(monitor->monitorDeviceTable.deviceTable[index]);
+//                    PrintModule(monitor->monitorDeviceTable.deviceTable[index]);//Justin debug
                 }
             }
         }
@@ -134,7 +131,7 @@ static u8 GetActionSum(void)
         LOG_D("GetActionSum read sd err");//Justin debug
         action_sum = 0;
     }
-    LOG_D("GetActionSum = %d",action_sum);
+//    LOG_D("GetActionSum = %d",action_sum);
     return action_sum;
 }
 
@@ -160,6 +157,7 @@ static u8 GetExcuteSum(void)
 
 static u8 GetDotaskSum(void)
 {
+//    LOG_D("--------------GetDotaskSum");
     if(RT_ERROR == ReadSdData(DOTASK_FILE, (u8 *)&dotask_sum, SD_INFOR_SIZE - 1, 1))
     {
         dotask_sum = 0;
@@ -203,34 +201,35 @@ static void SetDotaskSum(u8 sum)
  */
 static u8 FindActionById(u32 id, u8 *index)
 {
-    //u8      temp            = 0;
+    u8      temp            = 0;
     u8      ret             = RT_EOK;
-    u32     find_id         = 0;
+    type_action_t  action;
     u8      actionSum       = 0;
 
     actionSum = GetActionSum();
-    //index = &temp;
 
-    LOG_D("FindActionById actionSum = %d",actionSum);//Justin debug
+//    LOG_D("FindActionById actionSum = %d",actionSum);//Justin debug
 
     if(0 == actionSum)
     {
-        *index = 0;
+        temp = 0;
         ret = RT_ERROR;
     }
     else
     {
-        for(*index = 0; *index < actionSum; *index++)
+        for(temp = 0; temp < actionSum; temp++)
         {
-           ReadSdData(ACTION_FILE, (u8 *)&find_id, SD_INFOR_SIZE + *index * (sizeof(type_action_t) + 2), 4);//crc 为2
 
-           if(id == find_id)
+           ReadSdData(ACTION_FILE, (u8 *)&action, SD_INFOR_SIZE + temp * SAVE_ACTION_MAX_ZISE, sizeof(type_action_t));//crc 为2
+//           LOG_D("--------------------------NO %d id = %x, now id = %x",temp,action.id,id);
+
+           if(id == action.id)
            {
+//               LOG_D("-------------------------FindActionById find ok");//Justin debug
                break;
            }
         }
-
-        if(*index == actionSum)
+        if(temp == actionSum)
         {
             ret = RT_ERROR;
         }
@@ -239,6 +238,8 @@ static u8 FindActionById(u32 id, u8 *index)
             ret = RT_EOK;
         }
     }
+//    LOG_D("--------------------------------------index = %d,actionSum = %d",temp,actionSum);
+    *index = temp;
 
     return ret;
 }
@@ -247,10 +248,8 @@ static u8 FindConditionById(u32 id, u8 *index)
 {
     u8      temp            = 0;
     u8      ret             = RT_EOK;
-    u32     find_id         = 0;
+    type_condition_t condition;
     u8      conditionSum    = GetConditionSum();
-
-    index = &temp;
 
     if(0 == conditionSum)
     {
@@ -261,9 +260,9 @@ static u8 FindConditionById(u32 id, u8 *index)
     {
         for(temp = 0; temp < conditionSum; temp++)
         {
-           ReadSdData(CONDITION_FILE, (u8 *)&find_id, SD_INFOR_SIZE + temp * (sizeof(type_condition_t) + 2), 4);
+           ReadSdData(CONDITION_FILE, (u8 *)&condition, SD_INFOR_SIZE + temp * sizeof(type_condition_t), sizeof(type_condition_t));
 
-           if(id == find_id)
+           if(id == condition.id)
            {
                break;
            }
@@ -279,6 +278,8 @@ static u8 FindConditionById(u32 id, u8 *index)
         }
     }
 
+    *index = temp;
+
     return ret;
 }
 
@@ -286,10 +287,9 @@ static u8 FindExcuteById(u32 id, u8 *index)
 {
     u8      temp            = 0;
     u8      ret             = RT_EOK;
-    u32     find_id         = 0;
+    type_excute_t excute;
     u8      excuteSum       = GetExcuteSum();
 
-    index = &temp;
 
     if(0 == excuteSum)
     {
@@ -300,9 +300,9 @@ static u8 FindExcuteById(u32 id, u8 *index)
     {
         for(temp = 0; temp < excuteSum; temp++)
         {
-           ReadSdData(EXCUTE_FILE, (u8 *)&find_id, SD_INFOR_SIZE + temp * (sizeof(type_excute_t) + 2) , 4);
+           ReadSdData(EXCUTE_FILE, (u8 *)&excute, SD_INFOR_SIZE + temp * sizeof(type_excute_t), sizeof(type_excute_t));
 
-           if(id == find_id)
+           if(id == excute.id)
            {
                break;
            }
@@ -318,6 +318,8 @@ static u8 FindExcuteById(u32 id, u8 *index)
         }
     }
 
+    *index = temp;
+
     return ret;
 }
 
@@ -325,10 +327,9 @@ static u8 FindDotaskById(u32 id, u8 *index)
 {
     u8      temp            = 0;
     u8      ret             = RT_EOK;
-    u32     find_id         = 0;
+    type_dotask_t dotask;
     u8      dotaskSum       = GetDotaskSum();
 
-    index = &temp;
 
     if(0 == dotaskSum)
     {
@@ -339,9 +340,9 @@ static u8 FindDotaskById(u32 id, u8 *index)
     {
         for(temp = 0; temp < dotaskSum; temp++)
         {
-           ReadSdData(DOTASK_FILE, (u8 *)&find_id, SD_INFOR_SIZE + temp * (sizeof(type_dotask_t) + 2), 4);
+           ReadSdData(DOTASK_FILE, (u8 *)&dotask, SD_INFOR_SIZE + temp * sizeof(type_dotask_t), sizeof(type_dotask_t));
 
-           if(id == find_id)
+           if(id == dotask.id)
            {
                break;
            }
@@ -356,6 +357,8 @@ static u8 FindDotaskById(u32 id, u8 *index)
             ret = RT_EOK;
         }
     }
+
+    *index = temp;
 
     return ret;
 }
@@ -394,19 +397,6 @@ static void AddConditionToSD(type_condition_t condition)
 
     WriteSdData(CONDITION_FILE, (u8 *)&condition, SD_INFOR_SIZE + index * conditionSize, conditionSize);
 
-    //Justin debug 仅仅测试
-//    ReadSdData(CONDITION_FILE, (u8 *)&condition, SD_INFOR_SIZE + index * conditionSize, conditionSize);
-//
-//    LOG_D("crc = %x",condition.crc);
-//    LOG_D("id = %x",condition.id);
-//    LOG_D("priority = %x",condition.priority);
-//    LOG_D("analyze_type = %x",condition.analyze_type);
-//    LOG_D("value = %x",condition.value);
-//    LOG_D("module_uuid = %x",condition.module_uuid);
-//    LOG_D("storage = %x",condition.storage);
-//    LOG_D("condition = %x",condition.condition);
-//    LOG_D("action_id = %x",condition.action.action_id);
-
     if(index == GetConditionSum())
     {
         SetConditionSum(GetConditionSum() + 1);
@@ -421,11 +411,6 @@ static void AddExcuteToSD(type_excute_t excute)
     FindExcuteById(excute.id, &index);
 
     WriteSdData(EXCUTE_FILE, (u8 *)&excute, SD_INFOR_SIZE + index * excuteSize, excuteSize);
-    //Justin debug 仅仅测试
-//    LOG_D("id = %x",excute.id);
-//    LOG_D("device_id = %x",excute.device_id);
-//    LOG_D("storage = %x",excute.storage);
-//    LOG_D("action_id_v = %x",excute.action_id_v);
 
     if(index == GetExcuteSum())
     {
@@ -442,16 +427,6 @@ static void AddDotaskToSD(type_dotask_t dotask)
     FindDotaskById(dotask.id, &index);
 
     WriteSdData(DOTASK_FILE, (u8 *)&dotask, SD_INFOR_SIZE + index * dotaskSize, dotaskSize);
-//    rt_memset((u8 *)&dotask, 0, dotaskSize);
-//    ReadSdData(DOTASK_FILE, (u8 *)&dotask, SD_INFOR_SIZE + index * dotaskSize, dotaskSize);
-//
-//    //Justin debug
-//    LOG_D("id = %x",dotask.id);
-//    LOG_D("condition_id = %x",dotask.condition_id);
-//    LOG_D("excuteAction_id = %x",dotask.excuteAction_id);
-//    LOG_D("start = %x",dotask.start);
-//    LOG_D("continue_t = %x",dotask.continue_t);
-//    LOG_D("delay = %x",dotask.delay);//Justin debug 仅仅测试
 
     if(index == GetDotaskSum())
     {
@@ -468,7 +443,7 @@ static rt_err_t TakeAction(type_action_t *action, u8 index)
 {
     u8          *data           = RT_NULL;
     u16         crc             = 0x0000;
-    u16         actionSize      = 0x0000;
+    u16         actionSize      = sizeof(type_action_t) - sizeof(type_curve_t *);
     u16         curveSize       = 0x0000;
     rt_err_t    ret             = RT_EOK;
 
@@ -478,26 +453,15 @@ static rt_err_t TakeAction(type_action_t *action, u8 index)
     if(RT_NULL != data)
     {
         rt_memset(data, 0, SAVE_ACTION_MAX_ZISE);
-        //将第index位置的数据取出来，数据长度固定为SAVE_ACTION_MAX_ZISE
+
         ReadSdData(ACTION_FILE, data, SD_INFOR_SIZE + index * SAVE_ACTION_MAX_ZISE, SAVE_ACTION_MAX_ZISE);
 
-        actionSize = sizeof(type_action_t) - sizeof(type_curve_t *);
-
-        //先取出来curve长度才能知道该给action多大空间，该操作并非全部复制action
         rt_memcpy((u8 *)action, data, actionSize);
+//        LOG_D("------------------TakeAction actionSize = %d",actionSize);
         curveSize = sizeof(type_curve_t) * action->curve_length;
+//        LOG_D("------------------TakeAction curveSize = %d,action->curve_length = %d",curveSize,action->curve_length);
 
-        action->curve = rt_malloc(curveSize);
-
-        if(RT_NULL != action->curve)
-        {
-            rt_memcpy((u8 *)action->curve, &data[actionSize], curveSize);
-        }
-        else
-        {
-            action = RT_NULL;
-            ret = RT_ERROR;
-        }
+        rt_memcpy((u8 *)action->curve, &data[actionSize], curveSize);
 
         crc = usModbusRTU_CRC(data + 2, SAVE_ACTION_MAX_ZISE - 2);//crc 占两位，crc不加入校验
 
@@ -506,11 +470,17 @@ static rt_err_t TakeAction(type_action_t *action, u8 index)
         {
             action = RT_NULL;
             ret = RT_ERROR;
+            LOG_E("TakeAction err2");
         }
-    }
 
-    rt_free(data);
-    data = RT_NULL;
+        //一定要释放
+        rt_free(data);
+        data = RT_NULL;
+    }
+    else
+    {
+        ret = RT_ERROR;
+    }
 
     return ret;
 }
@@ -525,7 +495,7 @@ static rt_err_t TakeCondition(type_condition_t *condition, u8 index)
     ReadSdData(CONDITION_FILE, (u8 *)condition, SD_INFOR_SIZE + index * conditionSize, conditionSize);
 
     crc = usModbusRTU_CRC((u8 *)condition + 2, conditionSize - 2);
-    LOG_D("condition->crc = %x, crc = %x",condition->crc, crc);  //Justin debug
+//    LOG_D("condition->crc = %x, crc = %x",condition->crc, crc);  //Justin debug
     if(condition->crc != crc)
     {
         condition = RT_NULL;
@@ -545,7 +515,7 @@ static rt_err_t TakeExcute(type_excute_t *excute, u8 index)
     ReadSdData(EXCUTE_FILE, (u8 *)excute, SD_INFOR_SIZE + index * excuteSize, excuteSize);
 
     crc = usModbusRTU_CRC((u8 *)excute + 2, excuteSize - 2);
-    LOG_D("excute->crc = %x, crc = %x",excute->crc, crc);  //Justin debug
+//    LOG_D("excute->crc = %x, crc = %x",excute->crc, crc);  //Justin debug
     if(excute->crc != crc)
     {
         excute = RT_NULL;
@@ -565,12 +535,14 @@ static rt_err_t TakeDotask(type_dotask_t *dotask, u8 index)
     ReadSdData(DOTASK_FILE, (u8 *)dotask, SD_INFOR_SIZE + index * dotaskSize, dotaskSize);
 
     crc = usModbusRTU_CRC((u8 *)dotask + 2, dotaskSize - 2);
-    LOG_D("dotask->crc = %x, crc = %x",dotask->crc, crc);  //Justin debug
+//    LOG_D("dotask->crc = %x, crc = %x",dotask->crc, crc);  //Justin debug
     if(dotask->crc != crc)
     {
         dotask = RT_NULL;
         ret = RT_ERROR;
     }
+
+//    PrintDotask(*dotask);//Justin debug
 
     return ret;
 }
@@ -582,6 +554,7 @@ void SdDirInit(void)
 {
     type_action_t   action;
     u16             actionSize          = sizeof(type_action_t) - sizeof(type_curve_t *);
+    u16             curveSize           = SAVE_ACTION_MAX_ZISE - actionSize;
     u8              *data               = RT_NULL;
 
     //检测文件夹可读性
@@ -593,44 +566,60 @@ void SdDirInit(void)
     //校验文件里面的数据
     SettingFileInit(ACTION_FILE);
     //增加系统曲线
-    data = rt_malloc(SAVE_ACTION_MAX_ZISE);
-    if(RT_NULL != data)
+    action.curve = rt_malloc(curveSize);//Justin debug 仅仅测试
+    if(RT_NULL != action.curve)
     {
-        action.curve = rt_malloc(sizeof(type_curve_t));
-        rt_memset(data, 0, SAVE_ACTION_MAX_ZISE);//Justin debug 仅仅测试
-        action.id = 0;
-        action.curve_length = 1;
-        action.current_value = 0;
-        action.curve[0].start_value = 0;
-        action.curve[0].end_value = 0;
-        action.curve[0].time = 0;
-        rt_memcpy(data, (u8 *)&action, actionSize);
-        rt_memcpy(&data[actionSize], (u8 *)action.curve, sizeof(type_curve_t));
-        action.crc = usModbusRTU_CRC(data + 2, SAVE_ACTION_MAX_ZISE - 2);//crc 占两位，crc不加入校验
-//        AddActionToSD(action);
-        Action[0] = action;
+        rt_memset(action.curve, 0, SAVE_ACTION_MAX_ZISE);//Justin debug 仅仅测试
 
-        rt_thread_mdelay(100);//Justin debug
+        data = rt_malloc(SAVE_ACTION_MAX_ZISE);
+        if(RT_NULL != data)
+        {
+            action.id = 0;
+            action.curve_length = 1;
+            action.current_value = 0;
+            action.curve[0].start_value = 0;
+            action.curve[0].end_value = 0;
+            action.curve[0].time = 0;
+            rt_memset(data, 0, SAVE_ACTION_MAX_ZISE);
+            rt_memcpy(data, (u8 *)&action, actionSize);
+            rt_memcpy(&data[actionSize], (u8 *)action.curve, curveSize);
+            action.crc = usModbusRTU_CRC(data + 2, SAVE_ACTION_MAX_ZISE - 2);//crc 占两位，crc不加入校验
+            AddActionToSD(action);
 
-        rt_memset(data, 0, SAVE_ACTION_MAX_ZISE);
-        action.id = 1;
-        action.curve_length = 1;
-        action.current_value = 1;
-        action.curve[0].start_value = 1;
-        action.curve[0].end_value = 1;
-        action.curve[0].time = 0;
-        rt_memcpy(data, (u8 *)&action, actionSize);
-        rt_memcpy(&data[actionSize], (u8 *)action.curve, sizeof(type_curve_t));
-        action.crc = usModbusRTU_CRC(data + 2, SAVE_ACTION_MAX_ZISE - 2);//crc 占两位，crc不加入校验
-//        AddActionToSD(action);
-        Action[1] = action;
+            rt_memset(action.curve, 0, SAVE_ACTION_MAX_ZISE);//Justin debug 仅仅测试
+            action.id = 1;
+            action.curve_length = 1;
+            action.current_value = 1;
+            action.curve[0].start_value = 1;
+            action.curve[0].end_value = 1;
+            action.curve[0].time = 0;
+            rt_memset(data, 0, SAVE_ACTION_MAX_ZISE);
+            rt_memcpy(data, (u8 *)&action, actionSize);
+            rt_memcpy(&data[actionSize], (u8 *)action.curve, curveSize);
+            action.crc = usModbusRTU_CRC(data + 2, SAVE_ACTION_MAX_ZISE - 2);//crc 占两位，crc不加入校验
+            AddActionToSD(action);
+
+//            LOG_I("SdDirInit free data");
+//            rt_free(data);
+//            data = RT_NULL;//Justin debug 仅仅测试 为什么在这里释放会有问题
+        }
+        else
+        {
+            LOG_E("SdDirInit err 1");
+        }
+
+//        LOG_I("SdDirInit free action.curve");
+//        rt_free(action.curve);
+//        action.curve = RT_NULL;//Justin debug 仅仅测试
+    }
+    else
+    {
+        LOG_E("SdDirInit err 2");
     }
     SettingFileInit(CONDITION_FILE);
     SettingFileInit(EXCUTE_FILE);
     SettingFileInit(DOTASK_FILE);
 
-    rt_free(data);
-    data = RT_NULL;
 }
 
 static void SdOperateInit(void)

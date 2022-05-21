@@ -26,13 +26,12 @@
 #define     HUB_NAME_SIZE                   16
 #define     MODULE_NAMESZ                   16
 #define     STORAGE_NUM                     256
-#define     DEVICE_STORAGE_TYPE             2
+#define     DEVICE_STORAGE_TYPE             5
 #define     STORAGE_MAX                     12
 #define     SENSOR_STR_MAX                  STORAGE_MAX
 #define     DEVICE_STR_MAX                  STORAGE_MAX
 
 #define     SAVE_ACTION_MAX_ZISE            300                 //存储单条action 的空间
-#define     SAVE_DOTASK_MAX_ZISE            300                 //存储单条dotask 的空间
 
 typedef     struct packageEth               type_package_t;
 

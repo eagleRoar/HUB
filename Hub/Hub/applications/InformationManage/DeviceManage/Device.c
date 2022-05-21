@@ -12,6 +12,12 @@
 #include "SdcardBusiness.h"
 
 struct deviceRegister device_reg;
+u8 globalData[sizeof(type_module_t) * 16];//Justin debug  仅仅用于解决rt_realloc导致的问题，还没有解决
+
+void initMoniter(type_monitor_t *monitor)
+{
+    monitor->monitorDeviceTable.deviceTable = (type_module_t *)globalData;//Justin debug 仅仅测试
+}
 
 void deviceRegisterInit(void)
 {
@@ -28,6 +34,7 @@ u8 GetDeviceTableSize(type_monitor_t *monitor)
 void InsertDeviceToTable(type_monitor_t *monitor, type_module_t device)
 {
     type_module_t *new = RT_NULL;     //返回申请的内存空间
+
     /* 分配空间 */
     if(0 == GetDeviceTableSize(monitor))
     {
@@ -39,16 +46,26 @@ void InsertDeviceToTable(type_monitor_t *monitor, type_module_t device)
         if((NO == FindDeviceTableByuuid(monitor, &device.uuid)) /*&&
            (NO == FindDeviceByAddr(monitor, device.address))*/)
         {
-            monitor->monitorDeviceTable.deviceManageLength++;
+            if(monitor->monitorDeviceTable.deviceManageLength < 16)
+            {
+                monitor->monitorDeviceTable.deviceManageLength++;
+            }
+            else
+            {
+                LOG_E("monitor->monitorDeviceTable.deviceManageLength > 16, err");
+            }
             new = rt_realloc(monitor->monitorDeviceTable.deviceTable,
-                       (monitor->monitorDeviceTable.deviceManageLength)*sizeof(type_module_t));
+                       (monitor->monitorDeviceTable.deviceManageLength)*sizeof(type_module_t));//Justin debug 要解决跑到这个地方之后文件系统打开错误
+            LOG_D("----------------------------------InsertDeviceToTable 1");
             if(RT_NULL == new)
             {
                 LOG_D("add new memory fail");
+                LOG_D("----------------------------------InsertDeviceToTable 2");
             }
             else
             {
                 monitor->monitorDeviceTable.deviceTable = new;
+                LOG_D("----------------------------------InsertDeviceToTable 3");
             }
         }
         else

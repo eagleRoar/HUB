@@ -71,6 +71,7 @@ struct deviceRegister
     struct deviceScaleGroup scale_group[DEVICE_STR_MAX];
 };
 
+void initMoniter(type_monitor_t *monitor);
 void deviceRegisterInit(void);
 u8 GetDeviceTableSize(type_monitor_t *);
 void InsertDeviceToTable(type_monitor_t *, type_module_t);
