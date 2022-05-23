@@ -85,7 +85,7 @@ void oledInit(void)
 
 void OledTaskEntry(void* parameter)
 {
-    char data[2];
+    char data[10];
     type_module_t  module;
     static u8 Timer1sTouch      = OFF;
     static u16 time1S = 0;

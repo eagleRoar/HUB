@@ -547,6 +547,23 @@ static rt_err_t TakeDotask(type_dotask_t *dotask, u8 index)
     return ret;
 }
 
+//Justin debug 仅仅为了曾工master 和 hub 的演示
+void CleanSDCard(void)
+{
+    u8 i = 0;
+    u8 text[1024];
+
+    rt_memset(text, 0, 1024);
+
+    for(i = 0; i < 10; i++)
+    {
+        WriteSdData(ACTION_FILE, text, i * 1024, 1024);
+        WriteSdData(CONDITION_FILE, text, i * 1024, 1024);
+        WriteSdData(EXCUTE_FILE, text, i * 1024, 1024);
+        WriteSdData(DOTASK_FILE, text, i * 1024, 1024);
+    }
+}
+
 /**
  * @brief SD内文件和文件夹有效性
  */
@@ -562,6 +579,8 @@ void SdDirInit(void)
     CheckDirectory(MODULE_DIR);
     CheckDirectory(TEST_DIR);
     CheckDirectory(SETTING_DIR);
+
+    CleanSDCard();//Justin debug 仅仅为了曾工master 和 hub 的演示
 
     //校验文件里面的数据
     SettingFileInit(ACTION_FILE);
