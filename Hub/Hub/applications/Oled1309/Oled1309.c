@@ -105,29 +105,29 @@ void OledTaskEntry(void* parameter)
                     if(SENSOR_TYPE == GetMonitor()->monitorDeviceTable.deviceTable[i].s_or_d)
                     {
                         module = GetMonitor()->monitorDeviceTable.deviceTable[i];
+
+                        u8g2_ClearBuffer(&uiShow);
+                        u8g2_SetFont(&uiShow, u8g2_font_6x12_tf);
+
+                        itoa(module.module_t[0].value, data, 10);
+                        u8g2_DrawStr(&uiShow, 1, 12, module.module_t[0].name);
+                        u8g2_DrawStr(&uiShow, 80, 12, data);
+
+                        itoa(module.module_t[1].value, data, 10);
+                        u8g2_DrawStr(&uiShow, 1, 22, module.module_t[1].name);
+                        u8g2_DrawStr(&uiShow, 80, 22, data);
+
+                        itoa(module.module_t[2].value, data, 10);
+                        u8g2_DrawStr(&uiShow, 1, 32, module.module_t[2].name);
+                        u8g2_DrawStr(&uiShow, 80, 32, data);
+
+                        itoa(module.module_t[3].value, data, 10);
+                        u8g2_DrawStr(&uiShow, 1, 42, module.module_t[3].name);
+                        u8g2_DrawStr(&uiShow, 80, 42, data);
+
+                        u8g2_SendBuffer(&uiShow);
                     }
                 }
-
-                u8g2_ClearBuffer(&uiShow);
-                u8g2_SetFont(&uiShow, u8g2_font_6x12_tf);
-
-                itoa(module.module_t[0].value, data, 10);
-                u8g2_DrawStr(&uiShow, 1, 12, module.module_t[0].name);
-                u8g2_DrawStr(&uiShow, 80, 12, data);
-
-                itoa(module.module_t[1].value, data, 10);
-                u8g2_DrawStr(&uiShow, 1, 22, module.module_t[1].name);
-                u8g2_DrawStr(&uiShow, 80, 22, data);
-
-                itoa(module.module_t[2].value, data, 10);
-                u8g2_DrawStr(&uiShow, 1, 32, module.module_t[2].name);
-                u8g2_DrawStr(&uiShow, 80, 32, data);
-
-                itoa(module.module_t[3].value, data, 10);
-                u8g2_DrawStr(&uiShow, 1, 42, module.module_t[3].name);
-                u8g2_DrawStr(&uiShow, 80, 42, data);
-
-                u8g2_SendBuffer(&uiShow);
             }
         }
 

@@ -196,6 +196,8 @@ void TaskEngine(type_module_t *module,type_module_t *device)
     {
         if(RT_EOK == sdCard.sd_operate.dotask_op.TakeDotask(&dotask, dotaskIndex))
         {
+//            LOG_D("-------------------------------------------------");//Justin debug
+//            PrintDotask(dotask);//Justin debug
             //查找是否有符合条件的condition
             if(RT_EOK == sdCard.sd_operate.condition_op.FindConditionById(dotask.condition_id, &conditionIndex))
             {
@@ -239,15 +241,37 @@ void TaskEngine(type_module_t *module,type_module_t *device)
                         if(RT_NULL != module)
                         {
                             device = GetModuleByuuid(GetMonitor(), &(excute.device_id));
+
+                            if((module->module_t[condition.storage].small_scale == S_TEMP) ||
+                               (module->module_t[condition.storage].small_scale == S_TEMP_ENV) ||
+                               (module->module_t[condition.storage].small_scale == S_TEMP_WATER) ||
+                               (module->module_t[condition.storage].small_scale == S_TEMP_SOIL) )
+                            {
+                                condition_action.curve[0].start_value *= 10;
+                            }
+                            else if((module->module_t[condition.storage].small_scale == S_HUMI) ||
+                                    (module->module_t[condition.storage].small_scale == S_HUMI_ENV) ||
+                                    (module->module_t[condition.storage].small_scale == S_HUMI_SOIL))
+                            {
+                                condition_action.curve[0].start_value *= 10;
+                            }
+
+//                            LOG_D("module->module_t[condition.storage].value = %d, condition_action.curve[0].start_value = %d",
+//                                    module->module_t[condition.storage].value , condition_action.curve[0].start_value);
+
                             if (module->module_t[condition.storage].value < condition_action.curve[0].start_value)
                             {
+//                                if(module->module_t[condition.storage].small_scale == S_TEMP_ENV)
+//                                {
+//                                    PrintAction(action);
+//                                }
                                 device->module_t[excute.storage].value = action.curve[0].start_value;
 //                                LOG_D("device name = %s, excute.storage = %d, do state = %d",device->module_name,excute.storage,device->module_t[excute.storage].value);
 //                                LOG_D("GREATER_THAN 1");
                             }
                             else
                             {
-                                device->module_t[excute.storage].value = (action.curve[0].start_value == 0) ? 1 : 0;
+//                                device->module_t[excute.storage].value = (action.curve[0].start_value == 0) ? 1 : 0;
 //                                LOG_D("device name = %s, excute.storage = %d, do state = %d",device->module_name,excute.storage,device->module_t[excute.storage].value);
 //                                LOG_D("GREATER_THAN 2");
                             }
@@ -259,6 +283,21 @@ void TaskEngine(type_module_t *module,type_module_t *device)
                         if(RT_NULL != module)
                         {
                             device = GetModuleByuuid(GetMonitor(), &(excute.device_id));
+
+                            if((module->module_t[condition.storage].small_scale == S_TEMP) ||
+                               (module->module_t[condition.storage].small_scale == S_TEMP_ENV) ||
+                               (module->module_t[condition.storage].small_scale == S_TEMP_WATER) ||
+                               (module->module_t[condition.storage].small_scale == S_TEMP_SOIL) )
+                            {
+                                condition_action.curve[0].start_value *= 10;
+                            }
+                            else if((module->module_t[condition.storage].small_scale == S_HUMI) ||
+                                    (module->module_t[condition.storage].small_scale == S_HUMI_ENV) ||
+                                    (module->module_t[condition.storage].small_scale == S_HUMI_SOIL))
+                            {
+                                condition_action.curve[0].start_value *= 10;
+                            }
+
                             if (module->module_t[condition.storage].value > condition_action.curve[0].start_value)
                             {
                                 device->module_t[excute.storage].value = action.curve[0].start_value;
@@ -267,7 +306,7 @@ void TaskEngine(type_module_t *module,type_module_t *device)
                             }
                             else
                             {
-                                device->module_t[excute.storage].value = (action.curve[0].start_value == 0) ? 1 : 0;
+//                                device->module_t[excute.storage].value = (action.curve[0].start_value == 0) ? 1 : 0;
 //                                LOG_D("device name = %s, excute.storage = %d, do state = %d",device->module_name,excute.storage,device->module_t[excute.storage].value);
 //                                LOG_D("GREATER_THAN 2");
                             }
