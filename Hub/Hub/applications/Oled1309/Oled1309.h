@@ -11,15 +11,7 @@
 
 #define APPLICATIONS_OLED1309_H_
 
-#include <board.h>
-#include <rtdevice.h>
-#include <rtthread.h>
-#include <rtdbg.h>
-
-#include "GlobalConfig.h"
-#include "typedef.h"
 #include "Gpio.h"
-#include "Device.h"
 #include "InformationMonitor.h"
 
 void oledInit(void);

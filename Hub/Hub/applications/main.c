@@ -18,9 +18,6 @@
 #include "Uart.h"
 #include "Spi.h"
 #include "ButtonTask.h"
-#include "hub.h"
-#include "Device.h"
-#include "Sensor.h"
 #include "UartDataLayer.h"
 
 #define DBG_TAG "main"
@@ -36,32 +33,27 @@ static uint16_t g_Key = 97;
 int main(void)
 {
     rt_uint8_t      ethStatus       = LINKDOWN;
-    u8              storage         = 0;
-    u16             index           = 0;
-    static u8       monitorNum      = 0;
+    u8              index           = 0;
+    static u8       module_size     = 0;
     static u8       Timer1sTouch    = OFF;
     static u16      time1S          = 0;
 
-    /* 初始化静态变量 */
+    //初始化静态变量
     StorageInit();
-    hubRegisterInit();
-    deviceRegisterInit();
-    sensorRegisterInit();
-//    initMoniter(GetMonitor());
 
-    /* 初始化GPIO口 */
+    //初始化GPIO口
     GpioInit();
 
-    /* 初始化灯光线程,仅作为呼吸灯 */
+    //初始化灯光线程,仅作为呼吸灯
     LedTaskInit();
 
-    /* oled1309屏线程初始化 */
+    //oled1309屏线程初始化
     OledTaskInit();
 
-    /* 按键线程初始化 */
+    //按键线程初始化
     ButtonTaskInit();
 
-    /* 等待网络部分初始化完成 */
+    //等待网络部分初始化完成 */
     do {
         time1S = TimerTask(&time1S, 100, &Timer1sTouch);         //10秒任务定时器
         ethStatus = GetEthDriverLinkStatus();
@@ -81,24 +73,23 @@ int main(void)
         EthernetTaskInit();
     }
 
-    /* 初始化SD卡处理线程 */
+    //初始化SD卡处理线程
     SDCardTaskInit();
 
-    /* 初始化串口接收传感器类线程 */
+    //初始化串口接收传感器类线程
     SensorUart2TaskInit();
 
-    /* 初始化蓝牙Ble线程,蓝牙是通过uart发送数据控制 */
+    //spi flash程序初始化 //SQL需要占用比较多的资源，250kb+的ram，310kb+的rom
+    SpiTaskInit();
+
+    //MQTT线程
+//    ka_mqtt();//Justin debug 锁定该线程导致了SD卡的文件描述符申请失败，需要检查里面是否有内存泄露等bug
+
+    //初始化蓝牙Ble线程,蓝牙是通过uart发送数据控制
     //BleUart6TaskInit();   //该功能暂时删除
 
-    /* 从网络上获取新的app包 */
+    //从网络上获取新的app包
     //GetUpdataFileFromWeb();
-
-    /* spi flash程序初始化 */ //SQL需要占用比较多的资源，250kb+的ram，310kb+的rom
-//    SpiTaskInit();
-
-    /* MQTT线程 */
-//    ka_mqtt();
-
     while(1)
     {
         /* 监视网络模块是否上线 */
@@ -106,7 +97,7 @@ int main(void)
         if(LINKUP == ethStatus)
         {
             if(RT_NULL == rt_thread_find(UDP_TASK) &&
-               RT_NULL == rt_thread_find(TCP_TASK))
+               RT_NULL == rt_thread_find(TCP_SEND_TASK))
             {
                 /* 重新上线,初始化网络任务 */
                 EthernetTaskInit();
@@ -114,19 +105,14 @@ int main(void)
             }
         }
 
-        if(monitorNum != GetMonitor()->monitorDeviceTable.deviceManageLength)
+        if(module_size != GetMonitor()->module_size)
         {
-            for(index = 0; index < GetMonitor()->monitorDeviceTable.deviceManageLength; index++)
-            {
-                LOG_D("table %d----------",index);
-                LOG_D("name : %s",GetMonitor()->monitorDeviceTable.deviceTable[index].module_name);
-                for(storage = 0; storage < GetMonitor()->monitorDeviceTable.deviceTable[index].storage_size; storage++)
-                {
-                    LOG_D("sto name : %s",GetMonitor()->monitorDeviceTable.deviceTable[index].module_t[storage].name);
-                }
-            }
+            module_size = GetMonitor()->module_size;
 
-            monitorNum = GetMonitor()->monitorDeviceTable.deviceManageLength;
+            for(index = 0; index < module_size; index++)
+            {
+                printModule(GetMonitor()->module[index]);
+            }
         }
 
         rt_thread_mdelay(1000);

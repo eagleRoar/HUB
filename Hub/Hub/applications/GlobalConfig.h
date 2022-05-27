@@ -16,7 +16,8 @@
 #define HUB_SELECT                      HUB_ENVIRENMENT
 
 #define UDP_TASK                        "udp_task"
-#define TCP_TASK                        "tcp_task"
+#define TCP_SEND_TASK                   "tcp_send"
+#define TCP_RECV_TASK                   "tcp_recv"
 #define TCP_CLIENT_TASK                 "tcpc"
 #define SD_CARD_TASK                    "sdcard_task"
 

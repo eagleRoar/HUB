@@ -10,77 +10,51 @@
 #ifndef APPLICATIONS_INFORMATIONMANAGE_INFORMATIONMONITOR_H_
 #define APPLICATIONS_INFORMATIONMANAGE_INFORMATIONMONITOR_H_
 
-#include <board.h>
-#include <rtdevice.h>
-#include <rtthread.h>
-#include <rtdbg.h>
-#include "GlobalConfig.h"
-#include "typedef.h"
-#include "string.h"
 #include "Gpio.h"
-//#include "device.h"
 
 #define     name_null                       "null"     //长度32的空字符串
 
 #define     ALLOCATE_ADDRESS_SIZE           256
-#define     HUB_NAME_SIZE                   16
+//#define     HUB_NAME_SIZE                   16
+#define     MODULE_MAX                      16
 #define     MODULE_NAMESZ                   16
+#define     STORAGE_NAMESZ                  8
 #define     STORAGE_NUM                     256
-#define     DEVICE_STORAGE_TYPE             5
+#define     ALLOW_MODULE_TYPE_SZ            16         //允许的产品品种最多
 #define     STORAGE_MAX                     12
-#define     SENSOR_STR_MAX                  STORAGE_MAX
-#define     DEVICE_STR_MAX                  STORAGE_MAX
-
-#define     SAVE_ACTION_MAX_ZISE            300                 //存储单条action 的空间
 
 typedef     struct packageEth               type_package_t;
 
-typedef     struct monitorStruct            type_monitor_t;
-typedef     struct moduleManageStruct       type_module_t;
-typedef     struct storageInfo              storageInfo_t;
-typedef     struct storageStruct            type_storage_t;
-/************Ethernet    ***************************************/
-typedef     struct hubRegister              type_hubreg_t;
-typedef     struct hubRegInterface          hubreg_interface;
-typedef     struct sensorRegister           type_sen_reg_t;
-typedef     struct sensorReg_interface      sensor_interface;
-typedef     struct deviceRegister           type_dev_reg_t;
+typedef     struct monitor                  type_monitor_t;
+typedef     struct storage                  type_storage_t;
+typedef     struct moduleManage             type_module_t;
 
-typedef     struct sensorData               type_sendata_t;
-typedef     struct actionStruct             type_action_t;
-typedef     struct curveStruct              type_curve_t;
-
-typedef     struct conditionStruct          type_condition_t;
-
-typedef     struct excuteAction             type_excute_t;
-
-typedef     struct doTaskStruct             type_dotask_t;
 /************Ble    *******************************************/
-typedef     struct blePackTop               type_blepacktop_t;
-typedef     struct blePackage               type_blepack_t;
 /************SD   *********************************************/
-typedef     struct operateStruct            type_sdoperate_t;
 
-/**************************************************************/
-
-struct  storageInfo{
-    char    name[MODULE_NAMESZ];
-    u16     small_scale;                            //对应的小类名称
-    /* 以下特性是device才有的 */
-    u16 fuction;                                    //设备功能代号
-    u32 parameter_min;                              //参数下限
-    u32 parameter_max;                              //参数上限
+struct  storage{
+    char    name[STORAGE_NAMESZ];
+    u16     func;                                       //功能，如co2
+    u16     ctrl_addr;                                  //终端控制的寄存器地址
+    u16     para_max;                                   //参数上限
+    u16     value;                                      //sensor的值/device state+value
+    u8      ctrl;                                       //作用 ， 加/减
 };
 
-struct storageStruct
+//Justin debug 注意 module 除了sensor 和 device之外还有timer/recycle模式，需要另外增加struct
+struct moduleManage
 {
-    u8      type;                                   //针对终端和发送给主机的映射
-    char    module_name[MODULE_NAMESZ];             //模块名称
-    u16     function;                               //功能码
-    u8      s_or_d;                                 //sensor类型/device类型
-    u16     storage;                                //不同类型对应的存储地址
-    u8      storage_size;                           //寄存器数量
-    storageInfo_t storage_in[STORAGE_MAX];
+    u16             crc;
+    u32             uuid;
+    char            name[MODULE_NAMESZ];                    //产品名称
+    u8              addr;                                   //hub管控的地址
+    u8              type;                                   //产品类型号
+    u8              s_or_d;                                 //sensor类型/device类型
+    u8              conn_state;                             //连接状态
+    u8              reg_state;                              //注册状态
+    u8              save_state;                             //是否已经存储
+    u8              storage_size;                           //寄存器数量
+    type_storage_t  storage_in[STORAGE_MAX];
 };
 
 enum{
@@ -102,22 +76,19 @@ enum
     ON = 0x01,
 };
 
-struct allocateStruct
+struct allocate
 {
     u8 address[ALLOCATE_ADDRESS_SIZE];
 };
 
 /** 一下结构顺序不能打乱 否则存取SD卡的GetMonitorFromSdCard相关逻辑要改 **/
-struct monitorStruct
+struct monitor
 {
     /* 以下为统一分配 */
-    struct allocateStruct allocateStr;
-
-    struct monitorDevice
-    {
-        u8 deviceManageLength;                                      //device列表的长度
-        type_module_t *deviceTable;
-    }monitorDeviceTable;
+    struct allocate     allocateStr;
+    u8                  module_size;
+    type_module_t       module[MODULE_MAX];
+    u16                 crc;
 };
 
 /**************************************报头 Start*****************************************/
@@ -244,12 +215,12 @@ enum{
 
 /* 执行设备功能 */
 enum{
-    DEV_UNDEFINE        = 0x0000,                                   //自定义
-    DEV_DOWN            = 0x0101,                                   //降
-    DEV_UP              = 0x0102,                                   //升
-    DEV_AUTO            = 0x0103,                                   //自动
-    DEV_ALARM           = 0xFF01,                                   //发出警报
-    DEV_ALARM_CLEAR     = 0xFF02,                                   //解除警报
+    DEV_UNDEFINE        = 0x00,                                     //自定义
+    DEV_DOWN            = 0x01,                                     //降
+    DEV_UP              = 0x02,                                     //升
+    DEV_AUTO            = 0x03,                                     //自动
+    DEV_ALARM           = 0xF1,                                     //发出警报
+    DEV_ALARM_CLEAR     = 0xF2,                                     //解除警报
 };
 
 /* 执行设备属性 */

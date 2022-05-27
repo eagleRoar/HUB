@@ -13,12 +13,27 @@
 
 
 #include <board.h>
-#include <rtdevice.h>
 #include <rtthread.h>
-#include <rtdbg.h>
+#include <rtdevice.h>
+#include <sys/types.h>
+#include <dfs_posix.h>
 
+#include <unistd.h>
+#include <netdb.h>
+#include "netdev.h"
+
+#include <sys/socket.h> /* 使用BSD socket，需要包含socket.h头文件 */
+#include <sys/select.h> /* 使用 dfs select 功能  */
+#include "drv_flash.h"
+#include <unistd.h>
+#include <netdb.h>
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <rtdbg.h>
 #include "GlobalConfig.h"
 #include "typedef.h"
+#include "InformationMonitor.h"
 
 
 //LED
@@ -66,5 +81,7 @@ void Ctrl_LED(rt_base_t pin, rt_base_t state);
 void LedTaskInit(void);
 void LedTaskEntry(void* parameter);
 u16 TimerTask(u16 *, u16 , u8 *);
+int sd_card_is_vaild(void);
 
+void printModule(type_module_t);
 #endif /* APPLICATIONS_GPIO_H_ */

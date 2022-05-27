@@ -8,215 +8,60 @@
  * 2022-01-17     Qiuyijie     V1.0.0 : tcp 和 udp 功能
  */
 #include "Ethernet.h"
-#include "TcpClient.h"
 #include "TcpProgram.h"
-#include "TcpPersistence.h"
 #include "UdpProgram.h"
 #include "Udp.h"
-#include "Hub.h"
-#include "Sensor.h"
-#include "device.h"
 #include "Uart.h"
 
 static char udp_thread_stack[1024 * 4];
 static struct rt_thread udp_thread;
-static char tcp_thread_stack[1024 * 6];
-static struct rt_thread tcp_thread;
-
-static rt_mutex_t TcpMutex = RT_NULL;           //指向互斥量的指针
+static char tcp_send_stack[1024 * 4];
+static struct rt_thread tcp_send_thread;
+static char tcp_recv_stack[1024 * 4];
+static struct rt_thread tcp_recv_thread;
 struct ethDeviceStruct *eth = RT_NULL;          //申请ethernet实例化对象
-rt_event_t tcp_event = RT_NULL;
-type_package_t tcpRecvBuffer;
-type_package_t udpSendBuffer;
 
-
+int                 sock                    = 0;
+type_package_t      tcpRecvBuffer;
+type_package_t      udpSendBuffer;
 
 extern rt_uint8_t GetEthDriverLinkStatus(void);             //获取网口连接状态
 
-void rt_tc_rx_cb(void *buff, rt_size_t len)
+void TcpRecvTaskEntry(void* parameter)
 {
-//    LOG_D("rt_tc_rx_cb len = %d",len);//Justin debug
-    if(sizeof(type_package_t) < len)
-    {
-        LOG_E("recv buffer length large than eth package");
-    }
-    else
-    {
-        if(RT_EOK == CheckPackageLegality(buff, len))
-        {
-            rt_memcpy(&tcpRecvBuffer, (u8 *)buff, len);
-
-            eth->tcp.SetRecvDataFlag(ON);
-        }
-        else
-        {
-            LOG_E("check eth buffer fail");
-        }
-    }
-}
-
-rt_err_t UdpTaskInit(void)
-{
-//    rt_err_t udpThreadRes = RT_ERROR;
-//    rt_thread_t udpThread = RT_NULL;
-
-    /* 创建以太网,UDP线程 */
-//    udpThread = rt_thread_create(UDP_TASK, UdpTaskEntry, RT_NULL, 4096, UDP_PRIORITY, 10);
-//    /* 如果线程创建成功则开始启动线程，否则提示线程创建失败 */
-//    if (RT_NULL != udpThread) {
-//        udpThreadRes = rt_thread_startup(udpThread);
-//       if (RT_EOK != udpThreadRes) {
-//           LOG_E("udp task start failed");
-//           return RT_ERROR;
-//       }
-//    } else {
-//       LOG_E("udp task create failed");
-//       return RT_ERROR;
-//    }
-
-    rt_thread_init(&udp_thread, UDP_TASK, UdpTaskEntry, RT_NULL, &udp_thread_stack[0], sizeof(udp_thread_stack), UDP_PRIORITY, 10);
-    rt_thread_startup(&udp_thread);
-
-    return RT_EOK;
-}
-
-rt_err_t TcpClientTaskInit()
-{
-//    rt_err_t tcpThreadRes = RT_ERROR;
-//    rt_thread_t tcpThread = RT_NULL;
-
-    tcp_event = rt_event_create("tcev", RT_IPC_FLAG_FIFO);
-    if (tcp_event == RT_NULL)
-    {
-        LOG_E("event create failed");
-        goto _exit;
-    }
-
-    /* 创建一个动态互斥锁 */
-    TcpMutex = rt_mutex_create("tcp_mutex", RT_IPC_FLAG_FIFO);
-    if (TcpMutex == RT_NULL)
-    {
-        LOG_E("create dynamic mutex failed.\n");
-    }
-
-    /* 创建以太网线程 */
-//    tcpThread = rt_thread_create(TCP_TASK, TcpTaskEntry, RT_NULL, 1024*6, TCP_PRIORITY, 10);
-
-    /* 如果线程创建成功则开始启动线程，否则提示线程创建失败 */
-//    if (RT_NULL != tcpThread) {
-//        tcpThreadRes = rt_thread_startup(tcpThread);
-//        if (RT_EOK != tcpThreadRes) {
-//            LOG_E("tcp task start failed");
-//        }else {
-//            LOG_I("tcp task start successfully");
-//        }
-//    } else {
-//        LOG_E("tcp task create failed");
-//    }
-
-    rt_thread_init(&tcp_thread, TCP_TASK, TcpTaskEntry, RT_NULL, &tcp_thread_stack[0], sizeof(tcp_thread_stack), TCP_PRIORITY, 10);
-    rt_thread_startup(&tcp_thread);
-
-    return RT_EOK;
-
-_exit:
-    if(RT_NULL != tcp_event)
-    {
-        rt_event_delete(tcp_event);
-    }
-    return RT_ERROR;
-}
-
-void EthernetTaskInit(void)
-{
-    if(RT_NULL == eth)
-    {
-        /* 初始化Ethernet信息结构体 */
-        InitEthernetStruct();
-        eth = GetEthernetStruct();
-    }
-
-    UdpTaskInit();
-    TcpClientTaskInit();
-}
-
-//Justin debug 该函数仅仅用于生成命令
-void testPrint(void)
-{
-    type_package_t pack;
-//    type_excute_t excute;
-//    type_condition_t condition;
-    type_dotask_t dotask;
-    u8 test[200];
-    u8 length;
-
-    pack.package_top.checkId = CHECKID;
-    pack.package_top.answer = ASK_ACTIVE;
-    pack.package_top.function = /*F_STEP_CURVE*//*F_TOUCH*//*F_DO_ACTION*/F_TOUCH_ACTION;
-    pack.package_top.id = 0x00000003;
-    pack.package_top.serialNum = 0;
-
-    length = sizeof(type_dotask_t) - 2;
-
-    dotask.id = 0x00000000;
-    dotask.condition_id = 0;
-    dotask.excuteAction_id = 0;
-    dotask.start = 0;
-    dotask.continue_t = 60;
-    dotask.delay = 10;
-
-    rt_memcpy((u8 *)pack.buffer, (u8 *)&dotask + 2, length);
-
-    pack.package_top.crc = CRC16((u16 *)&pack + 3, sizeof(struct packTop)/2 - 3 + (length)/2, 0);
-    pack.package_top.length = sizeof(struct packTop) + length;
-    rt_memcpy(test, (u8 *)&pack, pack.package_top.length);
-    LOG_D("start:");
-    for(u16 i = 0; i < pack.package_top.length; i++)
-    {
-        rt_kprintf("%02x ",test[i]);
-    }
-    LOG_D("end");
-}
-
-//Justin debug
-void modbusTest(void)
-{
-    type_package_t pack;
-    u8 test[200];
-
-    pack.package_top.checkId = CHECKID;
-    pack.package_top.answer = ASK_REPLY;
-    pack.package_top.function = F_HUB_REGSTER;
-    pack.package_top.id = 0x00000000;
-    pack.package_top.serialNum = 0;
-
-    pack.package_top.crc = CRC16((u16 *)&pack + 3, sizeof(struct packTop)/2 - 3, 0);
-    pack.package_top.length = sizeof(struct packTop);
-
-    rt_memcpy(test, (u8 *)&pack, pack.package_top.length);
-    for(int i = 0; i < pack.package_top.length; i++)
-    {
-        rt_kprintf("%02x ", test[i]);
-    }
-    rt_kprintf("\r\n");
-}
-
-/**
- * @brief  : 以太网线程入口,TCP协议
- * @para   : NULL
- * @author : Qiuyijie
- * @date   : 2022.01.17
- */
-void TcpTaskEntry(void* parameter)
-{
-    rt_uint32_t e = 0;
-    rt_tcpclient_t *handle      = RT_NULL;
-    static u8 preLinkStatus     = LINKDOWN;
+    u8 testBuffer[10];
     static u8 Timer1sTouch      = OFF;
     static u16 time1S = 0;
 
-//    testPrint();//Justin debug 仅仅测试
-    //modbusTest();
+    while(1)
+    {
+        /* 启用定时器 */
+        time1S = TimerTask(&time1S, 20, &Timer1sTouch);                 //1秒任务定时器
+
+        //正常连接
+        if(ON == eth->tcp.GetConnectStatus())
+        {
+            //解析数据
+            TcpRecvMsg(&sock, testBuffer,10);
+
+            for(int i= 0; i < 10; i++)
+            {
+                rt_kprintf(" %x",testBuffer[i]);
+            }
+            rt_kprintf("\r\n");
+        }
+        rt_thread_mdelay(50);
+    }
+}
+/**
+ * @brief  : 以太网线程入口,TCP协议
+ */
+void TcpSendTaskEntry(void* parameter)
+{
+    static u8           preLinkStatus           = LINKDOWN;
+    static u8           Timer1sTouch            = OFF;
+    static u16          time1S                  = 0;
+
     while (1)
     {
         /* 启用定时器 */
@@ -246,42 +91,31 @@ void TcpTaskEntry(void* parameter)
             }
         }
 
-        /* 如果socket 申请成功,执行以下动作 */
-        /* 1s 定时任务 */
-        if(ON == Timer1sTouch)
+        if((ON == eth->tcp.GetConnectTry()) &&
+           (OFF == eth->tcp.GetConnectStatus()))
         {
-            if (rt_event_recv(tcp_event, TC_TCPCLIENT_CLOSE,
-                                      RT_EVENT_FLAG_OR | RT_EVENT_FLAG_CLEAR,
-                                      0, &e) == RT_EOK)
+            //尝试连接
+            if(RT_EOK == ConnectToSever(&sock, eth->GetIp(), eth->GetPort()))
             {
-                rt_event_send(tcp_event, TC_EXIT_THREAD);
-                return;
+                eth->tcp.SetConnectStatus(ON);
+                eth->tcp.SetConnectTry(OFF);
+                LOG_D("tcp try to reconnrct......");
             }
-
-            /* 如果已经连接上主机之后要发送从机注册 */
-            if((ON == eth->tcp.GetConnectTry()) &&
-               (OFF == eth->tcp.GetConnectStatus()))
+        }
+        else
+        {
+            if((OFF == eth->tcp.GetConnectTry()) &&
+               (ON == eth->tcp.GetConnectStatus()))
             {
-                /* 连接新的tcp client 任务 */
-                handle = TcpClientInit(eth, rt_tc_rx_cb);
-            }
-            else
-            {
-                if((OFF == eth->tcp.GetConnectTry()) &&
-                   (ON == eth->tcp.GetConnectStatus()))
+                /* 1s 定时任务 */
+                if(ON == Timer1sTouch)
                 {
-                    /* 发送注册等给主机 */
-                    SendMesgToMasterProgram(handle);
-
-                    /* 接收数据并解析 */
-                    if(ON == eth->tcp.GetRecvDataFlag())
+                    tcpRecvBuffer.buffer[0] = 0xAABB;
+                    if (RT_EOK != TcpSendMsg(&sock, (u8 *)tcpRecvBuffer.buffer, 2))
                     {
-
-                        LOG_D("TcpTaskEntry recv data");//Justin debug
-                        /* 执行向主机注册hub、sensor、device等相关操作 */
-                        AnalyzeEtherData(handle, tcpRecvBuffer);
-
-                        eth->tcp.SetRecvDataFlag(OFF);                  //关闭接收到数据的标志位
+                        LOG_E("send tcp err");
+                        eth->tcp.SetConnectStatus(OFF);
+                        eth->tcp.SetConnectTry(ON);
                     }
                 }
             }
@@ -404,8 +238,7 @@ void UdpTaskEntry(void* parameter)
         if(ON == Timer1sTouch)
         {
             /* 向主机发送sensor数据 */
-            TransmitSensorData(masterUdpSock, &masterUdpSerAddr);
-
+//            TransmitSensorData(masterUdpSock, &masterUdpSerAddr);
         }
 
         /* 线程休眠一段时间 */
@@ -414,4 +247,39 @@ void UdpTaskEntry(void* parameter)
     /* 关闭这个socket */
     closesocket(broadcastSock);
 }
+rt_err_t UdpTaskInit(void)
+{
+    rt_thread_init(&udp_thread, UDP_TASK, UdpTaskEntry, RT_NULL, &udp_thread_stack[0], sizeof(udp_thread_stack), UDP_PRIORITY, 10);
+    rt_thread_startup(&udp_thread);
 
+    return RT_EOK;
+}
+
+rt_err_t TcpSendTaskInit(void)
+{
+    /* 创建以太网线程 */
+    rt_thread_init(&tcp_send_thread, TCP_SEND_TASK, TcpSendTaskEntry, RT_NULL, &tcp_send_stack[0], sizeof(tcp_send_stack), TCP_PRIORITY, 10);
+    rt_thread_startup(&tcp_send_thread);
+
+    return RT_EOK;
+}
+rt_err_t TcpRecvTaskInit(void)
+{
+    rt_thread_init(&tcp_recv_thread, TCP_RECV_TASK, TcpRecvTaskEntry, RT_NULL, &tcp_recv_stack[0], sizeof(tcp_recv_stack), TCP_PRIORITY, 10);
+    rt_thread_startup(&tcp_recv_thread);
+
+    return RT_EOK;
+}
+void EthernetTaskInit(void)
+{
+    if(RT_NULL == eth)
+    {
+        /* 初始化Ethernet信息结构体 */
+        InitEthernetStruct();
+        eth = GetEthernetStruct();
+    }
+
+    UdpTaskInit();
+    TcpSendTaskInit();
+    TcpRecvTaskInit();
+}

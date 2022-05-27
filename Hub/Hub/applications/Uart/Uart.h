@@ -10,15 +10,8 @@
 #ifndef APPLICATIONS_UART_H_
 #define APPLICATIONS_UART_H_
 
-#include <board.h>
-#include <rtdevice.h>
-#include <rtthread.h>
-#include <rtdbg.h>
-
-#include "GlobalConfig.h"
-#include "typedef.h"
-#include "string.h"
 #include "Gpio.h"
+
 #include "InformationMonitor.h"
 
 #define             DEVICE_UART2            "uart2"

@@ -21,7 +21,6 @@
 #include "string.h"
 #include "Gpio.h"
 
-#include "Device.h"
 #include "InformationMonitor.h"
 #include "Command.h"
 
@@ -31,7 +30,6 @@ u8 getAllocateAddress(type_monitor_t *);
 void AnlyzeDeviceRegister(type_monitor_t *, rt_device_t, u8 *, u8);
 void RegisterAnswer(type_monitor_t *, rt_device_t , u32 );
 void AnlyzeDeviceInfo(type_monitor_t *, u8 *, u8);
-u16 findDeviceStorageByType(u8);
 void AnlyzeStorage(type_monitor_t *, u8 , u8 *, u8);
 
 #endif /* APPLICATIONS_UART_DATALAYER_UARTDATALAYER_H_ */

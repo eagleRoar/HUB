@@ -9,27 +9,65 @@
  */
 #include "TcpProgram.h"
 
-rt_tcpclient_t* TcpClientInit(struct ethDeviceStruct *eth, rx_cb_t callback)
+/**
+ * 连接tcp
+ * @return RT_ROK 成功 RT_ERROR 失败
+ */
+rt_err_t ConnectToSever(int *sock, char *ip, uint32_t port)
 {
-    rt_tcpclient_t *handle = RT_NULL;
+    rt_err_t            ret                         = RT_EOK;
+    struct hostent      *host;
+    struct sockaddr_in  server_addr;
 
-    /* 服务器的 ip 地址 & 服务器监听的端口号 */
-    handle = rt_tcpclient_start(eth->GetIp(), eth->GetPort());
-
-    if (handle == RT_NULL)
+    host = gethostbyname(ip);
+    /* 创建一个socket，类型是SOCKET_STREAM，TCP类型 */
+    if ((*sock = socket(AF_INET, SOCK_STREAM, 0)) == -1)
     {
-        LOG_E("param is NULL, exit");
-        return RT_NULL;
+        ret = RT_ERROR;
+    }
+    /* 初始化预连接的服务端地址 */
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(port);
+    server_addr.sin_addr = *((struct in_addr *)host->h_addr);
+    rt_memset(&(server_addr.sin_zero), 0, sizeof(server_addr.sin_zero));
+
+    /* 连接到服务端 */
+    if (connect(*sock, (struct sockaddr *)&server_addr, sizeof(struct sockaddr)) == -1)
+    {
+        closesocket(*sock);
+        ret = RT_ERROR;
+    }
+    return ret;
+}
+
+rt_err_t TcpRecvMsg(int *sock, u8 *buff, u16 size)
+{
+    rt_err_t ret = RT_EOK;
+    u16 bytes_received = 0;
+
+    bytes_received = recv(*sock, buff, size, 0);
+    if (bytes_received <= 0)
+    {
+        closesocket(*sock);
+        *sock = 0;
+        ret = RT_ERROR;
     }
 
-    /* 注册接收回调函数 */
-    if(RT_ERROR == rt_tcpclient_attach_rx_cb(handle, callback))
+    return ret;
+}
+
+rt_err_t TcpSendMsg(int *sock, u8 *buff, u16 size)
+{
+    rt_err_t ret = RT_EOK;
+
+    if(send(*sock, buff, size, 0) < 0)
     {
-        LOG_E("rt_tcpclient_attach_rx_cb fail");
-        return RT_NULL;
+        closesocket(*sock);
+        *sock = 0;
+        ret = RT_ERROR;
     }
 
-    return handle;
+    return ret;
 }
 
 void SetIpAndPort(char *newIp, int newPort, struct ethDeviceStruct *masterInfo)
@@ -59,8 +97,6 @@ rt_err_t CheckPackageLegality(u8 *buffer, u16 length)
     u16 res;
     type_package_t package;
 
-//    LOG_D("CheckPackageLegality len = %d",length);//Justin debug
-
     if((sizeof(struct packTop) > length) ||
        (sizeof(struct packTop) + RCV_ETH_BUFFSZ < length))
     {
@@ -79,7 +115,6 @@ rt_err_t CheckPackageLegality(u8 *buffer, u16 length)
 
     /* 验证CRC16 */
     res = CRC16((u16 *)&package+3, package.package_top.length/2-3, 0);
-//    res = CRC16((u16 *)&package+3, (package.package_top.length+1)/2-3, 0);//Justin debug 仅仅测试
 
     if(res != package.package_top.crc)
     {
@@ -90,122 +125,4 @@ rt_err_t CheckPackageLegality(u8 *buffer, u16 length)
 
 
     return RT_EOK;
-}
-
-void SendMesgToMasterProgram(rt_tcpclient_t *handle)
-{
-
-    if(RT_NULL == handle)
-    {
-        LOG_E("handle id RT_NULL");
-        return;
-    }
-
-    if(RECV_OK != GetHubReg().getRegisterAnswer())
-    {
-        /* 发送hub注册 */
-        RegisterHub(handle);
-        GetHubReg().setRegisterAnswer(SEND_OK);
-    }
-    else
-    {
-        /* 发送sensor和device 注册 */
-        RegisterModule(handle);
-    }
-}
-
-/** 解析收到的数据 **/
-void AnalyzeEtherFunc(rt_tcpclient_t *handle, type_monitor_t *monitor, type_package_t data)
-{
-
-    switch (data.package_top.function) {
-
-        case F_HUB_REGSTER :        //4.1.  从机注册
-            break;
-        case F_HUB_RENAME :         //4.2.  从机更名
-            break;
-        case F_HUB_HEART :          //4.3.  从机心跳
-            break;
-        case F_DSEN_ADD :           //5.1.  虚拟传感设备增加（双向）
-            break;
-        case F_DSEN_RENAME :        //5.2.  虚拟传感设备更名（双向）
-            break;
-        case F_DSEN_CLRAN :         //5.3.  虚拟传感设备参数清零（双向）
-            break;
-        case F_SEN_REGSTER :        //6.1.  传感设备注册
-        case F_DEV_REGISTER :       //7.1.  执行设备注册
-            ReplyModuleReg(monitor, data);
-            break;
-        case F_SEN_RENAME :         //6.2.  传感设备更名（双向）
-            break;
-        case F_SEN_PARA_RENAME :    //6.3.  传感设备参数更名（双向）
-            break;
-        case F_SEN_LOCATION :       //6.4.  传感设备定位
-            break;
-
-        case F_DEV_SET :            //7.2.  执行设备配置（双向）
-            break;
-        case F_DEV_RENAME :         //7.3.  执行设备更名（双向）
-            break;
-        case F_DEV_CHANGE_F :       //7.4.  执行设备功能更名（双向）
-            break;
-        case F_DEV_CHANGE_SET :     //7.5.  执行设备配置更名（双向）
-            break;
-        case F_DEV_HAND_CTRL :      //7.6.  执行设备手动控制（双向）
-            break;
-        case F_DEV_LOCATION :       //7.7.  执行设备定位
-            break;
-        case F_SEN_DATA :           //8.1.  传感设备采集数据发送
-            break;
-        case F_STATE_SEND :         //9.1.  状态发送
-            break;
-        case F_STEP_CURVE :         //a.1.  梯形曲线（双向）
-            LOG_D("---------------------recv F_STEP_CURVE command");
-            Set_Action(handle ,monitor, data);
-            break;
-        case F_TOUCH :              //a.2.  触发条件（双向）
-            LOG_D("--------------------recv F_TOUCH command");
-            SetCondition(handle ,monitor, data);
-            break;
-        case F_DO_ACTION :          //a.3.  动作执行（双向）
-            LOG_D("--------------------recv F_DO_ACTION command");
-            SetExcute(handle ,monitor, data);
-            break;
-        case F_TOUCH_ACTION :       //a.4.  触发与动作（双向）
-            LOG_D("----------------------recv F_TOUCH_ACTION command");
-            SetDotask(handle ,monitor, data);
-            break;
-        case F_ASK_SYNC :           //b.1.  同步请求（双向）
-            break;
-        case F_ASK_DELE :           //b.2.  删除请求（双向）
-            break;
-        case F_FACTORY_RESET :      //b.3.  恢复出厂设置
-            break;
-        default:
-            break;
-    }
-}
-
-/** 解析收到的数据 **/
-void AnalyzeEtherData(rt_tcpclient_t *handle, type_package_t data)
-{
-
-    if(SEND_OK == GetHubReg().getRegisterAnswer())
-    {
-        if(ASK_REPLY != data.package_top.answer)
-        {
-            //LOG_D("master answer = %x",data.package_top.answer);//Justin debug
-            LOG_D("answer err");
-        }
-        else
-        {
-            LOG_D("hub register OK");
-            GetHubReg().setRegisterAnswer(RECV_OK);
-        }
-    }
-    else
-    {
-        /* hub注册完成之后，解析功能 */
-        AnalyzeEtherFunc(handle, GetMonitor(), data);
-    }
 }

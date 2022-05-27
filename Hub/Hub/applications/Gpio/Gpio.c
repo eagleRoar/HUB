@@ -60,6 +60,12 @@ void GpioInit(void)
     rt_pin_mode(BUTTON_ENTER, PIN_MODE_INPUT);
 }
 
+int sd_card_is_vaild(void)
+{
+    return (rt_pin_read(SD_CHK_PIN) == PIN_LOW) ? (1) : (0);
+}
+
+
 /**
  * @brief  : led 灯光控制
  * @para   : pin 控制的IO口

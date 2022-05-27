@@ -20,9 +20,7 @@
 #include "typedef.h"
 #include <dfs_posix.h>
 #include <rtdbg.h>
-#include "SdcardBusiness.h"
-#include "SdcardDataLayer.h"
-#include "SDCard.h"
+#include "SDCardBusiness.h"
 
 //#define DOWNLOAD                "/download"
 //#define DOWNLOAD_FILE           "/download/downloadFile.bin"
@@ -50,44 +48,44 @@ typedef struct {
  * @return RT_ERROR 初始化失败
  *         RT_EOK   初始化成功
  */
-rt_err_t SDInit(void)
-{
-    rt_device_t dev;
-    rt_err_t ret;
-
-    //SD卡结构初始化
-    if (sd_card_is_vaild()) //检查SD卡是否有插
-    {
-        dev = rt_device_find("sd0");
-        if (dev != RT_NULL)
-        {
-            if (dfs_mount("sd0", "/", "elm", 0, 0) == 0)
-            {
-                LOG_E("sd card mount to / success!");
-                CheckDirectory(DOWNLOAD_DIR);
-
-                ret = RT_EOK;
-            }
-            else
-            {
-                LOG_E("sd card mount to / failed!");
-                ret = RT_ERROR;
-            }
-        }
-        else
-        {
-            LOG_E("find sd0 failed!");
-            ret =  RT_ERROR;
-        }
-    }
-    else
-    {
-        LOG_E("find sd card failed!");
-        ret =  RT_ERROR;
-    }
-
-    return ret;
-}
+//rt_err_t SDInit(void)
+//{
+//    rt_device_t dev;
+//    rt_err_t ret;
+//
+//    //SD卡结构初始化
+//    if (sd_card_is_vaild()) //检查SD卡是否有插
+//    {
+//        dev = rt_device_find("sd0");
+//        if (dev != RT_NULL)
+//        {
+//            if (dfs_mount("sd0", "/", "elm", 0, 0) == 0)
+//            {
+//                LOG_E("sd card mount to / success!");
+//                CheckDirectory(DOWNLOAD_DIR);
+//
+//                ret = RT_EOK;
+//            }
+//            else
+//            {
+//                LOG_E("sd card mount to / failed!");
+//                ret = RT_ERROR;
+//            }
+//        }
+//        else
+//        {
+//            LOG_E("find sd0 failed!");
+//            ret =  RT_ERROR;
+//        }
+//    }
+//    else
+//    {
+//        LOG_E("find sd card failed!");
+//        ret =  RT_ERROR;
+//    }
+//
+//    return ret;
+//}
 
 /**
  * @brief 将数据写入相应文件

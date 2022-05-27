@@ -10,20 +10,7 @@
 #ifndef APPLICATIONS_ETHERNET_H_
 #define APPLICATIONS_ETHERNET_H_
 
-
-
-#include <rtthread.h>
-#include <sys/socket.h> /* 使用BSD socket，需要包含socket.h头文件 */
-#include <sys/select.h> /* 使用 dfs select 功能  */
-#include <netdb.h>
-#include <string.h>
-#include <rtdbg.h>
-#include <stdio.h>
-#include <stdlib.h>
-
-#include "GlobalConfig.h"
-#include "typedef.h"
-#include "netdev.h"
+#include "Gpio.h"
 #include "Gpio.h"
 #include "EthernetBusiness.h"
 
@@ -36,7 +23,7 @@
 
 #define TEST_PORT                 9897
 #define MASTER_PORT               9898
-#define UDP_BROADCAST_PORT        9899//TEST_PORT//     //Justin debug 仅仅测试
+#define UDP_BROADCAST_PORT        TEST_PORT//9899//     //Justin debug 仅仅测试
 #define RCV_ETH_BUFFSZ            512
 
 struct packTop{

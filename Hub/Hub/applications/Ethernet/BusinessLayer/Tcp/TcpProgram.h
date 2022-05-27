@@ -10,31 +10,16 @@
 #ifndef APPLICATIONS_ETHERNET_BUSINESSLAYER_TCP_TCPPROGRAM_H_
 #define APPLICATIONS_ETHERNET_BUSINESSLAYER_TCP_TCPPROGRAM_H_
 
-#include <rtthread.h>
-#include <rtdevice.h>
-#include <sys/socket.h>
-#include <sys/select.h>
-#include <sys/types.h>
-#include <unistd.h>
-#include <netdb.h>
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <rtdbg.h>
-#include "GlobalConfig.h"
-#include "typedef.h"
+#include "Gpio.h"
 #include "EthernetBusiness.h"
 #include "Ethernet.h"
-#include "TcpClient.h"
-#include "TcpPersistence.h"
 #include "Informationmonitor.h"
-#include "hub.h"
 
+rt_err_t ConnectToSever(int *, char *, uint32_t);
+rt_err_t TcpSendMsg(int *, u8 *, u16);
+rt_err_t TcpRecvMsg(int *, u8 *, u16);
 void SetIpAndPort(char *, int , struct ethDeviceStruct *);
 rt_err_t notifyTcpAndUdpSocket(char *, int , struct  ethDeviceStruct*);
 rt_err_t CheckPackageLegality(u8 *, u16);
-rt_tcpclient_t* TcpClientInit(struct ethDeviceStruct *, rx_cb_t);
-void SendMesgToMasterProgram(rt_tcpclient_t *);
-void AnalyzeEtherData(rt_tcpclient_t *, type_package_t);
 
 #endif /* APPLICATIONS_ETHERNET_BUSINESSLAYER_TCP_TCPPROGRAM_H_ */

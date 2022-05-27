@@ -19,11 +19,7 @@
 #include "typedef.h"
 #include "string.h"
 #include "Gpio.h"
-#include "Device.h"
 #include "InformationMonitor.h"
-
-void ControlDeviceStorage(type_module_t *, rt_device_t , u8 , u8 );
-void askSensorStorage(type_module_t *, rt_device_t , u16 );
 void MonitorModuleConnect(type_monitor_t *, u8 );
 void updateModuleConnect(type_monitor_t *, u8);
 

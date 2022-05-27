@@ -8,19 +8,7 @@
  * 2022-03-30     Administrator       the first version
  */
 
-#include <rtthread.h>
-#include <rtdevice.h>
-#include <sys/socket.h>
-#include <sys/select.h>
-#include <sys/types.h>
-#include <unistd.h>
-#include <netdb.h>
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <rtdbg.h>
-#include "GlobalConfig.h"
-#include "typedef.h"
+#include "Gpio.h"
 #include "InformationMonitor.h"
 
 #ifndef APPLICATIONS_ETHERNET_BUSINESSLAYER_ETHERNETBUSSINESS_H_

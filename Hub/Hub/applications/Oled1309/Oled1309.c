@@ -77,16 +77,12 @@ void oledInit(void)
     u8g2_SetFont(&uiShow, u8g2_font_6x12_tf);
     u8g2_DrawStr(&uiShow, 1, 18, "BBL");
     u8g2_SendBuffer(&uiShow);
-//
-//    u8g2_SetFont(&uiShow, u8g2_font_unifont_t_symbols);
-//    u8g2_DrawGlyph(&uiShow, /*100*/1, 56, 0x2603);
-//    u8g2_SendBuffer(&uiShow);
 }
 
 void OledTaskEntry(void* parameter)
 {
-    char data[10];
-    type_module_t  module;
+//    char data[10];
+//    type_module_t  module;
     static u8 Timer1sTouch      = OFF;
     static u16 time1S = 0;
 
@@ -95,41 +91,6 @@ void OledTaskEntry(void* parameter)
     while(1)
     {
         time1S = TimerTask(&time1S, 20, &Timer1sTouch);
-
-        if(ON == Timer1sTouch)
-        {
-            if(0 < GetMonitor()->monitorDeviceTable.deviceManageLength)
-            {
-                for(int i = 0; i < GetMonitor()->monitorDeviceTable.deviceManageLength; i++)
-                {
-                    if(SENSOR_TYPE == GetMonitor()->monitorDeviceTable.deviceTable[i].s_or_d)
-                    {
-                        module = GetMonitor()->monitorDeviceTable.deviceTable[i];
-
-                        u8g2_ClearBuffer(&uiShow);
-                        u8g2_SetFont(&uiShow, u8g2_font_6x12_tf);
-
-                        itoa(module.module_t[0].value, data, 10);
-                        u8g2_DrawStr(&uiShow, 1, 12, module.module_t[0].name);
-                        u8g2_DrawStr(&uiShow, 80, 12, data);
-
-                        itoa(module.module_t[1].value, data, 10);
-                        u8g2_DrawStr(&uiShow, 1, 22, module.module_t[1].name);
-                        u8g2_DrawStr(&uiShow, 80, 22, data);
-
-                        itoa(module.module_t[2].value, data, 10);
-                        u8g2_DrawStr(&uiShow, 1, 32, module.module_t[2].name);
-                        u8g2_DrawStr(&uiShow, 80, 32, data);
-
-                        itoa(module.module_t[3].value, data, 10);
-                        u8g2_DrawStr(&uiShow, 1, 42, module.module_t[3].name);
-                        u8g2_DrawStr(&uiShow, 80, 42, data);
-
-                        u8g2_SendBuffer(&uiShow);
-                    }
-                }
-            }
-        }
 
         rt_thread_mdelay(50);
     }
@@ -146,10 +107,10 @@ void OledTaskInit(void)
     if (RT_NULL != thread) {
         threadStart = rt_thread_startup(thread);
         if (RT_EOK != threadStart) {
-            LOG_E("sensor task start failed");
+            LOG_E("oled task start failed");
         }
     } else {
-        LOG_E("sensor task create failed");
+        LOG_E("oled task create failed");
     }
 }
 

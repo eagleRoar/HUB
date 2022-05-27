@@ -10,41 +10,44 @@
 /* 该文件主要处理数据解析 */
 #include "UartDataLayer.h"
 #include "UartBussiness.h"
-#include "Device.h"
 #include "InformationMonitor.h"
+#include "Module.h"
 
 /**************************注册寄存器小类名称****************************/
-const storageInfo_t sto_null = {name_null,             S_UNDEFINE,          DEV_UNDEFINE,           0,          0};
-const storageInfo_t storageIn[STORAGE_NUM] =
+const type_storage_t sto_null = {name_null,             S_UNDEFINE,          S_UNDEFINE, 0,           0,          0};
+const type_storage_t storageIn[STORAGE_NUM] =
 {
-        {"Co2",                 S_GAS_CO2,          DEV_UNDEFINE,           0,          0},
-        {"Humidity",            S_HUMI_ENV,         DEV_UNDEFINE,           0,          0},
-        {"Temperature",         S_TEMP_ENV,         DEV_UNDEFINE,           0,          0},
-        {"Light",               S_LIGHT_ENV,        DEV_UNDEFINE,           0,          0},
-        {"AC_Co2",              S_GAS_CO2,          DEV_UP,                 0,          1},
-        {"AC_Heat",             S_TEMP_ENV,         DEV_UP,                 0,          1},
-        {"AC_Humi",             S_HUMI_ENV,         DEV_UP,                 0,          1},
-        {"AC_Dehumi",           S_HUMI_ENV,         DEV_DOWN,               0,          1},
-        {"AC_Cool",             S_TEMP_ENV,         DEV_DOWN,               0,          1},
+        {"Co2",                 S_GAS_CO2,          0x0010,           5000,         0,          DEV_UNDEFINE},//四合一sensor
+        {"Humi",                S_HUMI_ENV,         0x0040,           1000,         0,          DEV_UNDEFINE},
+        {"Temp",                S_TEMP_ENV,         0x0040,           1000,         0,          DEV_UNDEFINE},
+        {"Light",               S_LIGHT_ENV,        0x0040,           4096,         0,          DEV_UNDEFINE},
+        {"Co2",                 S_GAS_CO2,          0x0040,           1,            0,          DEV_UP},
+        {"Heat",                S_TEMP_ENV,         0x0040,           1,            0,          DEV_UP},
+        {"Humi",                S_HUMI_ENV,         0x0040,           1,            0,          DEV_UP},
+        {"Dehumi",              S_HUMI_ENV,         0x0040,           1,            0,          DEV_DOWN},
+        {"Cool",                S_TEMP_ENV,         0x0040,           1,            0,          DEV_DOWN},
 };
 
 /**************************注册device 寄存器***************************************/
-type_storage_t storageTable[DEVICE_STORAGE_TYPE];
+type_module_t moduleTable[ALLOW_MODULE_TYPE_SZ];
 
-static void AddStorageToTable(type_storage_t *table, u8 index, u8 type, char *module_name, u16 function, u8 s_or_d, u16 storage, u8 storage_size,
-                       storageInfo_t s0,storageInfo_t s1,storageInfo_t s2,storageInfo_t s3,storageInfo_t s4,storageInfo_t s5,
-                       storageInfo_t s6,storageInfo_t s7,storageInfo_t s8,storageInfo_t s9,storageInfo_t s10,storageInfo_t s11)
+static void AddStorageToTable(type_module_t *table, u8 index, char *name, u8 type, u8 s_or_d, u8 storage_size,
+                       type_storage_t s0,type_storage_t s1,type_storage_t s2,type_storage_t s3,type_storage_t s4,type_storage_t s5,
+                       type_storage_t s6,type_storage_t s7,type_storage_t s8,type_storage_t s9,type_storage_t s10,type_storage_t s11)
 {
-    if((DEVICE_STORAGE_TYPE - 1) < index)
+    if((ALLOW_MODULE_TYPE_SZ - 1) < index)
     {
         return;
     }
 
+    table[index].uuid               = 0x00000000;
+    rt_memcpy(table[index].name, name, MODULE_NAMESZ);
+    table[index].addr               = 0x00;
     table[index].type               = type;
-    rt_memcpy(table[index].module_name, module_name, MODULE_NAMESZ);
-    table[index].function           = function;
     table[index].s_or_d             = s_or_d;
-    table[index].storage            = storage;
+    table[index].conn_state         = NO;
+    table[index].reg_state          = NO;
+    table[index].save_state         = NO;
     table[index].storage_size       = storage_size;
 
     table[index].storage_in[0]      = s0;
@@ -62,28 +65,31 @@ static void AddStorageToTable(type_storage_t *table, u8 index, u8 type, char *mo
 }
 
 /* 初始化终端设备相关映射,并相应修改AnlyzeDeviceRegister函数,
- * 增加注册后要修改DEVICE_STORAGE_TYPE数值 */
-
+ * 增加注册后要修改ALLOW_MODULE_TYPE_SZ数值 */
 void StorageInit(void)
 {
     u8 i = 0;
-    AddStorageToTable(storageTable, i, 0x03, "Bhs"      , F_SEN_REGSTER, SENSOR_TYPE, 0x0010, 4,
+    AddStorageToTable(moduleTable,            i,        "Bhs",        0x03,  SENSOR_TYPE,     4,
                       storageIn[0], storageIn[1], storageIn[2], storageIn[3], sto_null, sto_null, sto_null, sto_null, sto_null, sto_null, sto_null, sto_null);
     i += 1;
-    AddStorageToTable(storageTable, i, 0x41, "Co2"   , F_DEV_REGISTER, DEVICE_TYPE, 0x0040, 1,
+    AddStorageToTable(moduleTable,            i,        "Co2",        0x41,  DEVICE_TYPE,     1,
                       storageIn[4], sto_null,     sto_null,     sto_null,     sto_null, sto_null, sto_null, sto_null, sto_null, sto_null, sto_null, sto_null);
     i += 1;
-    AddStorageToTable(storageTable, i, 0x42, "Heat"   , F_DEV_REGISTER, DEVICE_TYPE, 0x0040, 1,
+    AddStorageToTable(moduleTable,            i,       "Heat",        0x42,  DEVICE_TYPE,     1,
                       storageIn[5], sto_null,     sto_null,     sto_null,     sto_null, sto_null, sto_null, sto_null, sto_null, sto_null, sto_null, sto_null);
     i += 1;
-    AddStorageToTable(storageTable, i, 0x43, "Humidification"   , F_DEV_REGISTER, DEVICE_TYPE, 0x0040, 1,
+    AddStorageToTable(moduleTable,            i,  "Humidification",   0x43,  DEVICE_TYPE,     1,
                       storageIn[6], sto_null,     sto_null,     sto_null,     sto_null, sto_null, sto_null, sto_null, sto_null, sto_null, sto_null, sto_null);
     i += 1;
-    AddStorageToTable(storageTable, i, 0x44, "Dehumidification"   , F_DEV_REGISTER, DEVICE_TYPE, 0x0040, 1,
+    AddStorageToTable(moduleTable,            i,  "Dehumidification", 0x44,  DEVICE_TYPE,     1,
                       storageIn[7], sto_null,     sto_null,     sto_null,     sto_null, sto_null, sto_null, sto_null, sto_null, sto_null, sto_null, sto_null);
     i += 1;
-    AddStorageToTable(storageTable, i, 0x45, "Cool"   , F_DEV_REGISTER, DEVICE_TYPE, 0x0040, 1,
+    AddStorageToTable(moduleTable,            i,     "Cool",          0x45,  DEVICE_TYPE,     1,
                       storageIn[8], sto_null,     sto_null,     sto_null,     sto_null, sto_null, sto_null, sto_null, sto_null, sto_null, sto_null, sto_null);
+    if(i > ALLOW_MODULE_TYPE_SZ - 1)
+    {
+        LOG_E("----------------moduleTable size overload!,i = %d,ALLOW_MODULE_TYPE_SZ = %d",i,ALLOW_MODULE_TYPE_SZ);
+    }
 
 }
 
@@ -115,11 +121,11 @@ void getStorageSize(u8 type, type_module_t *device)
 {
     u16 i = 0;
 
-    for(i = 0; i < DEVICE_STORAGE_TYPE; i++)
+    for(i = 0; i < ALLOW_MODULE_TYPE_SZ; i++)
     {
-       if(type == storageTable[i].type)
+       if(type == moduleTable[i].type)
        {
-           device->storage_size = storageTable[i].storage_size;
+           device->storage_size = moduleTable[i].storage_size;
        }
     }
 }
@@ -128,46 +134,27 @@ void getStorage(u8 type, type_module_t *device)
 {
     u16 i = 0, j = 0;
 
-    for(i = 0; i < DEVICE_STORAGE_TYPE; i++)
+    for(i = 0; i < ALLOW_MODULE_TYPE_SZ; i++)
     {
-       if(type == storageTable[i].type)
+       if(type == moduleTable[i].type)
        {
            for(j = 0; j < STORAGE_MAX; j++)
            {
-               rt_memcpy(device->module_t[j].name, storageTable[i].storage_in[j].name, MODULE_NAMESZ);
-               device->module_t[j].small_scale = storageTable[i].storage_in[j].small_scale;
-               device->module_t[j].scale_fuction = storageTable[i].storage_in[j].fuction;
-               device->module_t[j].parameter_min = storageTable[i].storage_in[j].parameter_min;
-               device->module_t[j].parameter_max = storageTable[i].storage_in[j].parameter_max;
+               device->storage_in[j] = moduleTable[i].storage_in[j];
            }
        }
     }
-}
-
-u16 getModuleFun(u8 type)
-{
-    u16 i = 0;
-
-    for(i = 0; i < DEVICE_STORAGE_TYPE; i++)
-    {
-       if(type == storageTable[i].type)
-       {
-           return storageTable[i].function;
-       }
-    }
-
-    return RT_NULL;
 }
 
 void getModuleName(u8 type, char *name, u8 length)
 {
     u16 i = 0;
 
-    for(i = 0; i < DEVICE_STORAGE_TYPE; i++)
+    for(i = 0; i < ALLOW_MODULE_TYPE_SZ; i++)
     {
-       if(type == storageTable[i].type)
+       if(type == moduleTable[i].type)
        {
-           rt_memcpy(name, storageTable[i].module_name, length);
+           rt_memcpy(name, moduleTable[i].name, length);
        }
     }
 }
@@ -176,30 +163,15 @@ u8 getDeviceOrSensortype(u8 type)
 {
     u16 i = 0;
 
-    for(i = 0; i < DEVICE_STORAGE_TYPE; i++)
+    for(i = 0; i < ALLOW_MODULE_TYPE_SZ; i++)
     {
-       if(type == storageTable[i].type)
+       if(type == moduleTable[i].type)
        {
-           return storageTable[i].s_or_d;
+           return moduleTable[i].s_or_d;
        }
     }
 
     return RT_NULL;
-}
-
-u16 findDeviceStorageByType(u8 type)
-{
-    u16 i = 0;
-
-    for(i = 0; i < DEVICE_STORAGE_TYPE; i++)
-    {
-        if(type == storageTable[i].type)
-        {
-            return storageTable[i].storage;
-        }
-    }
-
-    return 0;
 }
 
 /* 获取分配的地址 */
@@ -220,27 +192,47 @@ u8 getAllocateAddress(type_monitor_t *monitor)
     return 0;
 }
 
+//struct moduleManage
+//{
+//    u16             crc;
+//    u32             uuid;
+//    char            name[MODULE_NAMESZ];                    //产品名称
+//    u8              addr;                                   //hub管控的地址
+//    u8              type;                                   //产品类型号
+//    u8              s_or_d;                                 //sensor类型/device类型
+//    u8              conn_state;                             //连接状态
+//    u8              reg_state;                              //注册状态
+//    u8              save_state;                             //是否已经存储
+//    u8              storage_size;                           //寄存器数量
+//    type_storage_t  storage_in[STORAGE_MAX];
+//};
 /* 注册新模块 */
 void AnlyzeDeviceRegister(type_monitor_t *monitor, rt_device_t serial, u8 *data, u8 dataLen)
 {
-    type_module_t device;
+    u8              no          = 0;
+    type_module_t   module;
 
-    device.address = getAllocateAddress(monitor);
-    device.type = data[8];
-    device.uuid = (data[9] << 24) | (data[10] << 16) | (data[11] << 8) | data[12];
-    getModuleName(device.type, device.module_name, MODULE_NAMESZ);
-    device.function = getModuleFun(device.type);
-    device.s_or_d = getDeviceOrSensortype(device.type);
-    device.registerAnswer = SEND_NULL;
-    getStorage(device.type, &device);
-    getStorageSize(device.type, &device);
-    device.connect.time = 0;
-    device.connect.discon_num = 0;
-    device.connect.connect_state = CONNECT_OK;
-    InsertDeviceToTable(monitor, device);
+    module.type = data[8];
+    module.uuid = (data[9] << 24) | (data[10] << 16) | (data[11] << 8) | data[12];
+    getModuleName(module.type, module.name, MODULE_NAMESZ);
+    module.s_or_d = getDeviceOrSensortype(module.type);
+    module.reg_state = SEND_NULL;
+    getStorage(module.type, &module);
+    getStorageSize(module.type, &module);
+    module.conn_state = CONN_OK;
+    module.save_state = NO;
+    if(NO == FindModule(monitor, module, &no))
+    {
+        module.addr = getAllocateAddress(monitor);
+        InsertModuleToTable(monitor, module, no);
+    }
+    else
+    {
+        LOG_D("module have exist");//Judstin debug 已经存在
+    }
 
     /* 发送注册回复 */
-    RegisterAnswer(monitor, serial, device.uuid);
+    RegisterAnswer(monitor, serial, module.uuid);
 }
 
 void RegisterAnswer(type_monitor_t *monitor, rt_device_t serial, u32 uuid)
@@ -252,18 +244,18 @@ void RegisterAnswer(type_monitor_t *monitor, rt_device_t serial, u32 uuid)
 
     buffer[0] = REGISTER_CODE;
     buffer[1] = 0x80;
-    for(i = 0; i < monitor->monitorDeviceTable.deviceManageLength; i++)
+    for(i = 0; i < monitor->module_size; i++)
     {
-        if(uuid == monitor->monitorDeviceTable.deviceTable[i].uuid)
+        if(uuid == monitor->module[i].uuid)
         {
 
-            buffer[2] = monitor->monitorDeviceTable.deviceTable[i].uuid >> 24;
-            buffer[3] = monitor->monitorDeviceTable.deviceTable[i].uuid >> 16;
-            buffer[4] = monitor->monitorDeviceTable.deviceTable[i].uuid >> 8;
-            buffer[5] = monitor->monitorDeviceTable.deviceTable[i].uuid;
+            buffer[2] = monitor->module[i].uuid >> 24;
+            buffer[3] = monitor->module[i].uuid >> 16;
+            buffer[4] = monitor->module[i].uuid >> 8;
+            buffer[5] = monitor->module[i].uuid;
             buffer[6] = 0x06;
-            buffer[7] = monitor->monitorDeviceTable.deviceTable[i].address;
-            buffer[8] = monitor->monitorDeviceTable.deviceTable[i].type;
+            buffer[7] = monitor->module[i].addr;
+            buffer[8] = monitor->module[i].type;
         }
     }
 
@@ -283,35 +275,35 @@ void RegisterAnswer(type_monitor_t *monitor, rt_device_t serial, u32 uuid)
 /* 接收sensor 寄存器 */
 void AnlyzeStorage(type_monitor_t *monitor, u8 addr, u8 *data, u8 length)
 {
-    u8  j = 0;
-    u16 i = 0;
-
-    for(i = 0; i < monitor->monitorDeviceTable.deviceManageLength; i++)
-    {
-
-        if(addr == monitor->monitorDeviceTable.deviceTable[i].address)
-        {
-            if(STORAGE_MAX < length/2)
-            {
-                /* 如果接收的数据比寄存器容量大则抛弃 */
-                return;
-            }
-
-            for(j = 0; j < length/2; j++)
-            {
-                monitor->monitorDeviceTable.deviceTable[i].module_t[j].value = (data[2*j] << 8) | data[2*j + 1];
-            }
-        }
-    }
+//    u8  j = 0;
+//    u16 i = 0;
+//
+//    for(i = 0; i < monitor->monitorDeviceTable.deviceManageLength; i++)
+//    {
+//
+//        if(addr == monitor->monitorDeviceTable.deviceTable[i].address)
+//        {
+//            if(STORAGE_MAX < length/2)
+//            {
+//                /* 如果接收的数据比寄存器容量大则抛弃 */
+//                return;
+//            }
+//
+//            for(j = 0; j < length/2; j++)
+//            {
+//                monitor->monitorDeviceTable.deviceTable[i].module_t[j].value = (data[2*j] << 8) | data[2*j + 1];
+//            }
+//        }
+//    }
 }
 
 void AnlyzeDeviceInfo(type_monitor_t *monitor, u8 *data, u8 dataLen)
 {
-    if(YES == FindDeviceByAddr(monitor, data[0]))
-    {
-        AnlyzeStorage(monitor, data[0], &data[3], data[2]);
-
-        /* 更新连接状态 */
-        updateModuleConnect(monitor, data[0]);
-    }
+//    if(YES == FindDeviceByAddr(monitor, data[0]))
+//    {
+//        AnlyzeStorage(monitor, data[0], &data[3], data[2]);
+//
+//        /* 更新连接状态 */
+//        updateModuleConnect(monitor, data[0]);
+//    }
 }

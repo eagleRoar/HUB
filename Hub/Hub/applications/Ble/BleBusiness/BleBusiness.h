@@ -49,8 +49,6 @@ struct bleState{
 
 void ConnectToBle(rt_device_t);
 void SetBleMode(rt_device_t);
-rt_err_t AnalyzePack(type_blepack_t *);
 void SetMaxput(rt_device_t);
-void TransmitPack(type_blepack_t *);
 
 #endif /* APPLICATIONS_BLE_BLEBUSINESS_BLEBUSINESS_H_ */
