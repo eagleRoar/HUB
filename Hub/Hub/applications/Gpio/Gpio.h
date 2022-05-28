@@ -84,4 +84,5 @@ u16 TimerTask(u16 *, u16 , u8 *);
 int sd_card_is_vaild(void);
 
 void printModule(type_module_t);
+void printMuduleConnect(type_monitor_t *);
 #endif /* APPLICATIONS_GPIO_H_ */

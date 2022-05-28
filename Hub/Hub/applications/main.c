@@ -115,6 +115,8 @@ int main(void)
             }
         }
 
+        printMuduleConnect(GetMonitor());
+
         rt_thread_mdelay(1000);
     }
 

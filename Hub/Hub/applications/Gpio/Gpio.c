@@ -114,12 +114,12 @@ void LedTaskEntry(void* parameter)
 
     while(1)
     {
-        Ctrl_LED(LED_SENSOR,0);
-        Ctrl_LED(LED_DEVICE,0);
+//        Ctrl_LED(LED_SENSOR,0);//Justin debug
+//        Ctrl_LED(LED_DEVICE,0);
         Ctrl_LED(LED_LIGHT,ledState++ % 2);
-        Ctrl_LED(LED_COMMS,0);
-        Ctrl_LED(LED_BLUETOOTH,0);
-        Ctrl_LED(LED_POWER,0);
+//        Ctrl_LED(LED_COMMS,0);
+//        Ctrl_LED(LED_BLUETOOTH,0);
+//        Ctrl_LED(LED_POWER,0);
 
         rt_thread_mdelay(500);
     }

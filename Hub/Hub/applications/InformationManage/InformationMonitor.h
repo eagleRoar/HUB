@@ -20,7 +20,7 @@
 #define     MODULE_NAMESZ                   16
 #define     STORAGE_NAMESZ                  8
 #define     STORAGE_NUM                     256
-#define     ALLOW_MODULE_TYPE_SZ            16         //允许的产品品种最多
+#define     ALLOW_MODULE_TYPE_SZ            16         //允许的产品品种最多数(可以增加)
 #define     STORAGE_MAX                     12
 
 typedef     struct packageEth               type_package_t;

@@ -18,9 +18,9 @@ const type_storage_t sto_null = {name_null,             S_UNDEFINE,          S_U
 const type_storage_t storageIn[STORAGE_NUM] =
 {
         {"Co2",                 S_GAS_CO2,          0x0010,           5000,         0,          DEV_UNDEFINE},//四合一sensor
-        {"Humi",                S_HUMI_ENV,         0x0040,           1000,         0,          DEV_UNDEFINE},
-        {"Temp",                S_TEMP_ENV,         0x0040,           1000,         0,          DEV_UNDEFINE},
-        {"Light",               S_LIGHT_ENV,        0x0040,           4096,         0,          DEV_UNDEFINE},
+        {"Humi",                S_HUMI_ENV,         0x0010,           1000,         0,          DEV_UNDEFINE},
+        {"Temp",                S_TEMP_ENV,         0x0010,           1000,         0,          DEV_UNDEFINE},
+        {"Light",               S_LIGHT_ENV,        0x0010,           4096,         0,          DEV_UNDEFINE},
         {"Co2",                 S_GAS_CO2,          0x0040,           1,            0,          DEV_UP},
         {"Heat",                S_TEMP_ENV,         0x0040,           1,            0,          DEV_UP},
         {"Humi",                S_HUMI_ENV,         0x0040,           1,            0,          DEV_UP},
@@ -45,7 +45,7 @@ static void AddStorageToTable(type_module_t *table, u8 index, char *name, u8 typ
     table[index].addr               = 0x00;
     table[index].type               = type;
     table[index].s_or_d             = s_or_d;
-    table[index].conn_state         = NO;
+    table[index].conn_state         = CON_NULL;
     table[index].reg_state          = NO;
     table[index].save_state         = NO;
     table[index].storage_size       = storage_size;
@@ -95,27 +95,6 @@ void StorageInit(void)
 
 /************************************************************************/
 
-/**
- *
- * @param data
- * @param dataLen
- */
-void AnalyzeData(rt_device_t serial, type_monitor_t *monitor, u8 *data, u8 dataLen)
-{
-    /* 获取命令 */
-    switch (data[0])
-    {
-        case REGISTER_CODE:
-            /* device类注册 *///Justin debug 在此处需要甄别device 或者 sensor
-            AnlyzeDeviceRegister(monitor, serial, data, dataLen);
-            /* 后续需要修改成如果需要修改地址的再发送从新配置地址命令 */
-            break;
-        default:
-            /* 接受地址码 */
-            AnlyzeDeviceInfo(monitor, data, dataLen);
-            break;
-    }
-}
 
 void getStorageSize(u8 type, type_module_t *device)
 {
@@ -219,7 +198,7 @@ void AnlyzeDeviceRegister(type_monitor_t *monitor, rt_device_t serial, u8 *data,
     module.reg_state = SEND_NULL;
     getStorage(module.type, &module);
     getStorageSize(module.type, &module);
-    module.conn_state = CONN_OK;
+    module.conn_state = CON_SUCCESS;
     module.save_state = NO;
     if(NO == FindModule(monitor, module, &no))
     {
@@ -275,6 +254,16 @@ void RegisterAnswer(type_monitor_t *monitor, rt_device_t serial, u32 uuid)
 /* 接收sensor 寄存器 */
 void AnlyzeStorage(type_monitor_t *monitor, u8 addr, u8 *data, u8 length)
 {
+    u8          index       = 0;
+
+    for(index = 0; index < monitor->module_size; index++)
+    {
+        if(addr == monitor->module[index].addr)
+        {
+            LOG_D("reply no %d, name = %s",index, monitor->module[index].name);//Justin debug 仅仅测试
+        }
+    }
+
 //    u8  j = 0;
 //    u16 i = 0;
 //
@@ -294,16 +283,5 @@ void AnlyzeStorage(type_monitor_t *monitor, u8 addr, u8 *data, u8 length)
 //                monitor->monitorDeviceTable.deviceTable[i].module_t[j].value = (data[2*j] << 8) | data[2*j + 1];
 //            }
 //        }
-//    }
-}
-
-void AnlyzeDeviceInfo(type_monitor_t *monitor, u8 *data, u8 dataLen)
-{
-//    if(YES == FindDeviceByAddr(monitor, data[0]))
-//    {
-//        AnlyzeStorage(monitor, data[0], &data[3], data[2]);
-//
-//        /* 更新连接状态 */
-//        updateModuleConnect(monitor, data[0]);
 //    }
 }

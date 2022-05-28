@@ -18,6 +18,7 @@
 #define             DEVICE_UART3            "uart3"
 
 #define             UART_MSG_SIZE           512
+#define             UART_PERIOD             50
 /* 串口接收消息结构*/
 struct rx_msg
 {
@@ -29,6 +30,6 @@ struct rx_msg
 
 void SensorUart2TaskEntry(void* parameter);
 void SensorUart2TaskInit(void);
-type_monitor_t *GetMonitor(void);
+volatile type_monitor_t *GetMonitor(void);
 
 #endif /* APPLICATIONS_UART_H_ */

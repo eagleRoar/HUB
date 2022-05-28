@@ -18,7 +18,7 @@
 #include "UartBussiness.h"
 #include "Sdcard.h"
 
-type_monitor_t monitor;
+volatile type_monitor_t monitor;
 struct rx_msg uart2_msg;                      //接收串口数据以及相关消息
 struct rx_msg uart3_msg;                      //接收串口数据以及相关消息
 
@@ -33,7 +33,7 @@ extern struct sdCardState      sdCard;
 static rt_err_t Uart2_input(rt_device_t dev, rt_size_t size)
 {
     u16 crc16 = 0x0000;
-LOG_D("Uart2_input");//Justin debug
+
     /* 必须要等待从sd卡读取到的monitor 才能执行以下功能 */
     if (NO == sdCard.readInfo)
     {
@@ -65,7 +65,7 @@ LOG_D("Uart2_input");//Justin debug
 static rt_err_t Uart3_input(rt_device_t dev, rt_size_t size)
 {
     u16 crc16 = 0x0000;
-    LOG_D("Uart3_input");//Justin debug
+
     /* 必须要等待从sd卡读取到的monitor 才能执行以下功能 */
     if (NO == sdCard.readInfo)
     {
@@ -101,12 +101,12 @@ static rt_err_t Uart3_input(rt_device_t dev, rt_size_t size)
  */
 void SensorUart2TaskEntry(void* parameter)
 {
-    static u8 Timer1sTouch = OFF;
-    static u8 Timer5sTouch = OFF;
-    static u16 time1S = 0;
-    static u16 time5S = 0;
-    static rt_device_t uart2_serial;
-    static rt_device_t uart3_serial;
+    static      u8              Timer1sTouch    = OFF;
+    static      u8              Timer5sTouch    = OFF;
+    static      u16             time1S = 0;
+    static      u16             time5S = 0;
+    static      rt_device_t     uart2_serial;
+    static      rt_device_t     uart3_serial;
 //    type_module_t module;
 //    volatile int        state = 0;
 //    int        i = 0;
@@ -152,26 +152,18 @@ void SensorUart2TaskEntry(void* parameter)
                 if(ON == uart3_msg.messageFlag)
                 {
                     uart3_msg.messageFlag = OFF;
-                    LOG_D("recv uart3...");
+//                    LOG_D("recv uart3...");
                     /* 读取device设备 */ //后续要移动到uart2处理
                     AnalyzeData(uart3_serial, &monitor, uart3_msg.data, uart3_msg.size);
                 }
-
-                /* 监控模块的连接状态 */
-//                MonitorModuleConnect(&monitor, 50);
             }
 
             /* 1s 事件 */
             if(ON == Timer1sTouch)
             {
                 /* 周期性1s向四合一模块发送询问指令 */
-//                for(int i = 0; i < monitor.monitorDeviceTable.deviceManageLength; i++)
-//                {
-//                    if(SENSOR_TYPE == monitor.monitorDeviceTable.deviceTable[i].s_or_d)
-//                    {
-//                        askSensorStorage(&(monitor.monitorDeviceTable.deviceTable[i]), uart2_serial, 0x04);
-//                    }
-//                }
+//                askSensorStorage(&monitor, uart2_serial);//Justin debug
+                askDeviceHeart(&monitor, uart3_serial);
             }
             /* 5s 事件 */
             if(ON == Timer5sTouch)
@@ -184,12 +176,12 @@ void SensorUart2TaskEntry(void* parameter)
 //                    {
 //                        state = module.module_t[0].value;
 //                        LOG_D("control module name = %s,state = %d",module.module_name,module.module_t[0].value);//Justin debug为什么有这个才会执行加湿的AC station 的动作
-//                        ControlDeviceStorage(&module, uart3_serial, state, 0x00);//Justin debug 该控制为测试用
+//                        ControlDeviceStorage(&module, uart3_serial, state, 0x00);
 //                    }
 //                }
             }
         }
-        rt_thread_mdelay(50);
+        rt_thread_mdelay(UART_PERIOD);
     }
 }
 
@@ -204,7 +196,7 @@ void SensorUart2TaskInit(void)
     rt_err_t threadStart = RT_NULL;
 
     /* 创建串口 线程 */
-    rt_thread_t thread = rt_thread_create("sensor task", SensorUart2TaskEntry, RT_NULL, 1024*6, UART2_PRIORITY, 10);//Justin debug 仅仅测试
+    rt_thread_t thread = rt_thread_create("sensor task", SensorUart2TaskEntry, RT_NULL, 1024*6, UART2_PRIORITY, 10);
 
     /* 如果线程创建成功则开始启动线程，否则提示线程创建失败 */
     if (RT_NULL != thread) {
@@ -217,7 +209,7 @@ void SensorUart2TaskInit(void)
     }
 }
 
-type_monitor_t *GetMonitor(void)
+volatile type_monitor_t *GetMonitor(void)
 {
     return &monitor;
 }

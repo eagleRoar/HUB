@@ -22,7 +22,7 @@
 #define SD_CARD_TASK                    "sdcard_task"
 
 /* 线程优先级管理 */
-#define SDCARD_PRIORITY                 16//Justin debug
+#define SDCARD_PRIORITY                 16
 #define UART6_PRIORITY                  20
 #define UART2_PRIORITY                  21
 #define BUTTON_PRIORITY                 22

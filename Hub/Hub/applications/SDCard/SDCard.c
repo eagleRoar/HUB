@@ -60,7 +60,7 @@ void sd_dfs_event_entry(void* parameter)
 
     while (1)
     {
-        time1S = TimerTask(&time1S, 20, &Timer1sTouch);//Justin debug 仅仅测试
+        time1S = TimerTask(&time1S, 20, &Timer1sTouch);
         /* 还没有初始化 */
         if(NO == sdCard.init)
         {
@@ -81,7 +81,7 @@ void sd_dfs_event_entry(void* parameter)
                             sdCard.init = YES;
 
                             InitSDCard();
-                            //Justin debug 获取SD相关数据 待完成
+
                             if(RT_EOK == TakeMonitorFromSD(GetMonitor()))
                             {
                                 LOG_I("TakeMonitorFromSD OK");
