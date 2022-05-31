@@ -24,6 +24,7 @@
 
 #include <sys/socket.h> /* 使用BSD socket，需要包含socket.h头文件 */
 #include <sys/select.h> /* 使用 dfs select 功能  */
+#include <sys/time.h>
 #include "drv_flash.h"
 #include <unistd.h>
 #include <netdb.h>
@@ -85,4 +86,5 @@ int sd_card_is_vaild(void);
 
 void printModule(type_module_t);
 void printMuduleConnect(type_monitor_t *);
+void rtcTest(void);
 #endif /* APPLICATIONS_GPIO_H_ */

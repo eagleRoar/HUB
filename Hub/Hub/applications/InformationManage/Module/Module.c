@@ -12,6 +12,7 @@
 
 
 #include "Module.h"
+#include "UartBussiness.h"
 
 void InsertModuleToTable(type_monitor_t *monitor, type_module_t module, u8 no)
 {
@@ -22,6 +23,7 @@ void InsertModuleToTable(type_monitor_t *monitor, type_module_t module, u8 no)
             monitor->module_size++;
         }
         monitor->module[no] = module;
+        printModule(module);//Justin debug
     }
 }
 
@@ -58,6 +60,16 @@ u8 FindModuleByAddr(type_monitor_t *monitor, u8 addr)
     }
 
     return NO;
+}
+
+void initModuleConState(type_monitor_t *monitor)
+{
+    u8          index       = 0;
+
+    for(index = 0; index < monitor->module_size; index++)
+    {
+        monitor->module[index].conn_state = CON_FAIL;
+    }
 }
 
 

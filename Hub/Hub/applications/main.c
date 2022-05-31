@@ -40,6 +40,7 @@ int main(void)
 
     //初始化静态变量
     StorageInit();
+    initMonitor();
 
     //初始化GPIO口
     GpioInit();
@@ -105,15 +106,15 @@ int main(void)
             }
         }
 
-        if(module_size != GetMonitor()->module_size)
-        {
-            module_size = GetMonitor()->module_size;
-
-            for(index = 0; index < module_size; index++)
-            {
-                printModule(GetMonitor()->module[index]);
-            }
-        }
+//        if(module_size != GetMonitor()->module_size)
+//        {
+//            module_size = GetMonitor()->module_size;
+//
+//            for(index = 0; index < module_size; index++)
+//            {
+//                printModule(GetMonitor()->module[index]);
+//            }
+//        }
 
         printMuduleConnect(GetMonitor());
 

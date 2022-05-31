@@ -15,5 +15,6 @@
 void InsertModuleToTable(type_monitor_t *, type_module_t , u8);
 u8 FindModule(type_monitor_t *, type_module_t , u8*);
 u8 FindModuleByAddr(type_monitor_t *, u8);
+void initModuleConState(type_monitor_t *);
 
 #endif /* APPLICATIONS_INFORMATIONMANAGE_MODULE_MODULE_H_ */

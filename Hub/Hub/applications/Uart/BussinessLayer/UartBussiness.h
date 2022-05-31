@@ -22,8 +22,7 @@
 #include "InformationMonitor.h"
 
 struct connectManage{
-    u8 count;       //次数
-    u8 time;        //ms单位
+    u32 send_count;
 };
 
 typedef     struct connectManage    type_connect_t;
@@ -35,9 +34,10 @@ enum{
     CON_SUCCESS,
 }CON_STATE;
 
-u8 MonitorModuleConnect(type_monitor_t *, u8 , u8);
+void UpdateModuleConnect(type_monitor_t *, u8);
+void MonitorModuleConnect(type_monitor_t *);
 void askSensorStorage(type_monitor_t *, rt_device_t);
-void askDeviceHeart(type_monitor_t *, rt_device_t);
+u8 askDeviceHeart(type_monitor_t *, rt_device_t);
 void AnalyzeData(rt_device_t , type_monitor_t *, u8 *, u8);
 void AnlyzeModuleInfo(type_monitor_t *, u8 *, u8);
 

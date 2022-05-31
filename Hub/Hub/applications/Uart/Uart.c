@@ -18,7 +18,7 @@
 #include "UartBussiness.h"
 #include "Sdcard.h"
 
-volatile type_monitor_t monitor;
+type_monitor_t monitor;
 struct rx_msg uart2_msg;                      //接收串口数据以及相关消息
 struct rx_msg uart3_msg;                      //接收串口数据以及相关消息
 
@@ -107,6 +107,8 @@ void SensorUart2TaskEntry(void* parameter)
     static      u16             time5S = 0;
     static      rt_device_t     uart2_serial;
     static      rt_device_t     uart3_serial;
+    static      u8              device_start    = 0;
+//    static      rt_tick_t       tick;
 //    type_module_t module;
 //    volatile int        state = 0;
 //    int        i = 0;
@@ -130,12 +132,10 @@ void SensorUart2TaskEntry(void* parameter)
     rt_device_open(uart3_serial, RT_DEVICE_FLAG_DMA_RX);
     rt_device_set_rx_indicate(uart3_serial, Uart3_input);
 
-    rt_memset(&monitor, 0, sizeof(type_monitor_t));
-
     while (1)
     {
-        TimerTask(&time1S, 20, &Timer1sTouch);                      //1s定时任务
-        TimerTask(&time5S, 100, &Timer5sTouch);                     //1s定时任务
+        time1S = TimerTask(&time1S, 1000/UART_PERIOD, &Timer1sTouch);                      //1s定时任务
+        time5S = TimerTask(&time5S, 5000/UART_PERIOD, &Timer5sTouch);                     //1s定时任务
 
         if(YES == sdCard.readInfo)                                  //必须要等待从sd卡读取到的monitor 才能执行以下功能
         {
@@ -156,14 +156,36 @@ void SensorUart2TaskEntry(void* parameter)
                     /* 读取device设备 */ //后续要移动到uart2处理
                     AnalyzeData(uart3_serial, &monitor, uart3_msg.data, uart3_msg.size);
                 }
+                else
+                {
+                    if(1 == device_start)
+                    {
+//                        LOG_E("-------------------------- time = %d",rt_tick_get());
+
+                        if(YES == askDeviceHeart(&monitor, uart3_serial))
+                        {
+                            device_start = 0;
+                        }
+                    }
+                }
+
+//                MonitorModuleConnect(GetMonitor());
+//                LOG_D("-------------time = %d",rt_tick_get() - tick);
+//                tick = rt_tick_get();
             }
 
             /* 1s 事件 */
             if(ON == Timer1sTouch)
             {
-                /* 周期性1s向四合一模块发送询问指令 */
+                //注意在接收的时候不能发送数据
+                //周期性1s向四合一模块发送询问指令
 //                askSensorStorage(&monitor, uart2_serial);//Justin debug
-                askDeviceHeart(&monitor, uart3_serial);
+//                if(OFF == uart3_msg.messageFlag)
+                {
+//                    askDeviceHeart(&monitor, uart3_serial);
+                    device_start = 1;
+                }
+                MonitorModuleConnect(GetMonitor());
             }
             /* 5s 事件 */
             if(ON == Timer5sTouch)
@@ -209,7 +231,12 @@ void SensorUart2TaskInit(void)
     }
 }
 
-volatile type_monitor_t *GetMonitor(void)
+void initMonitor(void)
+{
+    rt_memset((u8 *)&monitor, 0, sizeof(type_monitor_t));
+}
+
+type_monitor_t *GetMonitor(void)
 {
     return &monitor;
 }

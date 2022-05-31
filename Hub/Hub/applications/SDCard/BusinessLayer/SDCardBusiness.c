@@ -8,6 +8,7 @@
  * 2022-05-26     Administrator       the first version
  */
 #include "Uart.h"
+#include "Module.h"
 #include "SDCardBusiness.h"
 
 /**
@@ -104,25 +105,9 @@ void InitSDCard(void)
 rt_err_t SaveModule(type_monitor_t *monitor)
 {
     u8      index           = 0;
-    u16     allocSize       = sizeof(struct allocate);
     u16     moduleSize      = sizeof(type_module_t);//为module结构体大小
-    u16     offset          = 0;
+    u16     monitorSize     = sizeof(type_monitor_t);
     rt_err_t ret = RT_EOK;
-
-    offset = SD_INFOR_SIZE;
-    //存储地址分配
-    if(RT_EOK != WriteSdData(MODULE_FILE, (u8 *)&(monitor->allocateStr), offset, allocSize))
-    {
-        ret = RT_ERROR;
-    }
-
-    offset += allocSize;
-    if(RT_EOK != WriteSdData(MODULE_FILE, (u8 *)&(monitor->module_size), offset, 1))
-    {
-        ret = RT_ERROR;
-    }
-
-    offset += 1;
 
     for(index = 0; index < monitor->module_size; index++)
     {
@@ -130,18 +115,12 @@ rt_err_t SaveModule(type_monitor_t *monitor)
         {
             monitor->module[index].save_state = YES;
             monitor->module[index].crc = usModbusRTU_CRC((u8 *)&(monitor->module[index]) + 2, moduleSize - 2);//前两位是crc
-            if(RT_EOK != WriteSdData(MODULE_FILE, (u8 *)&(monitor->module[index]), offset + index * moduleSize, moduleSize))
-            {
-                LOG_E("SaveModule fail");
-                ret = RT_ERROR;
-            }
         }
     }
 
-    offset = SD_INFOR_SIZE + sizeof(type_monitor_t) - 2;
+    monitor->crc = usModbusRTU_CRC((u8 *)monitor, monitorSize - 2);
 
-    monitor->crc = usModbusRTU_CRC((u8 *)monitor, sizeof(type_monitor_t) - 2);
-    if(RT_EOK != WriteSdData(MODULE_FILE, (u8 *)&(monitor->crc), offset, 2))
+    if(RT_EOK != WriteSdData(MODULE_FILE, (u8 *)monitor, SD_INFOR_SIZE, monitorSize))
     {
         ret = RT_ERROR;
     }
@@ -156,12 +135,17 @@ rt_err_t TakeMonitorFromSD(type_monitor_t *monitor)
     rt_err_t    ret             = RT_ERROR;
 
     LOG_D("TakeMonitorFromSD");
+
+    rt_memset((u8 *)monitor, 0, monitorSize);//Justin debug
+
     if(RT_EOK == ReadSdData(MODULE_FILE, (u8 *)monitor, SD_INFOR_SIZE, monitorSize))
     {
         crc = usModbusRTU_CRC((u8 *)monitor, monitorSize - 2);//crc 在最后
         LOG_D("TakeMonitorFromSD crc = %x,monitor->crc = %x",crc,monitor->crc);
+
         if(monitor->crc == crc)
         {
+            initModuleConState(monitor);
             ret = RT_EOK;
         }
         else

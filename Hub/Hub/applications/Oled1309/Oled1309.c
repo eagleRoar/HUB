@@ -17,6 +17,7 @@ extern "C" {
 
 #include "Oled1309.h"
 #include "Uart.h"
+#include "UartBussiness.h"
 
 
 
@@ -81,16 +82,58 @@ void oledInit(void)
 
 void OledTaskEntry(void* parameter)
 {
-//    char data[10];
-//    type_module_t  module;
-    static u8 Timer1sTouch      = OFF;
-    static u16 time1S = 0;
+    u8              index               = 0;
+    time_t          now;
+    char            data[50];
+    static u8       Timer1sTouch        = OFF;
+    static u16      time1S              = 0;
+//    static rt_tick_t       tick;
 
     oledInit();
+    //rtcTest();//Justin debug
 
     while(1)
     {
         time1S = TimerTask(&time1S, 20, &Timer1sTouch);
+
+        if(ON == Timer1sTouch)
+        {
+
+//            LOG_D("time goes %d, now tick = %d",rt_tick_get() - tick, rt_tick_get());//Justin debug 仅仅测试
+//            tick = rt_tick_get();
+
+            u8g2_ClearBuffer(&uiShow);
+
+            now = time(RT_NULL);
+            strcpy(data, ctime(&now));
+
+            u8g2_DrawStr(&uiShow, 1, 8, &data[10]);
+
+            for(index = 0; index < GetMonitor()->module_size; index++)
+            {
+                if((GetMonitor()->module_size > 4))
+                {
+                    break;
+                }
+
+                if(CON_FAIL == GetMonitor()->module[index].conn_state)
+                {
+                    strcpy(data, "no connect");
+                }
+                else /*if(CON_SUCCESS == GetMonitor()->module[index].conn_state)*/
+                {
+                    strcpy(data, "connect");
+                }
+//                else
+//                {
+//                    strcpy(data, "waitting");
+//                }
+
+                u8g2_DrawStr(&uiShow, 1, 18 + 10 * index, data);
+            }
+
+            u8g2_SendBuffer(&uiShow);
+        }
 
         rt_thread_mdelay(50);
     }

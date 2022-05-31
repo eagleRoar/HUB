@@ -24,6 +24,7 @@ void printModule(type_module_t module)
     LOG_D("name             : %s",module.name);
     LOG_D("addr             : %x",module.addr);
     LOG_D("save_state       : %x",module.save_state);
+    LOG_D("conn_state       : %x",module.conn_state);
     if(SENSOR_TYPE == module.s_or_d)
     {
         LOG_D("s_or_d           : sensor");
@@ -64,6 +65,20 @@ void printMuduleConnect(type_monitor_t *monitor)
             }
         }
     }
+}
+
+void rtcTest(void)
+{
+    rt_err_t ret = RT_EOK;
+
+    /* 设置日期 */
+    ret = set_date(2022, 5, 30);
+    set_time(14, 22, 0);
+    if (ret != RT_EOK)
+    {
+        LOG_D("set RTC date failed\n");
+    }
+
 }
 
 #endif /* APPLICATIONS_TEST_C_ */

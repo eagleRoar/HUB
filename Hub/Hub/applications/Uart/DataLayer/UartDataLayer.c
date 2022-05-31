@@ -195,19 +195,20 @@ void AnlyzeDeviceRegister(type_monitor_t *monitor, rt_device_t serial, u8 *data,
     module.uuid = (data[9] << 24) | (data[10] << 16) | (data[11] << 8) | data[12];
     getModuleName(module.type, module.name, MODULE_NAMESZ);
     module.s_or_d = getDeviceOrSensortype(module.type);
-    module.reg_state = SEND_NULL;
-    getStorage(module.type, &module);
-    getStorageSize(module.type, &module);
     module.conn_state = CON_SUCCESS;
+    module.reg_state = SEND_NULL;
     module.save_state = NO;
+    getStorageSize(module.type, &module);
+    getStorage(module.type, &module);
     if(NO == FindModule(monitor, module, &no))
     {
         module.addr = getAllocateAddress(monitor);
+
         InsertModuleToTable(monitor, module, no);
     }
     else
     {
-        LOG_D("module have exist");//Judstin debug 已经存在
+        LOG_D("module have exist");
     }
 
     /* 发送注册回复 */
@@ -256,13 +257,13 @@ void AnlyzeStorage(type_monitor_t *monitor, u8 addr, u8 *data, u8 length)
 {
     u8          index       = 0;
 
-    for(index = 0; index < monitor->module_size; index++)
-    {
-        if(addr == monitor->module[index].addr)
-        {
-            LOG_D("reply no %d, name = %s",index, monitor->module[index].name);//Justin debug 仅仅测试
-        }
-    }
+//    for(index = 0; index < monitor->module_size; index++)
+//    {
+//        if(addr == monitor->module[index].addr)
+//        {
+//            LOG_D("reply no %d, name = %s",index, monitor->module[index].name);//Justin debug 仅仅测试
+//        }
+//    }
 
 //    u8  j = 0;
 //    u16 i = 0;

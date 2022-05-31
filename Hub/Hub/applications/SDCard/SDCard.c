@@ -34,21 +34,6 @@ int SDCardTaskInit(void)
     return ret;
 }
 
-void rtcTest(void)
-{
-
-    rt_err_t ret = RT_EOK;
-//    time_t now;
-
-    /* 设置日期 */
-    ret = set_date(2022, 5, 17);
-    if (ret != RT_EOK)
-    {
-        LOG_D("set RTC date failed\n");
-    }
-
-}
-
 void sd_dfs_event_entry(void* parameter)
 {
     rt_device_t             dev;
@@ -84,6 +69,7 @@ void sd_dfs_event_entry(void* parameter)
 
                             if(RT_EOK == TakeMonitorFromSD(GetMonitor()))
                             {
+//                                printModule(GetMonitor()->module[0]);//Justin debug
                                 LOG_I("TakeMonitorFromSD OK");
                                 sdCard.readInfo = YES;
                             }
@@ -116,17 +102,20 @@ void sd_dfs_event_entry(void* parameter)
             /* 50ms 事件 */
             {
                 //存储module
-                if(module_size != GetMonitor()->module_size)
+                if(YES == sdCard.readInfo)
                 {
-                    module_size = GetMonitor()->module_size;
+                    if(module_size != GetMonitor()->module_size)
+                    {
+                        module_size = GetMonitor()->module_size;
 
-                    if(RT_EOK == SaveModule(GetMonitor()))
-                    {
-                        LOG_I("SaveModule OK");
-                    }
-                    else
-                    {
-                        LOG_I("SaveModule fail");
+                        if(RT_EOK == SaveModule(GetMonitor()))
+                        {
+                            LOG_I("SaveModule OK");
+                        }
+                        else
+                        {
+                            LOG_I("SaveModule fail");
+                        }
                     }
                 }
             }
