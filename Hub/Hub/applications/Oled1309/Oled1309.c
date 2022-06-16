@@ -16,15 +16,18 @@ extern "C" {
 #include <u8g2_port.h>
 
 #include "Oled1309.h"
+#include "OledBusiness.h"
 #include "Uart.h"
 #include "UartBussiness.h"
-
-
+#include "ButtonTask.h"
 
 #define  GO_RIGHT  1
 #define  GO_LEFT   2
 
-u8g2_t uiShow;
+u8              reflash_flag        = OFF;
+u8g2_t          uiShow;
+type_page_t     pageSelect;
+u32             pageInfor       = 0x00000000;   //只支持最多四级目录
 
 #define SSD1309_8080_PIN_D0                    64  // PE0
 #define SSD1309_8080_PIN_D1                    65  // PE1
@@ -75,64 +78,157 @@ void oledInit(void)
     // Draw Graphics
     /* full buffer example, setup procedure ends in _f */
     u8g2_ClearBuffer(&uiShow);
-    u8g2_SetFont(&uiShow, u8g2_font_6x12_tf);
+    u8g2_SetFont(&uiShow, /*u8g2_font_6x12_tf*/u8g2_font_8x13_tf);//修改字体的话需要修改LINE_HIGHT和COLUMN_HIGHT
     u8g2_DrawStr(&uiShow, 1, 18, "BBL");
     u8g2_SendBuffer(&uiShow);
 }
 
+void MenuBtnCallBack(u8 type)
+{
+    if(SHORT_PRESS == type)
+    {
+        //LOG_D("cur = %d, cur home = %d, cur max = %d",pageSelect.cusor,pageSelect.cusor_home,pageSelect.cusor_max);
+        if(pageSelect.cusor_max > 0)
+        {
+            if(pageSelect.cusor < pageSelect.cusor_max - 1)
+            {
+                pageSelect.cusor++;
+            }
+            else
+            {
+                pageSelect.cusor = pageSelect.cusor_home;
+            }
+        }
+        //提示界面刷新
+        reflash_flag = ON;
+    }
+}
+
+void EnterBtnCallBack(u8 type)
+{
+    if(SHORT_PRESS == type)
+    {
+        pageSelect.select = ON;
+        //提示界面刷新
+        reflash_flag = ON;
+    }
+    else if(LONG_PRESS == type)
+    {
+        pageInfor = pageInfor >> 8;
+    }
+}
+
+void pageSelectSet(u8 show,u8 home, u8 max)
+{
+    pageSelect.cusor_show = show;
+    pageSelect.cusor_home = home;
+    pageSelect.cusor = pageSelect.cusor_home;
+    pageSelect.cusor_max = max;
+}
+
+static void pageSetting(u8 page)
+{
+    switch (page)
+    {
+        case HOME_PAGE:
+
+            pageSelectSet(YES, 1, 3);
+            break;
+        case SENSOR_STATE_PAGE:
+
+            pageSelectSet(NO, 0, 0);
+            break;
+        case DEVICE_STATE_PAGE:
+
+            pageSelectSet(NO, 0, 0);
+            break;
+        default:
+            break;
+    }
+}
+
+static void pageProgram(u8 page)
+{
+    switch (page)
+    {
+        case HOME_PAGE:
+            HomePage(&uiShow, pageSelect);
+            if(ON == pageSelect.select)
+            {
+                if(1 == pageSelect.cusor)
+                {
+                    pageInfor <<= 8;
+                    pageInfor |= SENSOR_STATE_PAGE;
+                }
+                else if(2 == pageSelect.cusor)
+                {
+                    pageInfor <<= 8;
+                    pageInfor |= DEVICE_STATE_PAGE;
+                }
+                pageSelect.select = OFF;
+            }
+
+            reflash_flag = OFF;
+            break;
+
+        case SENSOR_STATE_PAGE:
+            SensorStatePage(&uiShow, pageSelect);
+            break;
+        case DEVICE_STATE_PAGE:
+            DeviceStatePage(&uiShow, pageSelect);
+            break;
+        default:
+            break;
+    }
+}
+
 void OledTaskEntry(void* parameter)
 {
-    u8              index               = 0;
-    time_t          now;
-    char            data[50];
-    static u8       Timer1sTouch        = OFF;
-    static u16      time1S              = 0;
-//    static rt_tick_t       tick;
+                u8              nowPage             = 0;
+    static      u8              Timer1sTouch        = OFF;
+    static      u16             time1S              = 0;
+    static      u8              nowPagePre          = 0xFF;
 
     oledInit();
-    //rtcTest();//Justin debug
+    //rtcTest();
+
+    pageInfor <<= 8;
+    pageInfor |= HOME_PAGE;
 
     while(1)
     {
         time1S = TimerTask(&time1S, 20, &Timer1sTouch);
 
+        nowPage = pageInfor & 0x000000FF;
+
+        if(nowPagePre != nowPage)
+        {
+            //LOG_I("-----------nowPage = %x",nowPage);
+            //设置初始光标
+            pageSetting(nowPage);
+
+            pageProgram(nowPage);
+
+            nowPagePre = nowPage;
+        }
+        else
+        {
+            if(ON == reflash_flag)
+            {
+                pageProgram(nowPage);
+            }
+        }
+
+        //1s event
         if(ON == Timer1sTouch)
         {
-
-//            LOG_D("time goes %d, now tick = %d",rt_tick_get() - tick, rt_tick_get());//Justin debug 仅仅测试
-//            tick = rt_tick_get();
-
-            u8g2_ClearBuffer(&uiShow);
-
-            now = time(RT_NULL);
-            strcpy(data, ctime(&now));
-
-            u8g2_DrawStr(&uiShow, 1, 8, &data[10]);
-
-            for(index = 0; index < GetMonitor()->module_size; index++)
+            if((HOME_PAGE == nowPage) ||
+               (SENSOR_STATE_PAGE == nowPage) ||
+               (DEVICE_STATE_PAGE == nowPage))
             {
-                if((GetMonitor()->module_size > 4))
-                {
-                    break;
-                }
-
-                if(CON_FAIL == GetMonitor()->module[index].conn_state)
-                {
-                    strcpy(data, "no connect");
-                }
-                else /*if(CON_SUCCESS == GetMonitor()->module[index].conn_state)*/
-                {
-                    strcpy(data, "connect");
-                }
-//                else
-//                {
-//                    strcpy(data, "waitting");
-//                }
-
-                u8g2_DrawStr(&uiShow, 1, 18 + 10 * index, data);
+                //需要刷新
+                reflash_flag = ON;
             }
-
-            u8g2_SendBuffer(&uiShow);
         }
 
         rt_thread_mdelay(50);
@@ -156,6 +252,7 @@ void OledTaskInit(void)
         LOG_E("oled task create failed");
     }
 }
+
 
 #ifdef __cplusplus
 }

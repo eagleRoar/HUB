@@ -28,13 +28,15 @@ extern struct ethDeviceStruct *eth;
 
 extern rt_uint8_t GetEthDriverLinkStatus(void);            //获取网口连接状态
 extern void GetUpdataFileFromWeb(void);
-extern int ka_mqtt(void);
+extern int mqtt_start(void);
+
 static uint16_t g_Key = 97;
+
 int main(void)
 {
+//    u8              index           = 0;
     rt_uint8_t      ethStatus       = LINKDOWN;
-    u8              index           = 0;
-    static u8       module_size     = 0;
+//    static u8       module_size     = 0;
     static u8       Timer1sTouch    = OFF;
     static u16      time1S          = 0;
 
@@ -81,16 +83,17 @@ int main(void)
     SensorUart2TaskInit();
 
     //spi flash程序初始化 //SQL需要占用比较多的资源，250kb+的ram，310kb+的rom
-    SpiTaskInit();
+//    SpiTaskInit();
 
     //MQTT线程
-//    ka_mqtt();//Justin debug 锁定该线程导致了SD卡的文件描述符申请失败，需要检查里面是否有内存泄露等bug
+    mqtt_start();
 
     //初始化蓝牙Ble线程,蓝牙是通过uart发送数据控制
     //BleUart6TaskInit();   //该功能暂时删除
 
     //从网络上获取新的app包
     //GetUpdataFileFromWeb();
+
     while(1)
     {
         /* 监视网络模块是否上线 */
@@ -115,8 +118,8 @@ int main(void)
 //                printModule(GetMonitor()->module[index]);
 //            }
 //        }
-
-        printMuduleConnect(GetMonitor());
+//
+//        printMuduleConnect(GetMonitor());
 
         rt_thread_mdelay(1000);
     }

@@ -57,12 +57,11 @@
 
 #define RT_USING_COMPONENTS_INIT
 #define RT_USING_USER_MAIN
-#define RT_MAIN_THREAD_STACK_SIZE 2048
+#define RT_MAIN_THREAD_STACK_SIZE 4096
 #define RT_MAIN_THREAD_PRIORITY 10
 
 /* C++ features */
 
-#define RT_USING_CPLUSPLUS
 /* end of C++ features */
 
 /* Command shell */
@@ -103,12 +102,12 @@
 #define RT_SYSTEM_WORKQUEUE_PRIORITY 23
 #define RT_USING_SERIAL
 #define RT_SERIAL_USING_DMA
-#define RT_SERIAL_RB_BUFSZ 64
+#define RT_SERIAL_RB_BUFSZ 128
 #define RT_USING_PHY
 #define RT_USING_PIN
 #define RT_USING_RTC
 #define RT_USING_SDIO
-#define RT_SDIO_STACK_SIZE 512
+#define RT_SDIO_STACK_SIZE 1024
 #define RT_SDIO_THREAD_PRIORITY 15
 #define RT_MMCSD_STACK_SIZE 1024
 #define RT_MMCSD_THREAD_PREORITY 22
@@ -228,24 +227,6 @@
 
 /* IoT - internet of things */
 
-#define PKG_USING_KAWAII_MQTT
-#define KAWAII_MQTT_NETSOCKET_USE_SAL
-#define KAWAII_MQTT_LOG_LEVEL 4
-#define KAWAII_MQTT_VERSION 4
-#define KAWAII_MQTT_KEEP_ALIVE_INTERVAL 100
-#define KAWAII_MQTT_THREAD_STACK_SIZE 4096
-#define KAWAII_MQTT_THREAD_PRIO 5
-#define KAWAII_MQTT_THREAD_TICK 50
-#define KAWAII_MQTT_MAX_PACKET_ID 0xFFFE
-#define KAWAII_MQTT_TOPIC_LEN_MAX 64
-#define KAWAII_MQTT_ACK_HANDLER_NUM_MAX 64
-#define KAWAII_MQTT_DEFAULT_BUF_SIZE 1024
-#define KAWAII_MQTT_DEFAULT_CMD_TIMEOUT 4000
-#define KAWAII_MQTT_MAX_CMD_TIMEOUT 20000
-#define KAWAII_MQTT_MIN_CMD_TIMEOUT 1000
-#define KAWAII_MQTT_RECONNECT_DEFAULT_DURATION 1000
-#define PKG_USING_KAWAII_MQTT_TEST
-#define PKG_USING_KAWAII_MQTT_LATEST_VERSION
 
 /* Wi-Fi */
 
@@ -318,18 +299,11 @@
 /* Micrium: Micrium software products porting for RT-Thread */
 
 /* end of Micrium: Micrium software products porting for RT-Thread */
-#define PKG_USING_FAL
-#define FAL_DEBUG_CONFIG
-#define FAL_DEBUG 1
-#define FAL_PART_HAS_TABLE_CFG
-#define FAL_USING_SFUD_PORT
-#define FAL_USING_NOR_FLASH_DEV_NAME "W25Q16BV"
-#define PKG_USING_FAL_LATEST_VERSION
-#define PKG_FAL_VER_NUM 0x99999
 /* end of system packages */
 
 /* peripheral libraries and drivers */
 
+#define PKG_USING_EXTERN_RTC_DRIVERS
 /* end of peripheral libraries and drivers */
 
 /* AI packages */

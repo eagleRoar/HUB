@@ -17,6 +17,7 @@
 #include "UartDataLayer.h"
 #include "UartBussiness.h"
 #include "Sdcard.h"
+#include "CloudProtocol.h"
 
 type_monitor_t monitor;
 struct rx_msg uart2_msg;                      //接收串口数据以及相关消息
@@ -95,9 +96,6 @@ static rt_err_t Uart3_input(rt_device_t dev, rt_size_t size)
 
 /**
  * @brief  : 传感器类串口线程入口
- * @para   : NULL
- * @author : Qiuyijie
- * @date   : 2022.01.12
  */
 void SensorUart2TaskEntry(void* parameter)
 {
@@ -108,10 +106,8 @@ void SensorUart2TaskEntry(void* parameter)
     static      rt_device_t     uart2_serial;
     static      rt_device_t     uart3_serial;
     static      u8              device_start    = 0;
-//    static      rt_tick_t       tick;
-//    type_module_t module;
-//    volatile int        state = 0;
-//    int        i = 0;
+    static      u8              sensor_start    = 0;
+    static      u8              flag = 0;//Justin debug 仅仅测试
 
     /* 查找串口设备 */
     uart2_serial = rt_device_find(DEVICE_UART2);
@@ -147,12 +143,22 @@ void SensorUart2TaskEntry(void* parameter)
                     uart2_msg.messageFlag = OFF;
                     AnalyzeData(uart2_serial, &monitor, uart2_msg.data, uart2_msg.size);
                 }
+                else
+                {
+                    if(1 == sensor_start)
+                    {
+                        //全部的sensor 类询问结束会返回YES
+                        if(YES == askSensorStorage(&monitor, uart2_serial))
+                        {
+                            sensor_start = 0;
+                        }
+                    }
+                }
 
                 /* 接收串口3消息 */
                 if(ON == uart3_msg.messageFlag)
                 {
                     uart3_msg.messageFlag = OFF;
-//                    LOG_D("recv uart3...");
                     /* 读取device设备 */ //后续要移动到uart2处理
                     AnalyzeData(uart3_serial, &monitor, uart3_msg.data, uart3_msg.size);
                 }
@@ -160,46 +166,31 @@ void SensorUart2TaskEntry(void* parameter)
                 {
                     if(1 == device_start)
                     {
-//                        LOG_E("-------------------------- time = %d",rt_tick_get());
-
                         if(YES == askDeviceHeart(&monitor, uart3_serial))
                         {
                             device_start = 0;
                         }
                     }
                 }
-
-//                MonitorModuleConnect(GetMonitor());
-//                LOG_D("-------------time = %d",rt_tick_get() - tick);
-//                tick = rt_tick_get();
             }
 
             /* 1s 事件 */
             if(ON == Timer1sTouch)
             {
-                //注意在接收的时候不能发送数据
-                //周期性1s向四合一模块发送询问指令
-//                askSensorStorage(&monitor, uart2_serial);//Justin debug
-//                if(OFF == uart3_msg.messageFlag)
-                {
-//                    askDeviceHeart(&monitor, uart3_serial);
-                    device_start = 1;
-                }
+                device_start = 1;
+                sensor_start = 1;
+
                 MonitorModuleConnect(GetMonitor());
+                tempProgram(GetMonitor());
             }
             /* 5s 事件 */
             if(ON == Timer5sTouch)
             {
-                /* 控制设备 */
-//                for(i = 0; i < monitor.monitorDeviceTable.deviceManageLength; i++)
+
+//                if(0 == flag)
 //                {
-//                    module = monitor.monitorDeviceTable.deviceTable[i];
-//                    if(DEVICE_TYPE == module.s_or_d)
-//                    {
-//                        state = module.module_t[0].value;
-//                        LOG_D("control module name = %s,state = %d",module.module_name,module.module_t[0].value);//Justin debug为什么有这个才会执行加湿的AC station 的动作
-//                        ControlDeviceStorage(&module, uart3_serial, state, 0x00);
-//                    }
+//                    CjonTest();
+//                    flag = 1;
 //                }
             }
         }
@@ -218,7 +209,7 @@ void SensorUart2TaskInit(void)
     rt_err_t threadStart = RT_NULL;
 
     /* 创建串口 线程 */
-    rt_thread_t thread = rt_thread_create("sensor task", SensorUart2TaskEntry, RT_NULL, 1024*6, UART2_PRIORITY, 10);
+    rt_thread_t thread = rt_thread_create("sensor task", SensorUart2TaskEntry, RT_NULL, /*1024*6*/1024*4, UART2_PRIORITY, 10);
 
     /* 如果线程创建成功则开始启动线程，否则提示线程创建失败 */
     if (RT_NULL != thread) {

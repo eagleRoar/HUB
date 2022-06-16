@@ -33,6 +33,8 @@
 #define MQTT_PRIORITY                   27
 #define LED_PRIORITY                    27
 
+//线程周期
+#define BUTTON_TASK_PERIOD              20
 
 /* 配置button */
 #define PKG_USING_BUTTON
@@ -57,5 +59,18 @@
 #define RT_CJSON_TOOLS_ENABLE_EXAMPLE
 #define RT_CJSON_TOOLS_EXAMPLE_STACK_SZIE 1024
 #define RT_CJSON_TOOLS_EXAMPLE_PRIORITY 15
+
+/* 配置MQTT */
+#define MQTT_DEBUG
+#define PKG_USING_MYMQTT
+#define PKG_USING_MYMQTT_LATEST_VERSION
+#define PKG_USING_MYMQTT_EXAMPLE
+#define MQTT_MAX_MESSAGE_HANDLERS 1
+
+#if (HUB_SELECT == HUB_ENVIRENMENT)
+#define     HUB_NAME    "BHE"
+#elif (HUB_SELECT == HUB_IRRIGSTION)
+#define     HUB_NAME    "BHI"
+#endif
 
 #endif /* GLOBALCONFIG_H_ */

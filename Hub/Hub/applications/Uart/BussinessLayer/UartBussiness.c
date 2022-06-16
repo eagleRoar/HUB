@@ -15,28 +15,52 @@
 
 type_connect_t   connectState[MODULE_MAX];
 
-//rt_tick_t tick_test = 0;
-
-void ControlDeviceStorage(type_module_t *device, rt_device_t serial, u8 state, u8 value)
+u8 askSensorStorage(type_monitor_t *monitor, rt_device_t serial)
 {
-    u8  buffer[20];
-    u16 crc16Result =   0x0000;
+    u8              ret                 = NO;
+    u8              buffer[8];
+    u16             crc16Result         = 0x0000;
+    static u8       ask_sensor          = 0;
 
-    if(DEVICE_TYPE != device->s_or_d)
+    for(; ask_sensor < monitor->module_size; ask_sensor ++)
     {
-        return;
+        if(SENSOR_TYPE == monitor->module[ask_sensor].s_or_d)
+        {
+            break;
+        }
     }
-    buffer[0] = device->addr;
-    buffer[1] = WRITE_SINGLE;
-    buffer[2] = (device->storage_in[0].ctrl_addr >> 8) & 0x00FF;
-    buffer[3] = device->storage_in[0].ctrl_addr & 0x00FF;
-    buffer[4] = state;
-    buffer[5] = value;
-    crc16Result = usModbusRTU_CRC(buffer, 6);
-    buffer[6] = crc16Result;                         //CRC16低位
-    buffer[7] = (crc16Result>>8);                    //CRC16高位
 
-    rt_device_write(serial, 0, buffer, 8);
+    if((CON_SUCCESS == monitor->module[ask_sensor].conn_state) ||
+       (CON_FAIL == monitor->module[ask_sensor].conn_state))
+    {
+
+        //LOG_D("send sensor name %s",monitor->module[ask_sensor].name);
+        buffer[0] = monitor->module[ask_sensor].addr;
+        buffer[1] = READ_MUTI;
+        buffer[2] = (monitor->module[ask_sensor].storage_in[0].ctrl_addr >> 8) & 0x00FF;
+        buffer[3] = monitor->module[ask_sensor].storage_in[0].ctrl_addr & 0x00FF;
+        buffer[4] = (monitor->module[ask_sensor].storage_size >> 8) & 0x00FF;
+        buffer[5] = monitor->module[ask_sensor].storage_size & 0x00FF;
+        crc16Result = usModbusRTU_CRC(buffer, 6);
+        buffer[6] = crc16Result;                             //CRC16低位
+        buffer[7] = (crc16Result>>8);                        //CRC16高位
+
+        rt_device_write(serial, 0, buffer, 8);
+        connectState[ask_sensor].send_count ++;
+    }
+
+    if(ask_sensor == monitor->module_size)
+    {
+        //一个循环结束
+        ret = YES;
+        ask_sensor = 0;
+    }
+    else
+    {
+        ask_sensor++;
+    }
+
+    return ret;
 }
 
 u8 askDeviceHeart(type_monitor_t *monitor, rt_device_t serial)
@@ -46,7 +70,7 @@ u8 askDeviceHeart(type_monitor_t *monitor, rt_device_t serial)
     u16             crc16Result         = 0x0000;
     static u8       ask_device          = 0;
 
-    for(; ask_device < monitor->module_size; ask_device ++)//Justin debug
+    for(; ask_device < monitor->module_size; ask_device ++)
     {
         if(DEVICE_TYPE == monitor->module[ask_device].s_or_d)
         {
@@ -58,11 +82,11 @@ u8 askDeviceHeart(type_monitor_t *monitor, rt_device_t serial)
        (CON_FAIL == monitor->module[ask_device].conn_state))
     {
         buffer[0] = monitor->module[ask_device].addr;
-        buffer[1] = READ_MUTI;
-        buffer[2] = (MODULE_TYPE_ADDR >> 8) & 0x00FF;
-        buffer[3] = MODULE_TYPE_ADDR & 0x00FF;
-        buffer[4] = (1 >> 8) & 0x00FF;
-        buffer[5] = 1 & 0x00FF;
+        buffer[1] = WRITE_SINGLE;
+        buffer[2] = (monitor->module[ask_device].storage_in[0].ctrl_addr >> 8) & 0x00FF;
+        buffer[3] = monitor->module[ask_device].storage_in[0].ctrl_addr & 0x00FF;
+        buffer[4] = (monitor->module[ask_device].storage_in[0].value >> 8) & 0x00FF;
+        buffer[5] = (monitor->module[ask_device].storage_in[0].value) & 0x00FF;
         crc16Result = usModbusRTU_CRC(buffer, 6);
         buffer[6] = crc16Result;                             //CRC16低位
         buffer[7] = (crc16Result>>8);                        //CRC16高位
@@ -89,7 +113,6 @@ void UpdateModuleConnect(type_monitor_t *monitor, u8 addr)
 {
     u8                      no                          = 0;
 
-    //Justin debug 仅仅测试 串口接收方式为接收阻塞
     for (no = 0; no < monitor->module_size; no++)
     {
         if(addr == monitor->module[no].addr)
@@ -102,12 +125,10 @@ void UpdateModuleConnect(type_monitor_t *monitor, u8 addr)
 
 }
 
-//Justin debug 该函数还没有测试
 void MonitorModuleConnect(type_monitor_t *monitor)
 {
     u8                      index                          = 0;
 
-    //如果是已经接收的CON_SUCCESS那么就不计时
     for(index = 0; index < monitor->module_size; index++)
     {
         //超过十次没有接收到认为失联

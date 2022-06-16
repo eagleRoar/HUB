@@ -1,12 +1,12 @@
 [
  {
-  "path": "/packages/iot/kawaii-mqtt", 
+  "path": "/packages/iot/mymqtt", 
   "ver": "latest", 
-  "name": "KAWAII_MQTT"
+  "name": "MYMQTT"
  }, 
  {
-  "path": "/packages/system/fal", 
+  "path": "/packages/language/JSON/cJSON", 
   "ver": "latest", 
-  "name": "FAL"
+  "name": "CJSON"
  }
 ]

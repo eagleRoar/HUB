@@ -13,7 +13,21 @@
 
 #include "Gpio.h"
 #include "UartBussiness.h"
-#include "InformationMonitor.h"
+#include "CloudProtocolBusiness.h"
+
+time_t getTimeStamp(void)
+{
+    return time(RT_NULL);
+}
+
+char *getRealTime(void)
+{
+    time_t      now;
+
+    now = time(RT_NULL);
+
+    return ctime(&now);
+}
 
 void printModule(type_module_t module)
 {
@@ -36,7 +50,8 @@ void printModule(type_module_t module)
     LOG_D("storage_size     : %d",module.storage_size);
     for(index = 0; index < module.storage_size; index++)
     {
-        LOG_D("stora %d name    : %s",index,module.storage_in[index].name);
+        LOG_D("stora %d name    : %s, value = %d, addr = %x",
+              index,module.storage_in[index].name, module.storage_in[index].value, module.storage_in[index].ctrl_addr);
     }
 }
 
@@ -80,5 +95,26 @@ void rtcTest(void)
     }
 
 }
+
+//void PrintTempSet(proTempSet_t set)
+//{
+//    LOG_D("-----------------------PrintTempSet");
+//    LOG_D("%s %s",set.msgid.name, set.msgid.value);
+//    LOG_D("%s %d",set.dayCoolingTarget.name, set.dayCoolingTarget.value);
+//    LOG_D("%s %d",set.dayHeatingTarget.name, set.dayHeatingTarget.value);
+//    LOG_D("%s %d",set.nightCoolingTarget.name, set.nightCoolingTarget.value);
+//    LOG_D("%s %d",set.nightHeatingTarget.name, set.nightHeatingTarget.value);
+//    LOG_D("%s %d",set.coolingDehumidifyLock.name, set.coolingDehumidifyLock.value);
+//}
+
+//void PrintHumiSet(proHumiSet_t set)
+//{
+//    LOG_D("-----------------------PrintHumiSet");
+////    LOG_D("%s %s",set.msgid.name, set.msgid.value);
+////    LOG_D("%s %d",set.dayHumiTarget.name, set.dayHumiTarget.value);
+//    LOG_D("%s %d",set.dayDehumiTarget.name, set.dayDehumiTarget.value);
+////    LOG_D("%s %d",set.nightHumiTarget.name, set.nightHumiTarget.value);
+////    LOG_D("%s %d",set.nightDehumiTarget.name, set.nightDehumiTarget.value);
+//}
 
 #endif /* APPLICATIONS_TEST_C_ */

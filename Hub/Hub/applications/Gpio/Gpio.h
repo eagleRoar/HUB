@@ -35,7 +35,7 @@
 #include "GlobalConfig.h"
 #include "typedef.h"
 #include "InformationMonitor.h"
-
+#include "CloudProtocolBusiness.h"
 
 //LED
 #define LED_SENSOR        GET_PIN(D, 10)  //senser
@@ -87,4 +87,9 @@ int sd_card_is_vaild(void);
 void printModule(type_module_t);
 void printMuduleConnect(type_monitor_t *);
 void rtcTest(void);
+void CjonTest(void);
+char *getRealTime(void);
+time_t getTimeStamp(void);
+//void PrintHumiSet(proHumiSet_t set);
+//void PrintTempSet(proTempSet_t set);
 #endif /* APPLICATIONS_GPIO_H_ */

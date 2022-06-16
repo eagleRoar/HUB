@@ -17,15 +17,15 @@
 const type_storage_t sto_null = {name_null,             S_UNDEFINE,          S_UNDEFINE, 0,           0,          0};
 const type_storage_t storageIn[STORAGE_NUM] =
 {
-        {"Co2",                 S_GAS_CO2,          0x0010,           5000,         0,          DEV_UNDEFINE},//四合一sensor
-        {"Humi",                S_HUMI_ENV,         0x0010,           1000,         0,          DEV_UNDEFINE},
-        {"Temp",                S_TEMP_ENV,         0x0010,           1000,         0,          DEV_UNDEFINE},
-        {"Light",               S_LIGHT_ENV,        0x0010,           4096,         0,          DEV_UNDEFINE},
-        {"Co2",                 S_GAS_CO2,          0x0040,           1,            0,          DEV_UP},
-        {"Heat",                S_TEMP_ENV,         0x0040,           1,            0,          DEV_UP},
-        {"Humi",                S_HUMI_ENV,         0x0040,           1,            0,          DEV_UP},
-        {"Dehumi",              S_HUMI_ENV,         0x0040,           1,            0,          DEV_DOWN},
-        {"Cool",                S_TEMP_ENV,         0x0040,           1,            0,          DEV_DOWN},
+        {"Co2",                 S_CO2,          0x0010,           5000,         0,          DEV_UNDEFINE},//四合一sensor
+        {"Humi",                S_HUMI,         0x0010,           1000,         0,          DEV_UNDEFINE},
+        {"Temp",                S_TEMP,         0x0010,           1000,         0,          DEV_UNDEFINE},
+        {"Light",               S_LIGHT,        0x0010,           4096,         0,          DEV_UNDEFINE},
+        {"Co2",                 S_CO2,          0x0040,           1,            0,          DEV_UP},
+        {"Heat",                S_TEMP,         0x0040,           1,            0,          DEV_UP},
+        {"Humi",                S_HUMI,         0x0040,           1,            0,          DEV_UP},
+        {"Dehumi",              S_HUMI,         0x0040,           1,            0,          DEV_DOWN},
+        {"Cool",                S_TEMP,         0x0040,           1,            0,          DEV_DOWN},
 };
 
 /**************************注册device 寄存器***************************************/
@@ -66,25 +66,26 @@ static void AddStorageToTable(type_module_t *table, u8 index, char *name, u8 typ
 
 /* 初始化终端设备相关映射,并相应修改AnlyzeDeviceRegister函数,
  * 增加注册后要修改ALLOW_MODULE_TYPE_SZ数值 */
+
 void StorageInit(void)
 {
     u8 i = 0;
-    AddStorageToTable(moduleTable,            i,        "Bhs",        0x03,  SENSOR_TYPE,     4,
+    AddStorageToTable(moduleTable,            i,        "Bhs",        BHS_TYPE,  SENSOR_TYPE,     4,
                       storageIn[0], storageIn[1], storageIn[2], storageIn[3], sto_null, sto_null, sto_null, sto_null, sto_null, sto_null, sto_null, sto_null);
     i += 1;
-    AddStorageToTable(moduleTable,            i,        "Co2",        0x41,  DEVICE_TYPE,     1,
+    AddStorageToTable(moduleTable,            i,        "Co2",        CO2_TYPE,  DEVICE_TYPE,     1,
                       storageIn[4], sto_null,     sto_null,     sto_null,     sto_null, sto_null, sto_null, sto_null, sto_null, sto_null, sto_null, sto_null);
     i += 1;
-    AddStorageToTable(moduleTable,            i,       "Heat",        0x42,  DEVICE_TYPE,     1,
+    AddStorageToTable(moduleTable,            i,       "Heat",        HEAT_TYPE,  DEVICE_TYPE,     1,
                       storageIn[5], sto_null,     sto_null,     sto_null,     sto_null, sto_null, sto_null, sto_null, sto_null, sto_null, sto_null, sto_null);
     i += 1;
-    AddStorageToTable(moduleTable,            i,  "Humidification",   0x43,  DEVICE_TYPE,     1,
+    AddStorageToTable(moduleTable,            i,  "Humidification",   HUMI_TYPE,  DEVICE_TYPE,     1,
                       storageIn[6], sto_null,     sto_null,     sto_null,     sto_null, sto_null, sto_null, sto_null, sto_null, sto_null, sto_null, sto_null);
     i += 1;
-    AddStorageToTable(moduleTable,            i,  "Dehumidification", 0x44,  DEVICE_TYPE,     1,
+    AddStorageToTable(moduleTable,            i,  "Dehumidification", DEHUMI_TYPE,  DEVICE_TYPE,     1,
                       storageIn[7], sto_null,     sto_null,     sto_null,     sto_null, sto_null, sto_null, sto_null, sto_null, sto_null, sto_null, sto_null);
     i += 1;
-    AddStorageToTable(moduleTable,            i,     "Cool",          0x45,  DEVICE_TYPE,     1,
+    AddStorageToTable(moduleTable,            i,     "Cool",          COOL_TYPE,  DEVICE_TYPE,     1,
                       storageIn[8], sto_null,     sto_null,     sto_null,     sto_null, sto_null, sto_null, sto_null, sto_null, sto_null, sto_null, sto_null);
     if(i > ALLOW_MODULE_TYPE_SZ - 1)
     {
@@ -256,33 +257,24 @@ void RegisterAnswer(type_monitor_t *monitor, rt_device_t serial, u32 uuid)
 void AnlyzeStorage(type_monitor_t *monitor, u8 addr, u8 *data, u8 length)
 {
     u8          index       = 0;
+    u8          storage     = 0;
 
-//    for(index = 0; index < monitor->module_size; index++)
-//    {
-//        if(addr == monitor->module[index].addr)
-//        {
-//            LOG_D("reply no %d, name = %s",index, monitor->module[index].name);//Justin debug 仅仅测试
-//        }
-//    }
+    for(index = 0; index < monitor->module_size; index++)
+    {
+        if(addr == monitor->module[index].addr)
+        {
+            if(STORAGE_MAX < length/2)
+            {
+                return;
+            }
 
-//    u8  j = 0;
-//    u16 i = 0;
-//
-//    for(i = 0; i < monitor->monitorDeviceTable.deviceManageLength; i++)
-//    {
-//
-//        if(addr == monitor->monitorDeviceTable.deviceTable[i].address)
-//        {
-//            if(STORAGE_MAX < length/2)
-//            {
-//                /* 如果接收的数据比寄存器容量大则抛弃 */
-//                return;
-//            }
-//
-//            for(j = 0; j < length/2; j++)
-//            {
-//                monitor->monitorDeviceTable.deviceTable[i].module_t[j].value = (data[2*j] << 8) | data[2*j + 1];
-//            }
-//        }
-//    }
+            if(SENSOR_TYPE == monitor->module[index].s_or_d)
+            {
+                for(storage = 0; storage < length/2; storage++)
+                {
+                    monitor->module[index].storage_in[storage].value = (data[2 * storage] << 8) | data[2 * storage + 1];
+                }
+            }
+        }
+    }
 }

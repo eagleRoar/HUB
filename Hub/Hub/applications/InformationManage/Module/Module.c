@@ -23,7 +23,7 @@ void InsertModuleToTable(type_monitor_t *monitor, type_module_t module, u8 no)
             monitor->module_size++;
         }
         monitor->module[no] = module;
-        printModule(module);//Justin debug
+        printModule(module);
     }
 }
 
@@ -72,5 +72,53 @@ void initModuleConState(type_monitor_t *monitor)
     }
 }
 
+type_module_t *GetModuleByType(type_monitor_t *monitor, u8 type)
+{
+    u8      index       = 0;
+
+    for(index = 0; index < monitor->module_size; index++)
+    {
+        if(type == monitor->module[index].type)
+        {
+            return &(monitor->module[index]);
+        }
+    }
+
+    return RT_NULL;
+}
+
+/**
+ * 获取灯光是属于Line1还是Line2
+ */
+u8 getLineNoByuuid(type_monitor_t *monitor, u32 uuid)
+{
+    u8      index           = 0;
+    u8      cout            = 0;
+    u8      ret             = 0xFF;
+    u32     uuidList[2]     = {0x00000000, 0x00000000};
+
+    for(index = 0; index < monitor->module_size; index++)
+    {
+        if(LINE_TYPE == monitor->module[index].type)
+        {
+            if(cout < 2)
+            {
+                uuidList[cout] = monitor->module[index].uuid;
+                cout++;
+            }
+        }
+    }
+
+    if(uuidList[0] == uuid)
+    {
+        ret = 0;
+    }
+    else if(uuidList[1] == uuid)
+    {
+        ret = 1;
+    }
+
+    return ret;
+}
 
 #endif /* APPLICATIONS_INFORMATIONMANAGE_MODULE_MODULE_C_ */

@@ -136,8 +136,6 @@ rt_err_t TakeMonitorFromSD(type_monitor_t *monitor)
 
     LOG_D("TakeMonitorFromSD");
 
-    rt_memset((u8 *)monitor, 0, monitorSize);//Justin debug
-
     if(RT_EOK == ReadSdData(MODULE_FILE, (u8 *)monitor, SD_INFOR_SIZE, monitorSize))
     {
         crc = usModbusRTU_CRC((u8 *)monitor, monitorSize - 2);//crc 在最后

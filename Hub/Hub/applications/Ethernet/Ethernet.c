@@ -13,11 +13,11 @@
 #include "Udp.h"
 #include "Uart.h"
 
-static char udp_thread_stack[1024 * 4];
+static char udp_thread_stack[1024 * 2];//[1024 * 4];//Justin test
 static struct rt_thread udp_thread;
-static char tcp_send_stack[1024 * 4];
+static char tcp_send_stack[1024 * 2];//[1024 * 4];//Justin test
 static struct rt_thread tcp_send_thread;
-static char tcp_recv_stack[1024 * 4];
+static char tcp_recv_stack[1024 * 2];//[1024 * 4];//Justin test
 static struct rt_thread tcp_recv_thread;
 struct ethDeviceStruct *eth = RT_NULL;          //申请ethernet实例化对象
 

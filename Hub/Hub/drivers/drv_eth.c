@@ -430,7 +430,7 @@ static void phy_linkchange()
 
         if (PHY_Status_FULL_DUPLEX(SR))
         {
-            phy_speed_new |= PHY_FULL_DUPLEX_1;//Justin debug 因为重复命名提示错误，故修改名字
+            phy_speed_new |= PHY_FULL_DUPLEX_1;
         }
     }
 
@@ -451,7 +451,7 @@ static void phy_linkchange()
                 LOG_D("10Mbps");
             }
 
-            if (phy_speed & PHY_FULL_DUPLEX_1)//Justin debug 因为重复命名提示错误，故修改名字
+            if (phy_speed & PHY_FULL_DUPLEX_1)
             {
                 LOG_D("full-duplex");
                 stm32_eth_device.ETH_Mode = ETH_MODE_FULLDUPLEX;
@@ -467,7 +467,7 @@ static void phy_linkchange()
         }
         else
         {
-            LOG_I("Eth link down");//Justin debug
+            LOG_I("Eth link down");
             eth_device_linkchange(&stm32_eth_device.parent, RT_FALSE);
         }
     }

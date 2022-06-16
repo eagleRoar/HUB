@@ -9,77 +9,103 @@
  */
 #include "ButtonTask.h"
 #include "Gpio.h"
-#include "button.h"
+#include "Oled1309.h"
 
-#define KEY_ON                                   0
+type_button_t buttonList[BUTTON_MAX];
 
-static rt_mutex_t buttonMutex = RT_NULL;    //指向互斥量的指针
-
-Button_t Button1;
-Button_t Button2;
-
-rt_uint8_t ButtonMenuSet(void)
+static void Buttonprogram(u8 period)
 {
-    return rt_pin_read(BUTTON_MENU);
+    u8                  index       = 0;
+    u16                 short_max   = 0;
+
+    for(index = 0; index < BUTTON_MAX; index++)
+    {
+        if(rt_pin_read(buttonList[index].pin) == buttonList[index].on_set)
+        {
+            buttonList[index].continue_time += period;
+            buttonList[index].press_state = ON;
+        }
+        else
+        {
+            buttonList[index].press_state = OFF;
+        }
+
+        //通过时间计算类型
+
+        if(ON == buttonList[index].press_state)     //还在持续点击
+        {
+            if(buttonList[index].continue_time >= LONG_TIME)
+            {
+                if(NO == buttonList[index].have_read)
+                {
+                    buttonList[index].type = LONG_PRESS;
+                }
+                else
+                {
+                    //按键已读的话不再重复赋值
+                    buttonList[index].type = NULL_PRESS;
+                }
+                buttonList[index].have_read = YES;
+            }
+        }
+        else
+        {
+            short_max = LONG_TIME - BAND_TIME;
+            if ((buttonList[index].continue_time >= SHORT_TIME) &&
+                (buttonList[index].continue_time < short_max))
+            {
+                buttonList[index].type = SHORT_PRESS;
+            }
+            else
+            {
+                buttonList[index].type = NULL_PRESS;
+            }
+
+            buttonList[index].have_read = NO;
+            buttonList[index].continue_time = 0;
+        }
+
+        buttonList[index].call_back(buttonList[index].type);
+    }
 }
 
-rt_uint8_t ButtonEnterSet(void)
+static void ButtonAdd(rt_base_t pin, u8 on_set, Call_Back call_back)
 {
-    return rt_pin_read(BUTTON_ENTER);
+    static u8      index        = 0;
+
+    if(index < BUTTON_MAX)
+    {
+        buttonList[index].pin = pin;
+        buttonList[index].on_set = on_set;
+        buttonList[index].call_back = call_back;
+        buttonList[index].press_state = OFF;
+        buttonList[index].have_read = NO;
+        index += 1;
+    }
+    else
+    {
+        LOG_E("add button fail");
+    }
 }
 
-/**
- * menu 按键回调函数
- * @param btn
- */
-void BtnMenuShortCallBack(void *btn)
+static void ButtonRegister(void)
 {
-
+    ButtonAdd(BUTTON_MENU, KEY_ON, MenuBtnCallBack);
+    ButtonAdd(BUTTON_ENTER, KEY_ON, EnterBtnCallBack);
 }
 
-/**
- * enter 按键回调函数
- * @param btn
- */
-void BtnEnterShortCallBack(void *btn)
+static void ButtonTaskEntry(void* parameter)
 {
+    //注册按键信息，告诉我，按键的pin，按键0/1认为是已经点击
+    ButtonRegister();
 
-}
+    while(1)
+    {
 
-/**
-  ******************************************************************
-  * @brief   main
-  * @author  jiejie
-  * @version V1.0
-  * @date    2018-xx-xx
-  ******************************************************************
-  */
-void ButtonTaskEntry(void* parameter)
-{
-  /* 注册按键 */
-  Button_Create("Button1",
-              &Button1,
-              ButtonMenuSet,
-              KEY_ON);
-  Button_Attach(&Button1,BUTTON_DOWM,BtnMenuShortCallBack);                       //Click
+        Buttonprogram(BUTTON_TASK_PERIOD);
 
-  Button_Create("Button2",
-              &Button2,
-              ButtonEnterSet,
-              KEY_ON);
-  Button_Attach(&Button2,BUTTON_DOWM,BtnEnterShortCallBack);                     //Click
-
-  /* 设置按键相关设置 */
-  Get_Button_Event(&Button1);
-  Get_Button_Event(&Button2);
-
-  while(1)
-  {
-
-    Button_Process();     //Need to call the button handler function periodically
-
-    rt_thread_mdelay(20);
-  }
+        rt_thread_mdelay(BUTTON_TASK_PERIOD);
+    }
 }
 
 /**
@@ -91,13 +117,6 @@ void ButtonTaskEntry(void* parameter)
 void ButtonTaskInit(void)
 {
     rt_err_t threadStart = RT_NULL;
-
-    /* 创建一个动态互斥锁 */
-    buttonMutex = rt_mutex_create("buttonMutex", RT_IPC_FLAG_FIFO);
-    if (buttonMutex == RT_NULL)
-    {
-        LOG_E("create dynamic mutex failed.\n");
-    }
 
     /* 创建串口 线程 */
     rt_thread_t thread = rt_thread_create("button task", ButtonTaskEntry, RT_NULL, 1024, BUTTON_PRIORITY, 10);
@@ -112,4 +131,3 @@ void ButtonTaskInit(void)
         LOG_E("button task create failed");
     }
 }
-

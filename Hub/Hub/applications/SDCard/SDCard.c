@@ -11,6 +11,7 @@
 #include "Gpio.h"
 #include "SDCard.h"
 #include "Uart.h"
+#include "CloudProtocol.h"
 
 #define DBG_TAG "u.sd"
 #define DBG_LVL DBG_INFO
@@ -69,7 +70,6 @@ void sd_dfs_event_entry(void* parameter)
 
                             if(RT_EOK == TakeMonitorFromSD(GetMonitor()))
                             {
-//                                printModule(GetMonitor()->module[0]);//Justin debug
                                 LOG_I("TakeMonitorFromSD OK");
                                 sdCard.readInfo = YES;
                             }
@@ -77,6 +77,7 @@ void sd_dfs_event_entry(void* parameter)
                             {
                                 LOG_E("TakeMonitorFromSD fail");
                             }
+                            initCloudProtocol();//Justin debug 后续需要通过SD获取出数据
                         }
                         else //挂载失败
                         {

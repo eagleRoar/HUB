@@ -15,7 +15,6 @@
 #include "SDCardBusiness.h"
 #include "InformationMonitor.h"
 
-
 #define         SD_DEVICE_NAME          "sd0"
 
 struct sdCardState{
