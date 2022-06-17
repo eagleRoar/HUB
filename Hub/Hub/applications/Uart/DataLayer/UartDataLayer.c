@@ -13,145 +13,81 @@
 #include "InformationMonitor.h"
 #include "Module.h"
 
-/**************************注册寄存器小类名称****************************/
-const type_storage_t sto_null = {name_null,             S_UNDEFINE,          S_UNDEFINE, 0,           0,          0};
-const type_storage_t storageIn[STORAGE_NUM] =
+void setModuleDefaultPara(type_module_t *module, char *name, u16 ctrl_addr, u8 manual, u16 manual_on_time, u8 main_type, u8 type, u8 s_or_d, u8 storage_size)
 {
-        {"Co2",                 S_CO2,          0x0010,           5000,         0,          DEV_UNDEFINE},//四合一sensor
-        {"Humi",                S_HUMI,         0x0010,           1000,         0,          DEV_UNDEFINE},
-        {"Temp",                S_TEMP,         0x0010,           1000,         0,          DEV_UNDEFINE},
-        {"Light",               S_LIGHT,        0x0010,           4096,         0,          DEV_UNDEFINE},
-        {"Co2",                 S_CO2,          0x0040,           1,            0,          DEV_UP},
-        {"Heat",                S_TEMP,         0x0040,           1,            0,          DEV_UP},
-        {"Humi",                S_HUMI,         0x0040,           1,            0,          DEV_UP},
-        {"Dehumi",              S_HUMI,         0x0040,           1,            0,          DEV_DOWN},
-        {"Cool",                S_TEMP,         0x0040,           1,            0,          DEV_DOWN},
-};
+    rt_memcpy(module->name, name, MODULE_NAMESZ);                   //产品名称
+    module->ctrl_addr = ctrl_addr;                                  //终端控制的寄存器地址
+    module->manual = manual;                                        //手动开关/ 开、关
+    module->manual_on_time = manual_on_time;                        //手动开启的时间
+    module->main_type = main_type;                                  //主类型 如co2 温度 湿度 line timer
+    module->s_or_d = s_or_d;                                        //sensor类型/device类型
+    module->conn_state = CON_SUCCESS;                               //连接状态
+    module->reg_state = SEND_NULL;                                  //注册状态
+    module->save_state = NO;                                        //是否已经存储
+    module->storage_size = storage_size;                            //寄存器数量
 
-/**************************注册device 寄存器***************************************/
-type_module_t moduleTable[ALLOW_MODULE_TYPE_SZ];
-
-static void AddStorageToTable(type_module_t *table, u8 index, char *name, u8 type, u8 s_or_d, u8 storage_size,
-                       type_storage_t s0,type_storage_t s1,type_storage_t s2,type_storage_t s3,type_storage_t s4,type_storage_t s5,
-                       type_storage_t s6,type_storage_t s7,type_storage_t s8,type_storage_t s9,type_storage_t s10,type_storage_t s11)
-{
-    if((ALLOW_MODULE_TYPE_SZ - 1) < index)
+    if(HVAC_6_TYPE == type)
     {
-        return;
-    }
-
-    table[index].uuid               = 0x00000000;
-    rt_memcpy(table[index].name, name, MODULE_NAMESZ);
-    table[index].addr               = 0x00;
-    table[index].type               = type;
-    table[index].s_or_d             = s_or_d;
-    table[index].conn_state         = CON_NULL;
-    table[index].reg_state          = NO;
-    table[index].save_state         = NO;
-    table[index].storage_size       = storage_size;
-
-    table[index].storage_in[0]      = s0;
-    table[index].storage_in[1]      = s1;
-    table[index].storage_in[2]      = s2;
-    table[index].storage_in[3]      = s3;
-    table[index].storage_in[4]      = s4;
-    table[index].storage_in[5]      = s5;
-    table[index].storage_in[6]      = s6;
-    table[index].storage_in[7]      = s7;
-    table[index].storage_in[8]      = s8;
-    table[index].storage_in[9]      = s9;
-    table[index].storage_in[10]     = s10;
-    table[index].storage_in[11]     = s11;
-}
-
-/* 初始化终端设备相关映射,并相应修改AnlyzeDeviceRegister函数,
- * 增加注册后要修改ALLOW_MODULE_TYPE_SZ数值 */
-
-void StorageInit(void)
-{
-    u8 i = 0;
-    AddStorageToTable(moduleTable,            i,        "Bhs",        BHS_TYPE,  SENSOR_TYPE,     4,
-                      storageIn[0], storageIn[1], storageIn[2], storageIn[3], sto_null, sto_null, sto_null, sto_null, sto_null, sto_null, sto_null, sto_null);
-    i += 1;
-    AddStorageToTable(moduleTable,            i,        "Co2",        CO2_TYPE,  DEVICE_TYPE,     1,
-                      storageIn[4], sto_null,     sto_null,     sto_null,     sto_null, sto_null, sto_null, sto_null, sto_null, sto_null, sto_null, sto_null);
-    i += 1;
-    AddStorageToTable(moduleTable,            i,       "Heat",        HEAT_TYPE,  DEVICE_TYPE,     1,
-                      storageIn[5], sto_null,     sto_null,     sto_null,     sto_null, sto_null, sto_null, sto_null, sto_null, sto_null, sto_null, sto_null);
-    i += 1;
-    AddStorageToTable(moduleTable,            i,  "Humidification",   HUMI_TYPE,  DEVICE_TYPE,     1,
-                      storageIn[6], sto_null,     sto_null,     sto_null,     sto_null, sto_null, sto_null, sto_null, sto_null, sto_null, sto_null, sto_null);
-    i += 1;
-    AddStorageToTable(moduleTable,            i,  "Dehumidification", DEHUMI_TYPE,  DEVICE_TYPE,     1,
-                      storageIn[7], sto_null,     sto_null,     sto_null,     sto_null, sto_null, sto_null, sto_null, sto_null, sto_null, sto_null, sto_null);
-    i += 1;
-    AddStorageToTable(moduleTable,            i,     "Cool",          COOL_TYPE,  DEVICE_TYPE,     1,
-                      storageIn[8], sto_null,     sto_null,     sto_null,     sto_null, sto_null, sto_null, sto_null, sto_null, sto_null, sto_null, sto_null);
-    if(i > ALLOW_MODULE_TYPE_SZ - 1)
-    {
-        LOG_E("----------------moduleTable size overload!,i = %d,ALLOW_MODULE_TYPE_SZ = %d",i,ALLOW_MODULE_TYPE_SZ);
-    }
-
-}
-
-/************************************************************************/
-
-
-void getStorageSize(u8 type, type_module_t *device)
-{
-    u16 i = 0;
-
-    for(i = 0; i < ALLOW_MODULE_TYPE_SZ; i++)
-    {
-       if(type == moduleTable[i].type)
-       {
-           device->storage_size = moduleTable[i].storage_size;
-       }
+        module->_havc.fanNormallyOpen = HVAC_NULL;
+        module->_havc.hvacMode = HVAC_FAN_NULL;
+        module->_havc.manualOnMode = HVAC_FAN_NULL;
     }
 }
 
-void getStorage(u8 type, type_module_t *device)
+void setModuleDefault(type_module_t *module)
 {
-    u16 i = 0, j = 0;
+    switch (module->type) {
+        case BHS_TYPE:
+            setModuleDefaultPara(module, "Bhs", 0x0010, 0xFF, 0, S_UNDEFINE, module->type, SENSOR_TYPE, 4);
+            rt_memcpy(module->storage_in[0]._d_s.name, "Co2", STORAGE_NAMESZ);
+            module->storage_in[0]._d_s.func = F_S_CO2;
+            rt_memcpy(module->storage_in[1]._d_s.name, "Humi", STORAGE_NAMESZ);
+            module->storage_in[1]._d_s.func = F_S_HUMI;
+            rt_memcpy(module->storage_in[2]._d_s.name, "Temp", STORAGE_NAMESZ);
+            module->storage_in[2]._d_s.func = F_S_TEMP;
+            rt_memcpy(module->storage_in[3]._d_s.name, "Light", STORAGE_NAMESZ);
+            module->storage_in[3]._d_s.func = F_S_LIGHT;
+            break;
+        case CO2_TYPE:
+            setModuleDefaultPara(module, "Co2", 0x0040, 0xFF, 0, S_CO2, module->type, DEVICE_TYPE, 1);
+            rt_memcpy(module->storage_in[0]._d_s.name, "Co2", STORAGE_NAMESZ);
+            module->storage_in[0]._d_s.func = F_Co2_UP;
+            break;
+        case HEAT_TYPE:
+            setModuleDefaultPara(module, "Heat", 0x0040, 0xFF, 0, S_TEMP, module->type, DEVICE_TYPE, 1);
+            rt_memcpy(module->storage_in[0]._d_s.name, "Heat", STORAGE_NAMESZ);
+            module->storage_in[0]._d_s.func = F_HEAT;
+            break;
+        case HUMI_TYPE:
+            setModuleDefaultPara(module, "Humi", 0x0040, 0xFF, 0, S_HUMI, module->type, DEVICE_TYPE, 1);
+            rt_memcpy(module->storage_in[0]._d_s.name, "Humi", STORAGE_NAMESZ);
+            module->storage_in[0]._d_s.func = F_HUMI;
+            break;
+        case DEHUMI_TYPE:
+            setModuleDefaultPara(module, "Dehumi", 0x0040, 0xFF, 0, S_HUMI, module->type, DEVICE_TYPE, 1);
+            rt_memcpy(module->storage_in[0]._d_s.name, "Dehumi", STORAGE_NAMESZ);
+            module->storage_in[0]._d_s.func = F_DEHUMI;
 
-    for(i = 0; i < ALLOW_MODULE_TYPE_SZ; i++)
-    {
-       if(type == moduleTable[i].type)
-       {
-           for(j = 0; j < STORAGE_MAX; j++)
-           {
-               device->storage_in[j] = moduleTable[i].storage_in[j];
-           }
-       }
+            break;
+        case COOL_TYPE:
+            setModuleDefaultPara(module, "Cool", 0x0040, 0xFF, 0, S_TEMP, module->type, DEVICE_TYPE, 1);
+            rt_memcpy(module->storage_in[0]._d_s.name, "Cool", STORAGE_NAMESZ);
+            module->storage_in[0]._d_s.func = F_COOL;
+            break;
+        case AC_4_TYPE:
+            //Justin debug需要再次询问一下终端具体端口的用途
+            break;
+        case AC_12_TYPE:
+            //Justin debug需要再次询问一下终端具体端口的用途
+            break;
+        default:
+            break;
     }
 }
 
 void getModuleName(u8 type, char *name, u8 length)
 {
-    u16 i = 0;
-
-    for(i = 0; i < ALLOW_MODULE_TYPE_SZ; i++)
-    {
-       if(type == moduleTable[i].type)
-       {
-           rt_memcpy(name, moduleTable[i].name, length);
-       }
-    }
-}
-
-u8 getDeviceOrSensortype(u8 type)
-{
-    u16 i = 0;
-
-    for(i = 0; i < ALLOW_MODULE_TYPE_SZ; i++)
-    {
-       if(type == moduleTable[i].type)
-       {
-           return moduleTable[i].s_or_d;
-       }
-    }
-
-    return RT_NULL;
+    getDefaultModuleName(type, name, length);
 }
 
 /* 获取分配的地址 */
@@ -172,20 +108,6 @@ u8 getAllocateAddress(type_monitor_t *monitor)
     return 0;
 }
 
-//struct moduleManage
-//{
-//    u16             crc;
-//    u32             uuid;
-//    char            name[MODULE_NAMESZ];                    //产品名称
-//    u8              addr;                                   //hub管控的地址
-//    u8              type;                                   //产品类型号
-//    u8              s_or_d;                                 //sensor类型/device类型
-//    u8              conn_state;                             //连接状态
-//    u8              reg_state;                              //注册状态
-//    u8              save_state;                             //是否已经存储
-//    u8              storage_size;                           //寄存器数量
-//    type_storage_t  storage_in[STORAGE_MAX];
-//};
 /* 注册新模块 */
 void AnlyzeDeviceRegister(type_monitor_t *monitor, rt_device_t serial, u8 *data, u8 dataLen)
 {
@@ -194,13 +116,7 @@ void AnlyzeDeviceRegister(type_monitor_t *monitor, rt_device_t serial, u8 *data,
 
     module.type = data[8];
     module.uuid = (data[9] << 24) | (data[10] << 16) | (data[11] << 8) | data[12];
-    getModuleName(module.type, module.name, MODULE_NAMESZ);
-    module.s_or_d = getDeviceOrSensortype(module.type);
-    module.conn_state = CON_SUCCESS;
-    module.reg_state = SEND_NULL;
-    module.save_state = NO;
-    getStorageSize(module.type, &module);
-    getStorage(module.type, &module);
+    setModuleDefault(&module);
     if(NO == FindModule(monitor, module, &no))
     {
         module.addr = getAllocateAddress(monitor);
@@ -272,7 +188,7 @@ void AnlyzeStorage(type_monitor_t *monitor, u8 addr, u8 *data, u8 length)
             {
                 for(storage = 0; storage < length/2; storage++)
                 {
-                    monitor->module[index].storage_in[storage].value = (data[2 * storage] << 8) | data[2 * storage + 1];
+                    monitor->module[index].storage_in[storage]._d_s.s_value = (data[2 * storage] << 8) | data[2 * storage + 1];
                 }
             }
         }

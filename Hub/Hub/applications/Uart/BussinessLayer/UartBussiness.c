@@ -37,8 +37,8 @@ u8 askSensorStorage(type_monitor_t *monitor, rt_device_t serial)
         //LOG_D("send sensor name %s",monitor->module[ask_sensor].name);
         buffer[0] = monitor->module[ask_sensor].addr;
         buffer[1] = READ_MUTI;
-        buffer[2] = (monitor->module[ask_sensor].storage_in[0].ctrl_addr >> 8) & 0x00FF;
-        buffer[3] = monitor->module[ask_sensor].storage_in[0].ctrl_addr & 0x00FF;
+        buffer[2] = (monitor->module[ask_sensor].ctrl_addr >> 8) & 0x00FF;
+        buffer[3] = monitor->module[ask_sensor].ctrl_addr & 0x00FF;
         buffer[4] = (monitor->module[ask_sensor].storage_size >> 8) & 0x00FF;
         buffer[5] = monitor->module[ask_sensor].storage_size & 0x00FF;
         crc16Result = usModbusRTU_CRC(buffer, 6);
@@ -63,6 +63,9 @@ u8 askSensorStorage(type_monitor_t *monitor, rt_device_t serial)
     return ret;
 }
 
+/**
+ * 实际上是控制device
+ */
 u8 askDeviceHeart(type_monitor_t *monitor, rt_device_t serial)
 {
     u8              ret                 = NO;
@@ -83,10 +86,10 @@ u8 askDeviceHeart(type_monitor_t *monitor, rt_device_t serial)
     {
         buffer[0] = monitor->module[ask_device].addr;
         buffer[1] = WRITE_SINGLE;
-        buffer[2] = (monitor->module[ask_device].storage_in[0].ctrl_addr >> 8) & 0x00FF;
-        buffer[3] = monitor->module[ask_device].storage_in[0].ctrl_addr & 0x00FF;
-        buffer[4] = (monitor->module[ask_device].storage_in[0].value >> 8) & 0x00FF;
-        buffer[5] = (monitor->module[ask_device].storage_in[0].value) & 0x00FF;
+        buffer[2] = (monitor->module[ask_device].ctrl_addr >> 8) & 0x00FF;
+        buffer[3] = monitor->module[ask_device].ctrl_addr & 0x00FF;
+        buffer[4] = monitor->module[ask_device].storage_in[0]._d_s.d_state;
+        buffer[5] = monitor->module[ask_device].storage_in[0]._d_s.d_value;
         crc16Result = usModbusRTU_CRC(buffer, 6);
         buffer[6] = crc16Result;                             //CRC16低位
         buffer[7] = (crc16Result>>8);                        //CRC16高位

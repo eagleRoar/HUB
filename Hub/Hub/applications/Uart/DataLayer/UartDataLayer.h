@@ -24,7 +24,6 @@
 #include "InformationMonitor.h"
 #include "Command.h"
 
-void StorageInit(void);
 u8 getAllocateAddress(type_monitor_t *);
 void AnlyzeDeviceRegister(type_monitor_t *, rt_device_t, u8 *, u8);
 void RegisterAnswer(type_monitor_t *, rt_device_t , u32 );

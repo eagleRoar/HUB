@@ -26,19 +26,32 @@
 typedef     struct packageEth               type_package_t;
 
 typedef     struct monitor                  type_monitor_t;
-typedef     struct storage                  type_storage_t;
+typedef     union storage                   type_storage_t;
 typedef     struct moduleManage             type_module_t;
 
 /************button    *******************************************/
 typedef     struct buttonInfo               type_button_t;
 
-struct  storage{
-    char    name[STORAGE_NAMESZ];
-    u16     func;                                       //功能，如co2
-    u16     ctrl_addr;                                  //终端控制的寄存器地址
-    u16     para_max;                                   //参数上限
-    u16     value;                                      //sensor的值/device state+value
-    u8      ctrl;                                       //作用 ， 加/减
+union  storage{
+        struct device
+        {
+            char    name[STORAGE_NAMESZ];
+            u8      func;                                       //功能，如co2
+            u8      type;
+            u8      addr;                                       //module id+ port号
+            union {
+                u16     s_value;                                //sensor 的数据
+                u8      d_state;                                //device 的状态位
+                u8      d_value;                                //device 的控制数值
+            };
+        }_d_s;//存储长度 20
+
+        struct timmer
+        {
+            u16     on_at;                                      //开始的时间
+            u16     duration;                                   //持续时间
+            u8      en;                                         //使能 1-on/0-off
+        }_timmer;
 };
 
 //Justin debug 注意 module 除了sensor 和 device之外还有timer/recycle模式，需要另外增加struct
@@ -48,13 +61,56 @@ struct moduleManage
     u32             uuid;
     char            name[MODULE_NAMESZ];                    //产品名称
     u8              addr;                                   //hub管控的地址
+    u16             ctrl_addr;                              //终端控制的寄存器地址
+    u8              manual;                                 //手动开关/ 开、关
+    u16             manual_on_time;                         //手动开启的时间
+    u8              main_type;                              //主类型 如co2 温度 湿度 line timer
     u8              type;                                   //产品类型号
     u8              s_or_d;                                 //sensor类型/device类型
     u8              conn_state;                             //连接状态
     u8              reg_state;                              //注册状态
     u8              save_state;                             //是否已经存储
     u8              storage_size;                           //寄存器数量
-    type_storage_t  storage_in[STORAGE_MAX];
+    union
+    {
+        type_storage_t  storage_in[STORAGE_MAX];
+
+        struct hvac
+        {
+            u8 manualOnMode;        //1-cooling 2-heating
+            u8 fanNormallyOpen;     //风扇常开 1-常开 0-自动
+            u8 hvacMode;            //1-conventional 模式 2-HEAT PUM 模式 O 模式 3-HEAT PUM 模式 B 模式
+        }_havc;     //针对于havc 特殊的设置
+    };
+    struct recycle
+    {
+
+                u16     startAt;                                // 开启时间点 8:00 8*60=480
+                u16     duration;                               //持续时间 秒
+                u16     pauseTime;                              //停止时间 秒
+#if (HUB_SELECT == HUB_IRRIGSTION)//环控版本的recycle times, 为跨天无限循环
+                u8      times;                                  //次数 timer 时 startAt 为第一次开始时间，次数为 0
+#endif
+    }_recycle;
+};
+
+enum{
+    HVAC_NULL,
+    HVAC_COOL = 1,
+    HVAC_HEAT,
+};
+
+enum{
+    HVAC_FAN_NULL,
+    HVAC_FAN_AUTO = 1,
+    HVAC_FAN_OPEN,
+};
+
+enum{
+    HVAC_M_NULL,
+    HVAC_CONVENTIONAL = 1,
+    HVAC_PUM_O,
+    HVAC_PUM_B,
 };
 
 enum{
@@ -113,7 +169,10 @@ struct monitor
 #define     HUMI_TYPE       0x43
 #define     DEHUMI_TYPE     0x44
 #define     COOL_TYPE       0x45
-
+//#define     HVAC_4_TYPE     0x60      //暂不支持
+#define     HVAC_6_TYPE     0x61
+#define     AC_4_TYPE       0x50    //如果注册检测到该类型的话需要再次询问看看每个端口的作用(Justin debug 考虑一下如果有端口的功能改变之后需要去询问，否则有问题)
+#define     AC_12_TYPE      0x80
 
 /**************************************从机 End*******************************************/
 
@@ -135,6 +194,21 @@ enum{
     S_HUMI              = 3,
     S_LIGHT             = 4,
     S_TIMER             = 5,
+};
+
+enum{
+    /*****************************device 类型功能*/
+    F_Co2_UP = 1,
+    F_Co2_DOWN,
+    F_HUMI,
+    F_DEHUMI,
+    F_HEAT,
+    F_COOL,
+    /****************************sensor类型功能*/
+    F_S_CO2,
+    F_S_HUMI,
+    F_S_TEMP,
+    F_S_LIGHT,
 };
 
 /*设备工作状态 0-Off 1-On 2-PPM UP 3-FUZZY LOGIC

@@ -50,8 +50,16 @@ void printModule(type_module_t module)
     LOG_D("storage_size     : %d",module.storage_size);
     for(index = 0; index < module.storage_size; index++)
     {
-        LOG_D("stora %d name    : %s, value = %d, addr = %x",
-              index,module.storage_in[index].name, module.storage_in[index].value, module.storage_in[index].ctrl_addr);
+        if(SENSOR_TYPE == module.s_or_d)
+        {
+            LOG_D("stora %d name    : %s, value = %d, addr = %x",
+                   index,module.storage_in[index]._d_s.name, module.storage_in[index]._d_s.s_value, module.ctrl_addr);
+        }
+        else if(DEVICE_TYPE == module.s_or_d)
+        {
+            LOG_D("stora %d name    : %s, value = %d, addr = %x",
+                               index,module.storage_in[index]._d_s.name, module.storage_in[index]._d_s.d_state, module.ctrl_addr);
+        }
     }
 }
 

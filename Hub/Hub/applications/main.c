@@ -41,7 +41,6 @@ int main(void)
     static u16      time1S          = 0;
 
     //初始化静态变量
-    StorageInit();
     initMonitor();
 
     //初始化GPIO口
