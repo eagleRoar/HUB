@@ -1,12 +1,1 @@
-[
- {
-  "path": "/packages/iot/mymqtt", 
-  "ver": "latest", 
-  "name": "MYMQTT"
- }, 
- {
-  "path": "/packages/language/JSON/cJSON", 
-  "ver": "latest", 
-  "name": "CJSON"
- }
-]
+[]

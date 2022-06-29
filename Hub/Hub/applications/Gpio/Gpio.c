@@ -121,6 +121,7 @@ void LedTaskEntry(void* parameter)
 //        Ctrl_LED(LED_BLUETOOTH,0);
 //        Ctrl_LED(LED_POWER,0);
 
+
         rt_thread_mdelay(500);
     }
 }

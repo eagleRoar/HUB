@@ -10,6 +10,7 @@
 #include "Uart.h"
 #include "Module.h"
 #include "SDCardBusiness.h"
+#include "CloudProtocol.h"
 
 /**
  * @brief 检测文件夹是否存在
@@ -93,28 +94,38 @@ void InitSDCard(void)
 
         LOG_D("-----------------InitSDCard OK, monitor->crc = %x",GetMonitor()->crc);
     }
+
+    //Justin debug
+    if(NO == CheckFileAndMark(SYSSET_FILE))
+    {
+        initCloudProtocol();
+        LOG_D("initCloudProtocol ok");//Justin debug
+    }
 }
-//struct monitor
-//{
-//    /* 以下为统一分配 */
-//    struct allocate     allocateStr;
-//    u8                  module_size;
-//    type_module_t       module[MODULE_MAX];
-//    u16                 crc;
-//};
+
 rt_err_t SaveModule(type_monitor_t *monitor)
 {
     u8      index           = 0;
-    u16     moduleSize      = sizeof(type_module_t);//为module结构体大小
+    u16     sensorSize      = sizeof(sensor_t);//为module结构体大小
+    u16     deviceSize      = sizeof(device_time4_t);//为module结构体大小
     u16     monitorSize     = sizeof(type_monitor_t);
     rt_err_t ret = RT_EOK;
 
-    for(index = 0; index < monitor->module_size; index++)
+    for(index = 0; index < monitor->sensor_size; index++)
     {
-        if(NO == monitor->module[index].save_state)
+        if(NO == monitor->sensor[index].save_state)
         {
-            monitor->module[index].save_state = YES;
-            monitor->module[index].crc = usModbusRTU_CRC((u8 *)&(monitor->module[index]) + 2, moduleSize - 2);//前两位是crc
+            monitor->sensor[index].save_state = YES;
+            monitor->sensor[index].crc = usModbusRTU_CRC((u8 *)&(monitor->sensor[index]) + 2, sensorSize - 2);//前两位是crc
+        }
+    }
+
+    for(index = 0; index < monitor->device_size; index++)
+    {
+        if(NO == monitor->device[index].save_state)
+        {
+            monitor->device[index].save_state = YES;
+            monitor->device[index].crc = usModbusRTU_CRC((u8 *)&(monitor->device[index]) + 2, deviceSize - 2);//前两位是crc
         }
     }
 
@@ -159,4 +170,49 @@ rt_err_t TakeMonitorFromSD(type_monitor_t *monitor)
     }
 
    return ret;
+}
+
+rt_err_t TackSysSetFromSD(sys_set_t *set)
+{
+    rt_err_t    ret             = RT_ERROR;
+    u16         setSize         = sizeof(sys_set_t);
+    u16         crc             = 0;
+
+    if(RT_EOK == ReadSdData(SYSSET_FILE, (u8 *)set, SD_INFOR_SIZE, setSize))
+    {
+        crc = usModbusRTU_CRC((u8 *)set + 2, setSize - 2);  //crc 在最后
+
+        if(crc == set->crc)
+        {
+            ret = RT_EOK;
+        }
+        else
+        {
+            rt_memset((u8 *)set, 0, setSize);
+            set->crc = usModbusRTU_CRC((u8 *)set+2, setSize - 2);
+            ret = RT_ERROR;
+        }
+    }
+
+    return ret;
+}
+
+rt_err_t SaveSysSet(sys_set_t *set)
+{
+    rt_err_t    ret             = RT_EOK;
+    u16         sys_set_size    = sizeof(sys_set_t);
+
+    set->crc = usModbusRTU_CRC((u8 *)set + 2, sys_set_size - 2);
+
+    if(RT_EOK != WriteSdData(SYSSET_FILE, (u8 *)set, SD_INFOR_SIZE, sys_set_size))
+    {
+        LOG_E("SaveSysSet err");
+        ret = RT_ERROR;
+    }
+    else
+    {
+        LOG_D("save set ok");
+    }
+
+    return ret;
 }

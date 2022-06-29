@@ -14,48 +14,70 @@
 
 #define     name_null                       "null"     //长度32的空字符串
 
-#define     ALLOCATE_ADDRESS_SIZE           256
-//#define     HUB_NAME_SIZE                   16
-#define     MODULE_MAX                      16
+#define     ALLOCATE_ADDRESS_SIZE           70
 #define     MODULE_NAMESZ                   16
 #define     STORAGE_NAMESZ                  8
-#define     STORAGE_NUM                     256
-#define     ALLOW_MODULE_TYPE_SZ            16         //允许的产品品种最多数(可以增加)
 #define     STORAGE_MAX                     12
 
 typedef     struct packageEth               type_package_t;
 
 typedef     struct monitor                  type_monitor_t;
-typedef     union storage                   type_storage_t;
-typedef     struct moduleManage             type_module_t;
-
+typedef     struct sensor                   sensor_t;
+typedef     struct device_Timer4            device_time4_t;
+typedef     struct timer12                  time12_t;
+typedef     struct dev_extend               dev_extend_t;
+typedef     struct sen_stora                sen_stora_t;
+typedef     struct line                     line_t;
+typedef     struct system_time              type_sys_time;
 /************button    *******************************************/
 typedef     struct buttonInfo               type_button_t;
 
-union  storage{
-        struct device
-        {
-            char    name[STORAGE_NAMESZ];
-            u8      func;                                       //功能，如co2
-            u8      type;
-            u8      addr;                                       //module id+ port号
-            union {
-                u16     s_value;                                //sensor 的数据
-                u8      d_state;                                //device 的状态位
-                u8      d_value;                                //device 的控制数值
-            };
-        }_d_s;//存储长度 20
+#define     SENSOR_MAX                      16
+#define     DEVICE_TIME12_MAX               16
+#define     TIME12_MAX                      4
+#define     PORT_SZ                         4
+#define     DEVICE_TIME4_MAX                DEVICE_TIME12_MAX - TIME12_MAX
+#define     LINE_MAX                        2
+#define     SENSOR_VALUE_MAX                4
 
-        struct timmer
-        {
-            u16     on_at;                                      //开始的时间
-            u16     duration;                                   //持续时间
-            u8      en;                                         //使能 1-on/0-off
-        }_timmer;
+struct system_time
+{
+    u16 year;
+    u8  month;
+    u8  day;
+    u8  hour;
+    u8  minute;
+    u8  second;
 };
 
-//Justin debug 注意 module 除了sensor 和 device之外还有timer/recycle模式，需要另外增加struct
-struct moduleManage
+enum{
+    WORK_NO = 0,
+    WORK_DOWN,
+    WORK_UP,
+};
+
+struct sen_stora{
+        char            name[STORAGE_NAMESZ];
+        u8              func;
+        u16             value;
+};
+
+struct sensor
+{
+    u16             crc;
+    u32             uuid;
+    char            name[MODULE_NAMESZ];                    //产品名称
+    u8              addr;                                   //hub管控的地址
+    u8              type;                                   //产品类型号
+    u16             ctrl_addr;                              //终端控制的寄存器地址
+    u8              conn_state;                             //连接状态
+    u8              reg_state;                              //注册状态
+    u8              save_state;                             //是否已经存储
+    u8              storage_size;                           //寄存器数量
+    sen_stora_t     __stora[SENSOR_VALUE_MAX];
+};//占35字节
+
+struct device_Timer4
 {
     u16             crc;
     u32             uuid;
@@ -66,32 +88,105 @@ struct moduleManage
     u16             manual_on_time;                         //手动开启的时间
     u8              main_type;                              //主类型 如co2 温度 湿度 line timer
     u8              type;                                   //产品类型号
-    u8              s_or_d;                                 //sensor类型/device类型
+    u8              color;                                  //颜色
     u8              conn_state;                             //连接状态
     u8              reg_state;                              //注册状态
     u8              save_state;                             //是否已经存储
     u8              storage_size;                           //寄存器数量
-    union
-    {
-        type_storage_t  storage_in[STORAGE_MAX];
+    u8              mode;                                   // 模式 1-By Schedule 2-By Recycle
 
-        struct hvac
-        {
-            u8 manualOnMode;        //1-cooling 2-heating
-            u8 fanNormallyOpen;     //风扇常开 1-常开 0-自动
-            u8 hvacMode;            //1-conventional 模式 2-HEAT PUM 模式 O 模式 3-HEAT PUM 模式 B 模式
-        }_havc;     //针对于havc 特殊的设置
-    };
+    //device和ac_4一样有最多4个port
+    union device_port{
+        u8  dev_time_type;
+        struct device{
+            char    name[STORAGE_NAMESZ];
+            u8      func;                                       //功能，如co2
+            u16     addr;                                       //module id+ port号
+            u8      manual;                                     //手动开关/ 开、关
+            u16     manual_on_time;                             //手动开启的时间
+            u8      d_state;                                    //device 的状态位
+            u8      d_value;                                    //device 的控制数值
+        }_port;//16位
+
+        struct time4manage{
+
+            struct timer4{
+                u16     on_at;                                      //开始的时间
+                u16     duration;                                   //持续时间
+                u8      en;                                         //使能 1-on/0-off                                    //device 的控制数值
+            }_timer4[12];//5位
+            u8      d_state;                                    //device 的状态位
+            u8      d_value;                                    //device 的控制数值
+        }_time4_ctl;
+    }_storage[PORT_SZ];
+
+    struct hvac
+    {
+        u8      manualOnMode;        //1-cooling 2-heating
+        u8      fanNormallyOpen;     //风扇常开 1-常开 0-自动
+        u8      hvacMode;            //1-conventional 模式 2-HEAT PUM 模式 O 模式 3-HEAT PUM 模式 B 模式
+    }_hvac;
+
     struct recycle
     {
-
-                u16     startAt;                                // 开启时间点 8:00 8*60=480
-                u16     duration;                               //持续时间 秒
-                u16     pauseTime;                              //停止时间 秒
+        u16     startAt;                                // 开启时间点 8:00 8*60=480
+        u16     duration;                               //持续时间 秒
+        u16     pauseTime;                              //停止时间 秒
 #if (HUB_SELECT == HUB_IRRIGSTION)//环控版本的recycle times, 为跨天无限循环
-                u8      times;                                  //次数 timer 时 startAt 为第一次开始时间，次数为 0
+        u8      times;                                  //次数 timer 时 startAt 为第一次开始时间，次数为 0
 #endif
     }_recycle;
+};
+
+struct timer12
+{
+    u16             crc;
+    u32             uuid;
+    char            name[MODULE_NAMESZ];                    //产品名称
+    u8              addr;                                   //hub管控的地址
+    u16             ctrl_addr;                              //终端控制的寄存器地址
+    u8              manual;                                 //手动开关/ 开、关
+    u16             manual_on_time;                         //手动开启的时间
+    u8              main_type;                              //主类型 如co2 温度 湿度 line timer
+    u8              type;                                   //产品类型号
+    u8              color;                                  //颜色
+    u8              conn_state;                             //连接状态
+    u8              reg_state;                              //注册状态
+    u8              save_state;                             //是否已经存储
+    u8              storage_size;                           //寄存器数量
+    u8              mode;                                   // 模式 1-By Schedule 2-By Recycle
+    union time_port
+    {
+            struct time12_manage{
+                struct timer12_port{
+                    u16     on_at;                                      //开始的时间
+                    u16     duration;                                   //持续时间
+                    u8      en;                                         //使能 1-on/0-off
+                }_timer12[12];
+                u8      d_state;                                    //device 的状态位
+                u8      d_value;                                    //device 的控制数值
+            }_time12_ctl;
+
+    }_port[12];
+};
+
+struct dev_extend
+{
+    u8                  dev_time_type;
+    union dev_extend_u{
+        device_time4_t      device_ex;
+        time12_t            time12;
+    }_de_ti;
+};
+
+struct line{
+    u16             crc;
+    u32             uuid;
+    char            name[MODULE_NAMESZ];                    //产品名称
+    u8              addr;                                   //hub管控的地址
+    u16             ctrl_addr;                              //终端控制的寄存器地址
+    u8              d_state;                                //device 的状态位
+    u8              d_value;                                //device 的控制数值
 };
 
 enum{
@@ -132,6 +227,13 @@ enum
     ON = 0x01,
 };
 
+enum
+{
+    HEAT_NULL,
+    HEAT_SEND_OK,
+    HEAT_RECV_OK,
+};
+
 struct allocate
 {
     u8 address[ALLOCATE_ADDRESS_SIZE];
@@ -142,8 +244,13 @@ struct monitor
 {
     /* 以下为统一分配 */
     struct allocate     allocateStr;
-    u8                  module_size;
-    type_module_t       module[MODULE_MAX];
+    u8                  sensor_size;
+    u8                  device_size;
+    u8                  line_size;
+    sensor_t            sensor[SENSOR_MAX];
+    device_time4_t      device[DEVICE_TIME4_MAX];
+    dev_extend_t        _dev_time12_ex[TIME12_MAX];
+    line_t              line[LINE_MAX];
     u16                 crc;
 };
 
@@ -168,8 +275,8 @@ struct monitor
 #define     HEAT_TYPE       0x42
 #define     HUMI_TYPE       0x43
 #define     DEHUMI_TYPE     0x44
-#define     COOL_TYPE       0x45
-//#define     HVAC_4_TYPE     0x60      //暂不支持
+#define     COOL_TYPE       0x45  //Justin debug
+#define     TIMER_TYPE      0x4f  //Justin debug
 #define     HVAC_6_TYPE     0x61
 #define     AC_4_TYPE       0x50    //如果注册检测到该类型的话需要再次询问看看每个端口的作用(Justin debug 考虑一下如果有端口的功能改变之后需要去询问，否则有问题)
 #define     AC_12_TYPE      0x80
@@ -204,6 +311,9 @@ enum{
     F_DEHUMI,
     F_HEAT,
     F_COOL,
+    F_COOL_HEAT,
+    F_FAN,
+    F_TIMER,
     /****************************sensor类型功能*/
     F_S_CO2,
     F_S_HUMI,
@@ -235,10 +345,15 @@ enum{
 };
 
 //模式
+enum{
+    BY_SCHEDULE = 1,
+    BY_RECYCLE = 2,
+};
+
 
 enum{
-    BY_TIMER = 1,
-    BY_CYCLE = 2,
+    LINE_BY_TIMER = 1,
+    LINE_BY_CYCLE = 2,
 };
 /******************************************* 类型定义 END*****************************/
 

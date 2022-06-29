@@ -36,7 +36,8 @@ int main(void)
 {
 //    u8              index           = 0;
     rt_uint8_t      ethStatus       = LINKDOWN;
-//    static u8       module_size     = 0;
+    static u8       sensor_size     = 0;
+    static u8       device_size     = 0;
     static u8       Timer1sTouch    = OFF;
     static u16      time1S          = 0;
 
@@ -107,16 +108,27 @@ int main(void)
                 LOG_D("EthernetTask init OK");
             }
         }
+//        LOG_D("GetMonitor()->sensor_size = %d",GetMonitor()->sensor_size);
+        if(sensor_size != GetMonitor()->sensor_size)
+        {
+            sensor_size = GetMonitor()->sensor_size;
 
-//        if(module_size != GetMonitor()->module_size)
-//        {
-//            module_size = GetMonitor()->module_size;
-//
-//            for(index = 0; index < module_size; index++)
-//            {
-//                printModule(GetMonitor()->module[index]);
-//            }
-//        }
+            for(int index = 0; index < sensor_size; index++)
+            {
+                LOG_I("sensor--------------------index = %d",index);
+                printSensor(GetMonitor()->sensor[index]);
+            }
+        }
+        if(device_size != GetMonitor()->device_size)
+        {
+            device_size = GetMonitor()->device_size;
+
+            for(int index = 0; index < device_size; index++)
+            {
+                LOG_I("device--------------------index = %d",index);
+                printDevice(GetMonitor()->device[index]);
+            }
+        }
 //
 //        printMuduleConnect(GetMonitor());
 

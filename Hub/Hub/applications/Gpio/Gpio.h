@@ -84,10 +84,11 @@ void LedTaskEntry(void* parameter);
 u16 TimerTask(u16 *, u16 , u8 *);
 int sd_card_is_vaild(void);
 
-void printModule(type_module_t);
-void printMuduleConnect(type_monitor_t *);
-void rtcTest(void);
-void CjonTest(void);
+//void printModule(type_module_t);
+void printSensor(sensor_t);
+void printDevice(device_time4_t);
+//void printMuduleConnect(type_monitor_t *);
+void rtcTest(type_sys_time);
 char *getRealTime(void);
 time_t getTimeStamp(void);
 //void PrintHumiSet(proHumiSet_t set);

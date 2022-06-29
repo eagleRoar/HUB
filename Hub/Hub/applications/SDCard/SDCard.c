@@ -20,7 +20,7 @@ static char sd_thread_stack[1024 * 4];
 static struct rt_thread sd_thread;
 
 struct sdCardState      sdCard;
-
+extern sys_set_t *GetSysSet(void);
 /**
  * @brief SD处理线程初始化
  * @return
@@ -40,7 +40,9 @@ void sd_dfs_event_entry(void* parameter)
     rt_device_t             dev;
     static      u8          Timer1sTouch        = OFF;
     static      u16         time1S              = 0;
-    static      u8          module_size         = 0;
+    static      u8          sensor_size         = 0;
+    static      u8          device_size         = 0;
+    static      u16         set_crc             = 0;
 
     rt_memset(&sdCard, 0, sizeof(struct sdCardState));
 
@@ -77,7 +79,12 @@ void sd_dfs_event_entry(void* parameter)
                             {
                                 LOG_E("TakeMonitorFromSD fail");
                             }
-                            initCloudProtocol();//Justin debug 后续需要通过SD获取出数据
+
+                            if(RT_EOK != TackSysSetFromSD(GetSysSet()))
+                            {
+                                initCloudProtocol();
+                                LOG_E("TackSysSetFromSD err");
+                            }
                         }
                         else //挂载失败
                         {
@@ -87,13 +94,11 @@ void sd_dfs_event_entry(void* parameter)
                 }
                 else
                 {
-
                     LOG_E("sd card find failed!\r\n");
                 }
             }
             else
             {
-
                 LOG_E("The SD card slot is empty!\r\n");
             }
 
@@ -105,9 +110,11 @@ void sd_dfs_event_entry(void* parameter)
                 //存储module
                 if(YES == sdCard.readInfo)
                 {
-                    if(module_size != GetMonitor()->module_size)
+                    if((sensor_size != GetMonitor()->sensor_size) ||
+                       (device_size != GetMonitor()->device_size))
                     {
-                        module_size = GetMonitor()->module_size;
+                        sensor_size = GetMonitor()->sensor_size;
+                        device_size = GetMonitor()->device_size;
 
                         if(RT_EOK == SaveModule(GetMonitor()))
                         {
@@ -118,13 +125,29 @@ void sd_dfs_event_entry(void* parameter)
                             LOG_I("SaveModule fail");
                         }
                     }
+
+                    GetSysSet()->crc = usModbusRTU_CRC((u8 *)GetSysSet()+2, sizeof(sys_set_t) - 2);
+                    if(set_crc != GetSysSet()->crc)
+                    {
+                        set_crc = GetSysSet()->crc;
+
+                        //存储系统设置
+                        if(RT_EOK == SaveSysSet(GetSysSet()))
+                        {
+                            LOG_I("saveSysSet OK");
+                        }
+                        else
+                        {
+                            LOG_I("saveSysSet fail");
+                        }
+                    }
                 }
             }
 
             /* 1s事件 */
             if(ON == Timer1sTouch)
             {
-
+//                SaveSysSet(GetSysSet());//Justin debug
             }
         }
         rt_thread_mdelay(50);

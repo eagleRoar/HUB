@@ -12,11 +12,15 @@
 
 #include "Gpio.h"
 
-void InsertModuleToTable(type_monitor_t *, type_module_t , u8);
-u8 FindModule(type_monitor_t *, type_module_t , u8*);
-u8 FindModuleByAddr(type_monitor_t *, u8);
+void deleteModule(type_monitor_t *, u8);
+void InsertSensorToTable(type_monitor_t *, sensor_t , u8);
+void InsertDeviceToTable(type_monitor_t *, device_time4_t , u8);
+u8 FindSensor(type_monitor_t *, sensor_t, u8 *);
+u8 FindDevice(type_monitor_t *, device_time4_t , u8 *);
+sensor_t *GetSensorByType(type_monitor_t *, u8);
+device_time4_t *GetDeviceByType(type_monitor_t *, u8);
+sensor_t *GetSensorByAddr(type_monitor_t *, u8);
+device_time4_t *GetDeviceByAddr(type_monitor_t *, u8);
+u8 FindModuleByAddr(type_monitor_t *, u8 );
 void initModuleConState(type_monitor_t *);
-type_module_t *GetModuleByType(type_monitor_t *, u8);
-u8 getLineNoByuuid(type_monitor_t *, u32);
-
 #endif /* APPLICATIONS_INFORMATIONMANAGE_MODULE_MODULE_H_ */

@@ -13,37 +13,94 @@
 
 #include "Module.h"
 #include "UartBussiness.h"
+#include "CloudProtocolBusiness.h"
 
-void InsertModuleToTable(type_monitor_t *monitor, type_module_t module, u8 no)
+void deleteModule(type_monitor_t *monitor, u8 addr)
 {
-    if(no < MODULE_MAX)
+    u8      index       = 0;
+
+    for(index = 0; index < monitor->device_size; index++)
     {
-        if(no >= monitor->module_size)
+        if(addr == monitor->device[index].addr)
         {
-            monitor->module_size++;
+            monitor->allocateStr.address[index] = 0x00;
+            break;
         }
-        monitor->module[no] = module;
-        printModule(module);
+    }
+
+    if(index != monitor->device_size)
+    {
+        if(index < (monitor->device_size - 1))
+        {
+            for(; index < monitor->device_size - 1; index++)
+            {
+                rt_memcpy((u8 *)&monitor->device[index], (u8 *)&monitor->device[index + 1], sizeof(device_time4_t));
+            }
+        }
+        monitor->device_size -= 1;
     }
 }
 
-u8 FindModule(type_monitor_t *monitor, type_module_t module, u8 *no)
+void InsertSensorToTable(type_monitor_t *monitor, sensor_t module, u8 no)
+{
+    if(no < SENSOR_MAX)
+    {
+        if(no >= monitor->sensor_size)
+        {
+            monitor->sensor_size++;
+        }
+//        monitor->sensor[no] = module;
+        rt_memcpy((u8 *)&monitor->sensor[no], (u8 *)&module, sizeof(sensor_t));
+        printSensor(module);
+    }
+}
+
+void InsertDeviceToTable(type_monitor_t *monitor, device_time4_t module, u8 no)
+{
+    if(no < DEVICE_TIME4_MAX)//Justin debug需要优化 超过DEVICE_TIME4_MAX要使用扩展
+    {
+        if(no >= monitor->device_size)
+        {
+            monitor->device_size++;
+        }
+        monitor->device[no] = module;
+        printDevice(module);
+    }
+}
+
+u8 FindSensor(type_monitor_t *monitor, sensor_t module, u8 *no)
 {
     u8          index       = 0;
     u8          ret         = NO;
 
-    *no = monitor->module_size;
-    for (index = 0; index < monitor->module_size; index++)
+    *no = monitor->sensor_size;
+    for (index = 0; index < monitor->sensor_size; index++)
     {
-        if ((monitor->module[index].uuid == module.uuid) &&
-            (monitor->module[index].type == module.type))
+        if ((monitor->sensor[index].uuid == module.uuid) &&
+            (monitor->sensor[index].type == module.type))
         {
-//            LOG_D("module have exist");
             *no = index;
             ret = YES;
         }
     }
+    return ret;
+}
 
+u8 FindDevice(type_monitor_t *monitor, device_time4_t module, u8 *no)
+{
+    u8          index       = 0;
+    u8          ret         = NO;
+
+    *no = monitor->device_size;
+    for (index = 0; index < monitor->device_size; index++)
+    {
+        if ((monitor->device[index].uuid == module.uuid) &&
+            (monitor->device[index].type == module.type))
+        {
+            *no = index;
+            ret = YES;
+        }
+    }
     return ret;
 }
 
@@ -51,9 +108,17 @@ u8 FindModuleByAddr(type_monitor_t *monitor, u8 addr)
 {
     int i = 0;
 
-    for(i = 0; i < monitor->module_size; i++)
+    for(i = 0; i < monitor->device_size; i++)
     {
-        if(addr == monitor->module[i].addr)
+        if(addr == monitor->device[i].addr)
+        {
+            return YES;
+        }
+    }
+
+    for(i = 0; i < monitor->sensor_size; i++)
+    {
+        if(addr == monitor->sensor[i].addr)
         {
             return YES;
         }
@@ -66,59 +131,75 @@ void initModuleConState(type_monitor_t *monitor)
 {
     u8          index       = 0;
 
-    for(index = 0; index < monitor->module_size; index++)
+    for(index = 0; index < monitor->device_size; index++)
     {
-        monitor->module[index].conn_state = CON_FAIL;
+        monitor->device[index].conn_state = CON_FAIL;
+    }
+
+    for(index = 0; index < monitor->sensor_size; index++)
+    {
+        monitor->sensor[index].conn_state = CON_FAIL;
     }
 }
 
-type_module_t *GetModuleByType(type_monitor_t *monitor, u8 type)
+sensor_t *GetSensorByType(type_monitor_t *monitor, u8 type)
 {
     u8      index       = 0;
 
-    for(index = 0; index < monitor->module_size; index++)
+    for(index = 0; index < monitor->sensor_size; index++)
     {
-        if(type == monitor->module[index].type)
+        if(type == monitor->sensor[index].type)
         {
-            return &(monitor->module[index]);
+            return &(monitor->sensor[index]);
         }
     }
 
     return RT_NULL;
 }
 
-/**
- * 获取灯光是属于Line1还是Line2
- */
-u8 getLineNoByuuid(type_monitor_t *monitor, u32 uuid)
+device_time4_t *GetDeviceByType(type_monitor_t *monitor, u8 type)
 {
-    u8      index           = 0;
-    u8      cout            = 0;
-    u8      ret             = 0xFF;
-    u32     uuidList[2]     = {0x00000000, 0x00000000};
+    u8      index       = 0;
 
-    for(index = 0; index < monitor->module_size; index++)
+    for(index = 0; index < monitor->device_size; index++)
     {
-        if(LINE_TYPE == monitor->module[index].type)
+        if(type == monitor->device[index].type)
         {
-            if(cout < 2)
-            {
-                uuidList[cout] = monitor->module[index].uuid;
-                cout++;
-            }
+            return &(monitor->device[index]);
         }
     }
 
-    if(uuidList[0] == uuid)
+    return RT_NULL;
+}
+
+sensor_t *GetSensorByAddr(type_monitor_t *monitor, u8 addr)
+{
+    u8      index       = 0;
+
+    for(index = 0; index < monitor->sensor_size; index++)
     {
-        ret = 0;
-    }
-    else if(uuidList[1] == uuid)
-    {
-        ret = 1;
+        if(addr == monitor->sensor[index].addr)
+        {
+            return &(monitor->sensor[index]);
+        }
     }
 
-    return ret;
+    return RT_NULL;
+}
+
+device_time4_t *GetDeviceByAddr(type_monitor_t *monitor, u8 addr)
+{
+    u8      index       = 0;
+
+    for(index = 0; index < monitor->device_size; index++)
+    {
+        if(addr == monitor->device[index].addr)
+        {
+            return &(monitor->device[index]);
+        }
+    }
+
+    return RT_NULL;
 }
 
 #endif /* APPLICATIONS_INFORMATIONMANAGE_MODULE_MODULE_C_ */

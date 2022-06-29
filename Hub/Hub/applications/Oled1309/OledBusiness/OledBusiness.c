@@ -13,6 +13,7 @@
 #include "OledBusiness.h"
 #include "Uart.h"
 #include "UartBussiness.h"
+#include "Module.h"
 
 char    data[80];
 
@@ -56,36 +57,25 @@ void SensorStatePage(u8g2_t *uiShow, type_page_t page)
 {
     u8              line        = LINE_HIGHT;
     u8              column      = COLUMN_HIGHT;
-    u8              index       = 0;
+//    u8              index       = 0;
     u8              storage     = 0;
-    type_module_t   module;
+    sensor_t        *module     = RT_NULL;
 
     u8g2_ClearBuffer(uiShow);
 
-    for(index = 0; index < GetMonitor()->module_size; index++)
+    if(GetMonitor()->sensor_size > 0)
     {
-        module = GetMonitor()->module[index];
-        if(SENSOR_TYPE == module.s_or_d)
+        module = GetSensorByType(GetMonitor(), BHS_TYPE);
+        if(RT_NULL != module)
         {
-            break;
-        }
-    }
-
-    if(index != GetMonitor()->module_size)
-    {
-        if(module.storage_size > 4)
-        {
-            LOG_E("sensor storage size is too long to show");
-        }
-        else
-        {
-            for(storage = 0; storage < module.storage_size; storage++)
+            for(storage = 0; storage < module->storage_size; storage++)
             {
-                itoa(module.storage_in[storage]._d_s.s_value, data ,10);
-                u8g2_DrawStr(uiShow, line, column, module.storage_in[storage]._d_s.name);
-                u8g2_DrawStr(uiShow, line + LINE_HIGHT*10, column, data);
+               itoa(module->__stora[storage].value, data ,10);
+//               LOG_D("SensorStatePage--------------name %s",module->__stora[storage].name);//Justin debug
+               u8g2_DrawStr(uiShow, line, column, module->__stora[storage].name);
+               u8g2_DrawStr(uiShow, line + LINE_HIGHT*10, column, data);
 
-                column += COLUMN_HIGHT;
+               column += COLUMN_HIGHT;
             }
         }
     }
@@ -106,22 +96,19 @@ void DeviceStatePage(u8g2_t *uiShow, type_page_t page)
     u8              line                = LINE_HIGHT;
     u8              column              = COLUMN_HIGHT;
     static u8       index               = 0;
-    u8              list[MODULE_MAX];
+    u8              list[DEVICE_TIME4_MAX];
     u8              list_index          = 0;
     u8              device_sum          = 0;
-    type_module_t   module;
+    device_time4_t  module;
 
     u8g2_ClearBuffer(uiShow);
     rt_memset(data, 0, 80);
 
-    for(index = 0; index < GetMonitor()->module_size; index++)
+    for(index = 0; index < GetMonitor()->device_size; index++)
     {
-        module = GetMonitor()->module[index];
-        if(DEVICE_TYPE == module.s_or_d)
-        {
-            list[device_sum] = index;
-            device_sum++;
-        }
+        module = GetMonitor()->device[index];
+        list[device_sum] = index;
+        device_sum++;
     }
 
     if(device_sum > 4)//Justin debug 仅仅测试 最多显示4行
@@ -131,10 +118,10 @@ void DeviceStatePage(u8g2_t *uiShow, type_page_t page)
 
     for(list_index = 0; list_index < device_sum; list_index++)
     {
-        rt_memcpy(data, GetMonitor()->module[list[list_index]].name, 8);
+        rt_memcpy(data, GetMonitor()->device[list[list_index]].name, 8);
         u8g2_DrawStr(uiShow, line, column + list_index * COLUMN_HIGHT, data);
 
-        if(CON_FAIL == GetMonitor()->module[list[list_index]].conn_state)
+        if(CON_FAIL == GetMonitor()->device[list[list_index]].conn_state)
         {
             u8g2_DrawStr(uiShow, line + 10 * LINE_HIGHT, column + list_index * COLUMN_HIGHT, "fail");
         }

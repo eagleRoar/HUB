@@ -27,6 +27,10 @@
 u8 getAllocateAddress(type_monitor_t *);
 void AnlyzeDeviceRegister(type_monitor_t *, rt_device_t, u8 *, u8);
 void RegisterAnswer(type_monitor_t *, rt_device_t , u32 );
-void AnlyzeStorage(type_monitor_t *, u8 , u8 *, u8);
-
+void AnlyzeStorage(type_monitor_t *, u8 , u8, u8 *, u8);
+char *GetFunNameByType(u8 , char *, u8);
+char *GetModelByType(u8 , char *, u8);
+void senRegisterAnswer(type_monitor_t *, rt_device_t , u32);
+void devRegisterAnswer(type_monitor_t *, rt_device_t , u32);
+u8 getSOrD(u8);
 #endif /* APPLICATIONS_UART_DATALAYER_UARTDATALAYER_H_ */

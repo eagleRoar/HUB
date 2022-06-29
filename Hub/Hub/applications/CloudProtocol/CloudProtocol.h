@@ -12,12 +12,16 @@
 
 #include "Gpio.h"
 #include "mqtt_client.h"
+#include "CloudProtocolBusiness.h"
 
 #pragma pack(4)//因为cjson 不能使用1字节对齐
 
+//sys_set_t *GetSysSet(void);//为什么识别不了sys_set_t
 void initCloudProtocol(void);
 char *GetSnName(char *);
 void tempProgram(type_monitor_t *);
+void co2Program(type_monitor_t *);
+void humiProgram(type_monitor_t *);
 void analyzeCloudData(char *);
 void ReplyDataToCloud(mqtt_client *);
 

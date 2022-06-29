@@ -29,79 +29,105 @@ char *getRealTime(void)
     return ctime(&now);
 }
 
-void printModule(type_module_t module)
+void printSensor(sensor_t module)
 {
     int         index       = 0;
 
     LOG_D("----------------------print new mnodule-----------");
+    LOG_D("type             : %x",module.type);
     LOG_D("uuid             : %x",module.uuid);
     LOG_D("name             : %s",module.name);
     LOG_D("addr             : %x",module.addr);
     LOG_D("save_state       : %x",module.save_state);
     LOG_D("conn_state       : %x",module.conn_state);
-    if(SENSOR_TYPE == module.s_or_d)
+    if(SENSOR_TYPE == getSOrD(module.type))
     {
         LOG_D("s_or_d           : sensor");
     }
-    else if(DEVICE_TYPE == module.s_or_d)
+    else if(DEVICE_TYPE == getSOrD(module.type))
     {
         LOG_D("s_or_d           : device");
     }
     LOG_D("storage_size     : %d",module.storage_size);
     for(index = 0; index < module.storage_size; index++)
     {
-        if(SENSOR_TYPE == module.s_or_d)
-        {
-            LOG_D("stora %d name    : %s, value = %d, addr = %x",
-                   index,module.storage_in[index]._d_s.name, module.storage_in[index]._d_s.s_value, module.ctrl_addr);
-        }
-        else if(DEVICE_TYPE == module.s_or_d)
-        {
-            LOG_D("stora %d name    : %s, value = %d, addr = %x",
-                               index,module.storage_in[index]._d_s.name, module.storage_in[index]._d_s.d_state, module.ctrl_addr);
-        }
+            LOG_D("stora %d name    : %s, value = %d",
+                   index,module.__stora[index].name, module.__stora[index].value);
     }
 }
 
-void printMuduleConnect(type_monitor_t *monitor)
+void printDevice(device_time4_t module)
 {
-                u8          index                   = 0;
-    static      u8          state[MODULE_MAX];
+    int         index       = 0;
 
-    for(index = 0; index < monitor->module_size; index++)
+    LOG_D("----------------------print new mnodule-----------");
+    LOG_D("type             : %x",module.type);
+    LOG_D("uuid             : %x",module.uuid);
+    LOG_D("name             : %s",module.name);
+    LOG_D("addr             : %x",module.addr);
+    LOG_D("save_state       : %x",module.save_state);
+    LOG_D("conn_state       : %x",module.conn_state);
+    if(SENSOR_TYPE == getSOrD(module.type))
     {
-        if(state[index] != monitor->module[index].conn_state)
-        {
-            if((CON_FAIL == monitor->module[index].conn_state) ||
-               (CON_SUCCESS == monitor->module[index].conn_state))
-            {
-                state[index] = monitor->module[index].conn_state;
-
-                if(CON_FAIL == monitor->module[index].conn_state)
-                {
-                    LOG_D("no %d, name : %s, connect fail",index,monitor->module[index].name);
-                }
-                else if(CON_SUCCESS == monitor->module[index].conn_state)
-                {
-                    LOG_D("no %d, name : %s, connect success",index,monitor->module[index].name);
-                }
-            }
-        }
+        LOG_D("s_or_d           : sensor");
+    }
+    else if(DEVICE_TYPE == getSOrD(module.type))
+    {
+        LOG_D("s_or_d           : device");
+    }
+    LOG_D("storage_size     : %d",module.storage_size);
+    for(index = 0; index < module.storage_size; index++)
+    {
+            LOG_D("stora %d name    : %s, value = %d, addr = %x",
+                   index, module._storage[index]._port.name, module._storage[index]._port.d_state,module._storage[index]._port.addr);
     }
 }
 
-void rtcTest(void)
+//void printMuduleConnect(type_monitor_t *monitor)
+//{
+//                u8          index                   = 0;
+//    static      u8          state[MODULE_MAX];
+//
+//    for(index = 0; index < monitor->module_size; index++)
+//    {
+//        if(state[index] != monitor->module[index].conn_state)
+//        {
+//            if((CON_FAIL == monitor->module[index].conn_state) ||
+//               (CON_SUCCESS == monitor->module[index].conn_state))
+//            {
+//                state[index] = monitor->module[index].conn_state;
+//
+//                if(CON_FAIL == monitor->module[index].conn_state)
+//                {
+//                    LOG_D("no %d, name : %s, connect fail",index,monitor->module[index].name);
+//                }
+//                else if(CON_SUCCESS == monitor->module[index].conn_state)
+//                {
+//                    LOG_D("no %d, name : %s, connect success",index,monitor->module[index].name);
+//                }
+//            }
+//        }
+//    }
+//}
+
+void rtcTest(type_sys_time time)
 {
     rt_err_t ret = RT_EOK;
 
+//    /* 设置日期 */
+//    ret = set_date(2022, 5, 30);
+//    set_time(14, 22, 0);
+//    if (ret != RT_EOK)
+//    {
+//        LOG_D("set RTC date failed\n");
+//    }
     /* 设置日期 */
-    ret = set_date(2022, 5, 30);
-    set_time(14, 22, 0);
+    ret = set_date(time.year, time.month, time.day);
+    set_time(time.hour, time.minute, time.second);
     if (ret != RT_EOK)
     {
         LOG_D("set RTC date failed\n");
     }
-
 }
 
 //void PrintTempSet(proTempSet_t set)

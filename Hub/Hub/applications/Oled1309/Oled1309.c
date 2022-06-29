@@ -172,6 +172,7 @@ static void pageProgram(u8 page)
             break;
 
         case SENSOR_STATE_PAGE:
+//            LOG_D("SENSOR_STATE_PAGE");
             SensorStatePage(&uiShow, pageSelect);
             break;
         case DEVICE_STATE_PAGE:
@@ -190,7 +191,6 @@ void OledTaskEntry(void* parameter)
     static      u8              nowPagePre          = 0xFF;
 
     oledInit();
-    //rtcTest();
 
     pageInfor <<= 8;
     pageInfor |= HOME_PAGE;
