@@ -37,6 +37,17 @@ rt_err_t GetValueU8(cJSON *temp, type_kv_u8 *data)
     return ret;
 }
 
+rt_err_t GetValueByU8(cJSON *temp, char *name, u8 *value)
+{
+    type_kv_u8  data;
+    rt_err_t    ret     = RT_ERROR;
+
+    rt_memcpy(data.name, name, KEYVALUE_NAME_SIZE);
+    ret = GetValueU8(temp, &data);
+    *value = data.value;
+
+    return ret;
+}
 
 rt_err_t GetValueU16(cJSON *temp, type_kv_u16 *data)
 {
@@ -54,6 +65,18 @@ rt_err_t GetValueU16(cJSON *temp, type_kv_u16 *data)
         data->value = 0x0000;
         LOG_E("parse u16 err, name %s",data->name);
     }
+
+    return ret;
+}
+
+rt_err_t GetValueByU16(cJSON *temp, char *name, u16 *value)
+{
+    type_kv_u16 data;
+    rt_err_t    ret     = RT_ERROR;
+
+    rt_memcpy(data.name, name, KEYVALUE_NAME_SIZE);
+    ret = GetValueU16(temp, &data);
+    *value = data.value;
 
     return ret;
 }
@@ -77,6 +100,19 @@ rt_err_t GetValueC16(cJSON *temp, type_kv_c16 *data)
 
     return ret;
 }
+
+rt_err_t GetValueByC16(cJSON *temp, char *name, char *value)
+{
+    type_kv_c16 data;
+    rt_err_t    ret     = RT_ERROR;
+
+    rt_memcpy(data.name, name, KEYVALUE_NAME_SIZE);
+    ret = GetValueC16(temp, &data);
+    rt_memcpy(data.value, value, 16);
+
+    return ret;
+}
+
 
 void CmdSetTempValue(char *data)
 {
@@ -485,6 +521,74 @@ void CmdAddRecipe(char *data, cloudcmd_t *cmd)//Justin debug 还没完成
     }
 }
 
+void CmdSetRecipe(char *data, cloudcmd_t *cmd)//Justin debug 还没完成
+{
+    cJSON           *temp       = RT_NULL;
+    cJSON           *line       = RT_NULL;
+    recipe_t        *recipe     = RT_NULL;
+
+    temp = cJSON_Parse(data);
+    if(RT_NULL != temp)
+    {
+        GetValueC16(temp, &cmd->msgid);
+
+        if(RT_NULL != recipe)
+        {
+            GetValueByU8(temp, "id", &recipe->id);
+            GetValueByC16(temp, "name", recipe->name);
+            GetValueByU8(temp, "color", &recipe->color);
+            GetValueByU16(temp, "dayCoolingTarget", &recipe->dayCoolingTarget);
+            GetValueByU16(temp, "dayHeatingTarget", &recipe->dayHeatingTarget);
+            GetValueByU16(temp, "nightCoolingTarget", &recipe->nightCoolingTarget);
+            GetValueByU16(temp, "nightHeatingTarget", &recipe->nightHeatingTarget);
+            GetValueByU16(temp, "dayHumidifyTarget", &recipe->dayHumidifyTarget);
+            GetValueByU16(temp, "dayDehumidifyTarget", &recipe->dayDehumidifyTarget);
+            GetValueByU16(temp, "nightHumidifyTarget", &recipe->nightHumidifyTarget);
+            GetValueByU16(temp, "nightDehumidifyTarget", &recipe->nightDehumidifyTarget);
+            GetValueByU16(temp, "dayCo2Target", &recipe->dayCo2Target);
+            GetValueByU16(temp, "nightCo2Target", &recipe->nightCo2Target);
+
+            line = cJSON_GetObjectItem(temp, "line1");
+            if(RT_NULL != line)
+            {
+                GetValueByU8(line, "brightMode", &recipe->line_list[0].brightMode);
+                GetValueByU8(line, "byPower", &recipe->line_list[0].byPower);
+                GetValueByU16(line, "byAutoDimming", &recipe->line_list[0].byAutoDimming);
+                GetValueByU8(line, "mode", &recipe->line_list[0].mode);
+                GetValueByU16(line, "lightOn", &recipe->line_list[0].lightOn);
+                GetValueByU16(line, "lightOff", &recipe->line_list[0].lightOff);
+                GetValueByU16(line, "firstCycleTime", &recipe->line_list[0].firstCycleTime);
+                GetValueByU16(line, "duration", &recipe->line_list[0].duration);
+                GetValueByU16(line, "pauseTime", &recipe->line_list[0].pauseTime);
+            }
+
+            line = cJSON_GetObjectItem(temp, "line2");
+            if(RT_NULL != line)
+            {
+                GetValueByU8(line, "brightMode", &recipe->line_list[1].brightMode);
+                GetValueByU8(line, "byPower", &recipe->line_list[1].byPower);
+                GetValueByU16(line, "byAutoDimming", &recipe->line_list[1].byAutoDimming);
+                GetValueByU8(line, "mode", &recipe->line_list[1].mode);
+                GetValueByU16(line, "lightOn", &recipe->line_list[1].lightOn);
+                GetValueByU16(line, "lightOff", &recipe->line_list[1].lightOff);
+                GetValueByU16(line, "firstCycleTime", &recipe->line_list[1].firstCycleTime);
+                GetValueByU16(line, "duration", &recipe->line_list[1].duration);
+                GetValueByU16(line, "pauseTime", &recipe->line_list[1].pauseTime);
+            }
+
+            AddRecipe(recipe, GetSysRecipt());
+            cmd->recipe_id = recipe->id;
+            rt_free(recipe);
+        }
+
+        cJSON_Delete(temp);
+    }
+    else
+    {
+        LOG_E("CmdSetRecipe err");
+    }
+}
+
 void CmdSetSchedule(char *data, cloudcmd_t *cmd)//Justin debug 未验证
 {
     u8      index       = 0;
@@ -880,6 +984,102 @@ char *ReplySetSchedule(char *cmd, cloudcmd_t cloud)//Justin debug 未验证
 
         str = cJSON_Print(json);
 
+        cJSON_Delete(json);
+    }
+
+    return str;
+}
+
+char *ReplyAddRecipe(char *cmd, cloudcmd_t cloud)//Justin debug 未验证
+{
+    char    *str        = RT_NULL;
+    type_kv_u8 id;
+    cJSON   *json       = cJSON_CreateObject();
+
+    if(RT_NULL != json)
+    {
+        cJSON_AddStringToObject(json, "cmd", cmd);
+        cJSON_AddStringToObject(json, cloud.msgid.name, cloud.msgid.value);
+        cJSON_AddStringToObject(json, cloud.recipe_name.name, cloud.recipe_name.value);
+
+        rt_memcpy(id.name, "id", KEYVALUE_NAME_SIZE);
+        id.value = AllotRecipeId(cloud.recipe_name.value, GetSysRecipt());
+
+        cJSON_AddNumberToObject(json, id.name, id.value);
+
+        cJSON_AddNumberToObject(json, "timestamp", getTimeStamp());
+
+        str = cJSON_Print(json);
+
+        cJSON_Delete(json);
+    }
+
+    return str;
+}
+
+char *ReplySetRecipe(char *cmd, cloudcmd_t cloud)//Justin debug 未验证
+{
+    char            *str        = RT_NULL;
+    recipe_t        *recipe     = RT_NULL;
+    cJSON           *json       = cJSON_CreateObject();
+    cJSON           *line       = RT_NULL;
+
+    if(RT_NULL != json)
+    {
+        cJSON_AddStringToObject(json, "cmd", cmd);
+        cJSON_AddStringToObject(json, cloud.msgid.name, cloud.msgid.value);
+
+        if(RT_NULL != recipe)
+        {
+            if(RT_EOK == GetRecipeByid(cloud.recipe_id, GetSysRecipt(), recipe))
+            {
+                cJSON_AddNumberToObject(json, "id", recipe->id);
+                cJSON_AddStringToObject(json, "name", recipe->name);
+                cJSON_AddNumberToObject(json, "color", recipe->color);
+                cJSON_AddNumberToObject(json, "dayCoolingTarget", recipe->dayCoolingTarget);
+                cJSON_AddNumberToObject(json, "dayHeatingTarget", recipe->dayHeatingTarget);
+                cJSON_AddNumberToObject(json, "nightCoolingTarget", recipe->nightCoolingTarget);
+                cJSON_AddNumberToObject(json, "nightHeatingTarget", recipe->nightHeatingTarget);
+                cJSON_AddNumberToObject(json, "dayHumidifyTarget", recipe->dayHumidifyTarget);
+                cJSON_AddNumberToObject(json, "dayDehumidifyTarget", recipe->dayDehumidifyTarget);
+                cJSON_AddNumberToObject(json, "nightHumidifyTarget", recipe->nightHumidifyTarget);
+                cJSON_AddNumberToObject(json, "nightDehumidifyTarget", recipe->nightDehumidifyTarget);
+                cJSON_AddNumberToObject(json, "dayCo2Target", recipe->dayCo2Target);
+                cJSON_AddNumberToObject(json, "nightCo2Target", recipe->nightCo2Target);
+
+                for(int index = 0; index < 2; index++)
+                {
+                    line = cJSON_CreateObject();
+                    if(RT_NULL != line)
+                    {
+                        cJSON_AddNumberToObject(line, "brightMode", recipe->line_list[index].brightMode);
+                        cJSON_AddNumberToObject(line, "byPower", recipe->line_list[index].byPower);
+                        cJSON_AddNumberToObject(line, "byAutoDimming", recipe->line_list[index].byAutoDimming);
+                        cJSON_AddNumberToObject(line, "mode", recipe->line_list[index].mode);
+                        cJSON_AddNumberToObject(line, "lightOn", recipe->line_list[index].lightOn);
+                        cJSON_AddNumberToObject(line, "lightOff", recipe->line_list[index].lightOff);
+                        cJSON_AddNumberToObject(line, "firstCycleTime", recipe->line_list[index].firstCycleTime);
+                        cJSON_AddNumberToObject(line, "duration", recipe->line_list[index].duration);
+                        cJSON_AddNumberToObject(line, "pauseTime", recipe->line_list[index].pauseTime);
+
+                        if(0 == index)
+                        {
+                            cJSON_AddItemToObject(json, "line1", line);
+                        }
+                        else if(1 == index)
+                        {
+                            cJSON_AddItemToObject(json, "line2", line);
+                        }
+                    }
+                }
+            }
+            else
+            {
+                LOG_E("ReplySetRecipe apply recipe memory fail");
+            }
+        }
+
+        str = cJSON_Print(json);
         cJSON_Delete(json);
     }
 

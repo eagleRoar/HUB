@@ -20,6 +20,7 @@
 #define     KEYVALUE_NAME_SIZE      25
 #define     CMD_NAME                "cmd"
 #define     CMD_NAME_SIZE           25
+#define     REC_ALLOT_ADDR          100
 
 #define     STAGE_LIST_MAX                  10//最多10个阶段
 #define     RECIPE_LIST_MAX                 10//最多10个配方
@@ -67,6 +68,7 @@ struct cloudCmd{
     type_kv_c16     sys_time;                   //系统时间
     type_kv_u16     delete_id;                  //删除设备id
     u8              recv_flag;                  //命令接收标志 处理完之后要置为OFF
+    u8              recipe_id;                  //添加recipe id
 };
 
 //cmd : getTempSetting
@@ -164,7 +166,9 @@ struct recipe{//配方 限制10个
 
 struct sys_recipe{
     u8 crc;
+    u8 recipe_size;
     recipe_t recipe[RECIPE_LIST_MAX];
+    u8 allot_add[REC_ALLOT_ADDR];
 };
 
 /****************************     灌溉部分的内容*****/

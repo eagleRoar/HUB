@@ -91,11 +91,11 @@ void sd_dfs_event_entry(void* parameter)
                                 LOG_E("TackSysSetFromSD err");
                             }
 
-//                            if(RT_EOK != TackRecipeFromSD(GetSysRecipt()))
-//                            {
-//                                initSysRecipe();
-//                                LOG_E("TackRecipeFromSD err");
-//                            }
+                            if(RT_EOK != TackRecipeFromSD(GetSysRecipt()))
+                            {
+                                initSysRecipe();
+                                LOG_E("TackRecipeFromSD err");
+                            }
                         }
                         else //挂载失败
                         {
@@ -160,7 +160,7 @@ void sd_dfs_event_entry(void* parameter)
             /* 1s事件 */
             if(ON == Timer1sTouch)
             {
-//                SaveSysSet(GetSysSet());//Justin debug
+
             }
         }
         rt_thread_mdelay(50);

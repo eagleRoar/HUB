@@ -17,13 +17,13 @@ void initSysRecipe(void)
 }
 
 //分配配方id
-u8 DistributeRecipeId(char *name, sys_recipe_t *sys_rec)
+u8 AllotRecipeId(char *name, sys_recipe_t *sys_rec)
 {
     u8          index       = 0;
     u8          rec_index   = 0;
     u8          ret         = 0xFF;
 
-    for(index = 1; index < 255; index++)
+    for(index = 1; index < REC_ALLOT_ADDR; index++)
     {
         for(rec_index = 0; rec_index < RECIPE_LIST_MAX; rec_index++)
         {
@@ -33,7 +33,7 @@ u8 DistributeRecipeId(char *name, sys_recipe_t *sys_rec)
             }
         }
 
-        if(index != 255)
+        if(index != REC_ALLOT_ADDR)
         {
             ret = index;
         }
@@ -64,11 +64,25 @@ void AddRecipe(recipe_t *rec, sys_recipe_t *sys_rec)
 {
     u8      index       = 0;
 
-    for(index = 0; index < RECIPE_LIST_MAX; index++)
+    for(index = 0; index < sys_rec->recipe_size; index++)
     {
         if(sys_rec->recipe[index].id == rec->id)
         {
             rt_memcpy(&sys_rec->recipe[index], rec, sizeof(recipe_t));
+            break;
+        }
+    }
+
+    if(sys_rec->recipe_size == index)
+    {
+        if(sys_rec->recipe_size >= RECIPE_LIST_MAX)
+        {
+            LOG_E("recipe size = %d, can not add new",sys_rec->recipe_size);
+        }
+        else
+        {
+            rt_memcpy(&sys_rec->recipe[index], rec, sizeof(recipe_t));
+            sys_rec->recipe_size++;
         }
     }
 }

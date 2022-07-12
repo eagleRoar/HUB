@@ -87,7 +87,7 @@ void initCloudProtocol(void)
 
     sys_set.cloudCmd.recv_flag = OFF;
     rt_memcpy(sys_set.cloudCmd.msgid.name, "msgid", KEYVALUE_NAME_SIZE);
-    rt_memcpy(sys_set.cloudCmd.recipe_name, "name", KEYVALUE_NAME_SIZE);
+    rt_memcpy(sys_set.cloudCmd.recipe_name.name, "name", KEYVALUE_NAME_SIZE);
     rt_memcpy(sys_set.cloudCmd.get_id.name, "id", KEYVALUE_NAME_SIZE);
     sys_set.cloudCmd.get_id.value = 0;
     rt_memcpy(sys_set.cloudCmd.get_port_id.name, "id", KEYVALUE_NAME_SIZE);
@@ -258,6 +258,10 @@ void ReplyDataToCloud(mqtt_client *client)
         {
             str = ReplyAddRecipe(CMD_ADD_RECIPE, sys_set.cloudCmd);
         }
+        else if(0 == rt_memcmp(CMD_SET_RECIPE_SET, sys_set.cloudCmd.cmd, sizeof(CMD_SET_RECIPE_SET)))//增加配方
+        {
+            str = ReplySetRecipe(CMD_SET_RECIPE_SET, sys_set.cloudCmd);
+        }
 
         if(RT_NULL != str)
         {
@@ -388,6 +392,11 @@ void analyzeCloudData(char *data)
             else if(0 == rt_memcmp(CMD_ADD_RECIPE, cmd->valuestring, strlen(CMD_ADD_RECIPE)))
             {
                 CmdAddRecipe(data, &sys_set.cloudCmd);
+                setCloudCmd(cmd->valuestring, ON);
+            }
+            else if(0 == rt_memcmp(CMD_SET_RECIPE_SET, cmd->valuestring, strlen(CMD_SET_RECIPE_SET)))
+            {
+                CmdSetRecipe(data, &sys_set.cloudCmd);
                 setCloudCmd(cmd->valuestring, ON);
             }
 
