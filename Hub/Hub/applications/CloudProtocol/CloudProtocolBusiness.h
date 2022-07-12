@@ -21,6 +21,9 @@
 #define     CMD_NAME                "cmd"
 #define     CMD_NAME_SIZE           25
 
+#define     STAGE_LIST_MAX                  10//最多10个阶段
+#define     RECIPE_LIST_MAX                 10//最多10个配方
+
 typedef     struct proTempSet               proTempSet_t;
 typedef     struct proCo2Set                proCo2Set_t;
 typedef     struct proHumiSet               proHumiSet_t;
@@ -31,6 +34,9 @@ typedef     struct keyAndVauleU8            type_kv_u8;
 typedef     struct keyAndVauleU16           type_kv_u16;
 typedef     struct keyAndVauleU32           type_kv_u32;
 typedef     struct keyAndVauleChar16        type_kv_c16;
+typedef     struct stage                    stage_t;
+typedef     struct recipe                   recipe_t;
+typedef     struct sys_recipe               sys_recipe_t;
 
 struct keyAndVauleU8{
     char    name[KEYVALUE_NAME_SIZE];
@@ -55,6 +61,7 @@ struct keyAndVauleChar16{
 struct cloudCmd{
     char            cmd[CMD_NAME_SIZE];         //接收命令
     type_kv_c16     msgid;                      //相当于发送的包的序号
+    type_kv_c16     recipe_name;                //添加recipe name
     type_kv_u16     get_id;                     //设备定位Id
     type_kv_u16     get_port_id;                //设备设备端口设置Id
     type_kv_c16     sys_time;                   //系统时间
@@ -118,6 +125,50 @@ struct proLine{
     type_kv_u32     timestamp;                  //时间戳
 };
 
+/****************************以下是灌溉部分的内容*****/
+struct stage{//日程设置
+    u8      en;
+    char    starts[14];//20220514080000
+    struct stage_schedule{
+        u8 recipeId;
+        u8 duration_day;
+    }_list[STAGE_LIST_MAX];
+};
+
+struct recipe{//配方 限制10个
+    u8      id;//该id为hub分配
+    char    name[RECIPE_NAMESZ];
+    u8      color;
+    u16     dayCoolingTarget;
+    u16     dayHeatingTarget;
+    u16     nightCoolingTarget;
+    u16     nightHeatingTarget;
+    u16     dayHumidifyTarget;
+    u16     dayDehumidifyTarget;
+    u16     nightHumidifyTarget;
+    u16     nightDehumidifyTarget;
+    u16     dayCo2Target;
+    u16     nightCo2Target;
+    struct line_recipe{
+        u8      brightMode;     // 1-power 2-auto dimming
+        u8      byPower;        // 设置亮度值 10%-115%
+        u16     byAutoDimming;  // PPFD
+        u8      mode;           //模式 1-by timer 2-cycle
+        u16     lightOn;        // 开启时间点 8:00 8*60=480
+        u16     lightOff;       // 关闭时间点 9:00 9*60=540
+        u16     firstCycleTime; //第一次循环开始时间
+        u16     duration;       //循环持续时间 s
+        u16     pauseTime;      //循环停止时间 s
+    }line_list[2];
+};
+
+struct sys_recipe{
+    u8 crc;
+    recipe_t recipe[RECIPE_LIST_MAX];
+};
+
+/****************************     灌溉部分的内容*****/
+
 struct sysSet{
     u16 crc;
     proTempSet_t    tempSet;
@@ -125,7 +176,11 @@ struct sysSet{
     proHumiSet_t    humiSet;
     proLine_t       line1Set;
     proLine_t       line2Set;
+    cloudcmd_t      cloudCmd;
+    stage_t         stageSet;
 };
+
+/****************************灌溉内容 End*************/
 
 #define         CMD_HUB_REPORT_WARN     "reportWarning"         //Hub 主动上报
 #define         CMD_HUB_REPORT          "report"                //Hub 定时上报实时值
@@ -188,6 +243,9 @@ void CmdSetSysTime(char *, cloudcmd_t *);
 void CmdGetDeadBand(char *, cloudcmd_t *);
 void CmdSetDeadBand(char *, cloudcmd_t *);
 void CmdDeleteDevice(char *, cloudcmd_t *);
+void CmdGetSchedule(char *, cloudcmd_t *);
+void CmdSetSchedule(char *, cloudcmd_t *);
+char *ReplySetSchedule(char *, cloudcmd_t);
 //char *ReplySetTempValue(char *);
 char *ReplyGetTempValue(char *);
 //char *ReplySetCo2(char *);
@@ -203,5 +261,6 @@ char *ReplySetSysTime(char *, cloudcmd_t );
 char *ReplyGetDeadBand(char *, cloudcmd_t);
 char *ReplySetDeadBand(char *, cloudcmd_t);
 char *ReplyDeleteDevice(char *, cloudcmd_t);
+char *ReplyGetSchedule(char *, cloudcmd_t);
 
 #endif /* APPLICATIONS_CLOUDPROTOCOL_CLOUDPROTOCOLBUSINESS_H_ */

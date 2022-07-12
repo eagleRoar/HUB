@@ -38,6 +38,7 @@ int main(void)
     rt_uint8_t      ethStatus       = LINKDOWN;
     static u8       sensor_size     = 0;
     static u8       device_size     = 0;
+    static u8       timer12_size     = 0;
     static u8       Timer1sTouch    = OFF;
     static u16      time1S          = 0;
 
@@ -70,11 +71,11 @@ int main(void)
         rt_thread_mdelay(100);
     } while (LINKDOWN == ethStatus);
 
-    if(LINKUP == ethStatus)
-    {
-        /*初始化网络线程，处理和主机之间的交互，Tcp和Udp协议*/
-        EthernetTaskInit();
-    }
+//    if(LINKUP == ethStatus)
+//    {
+//        /*初始化网络线程，处理和主机之间的交互，Tcp和Udp协议*/
+//        EthernetTaskInit();
+//    }//Justin debug
 
     //初始化SD卡处理线程
     SDCardTaskInit();
@@ -97,18 +98,18 @@ int main(void)
     while(1)
     {
         /* 监视网络模块是否上线 */
-        ethStatus = GetEthDriverLinkStatus();
-        if(LINKUP == ethStatus)
-        {
-            if(RT_NULL == rt_thread_find(UDP_TASK) &&
-               RT_NULL == rt_thread_find(TCP_SEND_TASK))
-            {
-                /* 重新上线,初始化网络任务 */
-                EthernetTaskInit();
-                LOG_D("EthernetTask init OK");
-            }
-        }
-//        LOG_D("GetMonitor()->sensor_size = %d",GetMonitor()->sensor_size);
+//        ethStatus = GetEthDriverLinkStatus();
+//        if(LINKUP == ethStatus)
+//        {
+//            if(RT_NULL == rt_thread_find(UDP_TASK) &&
+//               RT_NULL == rt_thread_find(TCP_SEND_TASK))
+//            {
+//                /* 重新上线,初始化网络任务 */
+//                EthernetTaskInit();
+//                LOG_D("EthernetTask init OK");
+//            }
+//        }//Justin debug
+
         if(sensor_size != GetMonitor()->sensor_size)
         {
             sensor_size = GetMonitor()->sensor_size;
@@ -129,6 +130,17 @@ int main(void)
                 printDevice(GetMonitor()->device[index]);
             }
         }
+        if(timer12_size != GetMonitor()->timer12_size)
+        {
+            timer12_size = GetMonitor()->timer12_size;
+
+            for(int index = 0; index < timer12_size; index++)
+            {
+                LOG_I("timer12--------------------index = %d",index);
+                printTimer12(GetMonitor()->time12[index]);
+            }
+        }
+
 //
 //        printMuduleConnect(GetMonitor());
 

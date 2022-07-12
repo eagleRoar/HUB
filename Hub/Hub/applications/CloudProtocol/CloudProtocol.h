@@ -20,6 +20,7 @@
 void initCloudProtocol(void);
 char *GetSnName(char *);
 void tempProgram(type_monitor_t *);
+void timmerProgram(type_monitor_t *);
 void co2Program(type_monitor_t *);
 void humiProgram(type_monitor_t *);
 void analyzeCloudData(char *);

@@ -25,8 +25,8 @@ struct rx_msg uart2_msg;                      //接收串口数据以及相关�
 struct rx_msg uart3_msg;                      //接收串口数据以及相关消息
 
 extern  struct sdCardState      sdCard;
-extern  cloudcmd_t              cloudCmd;
 extern  type_sys_time           sys_time;
+extern  sys_set_t               sys_set;
 /**
  * @brief  : 接收回调函数
  * @para   : dev   ：接收数据部分等
@@ -39,10 +39,8 @@ static rt_err_t Uart2_input(rt_device_t dev, rt_size_t size)
     u16 crc16 = 0x0000;
 
     /* 必须要等待从sd卡读取到的monitor 才能执行以下功能 */
-//    LOG_D("uart2 recv data");//Justin debug
     if (NO == sdCard.readInfo)
     {
-//        LOG_E("Uart2_input err1");
         return RT_ERROR;
     }
 
@@ -51,7 +49,6 @@ static rt_err_t Uart2_input(rt_device_t dev, rt_size_t size)
     rt_device_read(uart2_msg.dev, 0, uart2_msg.data, uart2_msg.size);
     if(2 > size)
     {
-//        LOG_E("Uart2_input err2");
         return RT_ERROR;
     }
     crc16 |= uart2_msg.data[uart2_msg.size-1];
@@ -60,12 +57,10 @@ static rt_err_t Uart2_input(rt_device_t dev, rt_size_t size)
     if(crc16 == usModbusRTU_CRC(uart2_msg.data, uart2_msg.size - 2))
     {
         uart2_msg.messageFlag = ON;
-//        LOG_I("uart2 recv ok");
         return RT_EOK;
     }
     else
     {
-//        LOG_E("Uart2_input err3");
         return RT_ERROR;
     }
 }
@@ -113,7 +108,6 @@ void SensorUart2TaskEntry(void* parameter)
     static      rt_device_t     uart2_serial;
     static      rt_device_t     uart3_serial;
     static      u8              device_start    = 0;
-//    static      u8              device_start_5s = 0;
     static      u8              sensor_start    = 0;
     static      type_sys_time   sys_time_pre;
 
@@ -157,7 +151,7 @@ void SensorUart2TaskEntry(void* parameter)
                 {
                     if(1 == sensor_start)
                     {
-                        if(YES == askSensorStorage(&monitor, uart2_serial))//这个函数有bug
+                        if(YES == askSensorStorage(&monitor, uart2_serial))
                         {
                             sensor_start = 0;
                         }
@@ -166,7 +160,6 @@ void SensorUart2TaskEntry(void* parameter)
 
                 if(ON == uart3_msg.messageFlag)
                 {
-//                    LOG_D("recv uart3 msg");//Justin debug
                     uart3_msg.messageFlag = OFF;
                     AnalyzeData(uart3_serial, &monitor, uart3_msg.data, uart3_msg.size);
                 }
@@ -200,11 +193,12 @@ void SensorUart2TaskEntry(void* parameter)
                 tempProgram(GetMonitor());
                 co2Program(GetMonitor());
                 humiProgram(GetMonitor());
-                findLocation(GetMonitor(), &cloudCmd, uart3_serial);     //设备定位//Justin debug
-                if(0 != cloudCmd.delete_id.value)
+                timmerProgram(GetMonitor());//Justin debug 仅仅测试 怀疑该地方有bug
+                findLocation(GetMonitor(), &sys_set.cloudCmd, uart3_serial);
+                if(0 != sys_set.cloudCmd.delete_id.value)
                 {
-                    deleteModule(GetMonitor(), cloudCmd.delete_id.value);
-                    cloudCmd.delete_id.value = 0;
+                    deleteModule(GetMonitor(), sys_set.cloudCmd.delete_id.value);
+                    sys_set.cloudCmd.delete_id.value = 0;
                 }
 //                cal();//Justin debug 日历功能
             }
@@ -230,7 +224,7 @@ void SensorUart2TaskInit(void)
     rt_err_t threadStart = RT_NULL;
 
     /* 创建串口 线程 */
-    rt_thread_t thread = rt_thread_create("sensor task", SensorUart2TaskEntry, RT_NULL, /*1024*6*/1024*4, UART2_PRIORITY, 10);
+    rt_thread_t thread = rt_thread_create("sensor task", SensorUart2TaskEntry, RT_NULL, 1024*4, UART2_PRIORITY, 10);
 
     /* 如果线程创建成功则开始启动线程，否则提示线程创建失败 */
     if (RT_NULL != thread) {

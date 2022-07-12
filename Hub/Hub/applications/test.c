@@ -14,6 +14,7 @@
 #include "Gpio.h"
 #include "UartBussiness.h"
 #include "CloudProtocolBusiness.h"
+#include "UartDataLayer.h"
 
 time_t getTimeStamp(void)
 {
@@ -83,32 +84,36 @@ void printDevice(device_time4_t module)
     }
 }
 
-//void printMuduleConnect(type_monitor_t *monitor)
-//{
-//                u8          index                   = 0;
-//    static      u8          state[MODULE_MAX];
-//
-//    for(index = 0; index < monitor->module_size; index++)
-//    {
-//        if(state[index] != monitor->module[index].conn_state)
-//        {
-//            if((CON_FAIL == monitor->module[index].conn_state) ||
-//               (CON_SUCCESS == monitor->module[index].conn_state))
-//            {
-//                state[index] = monitor->module[index].conn_state;
-//
-//                if(CON_FAIL == monitor->module[index].conn_state)
-//                {
-//                    LOG_D("no %d, name : %s, connect fail",index,monitor->module[index].name);
-//                }
-//                else if(CON_SUCCESS == monitor->module[index].conn_state)
-//                {
-//                    LOG_D("no %d, name : %s, connect success",index,monitor->module[index].name);
-//                }
-//            }
-//        }
-//    }
-//}
+void printTimer12(timer12_t module)
+{
+    int         index       = 0;
+    int         port        = 0;
+
+    LOG_D("----------------------print new mnodule-----------");
+    LOG_D("type             : %x",module.type);
+    LOG_D("uuid             : %x",module.uuid);
+    LOG_D("name             : %s",module.name);
+    LOG_D("addr             : %x",module.addr);
+    LOG_D("save_state       : %x",module.save_state);
+    LOG_D("conn_state       : %x",module.conn_state);
+    LOG_D("s_or_d : Timer12");
+    LOG_D("storage_size     : %d",module.storage_size);
+    for(index = 0; index < /*TIMER12_PORT_MAX*/1; index++)//Justin debug
+    {
+        for(port = 0; port < TIMER_GROUP; port++)
+        {
+            LOG_D("stora %d : on_at = %d, duration = %d, en = %d",
+                   index, module._time12_ctl[index]._timer[port].on_at, module._time12_ctl[index]._timer[port].duration,
+                   module._time12_ctl[index]._timer[port].en);
+        }
+        LOG_D("d_state = %d",module._time12_ctl[index].d_state);
+        LOG_D("d_value = %d",module._time12_ctl[index].d_value);
+    }
+
+    LOG_D("_recycle.duration = %d",module._recycle.duration);
+    LOG_D("_recycle.pauseTime = %d",module._recycle.pauseTime);
+    LOG_D("_recycle.startAt = %d",module._recycle.startAt);
+}
 
 void rtcTest(type_sys_time time)
 {

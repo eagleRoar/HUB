@@ -13,6 +13,39 @@
 #include "InformationMonitor.h"
 #include "Module.h"
 
+void setTimer12DefaultPara(timer12_t *module, char *name, u16 ctrl_addr, u8 manual, u16 manual_on_time, u8 main_type, u8 storage_size)
+{
+    u8 port = 0;
+    u8 index = 0;
+
+    rt_memcpy(module->name, name, MODULE_NAMESZ);                   //产品名称
+    module->ctrl_addr = ctrl_addr;                                  //终端控制的寄存器地址
+    module->manual = manual;                                        //手动开关/ 开、关
+    module->manual_on_time = manual_on_time;                        //手动开启的时间
+    module->main_type = main_type;                                  //主类型 如co2 温度 湿度 line timer
+    module->conn_state = CON_SUCCESS;                               //连接状态
+    module->reg_state = SEND_NULL;                                  //注册状态
+    module->save_state = NO;                                        //是否已经存储
+    module->storage_size = storage_size;                            //寄存器数量
+
+    for(index = 0;index < TIMER12_PORT_MAX; index++)
+    {
+        for(port = 0; port < TIMER_GROUP; port++)
+        {
+            module->_time12_ctl[index]._timer[port].on_at = 0;
+            module->_time12_ctl[index]._timer[port].duration = 0;
+            module->_time12_ctl[index]._timer[port].en = 0;
+        }
+        module->_time12_ctl[index].d_state = 0;
+        module->_time12_ctl[index].d_value = 0;
+    }
+
+    module->_recycle.duration = 0;
+    module->_recycle.pauseTime = 0;
+    module->_recycle.startAt = 0;
+}
+
+
 void setDeviceDefaultPara(device_time4_t *module, char *name, u16 ctrl_addr, u8 manual, u16 manual_on_time, u8 main_type, u8 type, u8 storage_size)
 {
     rt_memcpy(module->name, name, MODULE_NAMESZ);                   //产品名称
@@ -40,7 +73,7 @@ void setSensorDefaultPara(sensor_t *module, char *name, u16 ctrl_addr, u8 type, 
     module->conn_state = CON_SUCCESS;                               //连接状态
     module->reg_state = SEND_NULL;                                  //注册状态
     module->save_state = NO;                                        //是否已经存储
-//    module->type = type;//Justin debug
+    module->type = type;
     module->storage_size = storage_size;                            //寄存器数量
 }
 
@@ -101,6 +134,9 @@ char *GetModelByType(u8 type, char *name, u8 len)
             break;
         case HVAC_6_TYPE:
             rt_memcpy(name, "BDS-Hv1", len);
+            break;
+        case TIMER_TYPE:
+            rt_memcpy(name, "BDS-Ti", len);
             break;
         default:
             break;
@@ -203,14 +239,28 @@ rt_err_t setDeviceDefault(device_time4_t *module)
             addr = module->addr;
             setDeviceDefaultStora(module, 0 , "Hvac_6", F_COOL_HEAT, module->type, addr , 0xFF, 0);
             break;
-        case TIMER_TYPE:
-            break;
         case AC_4_TYPE:
             //Justin debug需要再次询问一下终端具体端口的用途
             break;
         case AC_12_TYPE:
             //Justin debug需要再次询问一下终端具体端口的用途
             break;
+        default:
+            ret = RT_ERROR;
+            break;
+    }
+
+    return ret;
+}
+
+rt_err_t setTimer12Default(timer12_t *module)
+{
+    rt_err_t ret = RT_EOK;
+    switch (module->type) {
+        case TIMER_TYPE:
+            setTimer12DefaultPara(module, "Timer", 0x0040, 0xFF, 0, S_TIMER, 12);
+            break;
+
         default:
             ret = RT_ERROR;
             break;
@@ -252,6 +302,9 @@ u8 getSOrD(u8 type)
         case HVAC_6_TYPE:
             ret = DEVICE_TYPE;
             break;
+        case TIMER_TYPE:
+            ret = TIMER12_TYPE;
+            break;
         default:
             break;
     }
@@ -266,17 +319,21 @@ void AnlyzeDeviceRegister(type_monitor_t *monitor, rt_device_t serial, u8 *data,
     u8                  s_or_d      = 0;
     sensor_t            sensor;
     device_time4_t      device;
+    timer12_t           timer;
 
     rt_memset(&sensor, 0, sizeof(sensor_t));
     rt_memset(&device, 0, sizeof(device_time4_t));
+    rt_memset(&timer, 0, sizeof(timer12_t));
 
     sensor.type = data[8];
     sensor.uuid = (data[9] << 24) | (data[10] << 16) | (data[11] << 8) | data[12];
     device.type = data[8];
     device.uuid = (data[9] << 24) | (data[10] << 16) | (data[11] << 8) | data[12];
+    timer.type = data[8];
+    timer.uuid = (data[9] << 24) | (data[10] << 16) | (data[11] << 8) | data[12];
 
     s_or_d = getSOrD(data[8]);
-//    LOG_D("s_or_d = %d",s_or_d);
+
     if(SENSOR_TYPE == s_or_d)//Justin debug 这个方式应该改为通过uart口识别
     {
         if(NO == FindSensor(monitor, sensor, &no))
@@ -300,7 +357,6 @@ void AnlyzeDeviceRegister(type_monitor_t *monitor, rt_device_t serial, u8 *data,
     }
     else if(DEVICE_TYPE == s_or_d)
     {
-//        LOG_D("AnlyzeDeviceRegister");//Justin debug
         if(NO == FindDevice(monitor, device, &no))
         {
             device.addr = getAllocateAddress(monitor);
@@ -319,6 +375,27 @@ void AnlyzeDeviceRegister(type_monitor_t *monitor, rt_device_t serial, u8 *data,
         }
         /* 发送注册回复 */
         devRegisterAnswer(monitor, serial, device.uuid);
+    }
+    else if(TIMER12_TYPE == s_or_d)
+    {
+        if(NO == FindTimer(monitor, timer, &no))
+        {
+            timer.addr = getAllocateAddress(monitor);
+            if(RT_EOK == setTimer12Default(&timer))
+            {
+                InsertTimer12ToTable(monitor, timer, no);
+            }
+            else
+            {
+                LOG_E("The timer is not supported");
+            }
+        }
+        else
+        {
+            LOG_D("timer have exist");
+        }
+
+        timer12Answer(monitor, serial, timer.uuid);
     }
 }
 
@@ -394,6 +471,42 @@ void devRegisterAnswer(type_monitor_t *monitor, rt_device_t serial, u32 uuid)
     rt_device_write(serial, 0, buffer, 15);
 }
 
+void timer12Answer(type_monitor_t *monitor, rt_device_t serial, u32 uuid)
+{
+    u16 i = 0;
+    u8 buffer[15];
+    u16 crc16Result = 0x0000;
+    u32 id;
+
+    buffer[0] = REGISTER_CODE;
+    buffer[1] = 0x80;
+    for(i = 0; i < monitor->timer12_size; i++)
+    {
+        if(uuid == monitor->time12[i].uuid)
+        {
+            buffer[2] = monitor->time12[i].uuid >> 24;
+            buffer[3] = monitor->time12[i].uuid >> 16;
+            buffer[4] = monitor->time12[i].uuid >> 8;
+            buffer[5] = monitor->time12[i].uuid;
+            buffer[6] = 0x06;
+            buffer[7] = monitor->time12[i].addr;
+            buffer[8] = monitor->time12[i].type;
+        }
+    }
+
+    ReadUniqueId(&id);
+    buffer[9] = id >> 24;
+    buffer[10] = id >> 16;
+    buffer[11] = id >> 8;
+    buffer[12] = id;
+
+    crc16Result = usModbusRTU_CRC(buffer, 13);
+    buffer[13] = crc16Result;                         //CRC16低位
+    buffer[14] = (crc16Result>>8);                    //CRC16高位
+
+    rt_device_write(serial, 0, buffer, 15);
+}
+
 /* 接收sensor 寄存器 */
 void AnlyzeStorage(type_monitor_t *monitor, u8 addr, u8 read, u8 *data, u8 length)
 {
@@ -413,11 +526,6 @@ void AnlyzeStorage(type_monitor_t *monitor, u8 addr, u8 read, u8 *data, u8 lengt
             {
                 monitor->sensor[index].__stora[storage].value = (data[2 * storage] << 8) | data[2 * storage + 1];
             }
-
-//           for(int i = 0; i < 4; i++)
-//           {
-//               LOG_D("name %s, value = %d",monitor->sensor[index].__stora[i].name,monitor->sensor[index].__stora[i].value);//Justin debug
-//           }
         }
     }
 }

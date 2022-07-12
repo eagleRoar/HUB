@@ -99,14 +99,12 @@ void DeviceStatePage(u8g2_t *uiShow, type_page_t page)
     u8              list[DEVICE_TIME4_MAX];
     u8              list_index          = 0;
     u8              device_sum          = 0;
-    device_time4_t  module;
 
     u8g2_ClearBuffer(uiShow);
     rt_memset(data, 0, 80);
 
     for(index = 0; index < GetMonitor()->device_size; index++)
     {
-        module = GetMonitor()->device[index];
         list[device_sum] = index;
         device_sum++;
     }

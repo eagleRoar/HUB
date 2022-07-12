@@ -49,7 +49,6 @@ void InsertSensorToTable(type_monitor_t *monitor, sensor_t module, u8 no)
         {
             monitor->sensor_size++;
         }
-//        monitor->sensor[no] = module;
         rt_memcpy((u8 *)&monitor->sensor[no], (u8 *)&module, sizeof(sensor_t));
         printSensor(module);
     }
@@ -57,14 +56,27 @@ void InsertSensorToTable(type_monitor_t *monitor, sensor_t module, u8 no)
 
 void InsertDeviceToTable(type_monitor_t *monitor, device_time4_t module, u8 no)
 {
-    if(no < DEVICE_TIME4_MAX)//Justin debug需要优化 超过DEVICE_TIME4_MAX要使用扩展
+    if(no < DEVICE_TIME4_MAX)
     {
         if(no >= monitor->device_size)
         {
             monitor->device_size++;
         }
-        monitor->device[no] = module;
+        rt_memcpy((u8 *)&monitor->device[no], (u8 *)&module, sizeof(device_time4_t));
         printDevice(module);
+    }
+}
+
+void InsertTimer12ToTable(type_monitor_t *monitor, timer12_t module, u8 no)
+{
+    if(no < TIME12_MAX)
+    {
+        if(no >= monitor->timer12_size)
+        {
+            monitor->timer12_size++;
+        }
+        rt_memcpy((u8 *)&monitor->time12[no], (u8 *)&module, sizeof(timer12_t));
+        printTimer12(module);
     }
 }
 
@@ -103,6 +115,25 @@ u8 FindDevice(type_monitor_t *monitor, device_time4_t module, u8 *no)
     }
     return ret;
 }
+
+u8 FindTimer(type_monitor_t *monitor, timer12_t module, u8 *no)
+{
+    u8          index       = 0;
+    u8          ret         = NO;
+
+    *no = monitor->timer12_size;
+    for (index = 0; index < monitor->timer12_size; index++)
+    {
+        if ((monitor->time12[index].uuid == module.uuid) &&
+            (monitor->time12[index].type == module.type))
+        {
+            *no = index;
+            ret = YES;
+        }
+    }
+    return ret;
+}
+
 
 u8 FindModuleByAddr(type_monitor_t *monitor, u8 addr)
 {
@@ -195,7 +226,32 @@ device_time4_t *GetDeviceByAddr(type_monitor_t *monitor, u8 addr)
     {
         if(addr == monitor->device[index].addr)
         {
+//            LOG_I("find device add = %d",addr);//Justin debug
             return &(monitor->device[index]);
+        }
+        else
+        {
+//            LOG_E("can not find device addr = %d",addr);//Justin debug 仅仅测试
+        }
+    }
+
+    return RT_NULL;
+}
+
+timer12_t *GetTimerByAddr(type_monitor_t *monitor, u8 addr)
+{
+    u8      index       = 0;
+
+    for(index = 0; index < monitor->timer12_size; index++)
+    {
+        if(addr == monitor->time12[index].addr)
+        {
+            LOG_I("find timer add = %d",addr);//Justin debug
+            return &(monitor->time12[index]);
+        }
+        else
+        {
+            LOG_E("can not find timer addr = %d",addr);//Justin debug 仅仅测试
         }
     }
 

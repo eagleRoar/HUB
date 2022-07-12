@@ -15,7 +15,7 @@
 #include "cJSON.h"
 #include "mqtt_client.h"
 
-cloudcmd_t      cloudCmd;
+//cloudcmd_t      cloudCmd;
 sys_set_t       sys_set;
 type_sys_time   sys_time;
 
@@ -73,14 +73,6 @@ void PrintTempSet(proTempSet_t set)
 
 void printCloud(cloudcmd_t cmd)
 {
-//    char            cmd[CMD_NAME_SIZE];         //接收命令
-//    type_kv_c16     msgid;                      //相当于发送的包的序号
-//    type_kv_u16     get_id;                     //设备定位Id
-//    type_kv_u16     get_port_id;                //设备设备端口设置Id
-//    type_kv_c16     sys_time;                   //系统时间
-//    type_kv_u16     delete_id;                  //删除设备id
-//    u8              recv_flag;                  //命令接收标志 处理完之后要置为OFF
-
     LOG_I("--------------printCloud");
     LOG_D("msgid %s",cmd.msgid.name);
     LOG_D(" %s",cmd.get_id.name);
@@ -93,17 +85,18 @@ void initCloudProtocol(void)
 {
     char name[16];
 
-    cloudCmd.recv_flag = OFF;
-    rt_memcpy(cloudCmd.msgid.name, "msgid", KEYVALUE_NAME_SIZE);
-    rt_memcpy(cloudCmd.get_id.name, "id", KEYVALUE_NAME_SIZE);
-    cloudCmd.get_id.value = 0;
-    rt_memcpy(cloudCmd.get_port_id.name, "id", KEYVALUE_NAME_SIZE);
-    cloudCmd.get_port_id.value = 0;
-    rt_memcpy(cloudCmd.sys_time.name, "time", KEYVALUE_NAME_SIZE);
-    rt_memcpy(cloudCmd.sys_time.value, " ",16);
-    rt_memcpy(cloudCmd.delete_id.name, "id", KEYVALUE_NAME_SIZE);
-    cloudCmd.delete_id.value = 0;
-    printCloud(cloudCmd);//Justin debug 需要存储
+    sys_set.cloudCmd.recv_flag = OFF;
+    rt_memcpy(sys_set.cloudCmd.msgid.name, "msgid", KEYVALUE_NAME_SIZE);
+    rt_memcpy(sys_set.cloudCmd.recipe_name, "name", KEYVALUE_NAME_SIZE);
+    rt_memcpy(sys_set.cloudCmd.get_id.name, "id", KEYVALUE_NAME_SIZE);
+    sys_set.cloudCmd.get_id.value = 0;
+    rt_memcpy(sys_set.cloudCmd.get_port_id.name, "id", KEYVALUE_NAME_SIZE);
+    sys_set.cloudCmd.get_port_id.value = 0;
+    rt_memcpy(sys_set.cloudCmd.sys_time.name, "time", KEYVALUE_NAME_SIZE);
+    rt_memcpy(sys_set.cloudCmd.sys_time.value, " ",16);
+    rt_memcpy(sys_set.cloudCmd.delete_id.name, "id", KEYVALUE_NAME_SIZE);
+    sys_set.cloudCmd.delete_id.value = 0;
+    printCloud(sys_set.cloudCmd);//Justin debug 需要存储
 
     rt_memset(&sys_set.tempSet, 0, sizeof(proTempSet_t));
     rt_memset(&sys_set.co2Set, 0, sizeof(proCo2Set_t));
@@ -176,13 +169,13 @@ void setCloudCmd(char *cmd, u8 flag)
 {
     if(RT_NULL != cmd)
     {
-        rt_memcpy(cloudCmd.cmd, cmd, CMD_NAME_SIZE);
+        rt_memcpy(sys_set.cloudCmd.cmd, cmd, CMD_NAME_SIZE);
     }
     else
     {
-        rt_memset(cloudCmd.cmd, ' ', CMD_NAME_SIZE);
+        rt_memset(sys_set.cloudCmd.cmd, ' ', CMD_NAME_SIZE);
     }
-    cloudCmd.recv_flag = flag;
+    sys_set.cloudCmd.recv_flag = flag;
 }
 
 /**
@@ -191,62 +184,79 @@ void setCloudCmd(char *cmd, u8 flag)
 void ReplyDataToCloud(mqtt_client *client)
 {
     char *str = RT_NULL;
-    if(ON == cloudCmd.recv_flag)
+    if(ON == sys_set.cloudCmd.recv_flag)
     {
-        if(0 == rt_memcmp(CMD_SET_TEMP, cloudCmd.cmd, sizeof(CMD_SET_TEMP)) ||
-           0 == rt_memcmp(CMD_GET_TEMP, cloudCmd.cmd, sizeof(CMD_GET_TEMP)))   //获取/设置温度参数
+        if(0 == rt_memcmp(CMD_SET_TEMP, sys_set.cloudCmd.cmd, sizeof(CMD_SET_TEMP)) ||
+           0 == rt_memcmp(CMD_GET_TEMP, sys_set.cloudCmd.cmd, sizeof(CMD_GET_TEMP)))   //获取/设置温度参数
         {
-            str = ReplyGetTempValue(cloudCmd.cmd);
+            str = ReplyGetTempValue(sys_set.cloudCmd.cmd);
         }
-        else if(0 == rt_memcmp(CMD_SET_CO2, cloudCmd.cmd, sizeof(CMD_SET_CO2)) ||
-                0 == rt_memcmp(CMD_GET_CO2, cloudCmd.cmd, sizeof(CMD_GET_CO2)))    //获取/设置Co2参数
+        else if(0 == rt_memcmp(CMD_SET_CO2, sys_set.cloudCmd.cmd, sizeof(CMD_SET_CO2)) ||
+                0 == rt_memcmp(CMD_GET_CO2, sys_set.cloudCmd.cmd, sizeof(CMD_GET_CO2)))    //获取/设置Co2参数
         {
-            str = ReplyGetCo2(cloudCmd.cmd);
+            str = ReplyGetCo2(sys_set.cloudCmd.cmd);
         }
-        else if(0 == rt_memcmp(CMD_SET_HUMI, cloudCmd.cmd, sizeof(CMD_SET_HUMI)) ||
-                0 == rt_memcmp(CMD_GET_HUMI, cloudCmd.cmd, sizeof(CMD_GET_HUMI)))   //获取/设置湿度参数
+        else if(0 == rt_memcmp(CMD_SET_HUMI, sys_set.cloudCmd.cmd, sizeof(CMD_SET_HUMI)) ||
+                0 == rt_memcmp(CMD_GET_HUMI, sys_set.cloudCmd.cmd, sizeof(CMD_GET_HUMI)))   //获取/设置湿度参数
         {
-            str = ReplyGetHumi(cloudCmd.cmd);
+            str = ReplyGetHumi(sys_set.cloudCmd.cmd);
         }
-        else if(0 == rt_memcmp(CMD_GET_DEVICELIST, cloudCmd.cmd, sizeof(CMD_GET_DEVICELIST)))   //获取设备列表
+        else if(0 == rt_memcmp(CMD_GET_DEVICELIST, sys_set.cloudCmd.cmd, sizeof(CMD_GET_DEVICELIST)))   //获取设备列表
         {
-            str = ReplyGetDeviceList(CMD_GET_DEVICELIST, cloudCmd.msgid);
+            str = ReplyGetDeviceList(CMD_GET_DEVICELIST, sys_set.cloudCmd.msgid);
         }
-        else if(0 == rt_memcmp(CMD_GET_L1, cloudCmd.cmd, sizeof(CMD_GET_L1)) ||
-                0 == rt_memcmp(CMD_SET_L1, cloudCmd.cmd, sizeof(CMD_SET_L1)))   //获取/设置灯光1
+        else if(0 == rt_memcmp(CMD_GET_L1, sys_set.cloudCmd.cmd, sizeof(CMD_GET_L1)) ||
+                0 == rt_memcmp(CMD_SET_L1, sys_set.cloudCmd.cmd, sizeof(CMD_SET_L1)))   //获取/设置灯光1
         {
-            str = ReplyGetLine(cloudCmd.cmd, cloudCmd.msgid, sys_set.line1Set);
+            str = ReplyGetLine(sys_set.cloudCmd.cmd, sys_set.cloudCmd.msgid, sys_set.line1Set);
         }
-        else if(0 == rt_memcmp(CMD_GET_L2, cloudCmd.cmd, sizeof(CMD_GET_L2)) ||
-                0 == rt_memcmp(CMD_SET_L2, cloudCmd.cmd, sizeof(CMD_SET_L2)))   //获取/设置灯光2
+        else if(0 == rt_memcmp(CMD_GET_L2, sys_set.cloudCmd.cmd, sizeof(CMD_GET_L2)) ||
+                0 == rt_memcmp(CMD_SET_L2, sys_set.cloudCmd.cmd, sizeof(CMD_SET_L2)))   //获取/设置灯光2
         {
-            str = ReplyGetLine(cloudCmd.cmd, cloudCmd.msgid, sys_set.line2Set);
+            str = ReplyGetLine(sys_set.cloudCmd.cmd, sys_set.cloudCmd.msgid, sys_set.line2Set);
         }
-        else if(0 == rt_memcmp(CMD_FIND_LOCATION, cloudCmd.cmd, sizeof(CMD_FIND_LOCATION)))//设备定位
+        else if(0 == rt_memcmp(CMD_FIND_LOCATION, sys_set.cloudCmd.cmd, sizeof(CMD_FIND_LOCATION)))//设备定位
         {
-            str = ReplyFindLocation(CMD_FIND_LOCATION, cloudCmd);
+            str = ReplyFindLocation(CMD_FIND_LOCATION, sys_set.cloudCmd);
         }
-        else if(0 == rt_memcmp(CMD_GET_PORT_SET, cloudCmd.cmd, sizeof(CMD_GET_PORT_SET)))//获取设备/端口设置
+        else if(0 == rt_memcmp(CMD_GET_PORT_SET, sys_set.cloudCmd.cmd, sizeof(CMD_GET_PORT_SET)))//获取设备/端口设置
         {
             //目前端口和设备都可以被设置
-            str = ReplyGetPortSet(CMD_GET_PORT_SET, cloudCmd);
+            str = ReplyGetPortSet(CMD_GET_PORT_SET, sys_set.cloudCmd);
         }
-        else if(0 == rt_memcmp(CMD_SET_SYS_TIME, cloudCmd.cmd, sizeof(CMD_SET_SYS_TIME)))//获取设备/端口设置
+        else if(0 == rt_memcmp(CMD_SET_PORT_SET, sys_set.cloudCmd.cmd, sizeof(CMD_SET_PORT_SET)))//获取设备/端口设置
         {
             //目前端口和设备都可以被设置
-            str = ReplySetSysTime(CMD_SET_SYS_TIME, cloudCmd);
+            str = ReplySetPortSet(CMD_SET_PORT_SET, sys_set.cloudCmd);
         }
-        else if(0 == rt_memcmp(CMD_GET_DEADBAND, cloudCmd.cmd, sizeof(CMD_GET_DEADBAND)))//获取死区值设置
+        else if(0 == rt_memcmp(CMD_SET_SYS_TIME, sys_set.cloudCmd.cmd, sizeof(CMD_SET_SYS_TIME)))//获取设备/端口设置
         {
-            str = ReplyGetDeadBand(CMD_GET_DEADBAND, cloudCmd);
+            //目前端口和设备都可以被设置
+            str = ReplySetSysTime(CMD_SET_SYS_TIME, sys_set.cloudCmd);
         }
-        else if(0 == rt_memcmp(CMD_SET_DEADBAND, cloudCmd.cmd, sizeof(CMD_SET_DEADBAND)))//获取死区值设置
+        else if(0 == rt_memcmp(CMD_GET_DEADBAND, sys_set.cloudCmd.cmd, sizeof(CMD_GET_DEADBAND)))//获取死区值设置
         {
-            str = ReplySetDeadBand(CMD_SET_DEADBAND, cloudCmd);
+            str = ReplyGetDeadBand(CMD_GET_DEADBAND, sys_set.cloudCmd);
         }
-        else if(0 == rt_memcmp(CMD_DELETE_DEV, cloudCmd.cmd, sizeof(CMD_DELETE_DEV)))//获取死区值设置
+        else if(0 == rt_memcmp(CMD_SET_DEADBAND, sys_set.cloudCmd.cmd, sizeof(CMD_SET_DEADBAND)))//获取死区值设置
         {
-            str = ReplyDeleteDevice(CMD_DELETE_DEV, cloudCmd);
+            str = ReplySetDeadBand(CMD_SET_DEADBAND, sys_set.cloudCmd);
+        }
+        else if(0 == rt_memcmp(CMD_DELETE_DEV, sys_set.cloudCmd.cmd, sizeof(CMD_DELETE_DEV)))//获取死区值设置
+        {
+            str = ReplyDeleteDevice(CMD_DELETE_DEV, sys_set.cloudCmd);
+        }
+        else if(0 == rt_memcmp(CMD_GET_SCHEDULE, sys_set.cloudCmd.cmd, sizeof(CMD_GET_SCHEDULE)))//获取日程设置
+        {
+            str = ReplyGetSchedule(CMD_GET_SCHEDULE, sys_set.cloudCmd);
+        }
+        else if(0 == rt_memcmp(CMD_SET_SCHEDULE, sys_set.cloudCmd.cmd, sizeof(CMD_SET_SCHEDULE)))//设置日程设置
+        {
+            str = ReplySetSchedule(CMD_SET_SCHEDULE, sys_set.cloudCmd);
+        }
+        else if(0 == rt_memcmp(CMD_ADD_RECIPE, sys_set.cloudCmd.cmd, sizeof(CMD_ADD_RECIPE)))//增加配方
+        {
+            str = ReplyAddRecipe(CMD_ADD_RECIPE, sys_set.cloudCmd);
         }
 
         if(RT_NULL != str)
@@ -307,7 +317,7 @@ void analyzeCloudData(char *data)
             }
             else if(0 == rt_memcmp(CMD_GET_DEVICELIST, cmd->valuestring, strlen(CMD_GET_DEVICELIST)))
             {
-                CmdGetDeviceList(data, &cloudCmd);
+                CmdGetDeviceList(data, &sys_set.cloudCmd);
                 setCloudCmd(cmd->valuestring, ON);
             }
             else if(0 == rt_memcmp(CMD_SET_L1, cmd->valuestring, strlen(CMD_SET_L1)))
@@ -332,32 +342,52 @@ void analyzeCloudData(char *data)
             }
             else if(0 == rt_memcmp(CMD_FIND_LOCATION, cmd->valuestring, strlen(CMD_FIND_LOCATION)))
             {
-                CmdFindLocation(data, &cloudCmd);
+                CmdFindLocation(data, &sys_set.cloudCmd);
                 setCloudCmd(cmd->valuestring, ON);
             }
             else if(0 == rt_memcmp(CMD_GET_PORT_SET, cmd->valuestring, strlen(CMD_GET_PORT_SET)))
             {
-                CmdGetPortSet(data, &cloudCmd);
+                CmdGetPortSet(data, &sys_set.cloudCmd);
+                setCloudCmd(cmd->valuestring, ON);
+            }
+            else if(0 == rt_memcmp(CMD_SET_PORT_SET, cmd->valuestring, strlen(CMD_SET_PORT_SET)))
+            {
+                CmdSetPortSet(data, &sys_set.cloudCmd);
                 setCloudCmd(cmd->valuestring, ON);
             }
             else if(0 == rt_memcmp(CMD_SET_SYS_TIME, cmd->valuestring, strlen(CMD_SET_SYS_TIME)))
             {
-                CmdSetSysTime(data, &cloudCmd);
+                CmdSetSysTime(data, &sys_set.cloudCmd);
                 setCloudCmd(cmd->valuestring, ON);
             }
             else if(0 == rt_memcmp(CMD_GET_DEADBAND, cmd->valuestring, strlen(CMD_GET_DEADBAND)))
             {
-                CmdGetDeadBand(data, &cloudCmd);
+                CmdGetDeadBand(data, &sys_set.cloudCmd);
                 setCloudCmd(cmd->valuestring, ON);
             }
             else if(0 == rt_memcmp(CMD_SET_DEADBAND, cmd->valuestring, strlen(CMD_SET_DEADBAND)))
             {
-                CmdSetDeadBand(data, &cloudCmd);
+                CmdSetDeadBand(data, &sys_set.cloudCmd);
                 setCloudCmd(cmd->valuestring, ON);
             }
             else if(0 == rt_memcmp(CMD_DELETE_DEV, cmd->valuestring, strlen(CMD_DELETE_DEV)))
             {
-                CmdDeleteDevice(data, &cloudCmd);
+                CmdDeleteDevice(data, &sys_set.cloudCmd);
+                setCloudCmd(cmd->valuestring, ON);
+            }
+            else if(0 == rt_memcmp(CMD_GET_SCHEDULE, cmd->valuestring, strlen(CMD_GET_SCHEDULE)))
+            {
+                CmdGetSchedule(data, &sys_set.cloudCmd);
+                setCloudCmd(cmd->valuestring, ON);
+            }
+            else if(0 == rt_memcmp(CMD_SET_SCHEDULE, cmd->valuestring, strlen(CMD_SET_SCHEDULE)))
+            {
+                CmdSetSchedule(data, &sys_set.cloudCmd);
+                setCloudCmd(cmd->valuestring, ON);
+            }
+            else if(0 == rt_memcmp(CMD_ADD_RECIPE, cmd->valuestring, strlen(CMD_ADD_RECIPE)))
+            {
+                CmdAddRecipe(data, &sys_set.cloudCmd);
                 setCloudCmd(cmd->valuestring, ON);
             }
 
@@ -385,13 +415,21 @@ void tempProgram(type_monitor_t *monitor)
 
     if(RT_NULL != module)
     {
-        for(storage = 0; storage < module->storage_size; storage++)
+        if(SENSOR_VALUE_MAX >= module->storage_size)
         {
-            if(F_S_TEMP == module->__stora[storage].func)
+            for(storage = 0; storage < module->storage_size; storage++)
             {
-                tempNow = module->__stora[storage].value;
+                if(F_S_TEMP == module->__stora[storage].func)
+                {
+                    tempNow = module->__stora[storage].value;
+                }
             }
         }
+        else
+        {
+            LOG_E("tempProgram err");
+        }
+
     }
 
     if(sys_set.tempSet.dayCoolingTarget.value < sys_set.tempSet.dayHeatingTarget.value + sys_set.tempSet.tempDeadband.value * 2)//Justin debug 2为cool deadband + heat deadband
@@ -478,6 +516,50 @@ void tempProgram(type_monitor_t *monitor)
     }
 }
 
+void timmerProgram(type_monitor_t *monitor)
+{
+    u8          index   = 0;
+    timer12_t   timer;
+    u8          port    = 0;
+    u32         nowTime = 0;//这个时间要获取当前时间值
+
+    if(TIME12_MAX >= monitor->timer12_size)
+    {
+        for(index = 0; index < monitor->timer12_size; index++)
+        {
+            timer = monitor->time12[index];
+
+            for(port = 0; port < TIMER_GROUP; port++)
+            {
+                if(BY_SCHEDULE == timer.mode)
+                {
+                    if((nowTime >= timer._time12_ctl[index]._timer[port].on_at) &&
+                       (nowTime <= (timer._time12_ctl[index]._timer[port].on_at + timer._time12_ctl[index]._timer[port].duration)))//Justin debug 仅仅测试
+                    {
+//                        LOG_D("timmerProglram open");
+                        timer._time12_ctl[index].d_state = timer._time12_ctl[index]._timer[port].en;
+                    }
+                    else//Justin debug 仅仅测试
+                    {
+                        timer._time12_ctl[index].d_state = 0;
+                    }
+                }
+                else if(BY_RECYCLE == timer.mode)
+                {
+//                    if((nowTime >= timer._recycle.startAt) &&)
+//                    {
+//
+//                    }
+                }
+            }
+        }
+    }
+    else
+    {
+        LOG_E("timmerProgram err");
+    }
+}
+
 void humiProgram(type_monitor_t *monitor)
 {
     u8              storage     = 0;
@@ -488,12 +570,19 @@ void humiProgram(type_monitor_t *monitor)
 
     if(RT_NULL != module)
     {
-        for(storage = 0; storage < module->storage_size; storage++)
+        if(SENSOR_VALUE_MAX >= module->storage_size)
         {
-            if(F_S_HUMI == module->__stora[storage].func)
+            for(storage = 0; storage < module->storage_size; storage++)
             {
-                humiNow = module->__stora[storage].value;
+                if(F_S_HUMI == module->__stora[storage].func)
+                {
+                    humiNow = module->__stora[storage].value;
+                }
             }
+        }
+        else
+        {
+            LOG_E("humiProgram err");
         }
     }
 
@@ -542,13 +631,21 @@ void co2Program(type_monitor_t *monitor)
 
     if(RT_NULL != module)
     {
-        for(storage = 0; storage < module->storage_size; storage++)
+        if(SENSOR_VALUE_MAX >= module->storage_size)
         {
-            if(F_S_CO2 == module->__stora[storage].func)
+            for(storage = 0; storage < module->storage_size; storage++)
             {
-                co2Now = module->__stora[storage].value;
+                if(F_S_CO2 == module->__stora[storage].func)
+                {
+                    co2Now = module->__stora[storage].value;
+                }
             }
         }
+        else
+        {
+            LOG_E("co2Program err");
+        }
+
     }
 
     //白天

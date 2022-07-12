@@ -12,11 +12,12 @@
 #include "SDCard.h"
 #include "Uart.h"
 #include "CloudProtocol.h"
+#include "Recipe.h"
 
 #define DBG_TAG "u.sd"
 #define DBG_LVL DBG_INFO
 
-static char sd_thread_stack[1024 * 4];
+static char sd_thread_stack[1024 * 6];
 static struct rt_thread sd_thread;
 
 struct sdCardState      sdCard;
@@ -38,10 +39,14 @@ int SDCardTaskInit(void)
 void sd_dfs_event_entry(void* parameter)
 {
     rt_device_t             dev;
+                u16         m_crc               = 0;
     static      u8          Timer1sTouch        = OFF;
     static      u16         time1S              = 0;
     static      u8          sensor_size         = 0;
     static      u8          device_size         = 0;
+    static      u8          timer12_size        = 0;
+    static      u16         m_crc_pre           = 0;
+
     static      u16         set_crc             = 0;
 
     rt_memset(&sdCard, 0, sizeof(struct sdCardState));
@@ -85,6 +90,12 @@ void sd_dfs_event_entry(void* parameter)
                                 initCloudProtocol();
                                 LOG_E("TackSysSetFromSD err");
                             }
+
+//                            if(RT_EOK != TackRecipeFromSD(GetSysRecipt()))
+//                            {
+//                                initSysRecipe();
+//                                LOG_E("TackRecipeFromSD err");
+//                            }
                         }
                         else //挂载失败
                         {
@@ -111,10 +122,12 @@ void sd_dfs_event_entry(void* parameter)
                 if(YES == sdCard.readInfo)
                 {
                     if((sensor_size != GetMonitor()->sensor_size) ||
-                       (device_size != GetMonitor()->device_size))
+                       (device_size != GetMonitor()->device_size) ||
+                       (timer12_size != GetMonitor()->timer12_size))
                     {
                         sensor_size = GetMonitor()->sensor_size;
                         device_size = GetMonitor()->device_size;
+                        timer12_size = GetMonitor()->timer12_size;
 
                         if(RT_EOK == SaveModule(GetMonitor()))
                         {

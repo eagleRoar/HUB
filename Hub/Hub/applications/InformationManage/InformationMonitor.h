@@ -17,6 +17,7 @@
 #define     ALLOCATE_ADDRESS_SIZE           70
 #define     MODULE_NAMESZ                   16
 #define     STORAGE_NAMESZ                  8
+#define     RECIPE_NAMESZ                   8
 #define     STORAGE_MAX                     12
 
 typedef     struct packageEth               type_package_t;
@@ -24,21 +25,24 @@ typedef     struct packageEth               type_package_t;
 typedef     struct monitor                  type_monitor_t;
 typedef     struct sensor                   sensor_t;
 typedef     struct device_Timer4            device_time4_t;
-typedef     struct timer12                  time12_t;
-typedef     struct dev_extend               dev_extend_t;
+typedef     struct timer12                  timer12_t;
 typedef     struct sen_stora                sen_stora_t;
 typedef     struct line                     line_t;
 typedef     struct system_time              type_sys_time;
-/************button    *******************************************/
+typedef     struct timer_timer              type_timmer_timmer;
+typedef     struct recycle                  type_timmer_recycle;
 typedef     struct buttonInfo               type_button_t;
 
-#define     SENSOR_MAX                      16
-#define     DEVICE_TIME12_MAX               16
-#define     TIME12_MAX                      4
-#define     PORT_SZ                         4
+#define     SENSOR_MAX                      8//16//Justin debug 仅仅测试
+#define     DEVICE_TIME12_MAX               8//16//Justin debug 仅仅测试
+#define     TIME12_MAX                      2//4//Justin debug 仅仅测试
+#define     DEVICE_PORT_SZ                  4
 #define     DEVICE_TIME4_MAX                DEVICE_TIME12_MAX - TIME12_MAX
 #define     LINE_MAX                        2
 #define     SENSOR_VALUE_MAX                4
+#define     TIMER_GROUP                     12
+#define     TIMER12_PORT_MAX                12
+
 
 struct system_time
 {
@@ -77,6 +81,27 @@ struct sensor
     sen_stora_t     __stora[SENSOR_VALUE_MAX];
 };//占35字节
 
+struct timer_timer{
+    struct timer
+    {
+        u16     on_at;                                      //开始的时间
+        u16     duration;                                   //持续时间
+        u8      en;                                         //使能 1-on/0-off                                    //device 的控制数值
+    }_timer[TIMER_GROUP];
+    u8      d_state;                                        //device 的状态位
+    u8      d_value;                                        //device 的控制数值
+};
+
+struct recycle
+{
+    u16     startAt;                                // 开启时间点 8:00 8*60=480
+    u16     duration;                               //持续时间 秒
+    u16     pauseTime;                              //停止时间 秒
+//#if (HUB_SELECT == HUB_IRRIGSTION)//环控版本的recycle times, 为跨天无限循环
+    u8      times;                                  //次数 timer 时 startAt 为第一次开始时间，次数为 0
+//#endif
+};
+
 struct device_Timer4
 {
     u16             crc;
@@ -108,17 +133,8 @@ struct device_Timer4
             u8      d_value;                                    //device 的控制数值
         }_port;//16位
 
-        struct time4manage{
-
-            struct timer4{
-                u16     on_at;                                      //开始的时间
-                u16     duration;                                   //持续时间
-                u8      en;                                         //使能 1-on/0-off                                    //device 的控制数值
-            }_timer4[12];//5位
-            u8      d_state;                                    //device 的状态位
-            u8      d_value;                                    //device 的控制数值
-        }_time4_ctl;
-    }_storage[PORT_SZ];
+        type_timmer_timmer _time4_ctl;
+    }_storage[DEVICE_PORT_SZ];
 
     struct hvac
     {
@@ -127,15 +143,7 @@ struct device_Timer4
         u8      hvacMode;            //1-conventional 模式 2-HEAT PUM 模式 O 模式 3-HEAT PUM 模式 B 模式
     }_hvac;
 
-    struct recycle
-    {
-        u16     startAt;                                // 开启时间点 8:00 8*60=480
-        u16     duration;                               //持续时间 秒
-        u16     pauseTime;                              //停止时间 秒
-#if (HUB_SELECT == HUB_IRRIGSTION)//环控版本的recycle times, 为跨天无限循环
-        u8      times;                                  //次数 timer 时 startAt 为第一次开始时间，次数为 0
-#endif
-    }_recycle;
+    type_timmer_recycle _recycle;
 };
 
 struct timer12
@@ -155,28 +163,10 @@ struct timer12
     u8              save_state;                             //是否已经存储
     u8              storage_size;                           //寄存器数量
     u8              mode;                                   // 模式 1-By Schedule 2-By Recycle
-    union time_port
-    {
-            struct time12_manage{
-                struct timer12_port{
-                    u16     on_at;                                      //开始的时间
-                    u16     duration;                                   //持续时间
-                    u8      en;                                         //使能 1-on/0-off
-                }_timer12[12];
-                u8      d_state;                                    //device 的状态位
-                u8      d_value;                                    //device 的控制数值
-            }_time12_ctl;
 
-    }_port[12];
-};
+    type_timmer_timmer _time12_ctl[TIMER12_PORT_MAX];
 
-struct dev_extend
-{
-    u8                  dev_time_type;
-    union dev_extend_u{
-        device_time4_t      device_ex;
-        time12_t            time12;
-    }_de_ti;
+    type_timmer_recycle _recycle;
 };
 
 struct line{
@@ -188,6 +178,8 @@ struct line{
     u8              d_state;                                //device 的状态位
     u8              d_value;                                //device 的控制数值
 };
+
+
 
 enum{
     HVAC_NULL,
@@ -211,6 +203,8 @@ enum{
 enum{
     DEVICE_TYPE = 0x01,
     SENSOR_TYPE = 0x02,
+    TIMER4_TYPE,
+    TIMER12_TYPE,
 };
 
 enum
@@ -246,10 +240,11 @@ struct monitor
     struct allocate     allocateStr;
     u8                  sensor_size;
     u8                  device_size;
+    u8                  timer12_size;
     u8                  line_size;
     sensor_t            sensor[SENSOR_MAX];
     device_time4_t      device[DEVICE_TIME4_MAX];
-    dev_extend_t        _dev_time12_ex[TIME12_MAX];
+    timer12_t           time12[TIME12_MAX];
     line_t              line[LINE_MAX];
     u16                 crc;
 };
@@ -275,8 +270,8 @@ struct monitor
 #define     HEAT_TYPE       0x42
 #define     HUMI_TYPE       0x43
 #define     DEHUMI_TYPE     0x44
-#define     COOL_TYPE       0x45  //Justin debug
-#define     TIMER_TYPE      0x4f  //Justin debug
+#define     COOL_TYPE       0x4f//0x45  //Justin debug 仅仅测试
+#define     TIMER_TYPE      0x45//0x4f  //Justin debug 仅仅测试
 #define     HVAC_6_TYPE     0x61
 #define     AC_4_TYPE       0x50    //如果注册检测到该类型的话需要再次询问看看每个端口的作用(Justin debug 考虑一下如果有端口的功能改变之后需要去询问，否则有问题)
 #define     AC_12_TYPE      0x80
