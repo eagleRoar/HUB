@@ -24,6 +24,7 @@
 
 #define     STAGE_LIST_MAX                  10//最多10个阶段
 #define     RECIPE_LIST_MAX                 10//最多10个配方
+#define     TANK_LIST_MAX                   9
 
 typedef     struct proTempSet               proTempSet_t;
 typedef     struct proCo2Set                proCo2Set_t;
@@ -38,6 +39,8 @@ typedef     struct keyAndVauleChar16        type_kv_c16;
 typedef     struct stage                    stage_t;
 typedef     struct recipe                   recipe_t;
 typedef     struct sys_recipe               sys_recipe_t;
+typedef     struct tank                     tank_t;
+typedef     struct sys_tank                 sys_tank_t;
 
 struct keyAndVauleU8{
     char    name[KEYVALUE_NAME_SIZE];
@@ -69,6 +72,7 @@ struct cloudCmd{
     type_kv_u16     delete_id;                  //删除设备id
     u8              recv_flag;                  //命令接收标志 处理完之后要置为OFF
     u8              recipe_id;                  //添加recipe id
+    u8              tank_no;
 };
 
 //cmd : getTempSetting
@@ -171,6 +175,24 @@ struct sys_recipe{
     u8 allot_add[REC_ALLOT_ADDR];
 };
 
+//Justin debug 这是灌溉版本的
+struct tank{
+    u8 tankNo;                  //桶编号 1-9
+    u8 autoFillValveId;         //自动补水阀 ID ,0 为未指定
+    u8 autoFillHeight;          //低水位补水高度,单位 cm
+    u8 autoFillFulfilHeight;    //补满高度,单位 cm
+    u8 highEcProtection;        //EC 高停止值
+    u8 lowPhProtection;         //PH 低停止值
+    u8 highPhProtection;        //PH 高停止值
+};
+
+//桶
+struct sys_tank{
+    u16         crc;
+    u8          tank_size;
+    tank_t      tank[TANK_LIST_MAX];
+};
+
 /****************************     灌溉部分的内容*****/
 
 struct sysSet{
@@ -249,6 +271,11 @@ void CmdSetDeadBand(char *, cloudcmd_t *);
 void CmdDeleteDevice(char *, cloudcmd_t *);
 void CmdGetSchedule(char *, cloudcmd_t *);
 void CmdSetSchedule(char *, cloudcmd_t *);
+void CmdSetPortSet(char *, cloudcmd_t *);
+void CmdAddRecipe(char *, cloudcmd_t *);
+void CmdSetRecipe(char *, cloudcmd_t *);
+void CmdSetTank(char *, cloudcmd_t *);
+void CmdGetHubState(char *, cloudcmd_t *);
 char *ReplySetSchedule(char *, cloudcmd_t);
 //char *ReplySetTempValue(char *);
 char *ReplyGetTempValue(char *);
@@ -266,5 +293,8 @@ char *ReplyGetDeadBand(char *, cloudcmd_t);
 char *ReplySetDeadBand(char *, cloudcmd_t);
 char *ReplyDeleteDevice(char *, cloudcmd_t);
 char *ReplyGetSchedule(char *, cloudcmd_t);
-
+char *ReplySetPortSet(char *, cloudcmd_t);
+char *ReplyAddRecipe(char *, cloudcmd_t);
+char *ReplySetRecipe(char *, cloudcmd_t);
+char *ReplySetTank(char *, cloudcmd_t);
 #endif /* APPLICATIONS_CLOUDPROTOCOL_CLOUDPROTOCOLBUSINESS_H_ */

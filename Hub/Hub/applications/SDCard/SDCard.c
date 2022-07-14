@@ -39,14 +39,11 @@ int SDCardTaskInit(void)
 void sd_dfs_event_entry(void* parameter)
 {
     rt_device_t             dev;
-                u16         m_crc               = 0;
     static      u8          Timer1sTouch        = OFF;
     static      u16         time1S              = 0;
     static      u8          sensor_size         = 0;
     static      u8          device_size         = 0;
     static      u8          timer12_size        = 0;
-    static      u16         m_crc_pre           = 0;
-
     static      u16         set_crc             = 0;
 
     rt_memset(&sdCard, 0, sizeof(struct sdCardState));
@@ -96,6 +93,8 @@ void sd_dfs_event_entry(void* parameter)
                                 initSysRecipe();
                                 LOG_E("TackRecipeFromSD err");
                             }
+
+                            initHubinfo();//Justin debug 仅仅测试
                         }
                         else //挂载失败
                         {

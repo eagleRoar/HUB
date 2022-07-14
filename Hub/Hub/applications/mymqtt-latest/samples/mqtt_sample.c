@@ -75,6 +75,8 @@ int mqtt_start(void)
     /* init condata param by using MQTTPacket_connectData_initializer */
     MQTTPacket_connectData condata = MQTTPacket_connectData_initializer;
     static char cid[20] = { 0 };
+    static char name[20];
+
 
     if (is_started)
     {
@@ -87,7 +89,8 @@ int mqtt_start(void)
         client.uri = MQTT_URI;
 
         /* generate the random client ID */
-        rt_snprintf(cid, sizeof(cid), "rtthread%d", rt_tick_get());
+//        rt_snprintf(cid, sizeof(cid), "rtthread%d", rt_tick_get());
+        GetSnName(cid);
         /* config connect param */
         memcpy(&client.condata, &condata, sizeof(condata));
         client.condata.clientID.cstring = cid;
@@ -100,7 +103,11 @@ int mqtt_start(void)
         client.condata.willFlag = 1;
         client.condata.will.qos = 1;
         client.condata.will.retained = 0;
-        client.condata.will.topicName.cstring = MQTT_PUBTOPIC;
+        rt_memset(name, ' ', 20);
+        GetSnName(name);
+        strcpy(name + 11, "/reply");
+        client.condata.will.topicName.cstring = name;//MQTT_PUBTOPIC;
+        LOG_I("----------------pub = %s",name);
         client.condata.will.message.cstring = MQTT_WILLMSG;
 
         /* malloc buffer. */
@@ -119,7 +126,11 @@ int mqtt_start(void)
         client.offline_callback = mqtt_offline_callback;
 
         /* set subscribe table and event callback */
-        client.message_handlers[0].topicFilter = rt_strdup(MQTT_SUBTOPIC);
+        rt_memset(name, ' ', 20);
+        GetSnName(name);
+        strcpy(name + 11, "/ctr");
+        client.message_handlers[0].topicFilter = rt_strdup(/*MQTT_SUBTOPIC*/name);
+        LOG_I("----------------sub = %s",name);
         client.message_handlers[0].callback = mqtt_sub_callback;
         client.message_handlers[0].qos = QOS1;
 
@@ -163,6 +174,8 @@ static int mqtt_stop(int argc, char **argv)
 
 static int mqtt_publish(int argc, char **argv)
 {
+    char name[20];
+
     if (is_started == 0)
     {
         LOG_E("mqtt client is not connected.");
@@ -171,7 +184,10 @@ static int mqtt_publish(int argc, char **argv)
 
     if (argc == 2)
     {
-        paho_mqtt_publish(&client, QOS1, MQTT_PUBTOPIC, argv[1], strlen(argv[1]));
+        rt_memset(name, ' ', 20);
+        GetSnName(name);
+        strcpy(name + 11, "/reply");
+        paho_mqtt_publish(&client, QOS1, /*MQTT_PUBTOPIC*/name, argv[1], strlen(argv[1]));
     }
     else if (argc == 3)
     {

@@ -26,4 +26,6 @@ device_time4_t *GetDeviceByAddr(type_monitor_t *, u8);
 timer12_t *GetTimerByAddr(type_monitor_t *, u8 );
 u8 FindModuleByAddr(type_monitor_t *, u8 );
 void initModuleConState(type_monitor_t *);
+void InsertTankToTable(sys_tank_t *, tank_t);
+tank_t *GetTankByNo(sys_tank_t *, u8);
 #endif /* APPLICATIONS_INFORMATIONMANAGE_MODULE_MODULE_H_ */

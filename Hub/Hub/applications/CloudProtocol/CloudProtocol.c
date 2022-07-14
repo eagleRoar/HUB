@@ -14,27 +14,59 @@
 #include "module.h"
 #include "cJSON.h"
 #include "mqtt_client.h"
+#include<math.h>
 
 //cloudcmd_t      cloudCmd;
 sys_set_t       sys_set;
 type_sys_time   sys_time;
+sys_tank_t      sys_tank;
+hub_t           hub_info;
 
 u8 dayOrNight = 1;//Justin debug 默认白天 仅仅测试
+
+sys_tank_t *GetSysTank(void)
+{
+    return &sys_tank;
+}
 
 sys_set_t *GetSysSet(void)
 {
     return &sys_set;
 }
 
+void initHubinfo(void)
+{
+    char name[11];
+    strcpy(hub_info.name,GetSnName(name));
+    hub_info.nameSeq = 0;
+}
+
+hub_t *GetHub(void)
+{
+    return &hub_info;
+}
+
 char *GetSnName(char *name)
 {
-    char temp[8];
+    u8 index = 0;
+    char temp[16];
     u32  id;
 
     rt_memcpy(name, HUB_NAME, 3);
     ReadUniqueId(&id);
-    itoa(id, temp, 16);
-    rt_memcpy(name+3, temp, 8);
+    for(index = 1; index <= 8; index++)
+    {
+        if((id / pow(16, index)) < 16)
+        {
+            break;
+        }
+    }
+    rt_memset(temp, '0', 16);
+    if(index < 8)
+    {
+        itoa(id, &temp[8 - (index+1)], 16);
+    }
+    strcpy(&name[3], temp);
 
     return name;
 }
@@ -81,6 +113,7 @@ void printCloud(cloudcmd_t cmd)
     LOG_D(" %s",cmd.delete_id.name);
 }
 
+//Justin debug 仅仅测试 修改默认值 比较合理的数据
 void initCloudProtocol(void)
 {
     char name[16];
@@ -183,6 +216,7 @@ void setCloudCmd(char *cmd, u8 flag)
  */
 void ReplyDataToCloud(mqtt_client *client)
 {
+    char name[20];
     char *str = RT_NULL;
     if(ON == sys_set.cloudCmd.recv_flag)
     {
@@ -262,10 +296,25 @@ void ReplyDataToCloud(mqtt_client *client)
         {
             str = ReplySetRecipe(CMD_SET_RECIPE_SET, sys_set.cloudCmd);
         }
+        else if(0 == rt_memcmp(CMD_SET_TANK_INFO, sys_set.cloudCmd.cmd, sizeof(CMD_SET_TANK_INFO)))//增加配方
+        {
+            str = ReplySetTank(CMD_SET_TANK_INFO, sys_set.cloudCmd);
+        }
+        else if(0 == rt_memcmp(CMD_GET_HUB_STATE, sys_set.cloudCmd.cmd, sizeof(CMD_GET_HUB_STATE)))//获取hub state信息
+        {
+            str = ReplyGetHubState(CMD_GET_HUB_STATE, sys_set.cloudCmd);
+        }
+        else if(0 == rt_memcmp(CMD_SET_HUB_NAME, sys_set.cloudCmd.cmd, sizeof(CMD_SET_HUB_NAME)))//获取hub state信息
+        {
+            str = ReplySetHubName(CMD_SET_HUB_NAME, sys_set.cloudCmd);
+        }
 
         if(RT_NULL != str)
         {
-            paho_mqtt_publish(client, QOS1, MQTT_PUBTOPIC, str, strlen(str));
+            rt_memset(name, ' ', 20);
+            GetSnName(name);
+            strcpy(name + 11, "/reply");
+            paho_mqtt_publish(client, QOS1, /*MQTT_PUBTOPIC*/name, str, strlen(str));
 
             //获取数据完之后需要free否知数据泄露
             cJSON_free(str);
@@ -397,6 +446,21 @@ void analyzeCloudData(char *data)
             else if(0 == rt_memcmp(CMD_SET_RECIPE_SET, cmd->valuestring, strlen(CMD_SET_RECIPE_SET)))
             {
                 CmdSetRecipe(data, &sys_set.cloudCmd);
+                setCloudCmd(cmd->valuestring, ON);
+            }
+            else if(0 == rt_memcmp(CMD_SET_TANK_INFO, cmd->valuestring, strlen(CMD_SET_TANK_INFO)))
+            {
+                CmdSetTank(data, &sys_set.cloudCmd);
+                setCloudCmd(cmd->valuestring, ON);
+            }
+            else if(0 == rt_memcmp(CMD_GET_HUB_STATE, cmd->valuestring, strlen(CMD_GET_HUB_STATE)))
+            {
+                CmdGetHubState(data, &sys_set.cloudCmd);
+                setCloudCmd(cmd->valuestring, ON);
+            }
+            else if(0 == rt_memcmp(CMD_SET_HUB_NAME, cmd->valuestring, strlen(CMD_SET_HUB_NAME)))
+            {
+                CmdSetHubName(data, &sys_set.cloudCmd);
                 setCloudCmd(cmd->valuestring, ON);
             }
 

@@ -63,8 +63,8 @@ extern "C" {
 #define MQTT_URI                "tcp://192.168.0.222:1883"//"tcp://192.168.0.29:61613"//
 #define MQTT_USERNAME           "hydro"//"admin"//
 #define MQTT_PASSWORD           "hydro"//"password"
-#define MQTT_SUBTOPIC           "/mqtt/test"
-#define MQTT_PUBTOPIC           "/mqtt/test1"
+//#define MQTT_SUBTOPIC           "SN/ctr"
+//#define MQTT_PUBTOPIC           "SN/reply"
 #define MQTT_WILLMSG            "Goodbye!"
 
 /*********************************************************************************************************

@@ -25,5 +25,6 @@ void co2Program(type_monitor_t *);
 void humiProgram(type_monitor_t *);
 void analyzeCloudData(char *);
 void ReplyDataToCloud(mqtt_client *);
+hub_t *GetHub(void);
 
 #endif /* APPLICATIONS_CLOUDPROTOCOL_CLOUDPROTOCOL_H_ */

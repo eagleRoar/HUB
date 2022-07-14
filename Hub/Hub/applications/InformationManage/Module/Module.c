@@ -258,4 +258,39 @@ timer12_t *GetTimerByAddr(type_monitor_t *monitor, u8 addr)
     return RT_NULL;
 }
 
+void InsertTankToTable(sys_tank_t *sys_tank, tank_t tank)
+{
+    //tank_no 是从1-9
+    if(sys_tank->tank_size <= TANK_LIST_MAX)
+    {
+        if(tank.tankNo <= sys_tank->tank_size)
+        {
+            rt_memcpy((u8 *)&sys_tank->tank[tank.tankNo - 1], (u8 *)&tank, sizeof(tank_t));
+        }
+        else
+        {
+            if(tank.tankNo <= TANK_LIST_MAX)
+            {
+                sys_tank->tank_size = tank.tankNo;
+                rt_memcpy((u8 *)&sys_tank->tank[tank.tankNo - 1], (u8 *)&tank, sizeof(tank_t));
+            }
+        }
+    }
+}
+
+tank_t *GetTankByNo(sys_tank_t *sys_tank, u8 no)
+{
+    u8      index       = 0;
+
+    for(index = 0; index < sys_tank->tank_size; index++)
+    {
+        if(no == sys_tank->tank[index].tankNo)
+        {
+            return &sys_tank->tank[index];
+        }
+    }
+
+    return RT_NULL;
+}
+
 #endif /* APPLICATIONS_INFORMATIONMANAGE_MODULE_MODULE_C_ */

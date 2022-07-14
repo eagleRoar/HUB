@@ -22,6 +22,7 @@
 
 typedef     struct packageEth               type_package_t;
 
+typedef     struct hub                      hub_t;
 typedef     struct monitor                  type_monitor_t;
 typedef     struct sensor                   sensor_t;
 typedef     struct device_Timer4            device_time4_t;
@@ -33,9 +34,9 @@ typedef     struct timer_timer              type_timmer_timmer;
 typedef     struct recycle                  type_timmer_recycle;
 typedef     struct buttonInfo               type_button_t;
 
-#define     SENSOR_MAX                      8//16//Justin debug 仅仅测试
-#define     DEVICE_TIME12_MAX               8//16//Justin debug 仅仅测试
-#define     TIME12_MAX                      2//4//Justin debug 仅仅测试
+#define     SENSOR_MAX                      16//Justin debug 仅仅测试
+#define     DEVICE_TIME12_MAX               16//Justin debug 仅仅测试
+#define     TIME12_MAX                      4//Justin debug 仅仅测试
 #define     DEVICE_PORT_SZ                  4
 #define     DEVICE_TIME4_MAX                DEVICE_TIME12_MAX - TIME12_MAX
 #define     LINE_MAX                        2
@@ -43,6 +44,11 @@ typedef     struct buttonInfo               type_button_t;
 #define     TIMER_GROUP                     12
 #define     TIMER12_PORT_MAX                12
 
+struct hub{
+    u16 crc;
+    char name[MODULE_NAMESZ];
+    u8 nameSeq;   //名称序号 仅仅提供给主机使用
+};
 
 struct system_time
 {
@@ -264,6 +270,7 @@ struct monitor
 #define     NAME_ENV                "hub_envi"                   //环境控制从机hub名称
 #define     NAME_IRR                "hub_irri"                   //灌溉控制从机hub名称
 
+#define     HUB_TYPE        0xFF
 #define     LINE_TYPE       0x22        //灯光类
 #define     BHS_TYPE        0x03
 #define     CO2_TYPE        0x41

@@ -114,6 +114,9 @@ char *GetModelByType(u8 type, char *name, u8 len)
 {
     switch (type)
     {
+        case HUB_TYPE:
+            rt_memcpy(name, "BBH-E", len);
+            break;
         case BHS_TYPE:
             rt_memcpy(name, "BLS-4", len);
         break;
