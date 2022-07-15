@@ -37,6 +37,7 @@ typedef     struct buttonInfo               type_button_t;
 #define     SENSOR_MAX                      16
 #define     DEVICE_TIME12_MAX               16
 #define     TIME12_MAX                      4
+#define     LINE_MAX                        2
 #define     DEVICE_PORT_SZ                  4
 #define     DEVICE_TIME4_MAX                16
 #define     LINE_MAX                        2
@@ -177,6 +178,7 @@ struct timer12
 
 struct line{
     u16             crc;
+    u8              type;                                   //产品类型号
     u32             uuid;
     char            name[MODULE_NAMESZ];                    //产品名称
     u8              addr;                                   //hub管控的地址
@@ -211,6 +213,7 @@ enum{
     SENSOR_TYPE = 0x02,
     TIMER4_TYPE,
     TIMER12_TYPE,
+    LINE1OR2_TYPE
 };
 
 enum

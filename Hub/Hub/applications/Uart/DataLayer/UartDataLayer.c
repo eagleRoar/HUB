@@ -256,6 +256,16 @@ rt_err_t setDeviceDefault(device_time4_t *module)
     return ret;
 }
 
+rt_err_t setLineDefault(line_t *line)
+{
+    strcpy(line->name, "line");
+    line->ctrl_addr = 0x0060;
+    line->d_state = 0;
+    line->d_value = 0;
+
+    return RT_EOK;
+}
+
 rt_err_t setTimer12Default(timer12_t *module)
 {
     rt_err_t ret = RT_EOK;
@@ -280,7 +290,7 @@ u8 getAllocateAddress(type_monitor_t *monitor)
     for(i = 2; i < ALLOCATE_ADDRESS_SIZE; i++)
     {
         if((monitor->allocateStr.address[i] != i) &&
-            (i != 0xFA) )                               //0xFA 是注册的代码
+            (i != 0xFA) && (i != 0xFE) )                               //0xFA 是注册的代码 0xFE是PHEC通用
         {
             monitor->allocateStr.address[i] = i;
             return i;
@@ -308,6 +318,9 @@ u8 getSOrD(u8 type)
         case TIMER_TYPE:
             ret = TIMER12_TYPE;
             break;
+        case LINE_TYPE:
+            ret = LINE1OR2_TYPE;
+            break;
         default:
             break;
     }
@@ -323,6 +336,7 @@ void AnlyzeDeviceRegister(type_monitor_t *monitor, rt_device_t serial, u8 *data,
     sensor_t            sensor;
     device_time4_t      device;
     timer12_t           timer;
+    line_t              line;
 
     rt_memset(&sensor, 0, sizeof(sensor_t));
     rt_memset(&device, 0, sizeof(device_time4_t));
@@ -334,6 +348,8 @@ void AnlyzeDeviceRegister(type_monitor_t *monitor, rt_device_t serial, u8 *data,
     device.uuid = (data[9] << 24) | (data[10] << 16) | (data[11] << 8) | data[12];
     timer.type = data[8];
     timer.uuid = (data[9] << 24) | (data[10] << 16) | (data[11] << 8) | data[12];
+    line.type = data[8];
+    line.uuid = (data[9] << 24) | (data[10] << 16) | (data[11] << 8) | data[12];
 
     s_or_d = getSOrD(data[8]);
 
@@ -381,7 +397,7 @@ void AnlyzeDeviceRegister(type_monitor_t *monitor, rt_device_t serial, u8 *data,
     }
     else if(TIMER12_TYPE == s_or_d)
     {
-        if(NO == FindTimer(monitor, timer, &no))
+        if(NO == FindLine(monitor, timer, &no))
         {
             timer.addr = getAllocateAddress(monitor);
             if(RT_EOK == setTimer12Default(&timer))
@@ -400,6 +416,22 @@ void AnlyzeDeviceRegister(type_monitor_t *monitor, rt_device_t serial, u8 *data,
 
         timer12Answer(monitor, serial, timer.uuid);
     }
+    else if(LINE1OR2_TYPE == s_or_d)
+    {
+        if(NO == FindLine(monitor, line, &no))
+        {
+            line.addr = getAllocateAddress(monitor);
+            setLineDefault(&line);
+            InsertLineToTable(monitor, line, no);
+        }
+        else
+        {
+            LOG_D("line have exist");
+        }
+
+        lineAnswer(monitor, serial, line.uuid);
+    }
+
 }
 
 void senRegisterAnswer(type_monitor_t *monitor, rt_device_t serial, u32 uuid)
@@ -509,6 +541,43 @@ void timer12Answer(type_monitor_t *monitor, rt_device_t serial, u32 uuid)
 
     rt_device_write(serial, 0, buffer, 15);
 }
+
+void lineAnswer(type_monitor_t *monitor, rt_device_t serial, u32 uuid)
+{
+    u16 i = 0;
+    u8 buffer[15];
+    u16 crc16Result = 0x0000;
+    u32 id;
+
+    buffer[0] = REGISTER_CODE;
+    buffer[1] = 0x80;
+    for(i = 0; i < monitor->line_size; i++)
+    {
+        if(uuid == monitor->line[i].uuid)
+        {
+            buffer[2] = monitor->line[i].uuid >> 24;
+            buffer[3] = monitor->line[i].uuid >> 16;
+            buffer[4] = monitor->line[i].uuid >> 8;
+            buffer[5] = monitor->line[i].uuid;
+            buffer[6] = 0x06;
+            buffer[7] = monitor->line[i].addr;
+            buffer[8] = monitor->line[i].type;
+        }
+    }
+
+    ReadUniqueId(&id);
+    buffer[9] = id >> 24;
+    buffer[10] = id >> 16;
+    buffer[11] = id >> 8;
+    buffer[12] = id;
+
+    crc16Result = usModbusRTU_CRC(buffer, 13);
+    buffer[13] = crc16Result;                         //CRC16低位
+    buffer[14] = (crc16Result>>8);                    //CRC16高位
+
+    rt_device_write(serial, 0, buffer, 15);
+}
+
 
 /* 接收sensor 寄存器 */
 void AnlyzeStorage(type_monitor_t *monitor, u8 addr, u8 read, u8 *data, u8 length)

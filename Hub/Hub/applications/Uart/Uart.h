@@ -14,6 +14,7 @@
 
 #include "InformationMonitor.h"
 
+#define             DEVICE_UART1            "uart1"
 #define             DEVICE_UART2            "uart2"
 #define             DEVICE_UART3            "uart3"
 

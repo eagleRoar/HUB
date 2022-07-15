@@ -80,6 +80,19 @@ void InsertTimer12ToTable(type_monitor_t *monitor, timer12_t module, u8 no)
     }
 }
 
+void InsertLineToTable(type_monitor_t *monitor, line_t module, u8 no)
+{
+    if(no < LINE_MAX)
+    {
+        if(no >= monitor->line_size)
+        {
+            monitor->line_size++;
+        }
+        rt_memcpy((u8 *)&monitor->line[no], (u8 *)&module, sizeof(line_t));
+        printLine(module);
+    }
+}
+
 u8 FindSensor(type_monitor_t *monitor, sensor_t module, u8 *no)
 {
     u8          index       = 0;
@@ -134,6 +147,22 @@ u8 FindTimer(type_monitor_t *monitor, timer12_t module, u8 *no)
     return ret;
 }
 
+u8 FindLine(type_monitor_t *monitor, line_t module, u8 *no)
+{
+    u8          index       = 0;
+    u8          ret         = NO;
+
+    *no = monitor->line_size;
+    for (index = 0; index < monitor->line_size; index++)
+    {
+        if (monitor->line[index].uuid == module.uuid)
+        {
+            *no = index;
+            ret = YES;
+        }
+    }
+    return ret;
+}
 
 u8 FindModuleByAddr(type_monitor_t *monitor, u8 addr)
 {

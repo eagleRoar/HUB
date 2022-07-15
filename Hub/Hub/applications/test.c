@@ -84,6 +84,15 @@ void printDevice(device_time4_t module)
     }
 }
 
+void printLine(line_t line)
+{
+    LOG_D("----------------------print new line-----------");
+    LOG_D("type = %x",line.type);
+    LOG_D("uuid = %x",line.uuid);
+    LOG_D("name = %s",line.name);
+    LOG_D("ctr addr = %x",line.ctrl_addr);
+}
+
 void printTimer12(timer12_t module)
 {
     int         index       = 0;
