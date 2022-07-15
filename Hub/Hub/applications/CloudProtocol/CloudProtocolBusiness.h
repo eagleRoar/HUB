@@ -14,6 +14,7 @@
 #include "Gpio.h"
 #include "CloudProtocol.h"
 #include "cJSON.h"
+#include "mqtt_client.h"
 
 #pragma pack(4)//因为cjson 不能使用1字节对齐
 
@@ -276,6 +277,9 @@ void CmdAddRecipe(char *, cloudcmd_t *);
 void CmdSetRecipe(char *, cloudcmd_t *);
 void CmdSetTank(char *, cloudcmd_t *);
 void CmdGetHubState(char *, cloudcmd_t *);
+void CmdSetHubName(char *data, cloudcmd_t *);
+char *SendHubReport(char *);
+char *SendHubReportWarn(char *);
 char *ReplySetSchedule(char *, cloudcmd_t);
 //char *ReplySetTempValue(char *);
 char *ReplyGetTempValue(char *);
@@ -297,4 +301,6 @@ char *ReplySetPortSet(char *, cloudcmd_t);
 char *ReplyAddRecipe(char *, cloudcmd_t);
 char *ReplySetRecipe(char *, cloudcmd_t);
 char *ReplySetTank(char *, cloudcmd_t);
+char *ReplyGetHubState(char *, cloudcmd_t);
+char *ReplySetHubName(char *, cloudcmd_t);
 #endif /* APPLICATIONS_CLOUDPROTOCOL_CLOUDPROTOCOLBUSINESS_H_ */

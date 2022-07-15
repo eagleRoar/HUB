@@ -36,6 +36,7 @@
 #include <sys/select.h>
 
 #include "mqtt_client.h"
+#include "Gpio.h"
 
 /*********************************************************************************************************
 **  ��������
@@ -1115,7 +1116,7 @@ __mqtt_start:
     rt_tick_t time_diff;
     fd_set readset;
     struct timeval timeout;
-    
+
     tick_now = rt_tick_get();
     time_diff = ((tick_now - c->tick_ping) / RT_TICK_PER_SECOND);
     if(time_diff >= c->keepalive_interval) {
@@ -1161,7 +1162,7 @@ __mqtt_start:
     if(c->is_quit) {
       goto __mqtt_disconnect_exit;
     }
-  } /* while (1) */
+  }
   
 __mqtt_disconnect:
   mqtt_disconnect(c);

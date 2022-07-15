@@ -142,10 +142,15 @@ void initCloudProtocol(void)
     rt_memcpy(sys_set.tempSet.sn.name, "sn", KEYVALUE_NAME_SIZE);
     rt_memcpy(sys_set.tempSet.sn.value, GetSnName(name), 16);
     rt_memcpy(sys_set.tempSet.dayCoolingTarget.name, "dayCoolingTarget", KEYVALUE_NAME_SIZE);
+    sys_set.tempSet.dayCoolingTarget.value = 320;
     rt_memcpy(sys_set.tempSet.dayHeatingTarget.name, "dayHeatingTarget", KEYVALUE_NAME_SIZE);
+    sys_set.tempSet.dayHeatingTarget.value = 170;
     rt_memcpy(sys_set.tempSet.nightCoolingTarget.name, "nightCoolingTarget", KEYVALUE_NAME_SIZE);
+    sys_set.tempSet.nightCoolingTarget.value = 320;
     rt_memcpy(sys_set.tempSet.nightHeatingTarget.name, "nightHeatingTarget", KEYVALUE_NAME_SIZE);
+    sys_set.tempSet.nightHeatingTarget.value = 170;
     rt_memcpy(sys_set.tempSet.coolingDehumidifyLock.name, "coolingDehumidifyLock", KEYVALUE_NAME_SIZE);
+    sys_set.tempSet.coolingDehumidifyLock.value = 0;
     rt_memcpy(sys_set.tempSet.tempDeadband.name, "tempDeadband", KEYVALUE_NAME_SIZE);
     sys_set.tempSet.tempDeadband.value = 10;
     rt_memcpy(sys_set.tempSet.timestamp.name, "timestamp", KEYVALUE_NAME_SIZE);
@@ -155,10 +160,15 @@ void initCloudProtocol(void)
     rt_memcpy(sys_set.co2Set.sn.name, "sn", KEYVALUE_NAME_SIZE);
     rt_memcpy(sys_set.co2Set.sn.value, GetSnName(name), 16);
     rt_memcpy(sys_set.co2Set.dayCo2Target.name, "dayCo2Target", KEYVALUE_NAME_SIZE);
+    sys_set.co2Set.dayCo2Target.value = 1000;
     rt_memcpy(sys_set.co2Set.nightCo2Target.name, "nightCo2Target", KEYVALUE_NAME_SIZE);
+    sys_set.co2Set.nightCo2Target.value = 1000;
     rt_memcpy(sys_set.co2Set.isFuzzyLogic.name, "isFuzzyLogic", KEYVALUE_NAME_SIZE);
+    sys_set.co2Set.isFuzzyLogic.value = 0;
     rt_memcpy(sys_set.co2Set.coolingLock.name, "coolingLock", KEYVALUE_NAME_SIZE);
+    sys_set.co2Set.coolingLock.value = 0;
     rt_memcpy(sys_set.co2Set.dehumidifyLock.name, "dehumidifyLock", KEYVALUE_NAME_SIZE);
+    sys_set.co2Set.dehumidifyLock.value = 0;
     rt_memcpy(sys_set.co2Set.co2Deadband.name, "co2Deadband", KEYVALUE_NAME_SIZE);
     sys_set.co2Set.co2Deadband.value = 50;
     rt_memcpy(sys_set.co2Set.timestamp.name, "timestamp", KEYVALUE_NAME_SIZE);
@@ -168,9 +178,13 @@ void initCloudProtocol(void)
     rt_memcpy(sys_set.humiSet.sn.name, "sn", KEYVALUE_NAME_SIZE);
     rt_memcpy(sys_set.humiSet.sn.value, GetSnName(name), 16);
     rt_memcpy(sys_set.humiSet.dayHumiTarget.name, "dayHumiTarget", KEYVALUE_NAME_SIZE);
+    sys_set.humiSet.dayHumiTarget.value = 600;
     rt_memcpy(sys_set.humiSet.dayDehumiTarget.name, "dayDehumiTarget", KEYVALUE_NAME_SIZE);
+    sys_set.humiSet.dayDehumiTarget.value = 800;
     rt_memcpy(sys_set.humiSet.nightHumiTarget.name, "nightHumiTarget", KEYVALUE_NAME_SIZE);
+    sys_set.humiSet.nightHumiTarget.value = 600;
     rt_memcpy(sys_set.humiSet.nightDehumiTarget.name, "nightDehumiTarget", KEYVALUE_NAME_SIZE);
+    sys_set.humiSet.nightDehumiTarget.value = 800;
     rt_memcpy(sys_set.humiSet.humidDeadband.name, "humidDeadband", KEYVALUE_NAME_SIZE);
     sys_set.humiSet.humidDeadband.value = 30;
     rt_memcpy(sys_set.humiSet.timestamp.name, "timestamp", KEYVALUE_NAME_SIZE);
@@ -181,17 +195,24 @@ void initCloudProtocol(void)
     rt_memcpy(sys_set.line1Set.lightsType.name, "lightsType", KEYVALUE_NAME_SIZE);
     rt_memcpy(sys_set.line1Set.brightMode.name, "brightMode", KEYVALUE_NAME_SIZE);
     rt_memcpy(sys_set.line1Set.byPower.name, "byPower", KEYVALUE_NAME_SIZE);
+    sys_set.line1Set.byPower.value = 80;
     rt_memcpy(sys_set.line1Set.byAutoDimming.name, "byAutoDimming", KEYVALUE_NAME_SIZE);
+    sys_set.line1Set.byAutoDimming.value = 1200;
     rt_memcpy(sys_set.line1Set.mode.name, "mode", KEYVALUE_NAME_SIZE);
+    sys_set.line1Set.mode.value = 1;
     rt_memcpy(sys_set.line1Set.lightOn.name, "lightOn", KEYVALUE_NAME_SIZE);
     rt_memcpy(sys_set.line1Set.lightOff.name, "lightOff", KEYVALUE_NAME_SIZE);
     rt_memcpy(sys_set.line1Set.firstCycleTime.name, "firstCycleTime", KEYVALUE_NAME_SIZE);
     rt_memcpy(sys_set.line1Set.duration.name, "duration", KEYVALUE_NAME_SIZE);
     rt_memcpy(sys_set.line1Set.pauseTime.name, "pauseTime", KEYVALUE_NAME_SIZE);
     rt_memcpy(sys_set.line1Set.hidDelay.name, "hidDelay", KEYVALUE_NAME_SIZE);
+    sys_set.line1Set.hidDelay.value = 3;// HID 延时时间 3-180min HID 模式才有
     rt_memcpy(sys_set.line1Set.tempStartDimming.name, "tempStartDimming", KEYVALUE_NAME_SIZE);
+    sys_set.line1Set.tempStartDimming.value = 30;// 灯光自动调光温度点 0℃-60.0℃/32℉-140℉
     rt_memcpy(sys_set.line1Set.tempOffDimming.name, "tempOffDimming", KEYVALUE_NAME_SIZE);
+    sys_set.line1Set.tempOffDimming.value = 30;// 灯光自动关闭温度点 0℃-60.0℃/32℉-140℉
     rt_memcpy(sys_set.line1Set.sunriseSunSet.name, "sunriseSunSet", KEYVALUE_NAME_SIZE);
+    sys_set.line1Set.sunriseSunSet.value = 10;// 0-180min/0 表示关闭状态 日升日落
     rt_memcpy(sys_set.line1Set.timestamp.name, "timestamp", KEYVALUE_NAME_SIZE);
 
     rt_memcpy(&sys_set.line2Set, &sys_set.line1Set, sizeof(proLine_t));
@@ -322,6 +343,33 @@ void ReplyDataToCloud(mqtt_client *client)
         }
 
         setCloudCmd(RT_NULL, OFF);
+    }
+}
+
+void SendDataToCloud(mqtt_client *client, char *cmd)
+{
+    char name[20];
+    char *str = RT_NULL;
+
+    if(0 == rt_memcmp(CMD_HUB_REPORT, cmd, sizeof(CMD_HUB_REPORT)))//主动上报实时值
+    {
+        str = SendHubReport(CMD_HUB_REPORT);
+    }
+    else if(0 == rt_memcmp(CMD_HUB_REPORT_WARN, cmd, sizeof(CMD_HUB_REPORT_WARN)))//主动上报报警
+    {
+        str = SendHubReportWarn(CMD_HUB_REPORT_WARN);
+    }
+
+    if(RT_NULL != str)
+    {
+        rt_memset(name, ' ', 20);
+        GetSnName(name);
+        strcpy(name + 11, "/reply");
+        paho_mqtt_publish(client, QOS1, name, str, strlen(str));
+
+        //获取数据完之后需要free否知数据泄露
+        cJSON_free(str);
+        str = RT_NULL;
     }
 }
 

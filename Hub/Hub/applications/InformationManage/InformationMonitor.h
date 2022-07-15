@@ -34,11 +34,11 @@ typedef     struct timer_timer              type_timmer_timmer;
 typedef     struct recycle                  type_timmer_recycle;
 typedef     struct buttonInfo               type_button_t;
 
-#define     SENSOR_MAX                      16//Justin debug 仅仅测试
-#define     DEVICE_TIME12_MAX               16//Justin debug 仅仅测试
-#define     TIME12_MAX                      4//Justin debug 仅仅测试
+#define     SENSOR_MAX                      16
+#define     DEVICE_TIME12_MAX               16
+#define     TIME12_MAX                      4
 #define     DEVICE_PORT_SZ                  4
-#define     DEVICE_TIME4_MAX                DEVICE_TIME12_MAX - TIME12_MAX
+#define     DEVICE_TIME4_MAX                16
 #define     LINE_MAX                        2
 #define     SENSOR_VALUE_MAX                4
 #define     TIMER_GROUP                     12
@@ -234,6 +234,12 @@ enum
     HEAT_RECV_OK,
 };
 
+enum{
+    MANUAL_NO_HAND = 0,//非手动
+    MANUAL_HAND_ON,//手动关
+    MANUAL_HAND_OFF//手动开
+};
+
 struct allocate
 {
     u8 address[ALLOCATE_ADDRESS_SIZE];
@@ -277,8 +283,8 @@ struct monitor
 #define     HEAT_TYPE       0x42
 #define     HUMI_TYPE       0x43
 #define     DEHUMI_TYPE     0x44
-#define     COOL_TYPE       0x4f//0x45  //Justin debug 仅仅测试
-#define     TIMER_TYPE      0x45//0x4f  //Justin debug 仅仅测试
+#define     COOL_TYPE       0x45
+#define     TIMER_TYPE      0x4f
 #define     HVAC_6_TYPE     0x61
 #define     AC_4_TYPE       0x50    //如果注册检测到该类型的话需要再次询问看看每个端口的作用(Justin debug 考虑一下如果有端口的功能改变之后需要去询问，否则有问题)
 #define     AC_12_TYPE      0x80

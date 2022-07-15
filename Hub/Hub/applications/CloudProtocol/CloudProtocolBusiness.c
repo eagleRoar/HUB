@@ -789,6 +789,91 @@ void CmdSetLine(char *data, proLine_t *line)
     }
 }
 
+char *SendHubReportWarn(char *cmd)
+{
+    char            *str        = RT_NULL;
+    char            name[11];
+    cJSON           *json       = cJSON_CreateObject();
+
+    if(RT_NULL != json)
+    {
+        cJSON_AddStringToObject(json, "cmd", cmd);
+        cJSON_AddStringToObject(json, "sn", GetSnName(name));
+
+        cJSON_AddNumberToObject(json, "type", 4);//Justin debug 仅仅测试
+        cJSON_AddNumberToObject(json, "warning", 5);//Justin debug 仅仅测试
+        cJSON_AddStringToObject(json, "name", "Co2");//Justin debug 仅仅测试
+        cJSON_AddNumberToObject(json, "value", 2000);//Justin debug 仅仅测试
+        cJSON_AddStringToObject(json, "ntpzone", "+8:00");//Justin debug 仅仅测试
+        cJSON_AddNumberToObject(json, "timestamp", getTimeStamp());
+
+        str = cJSON_PrintUnformatted(json);
+        cJSON_Delete(json);
+    }
+
+    return str;
+}
+
+char *SendHubReport(char *cmd)
+{
+    char            *str        = RT_NULL;
+    char            model[15];
+    char            name[11];
+    cJSON           *json       = cJSON_CreateObject();
+    cJSON           *list       = RT_NULL;
+
+    if(RT_NULL != json)
+    {
+        cJSON_AddStringToObject(json, "cmd", cmd);
+        cJSON_AddStringToObject(json, "sn", GetSnName(name));
+        cJSON_AddStringToObject(json, "model", GetModelByType(HUB_TYPE, model, 15));
+        cJSON_AddStringToObject(json, "name", GetHub()->name);
+        cJSON_AddNumberToObject(json, "nameSeq", GetHub()->nameSeq);
+
+        for(u8 index = 0; index < SENSOR_VALUE_MAX; index++)
+        {
+            if(F_S_CO2 == GetSensorByType(GetMonitor(), BHS_TYPE)->__stora[index].func)
+            {
+                cJSON_AddNumberToObject(json, "co2", GetSensorByType(GetMonitor(), BHS_TYPE)->__stora[index].value);
+            }
+            else if(F_S_TEMP == GetSensorByType(GetMonitor(), BHS_TYPE)->__stora[index].func)
+            {
+                cJSON_AddNumberToObject(json, "temp", GetSensorByType(GetMonitor(), BHS_TYPE)->__stora[index].value);
+            }
+            else if(F_S_HUMI == GetSensorByType(GetMonitor(), BHS_TYPE)->__stora[index].func)
+            {
+                cJSON_AddNumberToObject(json, "humid", GetSensorByType(GetMonitor(), BHS_TYPE)->__stora[index].value);
+            }
+        }
+
+        cJSON_AddNumberToObject(json, "co2Lock", GetSysSet()->co2Set.dehumidifyLock.value);
+        cJSON_AddNumberToObject(json, "tempLock", GetSysSet()->tempSet.coolingDehumidifyLock.value);
+        cJSON_AddNumberToObject(json, "humidLock", GetSysSet()->tempSet.coolingDehumidifyLock.value);
+        cJSON_AddNumberToObject(json, "ppfd", -9999);//Justin debug 该值没有
+        cJSON_AddNumberToObject(json, "vpd", 0);//Justin debug 该值没有
+        cJSON_AddNumberToObject(json, "dayNight", 0);//Justin debug
+        cJSON_AddNumberToObject(json, "maintain", 0);//Justin debug
+
+        list = cJSON_CreateObject();
+
+        if(RT_NULL != list)
+        {
+            cJSON_AddStringToObject(list, "name", "--");//Justin debug
+            cJSON_AddStringToObject(list, "week", "--");
+            cJSON_AddStringToObject(list, "day", "--");
+        }
+
+        cJSON_AddItemToObject(json, "calendar", list);
+        cJSON_AddStringToObject(json, "ntpzone", "+8:00");//Justin debug 仅仅测试
+        cJSON_AddNumberToObject(json, "timestamp", getTimeStamp());
+
+        str = cJSON_PrintUnformatted(json);
+        cJSON_Delete(json);
+    }
+
+    return str;
+}
+
 char *ReplyGetTempValue(char *cmd)
 {
     char *str = RT_NULL;
@@ -1190,6 +1275,7 @@ char *ReplyGetHubState(char *cmd, cloudcmd_t cloud)
         cJSON_AddNumberToObject(json, "humidLock", GetSysSet()->tempSet.coolingDehumidifyLock.value);
         cJSON_AddNumberToObject(json, "ppfd", -9999);//Justin debug 该值没有
         cJSON_AddNumberToObject(json, "vpd", 0);//Justin debug 该值没有
+        cJSON_AddNumberToObject(json, "dayNight", 0);//Justin debug
         cJSON_AddNumberToObject(json, "maintain", 0);//Justin debug
 
         list = cJSON_CreateObject();
@@ -1602,7 +1688,7 @@ char *ReplyGetDeviceList(char *cmd, type_kv_c16 msgid)
                     if(1 == module.storage_size)
                     {
                         cJSON_AddNumberToObject(device, "manual", module.manual);
-                        cJSON_AddNumberToObject(device, "manual_on_time", module.manual_on_time);
+//                        cJSON_AddNumberToObject(device, "manual_on_time", module.manual_on_time);
                         cJSON_AddNumberToObject(device, "workingStatus", module._storage[0]._port.d_state);
                         cJSON_AddNumberToObject(device, "color", module.color);
                     }
@@ -1621,7 +1707,7 @@ char *ReplyGetDeviceList(char *cmd, type_kv_c16 msgid)
                                     cJSON_AddStringToObject(port, "name", module._storage[storage]._port.name);
                                     cJSON_AddNumberToObject(port, "id", module._storage[storage]._port.addr);
                                     cJSON_AddNumberToObject(port, "manual", module._storage[storage]._port.manual);
-                                    cJSON_AddNumberToObject(port, "manual_on_time", module._storage[storage]._port.manual_on_time);
+//                                    cJSON_AddNumberToObject(port, "manual_on_time", module._storage[storage]._port.manual_on_time);
                                     cJSON_AddNumberToObject(port, "workingStatus", module._storage[storage]._port.d_state);
 //                                    cJSON_AddNumberToObject(port, "color", module._storage[storage]._port.color);
 

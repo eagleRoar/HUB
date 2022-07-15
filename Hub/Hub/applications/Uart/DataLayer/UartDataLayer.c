@@ -213,34 +213,34 @@ rt_err_t setDeviceDefault(device_time4_t *module)
     switch (module->type) {
 
         case CO2_TYPE:
-            setDeviceDefaultPara(module, "Co2", 0x0040, 0xFF, 0, S_CO2, module->type, 1);
+            setDeviceDefaultPara(module, "Co2", 0x0040, MANUAL_NO_HAND, 0, S_CO2, module->type, 1);
             addr = module->addr;
-            setDeviceDefaultStora(module, 0 ,"Co2", F_Co2_UP, module->type, addr , 0xFF, 0);
+            setDeviceDefaultStora(module, 0 ,"Co2", F_Co2_UP, module->type, addr , MANUAL_NO_HAND, 0);
             break;
         case HEAT_TYPE:
-            setDeviceDefaultPara(module, "Heat", 0x0040, 0xFF, 0, S_TEMP, module->type, 1);
+            setDeviceDefaultPara(module, "Heat", 0x0040, MANUAL_NO_HAND, 0, S_TEMP, module->type, 1);
             addr = module->addr;
-            setDeviceDefaultStora(module, 0 ,"Heat", F_HEAT, module->type, addr , 0xFF, 0);
+            setDeviceDefaultStora(module, 0 ,"Heat", F_HEAT, module->type, addr , MANUAL_NO_HAND, 0);
             break;
         case HUMI_TYPE:
-            setDeviceDefaultPara(module, "Humi", 0x0040, 0xFF, 0, S_HUMI, module->type, 1);
+            setDeviceDefaultPara(module, "Humi", 0x0040, MANUAL_NO_HAND, 0, S_HUMI, module->type, 1);
             addr = module->addr;
-            setDeviceDefaultStora(module, 0 , "Humi", F_HUMI, module->type, addr , 0xFF, 0);
+            setDeviceDefaultStora(module, 0 , "Humi", F_HUMI, module->type, addr , MANUAL_NO_HAND, 0);
             break;
         case DEHUMI_TYPE:
-            setDeviceDefaultPara(module, "Dehumi", 0x0040, 0xFF, 0, S_HUMI, module->type, 1);
+            setDeviceDefaultPara(module, "Dehumi", 0x0040, MANUAL_NO_HAND, 0, S_HUMI, module->type, 1);
             addr = module->addr;
-            setDeviceDefaultStora(module, 0 , "Dehumi", F_DEHUMI, module->type, addr , 0xFF, 0);
+            setDeviceDefaultStora(module, 0 , "Dehumi", F_DEHUMI, module->type, addr , MANUAL_NO_HAND, 0);
             break;
         case COOL_TYPE:
-            setDeviceDefaultPara(module, "Cool", 0x0040, 0xFF, 0, S_TEMP, module->type, 1);
+            setDeviceDefaultPara(module, "Cool", 0x0040, MANUAL_NO_HAND, 0, S_TEMP, module->type, 1);
             addr = module->addr;
-            setDeviceDefaultStora(module, 0 , "Cool", F_COOL, module->type, addr , 0xFF, 0);
+            setDeviceDefaultStora(module, 0 , "Cool", F_COOL, module->type, addr , MANUAL_NO_HAND, 0);
             break;
         case HVAC_6_TYPE:
-            setDeviceDefaultPara(module, "Hvac_6", 0x0401, 0xFF, 0, S_TEMP, module->type, 1);
+            setDeviceDefaultPara(module, "Hvac_6", 0x0401, MANUAL_NO_HAND, 0, S_TEMP, module->type, 1);
             addr = module->addr;
-            setDeviceDefaultStora(module, 0 , "Hvac_6", F_COOL_HEAT, module->type, addr , 0xFF, 0);
+            setDeviceDefaultStora(module, 0 , "Hvac_6", F_COOL_HEAT, module->type, addr , MANUAL_NO_HAND, 0);
             break;
         case AC_4_TYPE:
             //Justin debug需要再次询问一下终端具体端口的用途
@@ -261,7 +261,7 @@ rt_err_t setTimer12Default(timer12_t *module)
     rt_err_t ret = RT_EOK;
     switch (module->type) {
         case TIMER_TYPE:
-            setTimer12DefaultPara(module, "Timer", 0x0040, 0xFF, 0, S_TIMER, 12);
+            setTimer12DefaultPara(module, "Timer", 0x0040, MANUAL_NO_HAND, 0, S_TIMER, 12);
             break;
 
         default:

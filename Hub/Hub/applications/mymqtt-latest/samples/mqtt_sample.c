@@ -32,6 +32,18 @@
 static mqtt_client client;
 static int is_started = 0;
 
+static u8 startMqttFlg = 0;
+
+u8 GetStartMqttFlg(void)
+{
+    return &startMqttFlg;
+}
+
+mqtt_client *GetMqttClient(void)
+{
+    return &client;
+}
+
 static void mqtt_sub_callback(mqtt_client *c, message_data *msg_data)
 {
     *((char *)msg_data->message->payload + msg_data->message->payloadlen) = '\0';
@@ -106,8 +118,7 @@ int mqtt_start(void)
         rt_memset(name, ' ', 20);
         GetSnName(name);
         strcpy(name + 11, "/reply");
-        client.condata.will.topicName.cstring = name;//MQTT_PUBTOPIC;
-        LOG_I("----------------pub = %s",name);
+        client.condata.will.topicName.cstring = name;
         client.condata.will.message.cstring = MQTT_WILLMSG;
 
         /* malloc buffer. */
@@ -129,10 +140,11 @@ int mqtt_start(void)
         rt_memset(name, ' ', 20);
         GetSnName(name);
         strcpy(name + 11, "/ctr");
-        client.message_handlers[0].topicFilter = rt_strdup(/*MQTT_SUBTOPIC*/name);
-        LOG_I("----------------sub = %s",name);
+        client.message_handlers[0].topicFilter = rt_strdup(name);
         client.message_handlers[0].callback = mqtt_sub_callback;
         client.message_handlers[0].qos = QOS1;
+
+        startMqttFlg = 1;
 
         /* set default subscribe event callback */
         client.default_message_handlers = mqtt_sub_default_callback;

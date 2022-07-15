@@ -19,6 +19,8 @@
 #include "Spi.h"
 #include "ButtonTask.h"
 #include "UartDataLayer.h"
+#include "mqtt_client.h"
+#include "CloudProtocol.h"
 
 #define DBG_TAG "main"
 #define DBG_LVL DBG_LOG
@@ -38,9 +40,11 @@ int main(void)
     rt_uint8_t      ethStatus       = LINKDOWN;
     static u8       sensor_size     = 0;
     static u8       device_size     = 0;
-    static u8       timer12_size     = 0;
+    static u8       timer12_size    = 0;
     static u8       Timer1sTouch    = OFF;
+    static u8       Timer60sTouch   = OFF;
     static u16      time1S          = 0;
+    static u16      time60S         = 0;
 
     //初始化静态变量
     initMonitor();
@@ -97,6 +101,7 @@ int main(void)
 
     while(1)
     {
+        time60S = TimerTask(&time60S, 60, &Timer60sTouch);         //60秒任务定时器
         /* 监视网络模块是否上线 */
 //        ethStatus = GetEthDriverLinkStatus();
 //        if(LINKUP == ethStatus)
@@ -110,13 +115,20 @@ int main(void)
 //            }
 //        }//Justin debug
 
+        //60s 主动发送给云服务
+        if(ON == Timer60sTouch)
+        {
+            SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT);
+//            SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT_WARN);
+        }
+
         if(sensor_size != GetMonitor()->sensor_size)
         {
             sensor_size = GetMonitor()->sensor_size;
 
             for(int index = 0; index < sensor_size; index++)
             {
-                LOG_I("sensor--------------------index = %d",index);
+//                LOG_I("sensor--------------------index = %d",index);
                 printSensor(GetMonitor()->sensor[index]);
             }
         }
@@ -126,7 +138,7 @@ int main(void)
 
             for(int index = 0; index < device_size; index++)
             {
-                LOG_I("device--------------------index = %d",index);
+//                LOG_I("device--------------------index = %d",index);
                 printDevice(GetMonitor()->device[index]);
             }
         }
@@ -136,7 +148,7 @@ int main(void)
 
             for(int index = 0; index < timer12_size; index++)
             {
-                LOG_I("timer12--------------------index = %d",index);
+//                LOG_I("timer12--------------------index = %d",index);
                 printTimer12(GetMonitor()->time12[index]);
             }
         }
