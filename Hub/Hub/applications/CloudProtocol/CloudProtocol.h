@@ -27,4 +27,5 @@ void analyzeCloudData(char *);
 void ReplyDataToCloud(mqtt_client *);
 hub_t *GetHub(void);
 void SendDataToCloud(mqtt_client *, char *);
+void lineProgram(type_monitor_t *, u8);
 #endif /* APPLICATIONS_CLOUDPROTOCOL_CLOUDPROTOCOL_H_ */

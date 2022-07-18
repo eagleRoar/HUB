@@ -16,14 +16,17 @@
 type_connect_t      senConnectState[SENSOR_MAX];
 type_connect_t      devConnectState[DEVICE_TIME4_MAX];
 type_connect_t      timeConnectState[TIME12_MAX];
+type_connect_t      lineConnectState[LINE_MAX];
 u8                  ask_device          = 0;
 u8                  ask_sensor          = 0;
+u8                  ask_line            = 0;
 
 void initConnectState(void)
 {
     rt_memset(senConnectState, 0, sizeof(type_connect_t) * SENSOR_MAX);
     rt_memset(devConnectState, 0, sizeof(type_connect_t) * DEVICE_TIME4_MAX);
     rt_memset(timeConnectState, 0, sizeof(type_connect_t) * TIME12_MAX);
+    rt_memset(lineConnectState, 0, sizeof(type_connect_t) * LINE_MAX);
 }
 
 u8 askSensorStorage(type_monitor_t *monitor, rt_device_t serial)
@@ -63,6 +66,43 @@ u8 askSensorStorage(type_monitor_t *monitor, rt_device_t serial)
             }
         }
         senConnectState[ask_sensor].send_state = ON;
+    }
+
+    ret = YES;
+    return ret;
+}
+
+u8 askLineHeart(type_monitor_t *monitor, rt_device_t serial)//Justin debug 未测试
+{
+    u8              ret                 = NO;
+    u8              buffer[8];
+    u16             crc16Result         = 0x0000;
+
+    if(ask_line >= monitor->line_size)
+    {
+       //一个循环结束
+        ask_line = 0;
+    }
+
+    if(0 < monitor->line_size)
+    {
+        buffer[0] = monitor->line[ask_line].addr;
+        buffer[1] = WRITE_SINGLE;
+        buffer[2] = (monitor->line[ask_line].ctrl_addr >> 8) & 0x00FF;
+        buffer[3] = monitor->line[ask_line].ctrl_addr & 0x00FF;
+        buffer[4] = monitor->line[ask_line].d_state;
+        buffer[5] = monitor->line[ask_line].d_value;
+        crc16Result = usModbusRTU_CRC(buffer, 6);
+        buffer[6] = crc16Result;                             //CRC16低位
+        buffer[7] = (crc16Result>>8);                        //CRC16高位
+
+        rt_device_write(serial, 0, buffer, 8);
+        lineConnectState[ask_line].send_count ++;
+        if(lineConnectState[ask_line].send_count >= CONNRCT_MISS_MAX)
+        {
+            ask_line ++;
+        }
+        lineConnectState[ask_line].send_state = ON;
     }
 
     ret = YES;

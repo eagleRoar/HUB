@@ -185,6 +185,7 @@ struct line{
     u16             ctrl_addr;                              //终端控制的寄存器地址
     u8              d_state;                                //device 的状态位
     u8              d_value;                                //device 的控制数值
+    u8              save_state;                             //是否已经存储
 };
 
 
@@ -243,6 +244,22 @@ enum{
     MANUAL_HAND_OFF//手动开
 };
 
+enum{
+    LINE_LED = 0x00,
+    LINE_HID
+};
+
+//line 控制模式
+enum{
+    LINE_MODE_BY_POWER = 0x01,
+    LINE_MODE_AUTO_DIMMING
+};
+
+//输出时间以timer或者recycle 模式
+enum{
+    LINE_BY_TIMER = 1,
+    LINE_BY_CYCLE = 2,
+};
 struct allocate
 {
     u8 address[ALLOCATE_ADDRESS_SIZE];
@@ -361,11 +378,6 @@ enum{
     BY_RECYCLE = 2,
 };
 
-
-enum{
-    LINE_BY_TIMER = 1,
-    LINE_BY_CYCLE = 2,
-};
 /******************************************* 类型定义 END*****************************/
 
 #endif /* APPLICATIONS_INFORMATIONMANAGE_INFORMATIONMONITOR_H_ */

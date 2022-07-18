@@ -19,6 +19,7 @@ extern  type_sys_time   sys_time;
 
 extern sys_set_t *GetSysSet(void);
 extern sys_tank_t *GetSysTank(void);
+extern type_sys_time *getRealTimeForMat(void);
 
 rt_err_t GetValueU8(cJSON *temp, type_kv_u8 *data)
 {
@@ -754,6 +755,7 @@ void CmdSetSysTime(char *data, cloudcmd_t *cmd)
 void CmdSetLine(char *data, proLine_t *line)
 {
     cJSON *temp = RT_NULL;
+    u16   time  = 0;
 
     temp = cJSON_Parse(data);
 
@@ -772,13 +774,18 @@ void CmdSetLine(char *data, proLine_t *line)
         }
         else if(LINE_BY_CYCLE == line->mode.value)
         {
-            GetValueU16(temp, &line->firstCycleTime);
+            GetValueByU16(temp, "firstCycleTime", &time);
+            if(time != line->firstCycleTime.value)
+            {
+                line->firstCycleTime.value = time;
+                line->isRunFirstCycle = 0;
+            }
             GetValueU16(temp, &line->duration);
             GetValueU16(temp, &line->pauseTime);
         }
         GetValueU8(temp, &line->hidDelay);
-        GetValueU8(temp, &line->tempStartDimming);
-        GetValueU8(temp, &line->tempOffDimming);
+        GetValueU16(temp, &line->tempStartDimming);
+        GetValueU16(temp, &line->tempOffDimming);
         GetValueU8(temp, &line->sunriseSunSet);
 
         cJSON_Delete(temp);
@@ -1210,6 +1217,25 @@ char *ReplySetTank(char *cmd, cloudcmd_t cloud)//Justin debug 未验证
         }
 
         str = cJSON_PrintUnformatted(json);
+        cJSON_Delete(json);
+    }
+
+    return str;
+}
+
+char *ReplyTest(char *cmd, cloudcmd_t cloud)
+{
+    char            *str        = RT_NULL;
+    cJSON           *json       = cJSON_CreateObject();
+
+    if(RT_NULL != json)
+    {
+        cJSON_AddStringToObject(json, "cmd", cmd);
+        cJSON_AddNumberToObject(json, "minute", getRealTimeForMat()->minute);
+        cJSON_AddNumberToObject(json, "second", getRealTimeForMat()->second);
+
+        str = cJSON_PrintUnformatted(json);
+
         cJSON_Delete(json);
     }
 

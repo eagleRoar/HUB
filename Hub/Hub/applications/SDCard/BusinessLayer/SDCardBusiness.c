@@ -12,6 +12,8 @@
 #include "SDCardBusiness.h"
 #include "CloudProtocol.h"
 
+extern sys_set_t *GetSysSet(void);
+
 /**
  * @brief 检测文件夹是否存在
  * @return 返回是否有效,成功为RT_EOK
@@ -70,6 +72,8 @@ void InitSDCard(void)
 {
     u8              size            = 0;
     u16             monitorSize     = sizeof(type_monitor_t);
+    u16             syssetSize      = sizeof(sys_set_t);
+    u16             recipeSize      = sizeof(sys_recipe_t);
 
     //检查文件是否存在
     CheckDirectory(MODULE_DIR);
@@ -92,12 +96,42 @@ void InitSDCard(void)
             LOG_E("InitSDCard err 2");
         }
 
-        LOG_D("-----------------InitSDCard OK, monitor->crc = %x",GetMonitor()->crc);
+//        LOG_D("-----------------InitSDCard OK, monitor->crc = %x",GetMonitor()->crc);
     }
 
     if(NO == CheckFileAndMark(SYSSET_FILE))
     {
+        if(RT_ERROR == WriteSdData(SYSSET_FILE, &size, SD_HEAD_SIZE, SD_PAGE_SIZE))
+        {
+            LOG_E("InitSDCard err 1");
+        }
+
+        rt_memset((u8 *)GetSysSet(), 0, syssetSize);
         initCloudProtocol();
+        GetSysSet()->crc = usModbusRTU_CRC((u8 *)GetSysSet() + 2, syssetSize - 2);
+        if(RT_ERROR == WriteSdData(SYSSET_FILE, (u8 *)GetSysSet(), SD_INFOR_SIZE, syssetSize))
+        {
+            LOG_E("InitSDCard err 3");
+        }
+
+        LOG_D("initCloudProtocol ok");//Justin debug
+    }
+
+    if(NO == CheckFileAndMark(RECIPE_FILE))
+    {
+        if(RT_ERROR == WriteSdData(RECIPE_FILE, &size, SD_HEAD_SIZE, SD_PAGE_SIZE))
+        {
+            LOG_E("InitSDCard err 4");
+        }
+
+        rt_memset((u8 *)GetSysRecipt(), 0, recipeSize);
+        GetSysRecipt()->crc = usModbusRTU_CRC((u8 *)GetSysRecipt() + 2, recipeSize - 2);
+        LOG_I("GetSysRecipt()->crc = %x",GetSysRecipt()->crc);
+        if(RT_ERROR == WriteSdData(RECIPE_FILE, (u8 *)GetSysRecipt(), SD_INFOR_SIZE, recipeSize))
+        {
+            LOG_E("InitSDCard err 5");
+        }
+
         LOG_D("initCloudProtocol ok");//Justin debug
     }
 }
@@ -108,6 +142,7 @@ rt_err_t SaveModule(type_monitor_t *monitor)
     u16     sensorSize      = sizeof(sensor_t);//为module结构体大小
     u16     deviceSize      = sizeof(device_time4_t);//为module结构体大小
     u16     Timer12Size     = sizeof(timer12_t);
+    u16     LineSize        = sizeof(line_t);
     u16     monitorSize     = sizeof(type_monitor_t);
     rt_err_t ret = RT_EOK;
 
@@ -135,6 +170,15 @@ rt_err_t SaveModule(type_monitor_t *monitor)
         {
             monitor->time12[index].save_state = YES;
             monitor->time12[index].crc = usModbusRTU_CRC((u8 *)&(monitor->time12[index]) + 2, Timer12Size - 2);//前两位是crc
+        }
+    }
+
+    for(index = 0; index < monitor->line_size; index++)
+    {
+        if(NO == monitor->line[index].save_state)
+        {
+            monitor->line[index].save_state = YES;
+            monitor->line[index].crc = usModbusRTU_CRC((u8 *)&(monitor->line[index]) + 2, LineSize - 2);//前两位是crc
         }
     }
 
@@ -227,7 +271,7 @@ rt_err_t SaveSysSet(sys_set_t *set)
 }
 
 
-rt_err_t TackRecipeFromSD(sys_recipe_t *rec)
+rt_err_t TackRecipeFromSD(sys_recipe_t *rec)//Justin debug 获取时crc校验出错
 {
     rt_err_t    ret             = RT_ERROR;
     u16         sysRecSize      = sizeof(sys_recipe_t);
@@ -236,7 +280,7 @@ rt_err_t TackRecipeFromSD(sys_recipe_t *rec)
     if(RT_EOK == ReadSdData(RECIPE_FILE, (u8 *)rec, SD_INFOR_SIZE, sysRecSize))
     {
         crc = usModbusRTU_CRC((u8 *)rec + 2, sysRecSize - 2);  //crc 在最后
-
+        LOG_D("TackRecipeFromSD sd crc = %x, crc = %x",rec->crc,crc);
         if(crc == rec->crc)
         {
             ret = RT_EOK;

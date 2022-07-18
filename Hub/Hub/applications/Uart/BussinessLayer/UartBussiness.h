@@ -41,9 +41,10 @@ void UpdateModuleConnect(type_monitor_t *, u8);
 void MonitorModuleConnect(type_monitor_t *);
 u8 askSensorStorage(type_monitor_t *, rt_device_t);
 u8 askDeviceHeart(type_monitor_t *, rt_device_t);
-//u8 askDeviceInfo(type_monitor_t *, rt_device_t);
+u8 askLineHeart(type_monitor_t *, rt_device_t);
 void AnalyzeData(rt_device_t , type_monitor_t *, u8 *, u8);
 void AnlyzeModuleInfo(type_monitor_t *, u8 *, u8);
 void findLocation(type_monitor_t *, cloudcmd_t *,rt_device_t);
+
 
 #endif /* APPLICATIONS_UART_BUSSINESSLAYER_UARTBUSSINESS_H_ */

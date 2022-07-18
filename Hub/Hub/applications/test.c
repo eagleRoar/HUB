@@ -21,6 +21,109 @@ time_t getTimeStamp(void)
     return time(RT_NULL);
 }
 
+u8 getMonth(char *mon)
+{
+    if(0 == rt_memcmp("Jan", mon, 3))
+    {
+        return 1;
+    }
+    else if(0 == rt_memcmp("Feb", mon, 3))
+    {
+        return 2;
+    }
+    else if(0 == rt_memcmp("Mar", mon, 3))
+    {
+        return 3;
+    }
+    else if(0 == rt_memcmp("Apr", mon, 3))
+    {
+        return 4;
+    }
+    else if(0 == rt_memcmp("May", mon, 3))
+    {
+        return 5;
+    }
+    else if(0 == rt_memcmp("Jun", mon, 3))
+    {
+        return 6;
+    }
+    else if(0 == rt_memcmp("Jul", mon, 3))
+    {
+        return 7;
+    }
+    else if(0 == rt_memcmp("Aug", mon, 3))
+    {
+        return 8;
+    }
+    else if(0 == rt_memcmp("Sep", mon, 3))
+    {
+        return 9;
+    }
+    else if(0 == rt_memcmp("Oct", mon, 3))
+    {
+        return 10;
+    }
+    else if(0 == rt_memcmp("Nov", mon, 3))
+    {
+        return 11;
+    }
+    else if(0 == rt_memcmp("Dec", mon, 3))
+    {
+        return 12;
+    }
+    else {
+        return 0;
+    }
+}
+
+type_sys_time *getRealTimeForMat(void)//Justin debug 未验证
+{
+    /* "Wed Jun 30 21:49:08 1993\n" */
+    char time[25];
+    char delim[]    = " :";
+    char *p         = RT_NULL;
+    type_sys_time   time_for;
+
+    rt_memcpy(time, getRealTime(), 25);
+
+    p = strtok(time, delim);
+    if(RT_NULL != p)
+    {
+        p = strtok(NULL, delim);
+        if(RT_NULL != p)
+        {
+            time_for.month = getMonth(p);
+        }
+        p = strtok(NULL, delim);
+        if(RT_NULL != p)
+        {
+            time_for.day = atoi(p);
+        }
+        p = strtok(NULL, delim);
+        if(RT_NULL != p)
+        {
+            time_for.hour = atoi(p);
+        }
+        p = strtok(NULL, delim);
+        if(RT_NULL != p)
+        {
+            time_for.minute = atoi(p);
+        }
+        p = strtok(NULL, delim);
+        if(RT_NULL != p)
+        {
+            time_for.second = atoi(p);
+        }
+        p = strtok(NULL, delim);
+        if(RT_NULL != p)
+        {
+            time_for.year = atoi(p);
+        }
+    }
+
+    return &time_for;
+}
+
 char *getRealTime(void)
 {
     time_t      now;

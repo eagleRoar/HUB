@@ -23,6 +23,7 @@ sys_tank_t      sys_tank;
 hub_t           hub_info;
 
 u8 dayOrNight = 1;//Justin debug 默认白天 仅仅测试
+extern type_sys_time *getRealTimeForMat(void);
 
 sys_tank_t *GetSysTank(void)
 {
@@ -177,13 +178,13 @@ void initCloudProtocol(void)
     rt_memcpy(sys_set.humiSet.msgid.name, "msgid", KEYVALUE_NAME_SIZE);
     rt_memcpy(sys_set.humiSet.sn.name, "sn", KEYVALUE_NAME_SIZE);
     rt_memcpy(sys_set.humiSet.sn.value, GetSnName(name), 16);
-    rt_memcpy(sys_set.humiSet.dayHumiTarget.name, "dayHumiTarget", KEYVALUE_NAME_SIZE);
+    rt_memcpy(sys_set.humiSet.dayHumiTarget.name, "dayHumidifyTarget", KEYVALUE_NAME_SIZE);
     sys_set.humiSet.dayHumiTarget.value = 600;
-    rt_memcpy(sys_set.humiSet.dayDehumiTarget.name, "dayDehumiTarget", KEYVALUE_NAME_SIZE);
+    rt_memcpy(sys_set.humiSet.dayDehumiTarget.name, "dayDehumidifyTarget", KEYVALUE_NAME_SIZE);
     sys_set.humiSet.dayDehumiTarget.value = 800;
-    rt_memcpy(sys_set.humiSet.nightHumiTarget.name, "nightHumiTarget", KEYVALUE_NAME_SIZE);
+    rt_memcpy(sys_set.humiSet.nightHumiTarget.name, "nightHumidifyTarget", KEYVALUE_NAME_SIZE);
     sys_set.humiSet.nightHumiTarget.value = 600;
-    rt_memcpy(sys_set.humiSet.nightDehumiTarget.name, "nightDehumiTarget", KEYVALUE_NAME_SIZE);
+    rt_memcpy(sys_set.humiSet.nightDehumiTarget.name, "nightDehumidifyTarget", KEYVALUE_NAME_SIZE);
     sys_set.humiSet.nightDehumiTarget.value = 800;
     rt_memcpy(sys_set.humiSet.humidDeadband.name, "humidDeadband", KEYVALUE_NAME_SIZE);
     sys_set.humiSet.humidDeadband.value = 30;
@@ -192,7 +193,7 @@ void initCloudProtocol(void)
     //init Line1
     rt_memcpy(sys_set.line1Set.msgid.name, "msgid", KEYVALUE_NAME_SIZE);
     rt_memcpy(sys_set.line1Set.sn.name, "sn", KEYVALUE_NAME_SIZE);
-    rt_memcpy(sys_set.line1Set.lightsType.name, "lightsType", KEYVALUE_NAME_SIZE);
+    rt_memcpy(sys_set.line1Set.lightsType.name, "lightType", KEYVALUE_NAME_SIZE);
     rt_memcpy(sys_set.line1Set.brightMode.name, "brightMode", KEYVALUE_NAME_SIZE);
     rt_memcpy(sys_set.line1Set.byPower.name, "byPower", KEYVALUE_NAME_SIZE);
     sys_set.line1Set.byPower.value = 80;
@@ -208,9 +209,9 @@ void initCloudProtocol(void)
     rt_memcpy(sys_set.line1Set.hidDelay.name, "hidDelay", KEYVALUE_NAME_SIZE);
     sys_set.line1Set.hidDelay.value = 3;// HID 延时时间 3-180min HID 模式才有
     rt_memcpy(sys_set.line1Set.tempStartDimming.name, "tempStartDimming", KEYVALUE_NAME_SIZE);
-    sys_set.line1Set.tempStartDimming.value = 30;// 灯光自动调光温度点 0℃-60.0℃/32℉-140℉
+    sys_set.line1Set.tempStartDimming.value = 300;// 灯光自动调光温度点 0℃-60.0℃/32℉-140℉
     rt_memcpy(sys_set.line1Set.tempOffDimming.name, "tempOffDimming", KEYVALUE_NAME_SIZE);
-    sys_set.line1Set.tempOffDimming.value = 30;// 灯光自动关闭温度点 0℃-60.0℃/32℉-140℉
+    sys_set.line1Set.tempOffDimming.value = 300;// 灯光自动关闭温度点 0℃-60.0℃/32℉-140℉
     rt_memcpy(sys_set.line1Set.sunriseSunSet.name, "sunriseSunSet", KEYVALUE_NAME_SIZE);
     sys_set.line1Set.sunriseSunSet.value = 10;// 0-180min/0 表示关闭状态 日升日落
     rt_memcpy(sys_set.line1Set.timestamp.name, "timestamp", KEYVALUE_NAME_SIZE);
@@ -329,6 +330,11 @@ void ReplyDataToCloud(mqtt_client *client)
         {
             str = ReplySetHubName(CMD_SET_HUB_NAME, sys_set.cloudCmd);
         }
+        else if(0 == rt_memcmp(TEST_CMD, sys_set.cloudCmd.cmd, sizeof(TEST_CMD)))//获取hub state信息
+        {
+            str = ReplyTest(TEST_CMD, sys_set.cloudCmd);
+        }
+
 
         if(RT_NULL != str)
         {
@@ -380,6 +386,7 @@ void SendDataToCloud(mqtt_client *client, char *cmd)
 void analyzeCloudData(char *data)
 {
     cJSON *json = cJSON_Parse(data);
+    static u16  count = 0;
 
     if(NULL != json)
     {
@@ -509,6 +516,11 @@ void analyzeCloudData(char *data)
             else if(0 == rt_memcmp(CMD_SET_HUB_NAME, cmd->valuestring, strlen(CMD_SET_HUB_NAME)))
             {
                 CmdSetHubName(data, &sys_set.cloudCmd);
+                setCloudCmd(cmd->valuestring, ON);
+            }
+            else if(0 == rt_memcmp(TEST_CMD, cmd->valuestring, strlen(TEST_CMD)))
+            {
+                LOG_I("-------------------recv test cmd, count = %d",count);
                 setCloudCmd(cmd->valuestring, ON);
             }
 
@@ -678,6 +690,246 @@ void timmerProgram(type_monitor_t *monitor)
     else
     {
         LOG_E("timmerProgram err");
+    }
+}
+
+//特殊说明 传入的tm 的格式是year 需要减去1900 month需要减去1 范围0-11
+struct tm* getTimeStampByDate(time_t *t)
+{
+    return localtime(t);
+}
+
+time_t changeTmTotimet(struct tm *t)
+{
+    return mktime(t);
+}
+
+void lineProgram(type_monitor_t *monitor, u8 line_no)//Justin debug 未验证
+{
+    static u8       state_pre       = 0;
+    struct tm       *tm_test        = RT_NULL;
+    time_t          close_time_pre  = 0;
+    time_t          now_time        = 0;
+    static time_t   time_period     = 0;
+    type_sys_time   *time           = getRealTimeForMat();
+    u8              power           = 0;
+    u16             dimming         = 0;
+    line_t          *line           = RT_NULL;
+    proLine_t       *line_set       = RT_NULL;
+
+    if(0 == line_no)
+    {
+        line = &monitor->line[0];
+        line_set = &sys_set.line1Set;
+    }
+    else if(1 == line_no)
+    {
+        line = &monitor->line[1];
+        line_set = &sys_set.line2Set;
+    }
+    else
+    {
+        LOG_E("lineProgram err1");
+        return;
+    }
+
+    if(state_pre != line->d_state)
+    {
+        state_pre = line->d_state;
+
+        if(0 == state_pre)
+        {
+            close_time_pre = getTimeStamp();
+        }
+    }
+
+    if(line_set->hidDelay.value > 180 || line_set->hidDelay.value < 3)
+    {
+        line_set->hidDelay.value = 3;
+    }
+
+    if(line_set->byPower.value > 115 || line_set->byPower.value < 10)
+    {
+        line_set->byPower.value = 10;
+    }
+
+    for(u8 index = 0; index < GetSensorByType(monitor, BHS_TYPE)->storage_size; index++)
+    {
+        if(GetSensorByType(monitor, BHS_TYPE)->__stora[index].func == F_S_TEMP)
+        {
+            if(line_set->tempStartDimming.value >= GetSensorByType(monitor, BHS_TYPE)->__stora[index].value)
+            {
+                power = line_set->byPower.value / 2;
+                dimming = line_set->byAutoDimming.value / 2;
+            }
+            else if(line_set->tempOffDimming.value >= GetSensorByType(monitor, BHS_TYPE)->__stora[index].value)
+            {
+                power = 0;
+                dimming = 0;
+            }
+            else
+            {
+                power = line_set->byPower.value;
+                dimming = line_set->byAutoDimming.value;
+            }
+        }
+    }
+
+//    LOG_D("power = %d, diming = %d",power,dimming);
+
+    //模式选择 recycle 或者 timer模式
+    if(LINE_BY_TIMER == line_set->mode.value)
+    {
+        if(line_set->lightOff.value > line_set->lightOn.value)
+        {
+            if(((time->hour * 60 + time->minute) >= line_set->lightOn.value) &&
+               ((time->hour * 60 + time->minute) < line_set->lightOff.value))
+            {
+                if(LINE_HID == line_set->lightsType.value)
+                {
+                    if(getTimeStamp() > (close_time_pre + line_set->hidDelay.value))
+                    {
+                        line->d_state = 1;
+                        if(LINE_MODE_BY_POWER == line_set->brightMode.value)
+                        {
+                            line->d_value = power;
+                        }
+                        else if(LINE_MODE_AUTO_DIMMING == line_set->brightMode.value)
+                        {
+                            //by dimming 需要结合传感器数值
+//                                LINE->d_value = dimming;
+                        }
+                    }
+                }
+                else if(LINE_LED == line_set->lightsType.value)
+                {
+                    line->d_state = 1;
+                    if(LINE_MODE_BY_POWER == line_set->brightMode.value)
+                    {
+                        line->d_value = power;
+                    }
+                    else if(LINE_MODE_AUTO_DIMMING == line_set->brightMode.value)
+                    {
+                        //by dimming 需要结合传感器数值
+//                                line->d_value = dimming;
+                    }
+                }
+            }
+            else
+            {
+                LOG_D("lineProgram ---------------------- 1");//Justin debug
+                line->d_state = 0;
+                line->d_value = 0;
+            }
+        }
+        else if(line_set->lightOff.value < line_set->lightOn.value)
+        {
+            if(((time->hour * 60 + time->minute) >= line_set->lightOff.value) &&
+               ((time->hour * 60 + time->minute) < line_set->lightOn.value))
+            {
+                if(LINE_HID == line_set->lightsType.value)
+                {
+                    if(getTimeStamp() > (close_time_pre + line_set->hidDelay.value))
+                    {
+                        line->d_state = 1;
+                        if(LINE_MODE_BY_POWER == line_set->brightMode.value)
+                        {
+                            line->d_value = power;
+                        }
+                        else if(LINE_MODE_AUTO_DIMMING == line_set->brightMode.value)
+                        {
+                            //by dimming 需要结合传感器数值
+//                                line->d_value = dimming;
+                        }
+                    }
+                }
+                else if(LINE_LED == line_set->lightsType.value)
+                {
+                    line->d_state = 1;
+                    if(LINE_MODE_BY_POWER == line_set->brightMode.value)
+                    {
+                        line->d_value = power;
+                    }
+                    else if(LINE_MODE_AUTO_DIMMING == line_set->brightMode.value)
+                    {
+                        //by dimming 需要结合传感器数值
+//                                line->d_value = dimming;
+                    }
+                }
+            }
+            else
+            {
+                LOG_D("lineProgram ---------------------- 2");//Justin debug
+                line->d_state = 0;
+                line->d_value = 0;
+            }
+        }
+    }
+    else if(LINE_BY_CYCLE == line_set->mode.value)
+    {
+        //还没开始循环过
+        if(0 == line_set->isRunFirstCycle)
+        {
+            //如果是当天的话超过了 设置的时间 就推算过来
+            if((time->hour * 60 + time->minute) >= line_set->firstCycleTime.value)//开始运行
+            {
+                now_time = getTimeStamp();
+                tm_test = getTimeStampByDate(&now_time);
+                tm_test->tm_hour = line_set->firstCycleTime.value / 60;
+                tm_test->tm_min = line_set->firstCycleTime.value % 60;
+                line_set->firstRuncycleTime = changeTmTotimet(tm_test);
+                line_set->isRunFirstCycle = 1;
+            }
+        }
+        else if(1 == line_set->isRunFirstCycle)
+        {
+            time_period = line_set->pauseTime.value + line_set->duration.value;
+
+            if(((getTimeStamp() - line_set->firstRuncycleTime) % time_period) <= line_set->duration.value)
+            {
+                if(LINE_HID == line_set->lightsType.value)
+                {
+                    if(getTimeStamp() > (close_time_pre + line_set->hidDelay.value))
+                    {
+                        line->d_state = 1;
+                        if(LINE_MODE_BY_POWER == line_set->brightMode.value)
+                        {
+                            line->d_value = power;
+                        }
+                        else if(LINE_MODE_AUTO_DIMMING == line_set->brightMode.value)
+                        {
+                            //by dimming 需要结合传感器数值
+//                                line->d_value = dimming;
+                        }
+                    }
+                }
+                else if(LINE_LED == line_set->lightsType.value)
+                {
+                    line->d_state = 1;
+                    if(LINE_MODE_BY_POWER == line_set->brightMode.value)
+                    {
+                        line->d_value = power;
+                    }
+                    else if(LINE_MODE_AUTO_DIMMING == line_set->brightMode.value)
+                    {
+                        //by dimming 需要结合传感器数值
+//                                line->d_value = dimming;
+                    }
+                }
+            }
+            else
+            {
+                line->d_state = 0;
+                line->d_value = 0;
+            }
+        }
+    }
+
+    if(line_no == 0)
+    {
+        line->d_state = 1;//Justin debug 仅仅测试
+        line->d_value = 60;//Justin debug 仅仅测试
+//        LOG_I("------------state = %d, value = %d",line->d_state, line->d_value);
     }
 }
 

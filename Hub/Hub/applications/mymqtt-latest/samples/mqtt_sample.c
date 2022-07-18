@@ -33,10 +33,21 @@ static mqtt_client client;
 static int is_started = 0;
 
 static u8 startMqttFlg = 0;
+static u8 recvMqttFlg = 0;
 
 u8 GetStartMqttFlg(void)
 {
     return &startMqttFlg;
+}
+
+u8 GetRecvMqttFlg(void)
+{
+    return recvMqttFlg;
+}
+
+void SetRecvMqttFlg(u8 flag)
+{
+    recvMqttFlg = flag;
 }
 
 mqtt_client *GetMqttClient(void)
@@ -53,8 +64,8 @@ static void mqtt_sub_callback(mqtt_client *c, message_data *msg_data)
                msg_data->message->payloadlen,
                (char *)msg_data->message->payload);
 
+    recvMqttFlg = 1;
     analyzeCloudData((char *)msg_data->message->payload);
-    ReplyDataToCloud(&client);
 }
 
 static void mqtt_sub_default_callback(mqtt_client *c, message_data *msg_data)

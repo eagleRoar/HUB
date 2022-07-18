@@ -126,10 +126,12 @@ struct proLine{
     type_kv_u16     duration;                   //循环持续时间 s
     type_kv_u16     pauseTime;                  //循环停止时间 s
     type_kv_u8      hidDelay;                   // HID 延时时间 3-180min HID 模式才有
-    type_kv_u8      tempStartDimming;           // 灯光自动调光温度点 0℃-60.0℃/32℉-140℉
-    type_kv_u8      tempOffDimming;             // 灯光自动关闭温度点 0℃-60.0℃/32℉-140℉
+    type_kv_u16     tempStartDimming;           // 灯光自动调光温度点 0℃-60.0℃/32℉-140℉
+    type_kv_u16     tempOffDimming;             // 灯光自动关闭温度点 0℃-60.0℃/32℉-140℉
     type_kv_u8      sunriseSunSet;              // 0-30min /0 表示关闭状态
     type_kv_u32     timestamp;                  //时间戳
+    u8              isRunFirstCycle;            //是否已经执行第一次循环
+    time_t          firstRuncycleTime;          //记录第一次开始执行的时间 方便回溯
 };
 
 /****************************以下是灌溉部分的内容*****/
@@ -208,7 +210,7 @@ struct sysSet{
 };
 
 /****************************灌溉内容 End*************/
-
+#define         TEST_CMD                "test"                  //Hub 主动上报
 #define         CMD_HUB_REPORT_WARN     "reportWarning"         //Hub 主动上报
 #define         CMD_HUB_REPORT          "report"                //Hub 定时上报实时值
 #define         CMD_GET_HUB_STATE       "state"                 //获取hub信息

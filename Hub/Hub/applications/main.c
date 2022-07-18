@@ -122,6 +122,12 @@ int main(void)
 //            SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT_WARN);
         }
 
+        if(1 == GetRecvMqttFlg())
+        {
+            ReplyDataToCloud(GetMqttClient());
+            SetRecvMqttFlg(0);
+        }
+
         if(sensor_size != GetMonitor()->sensor_size)
         {
             sensor_size = GetMonitor()->sensor_size;

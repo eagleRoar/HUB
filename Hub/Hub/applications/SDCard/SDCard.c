@@ -44,6 +44,7 @@ void sd_dfs_event_entry(void* parameter)
     static      u8          sensor_size         = 0;
     static      u8          device_size         = 0;
     static      u8          timer12_size        = 0;
+    static      u8          line_size           = 0;
     static      u16         set_crc             = 0;
 
     rt_memset(&sdCard, 0, sizeof(struct sdCardState));
@@ -84,13 +85,13 @@ void sd_dfs_event_entry(void* parameter)
 
                             if(RT_EOK != TackSysSetFromSD(GetSysSet()))
                             {
-                                initCloudProtocol();
+//                                initCloudProtocol();
                                 LOG_E("TackSysSetFromSD err");
                             }
 
                             if(RT_EOK != TackRecipeFromSD(GetSysRecipt()))
                             {
-                                initSysRecipe();
+//                                initSysRecipe();
                                 LOG_E("TackRecipeFromSD err");
                             }
 
@@ -122,11 +123,13 @@ void sd_dfs_event_entry(void* parameter)
                 {
                     if((sensor_size != GetMonitor()->sensor_size) ||
                        (device_size != GetMonitor()->device_size) ||
-                       (timer12_size != GetMonitor()->timer12_size))
+                       (timer12_size != GetMonitor()->timer12_size) ||
+                       (line_size != GetMonitor()->line_size))
                     {
                         sensor_size = GetMonitor()->sensor_size;
                         device_size = GetMonitor()->device_size;
                         timer12_size = GetMonitor()->timer12_size;
+                        line_size = GetMonitor()->line_size;
 
                         if(RT_EOK == SaveModule(GetMonitor()))
                         {
@@ -138,21 +141,21 @@ void sd_dfs_event_entry(void* parameter)
                         }
                     }
 
-                    GetSysSet()->crc = usModbusRTU_CRC((u8 *)GetSysSet()+2, sizeof(sys_set_t) - 2);
-                    if(set_crc != GetSysSet()->crc)
-                    {
-                        set_crc = GetSysSet()->crc;
-
-                        //存储系统设置
-                        if(RT_EOK == SaveSysSet(GetSysSet()))
-                        {
-                            LOG_I("saveSysSet OK");
-                        }
-                        else
-                        {
-                            LOG_I("saveSysSet fail");
-                        }
-                    }
+//                    GetSysSet()->crc = usModbusRTU_CRC((u8 *)GetSysSet()+2, sizeof(sys_set_t) - 2);
+//                    if(set_crc != GetSysSet()->crc)
+//                    {
+//                        set_crc = GetSysSet()->crc;
+//
+//                        //存储系统设置
+//                        if(RT_EOK == SaveSysSet(GetSysSet()))
+//                        {
+//                            LOG_I("saveSysSet OK");
+//                        }
+//                        else
+//                        {
+//                            LOG_I("saveSysSet fail");
+//                        }
+//                    }//Justin debug 为什么发送其他的命令也会触发
                 }
             }
 
