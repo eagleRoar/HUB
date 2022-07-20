@@ -92,37 +92,37 @@ rt_err_t notifyTcpAndUdpSocket(char *newIp, int newPort, struct ethDeviceStruct 
 }
 
 /* 判断网络数据包的合理性 */
-rt_err_t CheckPackageLegality(u8 *buffer, u16 length)
-{
-    u16 res;
-    type_package_t package;
-
-    if((sizeof(struct packTop) > length) ||
-       (sizeof(struct packTop) + RCV_ETH_BUFFSZ < length))
-    {
-        /* 包头格式就已经18个数字 */
-        LOG_E("recv length = %d",length);
-        return RT_ERROR;
-    }
-
-    rt_memcpy(&package, buffer, length);
-
-    if(length != package.package_top.length)
-    {
-        LOG_E("recv length = %d,pack length = %d",length,package.package_top.length);
-        return RT_ERROR;
-    }
-
-    /* 验证CRC16 */
-    res = CRC16((u16 *)&package+3, package.package_top.length/2-3, 0);
-
-    if(res != package.package_top.crc)
-    {
-        LOG_E("crc res = %x, pack crc = %x",res,package.package_top.crc);
-
-        return RT_ERROR;
-    }
-
-
-    return RT_EOK;
-}
+//rt_err_t CheckPackageLegality(u8 *buffer, u16 length)
+//{
+//    u16 res;
+//    type_package_t package;
+//
+//    if((sizeof(struct packTop) > length) ||
+//       (sizeof(struct packTop) + RCV_ETH_BUFFSZ < length))
+//    {
+//        /* 包头格式就已经18个数字 */
+//        LOG_E("recv length = %d",length);
+//        return RT_ERROR;
+//    }
+//
+//    rt_memcpy(&package, buffer, length);
+//
+//    if(length != package.package_top.length)
+//    {
+//        LOG_E("recv length = %d,pack length = %d",length,package.package_top.length);
+//        return RT_ERROR;
+//    }
+//
+//    /* 验证CRC16 */
+//    res = CRC16((u16 *)&package+3, package.package_top.length/2-3, 0);
+//
+//    if(res != package.package_top.crc)
+//    {
+//        LOG_E("crc res = %x, pack crc = %x",res,package.package_top.crc);
+//
+//        return RT_ERROR;
+//    }
+//
+//
+//    return RT_EOK;
+//}

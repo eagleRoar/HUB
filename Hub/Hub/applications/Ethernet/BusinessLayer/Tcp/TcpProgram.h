@@ -20,6 +20,6 @@ rt_err_t TcpSendMsg(int *, u8 *, u16);
 rt_err_t TcpRecvMsg(int *, u8 *, u16);
 void SetIpAndPort(char *, int , struct ethDeviceStruct *);
 rt_err_t notifyTcpAndUdpSocket(char *, int , struct  ethDeviceStruct*);
-rt_err_t CheckPackageLegality(u8 *, u16);
+//rt_err_t CheckPackageLegality(u8 *, u16);
 
 #endif /* APPLICATIONS_ETHERNET_BUSINESSLAYER_TCP_TCPPROGRAM_H_ */

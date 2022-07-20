@@ -17,11 +17,13 @@
 #define DBG_TAG "u.sd"
 #define DBG_LVL DBG_INFO
 
-static char sd_thread_stack[1024 * 6];
+static char sd_thread_stack[1024*3];//[1024 * 4];
 static struct rt_thread sd_thread;
 
 struct sdCardState      sdCard;
 extern sys_set_t *GetSysSet(void);
+extern u8 saveModuleFlag;
+
 /**
  * @brief SD处理线程初始化
  * @return
@@ -31,7 +33,10 @@ int SDCardTaskInit(void)
     rt_err_t ret = RT_EOK;
 
     rt_thread_init(&sd_thread, SD_CARD_TASK, sd_dfs_event_entry, RT_NULL, &sd_thread_stack[0], sizeof(sd_thread_stack), SDCARD_PRIORITY, 10);
-    rt_thread_startup(&sd_thread);
+    if(RT_ERROR == rt_thread_startup(&sd_thread))
+    {
+        LOG_E("sd task err");
+    }
 
     return ret;
 }
@@ -45,7 +50,6 @@ void sd_dfs_event_entry(void* parameter)
     static      u8          device_size         = 0;
     static      u8          timer12_size        = 0;
     static      u8          line_size           = 0;
-    static      u16         set_crc             = 0;
 
     rt_memset(&sdCard, 0, sizeof(struct sdCardState));
 
@@ -124,12 +128,14 @@ void sd_dfs_event_entry(void* parameter)
                     if((sensor_size != GetMonitor()->sensor_size) ||
                        (device_size != GetMonitor()->device_size) ||
                        (timer12_size != GetMonitor()->timer12_size) ||
-                       (line_size != GetMonitor()->line_size))
+                       (line_size != GetMonitor()->line_size) ||
+                       (YES == saveModuleFlag))
                     {
                         sensor_size = GetMonitor()->sensor_size;
                         device_size = GetMonitor()->device_size;
                         timer12_size = GetMonitor()->timer12_size;
                         line_size = GetMonitor()->line_size;
+                        saveModuleFlag = NO;
 
                         if(RT_EOK == SaveModule(GetMonitor()))
                         {
@@ -141,21 +147,21 @@ void sd_dfs_event_entry(void* parameter)
                         }
                     }
 
-//                    GetSysSet()->crc = usModbusRTU_CRC((u8 *)GetSysSet()+2, sizeof(sys_set_t) - 2);
-//                    if(set_crc != GetSysSet()->crc)
-//                    {
-//                        set_crc = GetSysSet()->crc;
-//
-//                        //存储系统设置
-//                        if(RT_EOK == SaveSysSet(GetSysSet()))
-//                        {
-//                            LOG_I("saveSysSet OK");
-//                        }
-//                        else
-//                        {
-//                            LOG_I("saveSysSet fail");
-//                        }
-//                    }//Justin debug 为什么发送其他的命令也会触发
+                    if(YES == GetSysSet()->saveFlag)
+                    {
+                        GetSysSet()->crc = usModbusRTU_CRC((u8 *)GetSysSet()+2, sizeof(sys_set_t) - 2);
+                        LOG_I("----------------sys_para save OK");
+                        GetSysSet()->saveFlag = NO;
+                        //存储系统设置
+                        if(RT_EOK == SaveSysSet(GetSysSet()))
+                        {
+                            LOG_I("saveSysSet OK");
+                        }
+                        else
+                        {
+                            LOG_I("saveSysSet fail");
+                        }
+                    }
                 }
             }
 

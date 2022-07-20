@@ -186,6 +186,24 @@ void UpdateModuleConnect(type_monitor_t *monitor, u8 addr)
             }
         }
     }
+    else if(addr == monitor->line[ask_line].addr)
+    {
+        lineConnectState[ask_line].send_state = OFF;
+        monitor->line[ask_line].conn_state = CON_SUCCESS;
+        lineConnectState[ask_line].send_count = 0;
+
+        if(ask_line == monitor->line_size)
+        {
+            ask_line = 0;
+        }
+        else
+        {
+            if(ask_line < monitor->line_size)
+            {
+                ask_line++;
+            }
+        }
+    }
 }
 
 void MonitorModuleConnect(type_monitor_t *monitor)
@@ -226,6 +244,21 @@ void MonitorModuleConnect(type_monitor_t *monitor)
         LOG_D("MonitorModuleConnect err2");
     }
 
+    if(LINE_MAX >= monitor->line_size)
+    {
+        for(index = 0; index < monitor->line_size; index++)
+        {
+            if(lineConnectState[index].send_count >= CONNRCT_MISS_MAX)
+            {
+                monitor->line[index].conn_state = CON_FAIL;
+                lineConnectState[index].send_count = 0;
+            }
+        }
+    }
+    else
+    {
+        LOG_D("MonitorModuleConnect err3");
+    }
 }
 
 void AnalyzeData(rt_device_t serial, type_monitor_t *monitor, u8 *data, u8 dataLen)

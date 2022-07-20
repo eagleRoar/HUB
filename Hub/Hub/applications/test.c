@@ -76,13 +76,12 @@ u8 getMonth(char *mon)
     }
 }
 
-type_sys_time *getRealTimeForMat(void)//Justin debug 未验证
+void getRealTimeForMat(type_sys_time *time_for)//Justin debug 未验证
 {
     /* "Wed Jun 30 21:49:08 1993\n" */
     char time[25];
     char delim[]    = " :";
     char *p         = RT_NULL;
-    type_sys_time   time_for;
 
     rt_memcpy(time, getRealTime(), 25);
 
@@ -92,36 +91,34 @@ type_sys_time *getRealTimeForMat(void)//Justin debug 未验证
         p = strtok(NULL, delim);
         if(RT_NULL != p)
         {
-            time_for.month = getMonth(p);
+            time_for->month = getMonth(p);
         }
         p = strtok(NULL, delim);
         if(RT_NULL != p)
         {
-            time_for.day = atoi(p);
+            time_for->day = atoi(p);
         }
         p = strtok(NULL, delim);
         if(RT_NULL != p)
         {
-            time_for.hour = atoi(p);
+            time_for->hour = atoi(p);
         }
         p = strtok(NULL, delim);
         if(RT_NULL != p)
         {
-            time_for.minute = atoi(p);
+            time_for->minute = atoi(p);
         }
         p = strtok(NULL, delim);
         if(RT_NULL != p)
         {
-            time_for.second = atoi(p);
+            time_for->second = atoi(p);
         }
         p = strtok(NULL, delim);
         if(RT_NULL != p)
         {
-            time_for.year = atoi(p);
+            time_for->year = atoi(p);
         }
     }
-
-    return &time_for;
 }
 
 char *getRealTime(void)

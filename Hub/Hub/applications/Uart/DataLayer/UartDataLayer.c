@@ -57,12 +57,12 @@ void setDeviceDefaultPara(device_time4_t *module, char *name, u16 ctrl_addr, u8 
     module->reg_state = SEND_NULL;                                  //注册状态
     module->save_state = NO;                                        //是否已经存储
     module->storage_size = storage_size;                            //寄存器数量
-
+    module->hotStartDelay = 0;
     if(HVAC_6_TYPE == type)
     {
-        module->_hvac.fanNormallyOpen = HVAC_NULL;
-        module->_hvac.hvacMode = HVAC_FAN_NULL;
-        module->_hvac.manualOnMode = HVAC_FAN_NULL;
+        module->_hvac.manualOnMode = HVAC_COOL;
+        module->_hvac.fanNormallyOpen = HVAC_FAN_AUTO;
+        module->_hvac.hvacMode = HVAC_CONVENTIONAL;
     }
 }
 
@@ -108,6 +108,13 @@ void setDeviceDefaultStora(device_time4_t *dev, u8 index, char *name, u8 func, u
     dev->_storage[index]._port.manual_on_time = manual_on_time;                   //手动开启的时间
     dev->_storage[index]._port.d_state = 0;
     dev->_storage[index]._port.d_value = 0;
+
+    if(HVAC_6_TYPE == type)
+    {
+        dev->_hvac.manualOnMode = HVAC_COOL;
+        dev->_hvac.fanNormallyOpen = HVAC_FAN_AUTO;
+        dev->_hvac.hvacMode = HVAC_CONVENTIONAL;
+    }
 }
 
 char *GetModelByType(u8 type, char *name, u8 len)

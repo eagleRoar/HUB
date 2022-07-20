@@ -16,14 +16,15 @@
 #include "mqtt_client.h"
 #include<math.h>
 
-//cloudcmd_t      cloudCmd;
 sys_set_t       sys_set;
 type_sys_time   sys_time;
 sys_tank_t      sys_tank;
 hub_t           hub_info;
 
+u8 saveModuleFlag = NO;
+
 u8 dayOrNight = 1;//Justin debug 默认白天 仅仅测试
-extern type_sys_time *getRealTimeForMat(void);
+extern void getRealTimeForMat(type_sys_time *);
 
 sys_tank_t *GetSysTank(void)
 {
@@ -216,6 +217,8 @@ void initCloudProtocol(void)
     sys_set.line1Set.sunriseSunSet.value = 10;// 0-180min/0 表示关闭状态 日升日落
     rt_memcpy(sys_set.line1Set.timestamp.name, "timestamp", KEYVALUE_NAME_SIZE);
 
+    strcpy(sys_set.sysPara.ntpzone, "+00:00");
+
     rt_memcpy(&sys_set.line2Set, &sys_set.line1Set, sizeof(proLine_t));
 
 }
@@ -236,7 +239,7 @@ void setCloudCmd(char *cmd, u8 flag)
 /**
  * 发布数据(回复云服务器)
  */
-void ReplyDataToCloud(mqtt_client *client)
+void ReplyDataToCloud(mqtt_client *client, u8 *res, u16 len, u8 sendCloudFlg)
 {
     char name[20];
     char *str = RT_NULL;
@@ -334,14 +337,28 @@ void ReplyDataToCloud(mqtt_client *client)
         {
             str = ReplyTest(TEST_CMD, sys_set.cloudCmd);
         }
-
+        else if(0 == rt_memcmp(CMD_SET_PORTNAME, sys_set.cloudCmd.cmd, sizeof(CMD_SET_PORTNAME)))//获取hub state信息
+        {
+            str = ReplySetPortName(CMD_SET_PORTNAME, sys_set.cloudCmd);
+        }
+        else if(0 == rt_memcmp(CMD_SET_SYS_SET, sys_set.cloudCmd.cmd, sizeof(CMD_SET_SYS_SET)))//获取hub state信息
+        {
+            str = ReplySetSysPara(CMD_SET_SYS_SET, sys_set.cloudCmd, sys_set.sysPara);
+        }
 
         if(RT_NULL != str)
         {
-            rt_memset(name, ' ', 20);
-            GetSnName(name);
-            strcpy(name + 11, "/reply");
-            paho_mqtt_publish(client, QOS1, /*MQTT_PUBTOPIC*/name, str, strlen(str));
+            if(YES == sendCloudFlg)
+            {
+                rt_memset(name, ' ', 20);
+                GetSnName(name);
+                strcpy(name + 11, "/reply");
+                paho_mqtt_publish(client, QOS1, /*MQTT_PUBTOPIC*/name, str, strlen(str));
+            }
+            else
+            {
+                rt_memcpy(res, (u8 *)str, len);
+            }
 
             //获取数据完之后需要free否知数据泄露
             cJSON_free(str);
@@ -396,6 +413,7 @@ void analyzeCloudData(char *data)
             if(0 == rt_memcmp(CMD_SET_TEMP, cmd->valuestring, strlen(CMD_SET_TEMP)))
             {
                 CmdSetTempValue(data);
+                GetSysSet()->saveFlag = YES;
                 setCloudCmd(cmd->valuestring, ON);
             }
             else if(0 == rt_memcmp(CMD_GET_TEMP, cmd->valuestring, strlen(CMD_GET_TEMP)))
@@ -406,6 +424,7 @@ void analyzeCloudData(char *data)
             else if(0 == rt_memcmp(CMD_SET_CO2, cmd->valuestring, strlen(CMD_SET_CO2)))
             {
                 CmdSetCo2(data);
+                GetSysSet()->saveFlag = YES;
                 setCloudCmd(cmd->valuestring, ON);
             }
             else if(0 == rt_memcmp(CMD_GET_CO2, cmd->valuestring, strlen(CMD_GET_CO2)))
@@ -416,6 +435,7 @@ void analyzeCloudData(char *data)
             else if(0 == rt_memcmp(CMD_SET_HUMI, cmd->valuestring, strlen(CMD_SET_HUMI)))
             {
                 CmdSetHumi(data);
+                GetSysSet()->saveFlag = YES;
                 setCloudCmd(cmd->valuestring, ON);
             }
             else if(0 == rt_memcmp(CMD_GET_HUMI, cmd->valuestring, strlen(CMD_GET_HUMI)))
@@ -431,6 +451,7 @@ void analyzeCloudData(char *data)
             else if(0 == rt_memcmp(CMD_SET_L1, cmd->valuestring, strlen(CMD_SET_L1)))
             {
                 CmdSetLine(data, &sys_set.line1Set);
+                GetSysSet()->saveFlag = YES;
                 setCloudCmd(cmd->valuestring, ON);
             }
             else if(0 == rt_memcmp(CMD_GET_L1, cmd->valuestring, strlen(CMD_GET_L1)))
@@ -441,6 +462,7 @@ void analyzeCloudData(char *data)
             else if(0 == rt_memcmp(CMD_SET_L2, cmd->valuestring, strlen(CMD_SET_L2)))
             {
                 CmdSetLine(data, &sys_set.line2Set);
+                GetSysSet()->saveFlag = YES;
                 setCloudCmd(cmd->valuestring, ON);
             }
             else if(0 == rt_memcmp(CMD_GET_L2, cmd->valuestring, strlen(CMD_GET_L2)))
@@ -461,6 +483,7 @@ void analyzeCloudData(char *data)
             else if(0 == rt_memcmp(CMD_SET_PORT_SET, cmd->valuestring, strlen(CMD_SET_PORT_SET)))
             {
                 CmdSetPortSet(data, &sys_set.cloudCmd);
+                saveModuleFlag = YES;
                 setCloudCmd(cmd->valuestring, ON);
             }
             else if(0 == rt_memcmp(CMD_SET_SYS_TIME, cmd->valuestring, strlen(CMD_SET_SYS_TIME)))
@@ -476,6 +499,7 @@ void analyzeCloudData(char *data)
             else if(0 == rt_memcmp(CMD_SET_DEADBAND, cmd->valuestring, strlen(CMD_SET_DEADBAND)))
             {
                 CmdSetDeadBand(data, &sys_set.cloudCmd);
+                GetSysSet()->saveFlag = YES;
                 setCloudCmd(cmd->valuestring, ON);
             }
             else if(0 == rt_memcmp(CMD_DELETE_DEV, cmd->valuestring, strlen(CMD_DELETE_DEV)))
@@ -523,7 +547,18 @@ void analyzeCloudData(char *data)
                 LOG_I("-------------------recv test cmd, count = %d",count);
                 setCloudCmd(cmd->valuestring, ON);
             }
-
+            else if(0 == rt_memcmp(CMD_SET_PORTNAME, cmd->valuestring, strlen(CMD_SET_PORTNAME)))
+            {
+                CmdSetPortName(data, &sys_set.cloudCmd);
+                saveModuleFlag = 1;
+                setCloudCmd(cmd->valuestring, ON);
+            }
+            else if(0 == rt_memcmp(CMD_SET_SYS_SET, cmd->valuestring, strlen(CMD_SET_SYS_SET)))
+            {
+                CmdSetSysSet(data, &sys_set.cloudCmd, &sys_set.sysPara);
+                GetSysSet()->saveFlag = YES;
+                setCloudCmd(cmd->valuestring, ON);
+            }
         }
         else
         {
@@ -704,14 +739,14 @@ time_t changeTmTotimet(struct tm *t)
     return mktime(t);
 }
 
-void lineProgram(type_monitor_t *monitor, u8 line_no)//Justin debug 未验证
+void lineProgram(type_monitor_t *monitor, u8 line_no)
 {
     static u8       state_pre       = 0;
     struct tm       *tm_test        = RT_NULL;
     time_t          close_time_pre  = 0;
     time_t          now_time        = 0;
     static time_t   time_period     = 0;
-    type_sys_time   *time           = getRealTimeForMat();
+    type_sys_time   time;
     u8              power           = 0;
     u16             dimming         = 0;
     line_t          *line           = RT_NULL;
@@ -732,6 +767,8 @@ void lineProgram(type_monitor_t *monitor, u8 line_no)//Justin debug 未验证
         LOG_E("lineProgram err1");
         return;
     }
+
+    getRealTimeForMat(&time);
 
     if(state_pre != line->d_state)
     {
@@ -775,15 +812,13 @@ void lineProgram(type_monitor_t *monitor, u8 line_no)//Justin debug 未验证
         }
     }
 
-//    LOG_D("power = %d, diming = %d",power,dimming);
-
     //模式选择 recycle 或者 timer模式
     if(LINE_BY_TIMER == line_set->mode.value)
     {
         if(line_set->lightOff.value > line_set->lightOn.value)
         {
-            if(((time->hour * 60 + time->minute) >= line_set->lightOn.value) &&
-               ((time->hour * 60 + time->minute) < line_set->lightOff.value))
+            if(((time.hour * 60 + time.minute) >= line_set->lightOn.value) &&
+               ((time.hour * 60 + time.minute) < line_set->lightOff.value))
             {
                 if(LINE_HID == line_set->lightsType.value)
                 {
@@ -817,15 +852,14 @@ void lineProgram(type_monitor_t *monitor, u8 line_no)//Justin debug 未验证
             }
             else
             {
-                LOG_D("lineProgram ---------------------- 1");//Justin debug
                 line->d_state = 0;
                 line->d_value = 0;
             }
         }
         else if(line_set->lightOff.value < line_set->lightOn.value)
         {
-            if(((time->hour * 60 + time->minute) >= line_set->lightOff.value) &&
-               ((time->hour * 60 + time->minute) < line_set->lightOn.value))
+            if(((time.hour * 60 + time.minute) >= line_set->lightOff.value) &&
+               ((time.hour * 60 + time.minute) < line_set->lightOn.value))
             {
                 if(LINE_HID == line_set->lightsType.value)
                 {
@@ -859,7 +893,6 @@ void lineProgram(type_monitor_t *monitor, u8 line_no)//Justin debug 未验证
             }
             else
             {
-                LOG_D("lineProgram ---------------------- 2");//Justin debug
                 line->d_state = 0;
                 line->d_value = 0;
             }
@@ -871,7 +904,7 @@ void lineProgram(type_monitor_t *monitor, u8 line_no)//Justin debug 未验证
         if(0 == line_set->isRunFirstCycle)
         {
             //如果是当天的话超过了 设置的时间 就推算过来
-            if((time->hour * 60 + time->minute) >= line_set->firstCycleTime.value)//开始运行
+            if((time.hour * 60 + time.minute) >= line_set->firstCycleTime.value)//开始运行
             {
                 now_time = getTimeStamp();
                 tm_test = getTimeStampByDate(&now_time);
@@ -925,12 +958,6 @@ void lineProgram(type_monitor_t *monitor, u8 line_no)//Justin debug 未验证
         }
     }
 
-    if(line_no == 0)
-    {
-        line->d_state = 1;//Justin debug 仅仅测试
-        line->d_value = 60;//Justin debug 仅仅测试
-//        LOG_I("------------state = %d, value = %d",line->d_state, line->d_value);
-    }
 }
 
 void humiProgram(type_monitor_t *monitor)
@@ -1051,4 +1078,47 @@ void co2Program(type_monitor_t *monitor)
             }
         }
     }
+}
+
+//时间戳以1970年开始计算
+time_t ReplyTimeStamp(void)
+{
+    time_t      now_time;
+    struct tm   *time       = RT_NULL;
+    int         zone;
+    char        ntpzone[8];
+    char        delim[]     = ":";
+    char *p         = RT_NULL;
+
+    now_time = getTimeStamp();
+    time = getTimeStampByDate(&now_time);
+    strcpy(ntpzone, GetSysSet()->sysPara.ntpzone);
+    p = strtok(ntpzone, delim);
+    if(RT_NULL != p)
+    {
+        zone = atoi(p);//Justin debug 仅仅测试
+        if(zone > 0)
+        {
+            time->tm_hour -= zone;
+            p = strtok(NULL, delim);
+            if(RT_NULL != p)
+            {
+                time->tm_min -= atoi(p);
+            }
+        }
+        else
+        {
+            time->tm_hour += zone;
+            p = strtok(NULL, delim);
+            if(RT_NULL != p)
+            {
+                time->tm_min += atoi(p);
+            }
+        }
+
+    }
+
+    now_time = changeTmTotimet(time);
+
+    return now_time;
 }

@@ -24,8 +24,9 @@ void timmerProgram(type_monitor_t *);
 void co2Program(type_monitor_t *);
 void humiProgram(type_monitor_t *);
 void analyzeCloudData(char *);
-void ReplyDataToCloud(mqtt_client *);
+void ReplyDataToCloud(mqtt_client *, u8 *, u16 , u8);
 hub_t *GetHub(void);
 void SendDataToCloud(mqtt_client *, char *);
 void lineProgram(type_monitor_t *, u8);
+time_t ReplyTimeStamp(void);
 #endif /* APPLICATIONS_CLOUDPROTOCOL_CLOUDPROTOCOL_H_ */

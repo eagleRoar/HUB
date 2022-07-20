@@ -184,6 +184,14 @@ u8 FindModuleByAddr(type_monitor_t *monitor, u8 addr)
         }
     }
 
+    for(i = 0; i < monitor->line_size; i++)
+    {
+        if(addr == monitor->line[i].addr)
+        {
+            return YES;
+        }
+    }
+
     return NO;
 }
 

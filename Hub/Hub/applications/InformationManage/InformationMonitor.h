@@ -34,9 +34,8 @@ typedef     struct timer_timer              type_timmer_timmer;
 typedef     struct recycle                  type_timmer_recycle;
 typedef     struct buttonInfo               type_button_t;
 
-#define     SENSOR_MAX                      16
-#define     DEVICE_TIME12_MAX               16
-#define     TIME12_MAX                      4
+#define     SENSOR_MAX                      8//16
+#define     TIME12_MAX                      2//4
 #define     LINE_MAX                        2
 #define     DEVICE_PORT_SZ                  4
 #define     DEVICE_TIME4_MAX                16
@@ -126,7 +125,7 @@ struct device_Timer4
     u8              save_state;                             //是否已经存储
     u8              storage_size;                           //寄存器数量
     u8              mode;                                   // 模式 1-By Schedule 2-By Recycle
-
+    u8              hotStartDelay;                          //对于制冷 制热 除湿设备需要有该保护
     //device和ac_4一样有最多4个port
     union device_port{
         u8  dev_time_type;
@@ -186,6 +185,7 @@ struct line{
     u8              d_state;                                //device 的状态位
     u8              d_value;                                //device 的控制数值
     u8              save_state;                             //是否已经存储
+    u8              conn_state;
 };
 
 
@@ -197,8 +197,7 @@ enum{
 };
 
 enum{
-    HVAC_FAN_NULL,
-    HVAC_FAN_AUTO = 1,
+    HVAC_FAN_AUTO = 0,
     HVAC_FAN_OPEN,
 };
 

@@ -31,6 +31,7 @@ typedef     struct proTempSet               proTempSet_t;
 typedef     struct proCo2Set                proCo2Set_t;
 typedef     struct proHumiSet               proHumiSet_t;
 typedef     struct proLine                  proLine_t;
+typedef     struct sysPara                  sys_para_t;
 typedef     struct cloudCmd                 cloudcmd_t;
 typedef     struct sysSet                   sys_set_t;
 typedef     struct keyAndVauleU8            type_kv_u8;
@@ -73,6 +74,7 @@ struct cloudCmd{
     type_kv_u16     delete_id;                  //删除设备id
     u8              recv_flag;                  //命令接收标志 处理完之后要置为OFF
     u8              recipe_id;                  //添加recipe id
+    u16             set_port_id;
     u8              tank_no;
 };
 
@@ -132,6 +134,20 @@ struct proLine{
     type_kv_u32     timestamp;                  //时间戳
     u8              isRunFirstCycle;            //是否已经执行第一次循环
     time_t          firstRuncycleTime;          //记录第一次开始执行的时间 方便回溯
+};
+
+struct sysPara
+{
+    char ntpzone[8];            //"-7:00", //设备时区
+    u8 tempUnit;                //1, //0- °C 1-℉ 只对设备显示有效，APP 及主机用自身(不传此参数时不设置，暂时 不对设备进行修改）
+    u8 ecUnit;                  //0, // 0-mS/cm 1-ppm 灌溉才有 只对设备显示有效，APP 及主机用自身(不传此参数时 不设置，暂时不对设备进行修改）
+    u8 timeFormat;              //1, //1-12 2-24 只对设备显示有效，APP 及主机用自身(不传此参数时不设置，暂时不对设备进行修改）
+    u8 dayNightMode;            //1, //1-by photocell, 2-by timer 环控才有
+    u16 photocellSensitivity;   //20, //光敏阈值 by photocell 才有
+    u16 lightIntensity;         //10, //光敏值
+    u16 dayTime;                //480, //白天开始时间 by timer 才有
+    u16 nightTime;              //1600, //晚上开始时间
+    u8 maintain;                //1, //1-on 0-off
 };
 
 /****************************以下是灌溉部分的内容*****/
@@ -207,6 +223,8 @@ struct sysSet{
     proLine_t       line2Set;
     cloudcmd_t      cloudCmd;
     stage_t         stageSet;
+    sys_para_t      sysPara;
+    u8              saveFlag;
 };
 
 /****************************灌溉内容 End*************/
@@ -280,6 +298,8 @@ void CmdSetRecipe(char *, cloudcmd_t *);
 void CmdSetTank(char *, cloudcmd_t *);
 void CmdGetHubState(char *, cloudcmd_t *);
 void CmdSetHubName(char *data, cloudcmd_t *);
+void CmdSetPortName(char *, cloudcmd_t *);
+void CmdSetSysSet(char *, cloudcmd_t *, sys_para_t *);
 char *SendHubReport(char *);
 char *SendHubReportWarn(char *);
 char *ReplySetSchedule(char *, cloudcmd_t);
@@ -305,4 +325,7 @@ char *ReplySetRecipe(char *, cloudcmd_t);
 char *ReplySetTank(char *, cloudcmd_t);
 char *ReplyGetHubState(char *, cloudcmd_t);
 char *ReplySetHubName(char *, cloudcmd_t);
+char *ReplyTest(char *, cloudcmd_t);
+char *ReplySetPortName(char *, cloudcmd_t);
+char *ReplySetSysPara(char *, cloudcmd_t, sys_para_t);
 #endif /* APPLICATIONS_CLOUDPROTOCOL_CLOUDPROTOCOLBUSINESS_H_ */

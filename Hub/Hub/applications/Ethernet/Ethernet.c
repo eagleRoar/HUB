@@ -12,24 +12,19 @@
 #include "UdpProgram.h"
 #include "Udp.h"
 #include "Uart.h"
+#include "CloudProtocol.h"
 
-static char udp_thread_stack[1024 * 2];//[1024 * 4];//Justin test
-static struct rt_thread udp_thread;
-static char tcp_send_stack[1024 * 2];//[1024 * 4];//Justin test
-static struct rt_thread tcp_send_thread;
-static char tcp_recv_stack[1024 * 2];//[1024 * 4];//Justin test
-static struct rt_thread tcp_recv_thread;
 struct ethDeviceStruct *eth = RT_NULL;          //申请ethernet实例化对象
 
 int                 sock                    = 0;
 type_package_t      tcpRecvBuffer;
-type_package_t      udpSendBuffer;
+type_package_t      tcpSendBuffer;
+u8                  udpSendBuffer[30];
 
 extern rt_uint8_t GetEthDriverLinkStatus(void);             //获取网口连接状态
 
 void TcpRecvTaskEntry(void* parameter)
 {
-    u8 testBuffer[10];
     static u8 Timer1sTouch      = OFF;
     static u16 time1S = 0;
 
@@ -42,13 +37,8 @@ void TcpRecvTaskEntry(void* parameter)
         if(ON == eth->tcp.GetConnectStatus())
         {
             //解析数据
-            TcpRecvMsg(&sock, testBuffer,10);
-
-            for(int i= 0; i < 10; i++)
-            {
-                rt_kprintf(" %x",testBuffer[i]);
-            }
-            rt_kprintf("\r\n");
+            TcpRecvMsg(&sock, (u8 *)tcpRecvBuffer.buffer,RCV_ETH_BUFFSZ);
+            tcpRecvBuffer.flag = YES;
         }
         rt_thread_mdelay(50);
     }
@@ -107,16 +97,27 @@ void TcpSendTaskEntry(void* parameter)
             if((OFF == eth->tcp.GetConnectTry()) &&
                (ON == eth->tcp.GetConnectStatus()))
             {
-                /* 1s 定时任务 */
-                if(ON == Timer1sTouch)
+                if(YES == tcpRecvBuffer.flag)
                 {
-                    tcpRecvBuffer.buffer[0] = 0xAABB;
-                    if (RT_EOK != TcpSendMsg(&sock, (u8 *)tcpRecvBuffer.buffer, 2))
+                    tcpRecvBuffer.flag = NO;
+                    analyzeCloudData(tcpRecvBuffer.buffer);
+
+                    ReplyDataToCloud(RT_NULL, (u8 *)tcpSendBuffer.buffer, RCV_ETH_BUFFSZ, NO);
+                    if (RT_EOK != TcpSendMsg(&sock, (u8 *)tcpSendBuffer.buffer, RCV_ETH_BUFFSZ))
                     {
                         LOG_E("send tcp err");
                         eth->tcp.SetConnectStatus(OFF);
                         eth->tcp.SetConnectTry(ON);
                     }
+
+                    rt_memset((u8 *)tcpRecvBuffer.buffer, 0, RCV_ETH_BUFFSZ);
+                    rt_memset((u8 *)tcpSendBuffer.buffer, 0, RCV_ETH_BUFFSZ);
+                }
+
+                /* 1s 定时任务 */
+                if(ON == Timer1sTouch)
+                {
+
                 }
             }
         }
@@ -201,36 +202,31 @@ void UdpTaskEntry(void* parameter)
             continue;
         }
 
+        /* 50ms任务 */
+        bytes_read = recvfrom(broadcastSock, &udpSendBuffer, 30, 0,(struct sockaddr *)&broadcastRecvSerAddr, &addr_len);
+        if((bytes_read > 0) && (sizeof(type_package_t) >= bytes_read))
         {
-            /* 50ms任务 */
-            bytes_read = recvfrom(broadcastSock, &udpSendBuffer, sizeof(type_package_t), 0,(struct sockaddr *)&broadcastRecvSerAddr, &addr_len);
-            if((bytes_read > 0) && (sizeof(type_package_t) >= bytes_read))
+            /* 判断主机的ip或者port为新,更新 */
+            if(YES == eth->IsNewEthernetConnect(inet_ntoa(broadcastRecvSerAddr.sin_addr), ntohs(broadcastRecvSerAddr.sin_port)))
             {
-                if(RT_EOK == CheckPackageLegality((u8 *)&udpSendBuffer, bytes_read))
-                {
-                    /* 判断主机的ip或者port为新,更新 */
-                    if(YES == eth->IsNewEthernetConnect(inet_ntoa(broadcastRecvSerAddr.sin_addr), MASTER_PORT))
-                    {
-                        /* 通知TCP和UDP需要更改socket,以监听新的网络 */
-                        eth->udp.SetNotifyChange(YES);
-                        SetIpAndPort(inet_ntoa(broadcastRecvSerAddr.sin_addr), MASTER_PORT, eth);
-                        LOG_I("recv new master register massge, ip = %s, port = %d", eth->GetIp(), eth->GetPort());
-                    }
-                    else
-                    {
-                        /* 在此获取主机的时间 */
-                    }
+                /* 通知TCP和UDP需要更改socket,以监听新的网络 */
+                eth->udp.SetNotifyChange(YES);
+                eth->tcp.SetConnectTry(ON);
+                eth->tcp.SetConnectStatus(OFF);
+                rt_memset((u8 *)tcpRecvBuffer.buffer, 0, RCV_ETH_BUFFSZ);
+                rt_memset((u8 *)tcpSendBuffer.buffer, 0, RCV_ETH_BUFFSZ);
+                SetIpAndPort(inet_ntoa(broadcastRecvSerAddr.sin_addr), ntohs(broadcastRecvSerAddr.sin_port), eth);
+                LOG_I("recv new master register massge, ip = %s, port = %d", eth->GetIp(), eth->GetPort());
+            }
+            else
+            {
+                /* 在此获取主机的时间 */
+            }
 
-                    if(OFF == eth->tcp.GetConnectStatus())
-                    {
-                        /* 更新网络以及申请TCP */
-                        notifyTcpAndUdpSocket(inet_ntoa(broadcastRecvSerAddr.sin_addr), MASTER_PORT, eth);
-                    }
-                }
-                else
-                {
-                    LOG_D("CRC ERR......");
-                }
+            if(OFF == eth->tcp.GetConnectStatus())
+            {
+                /* 更新网络以及申请TCP */
+                notifyTcpAndUdpSocket(inet_ntoa(broadcastRecvSerAddr.sin_addr), ntohs(broadcastRecvSerAddr.sin_port), eth);
             }
         }
 
@@ -249,8 +245,8 @@ void UdpTaskEntry(void* parameter)
 }
 rt_err_t UdpTaskInit(void)
 {
-    rt_thread_init(&udp_thread, UDP_TASK, UdpTaskEntry, RT_NULL, &udp_thread_stack[0], sizeof(udp_thread_stack), UDP_PRIORITY, 10);
-    rt_thread_startup(&udp_thread);
+    rt_thread_t thread = rt_thread_create(UDP_TASK, UdpTaskEntry, RT_NULL, 1024, UDP_PRIORITY, 10);
+    rt_thread_startup(thread);
 
     return RT_EOK;
 }
@@ -258,16 +254,14 @@ rt_err_t UdpTaskInit(void)
 rt_err_t TcpSendTaskInit(void)
 {
     /* 创建以太网线程 */
-    rt_thread_init(&tcp_send_thread, TCP_SEND_TASK, TcpSendTaskEntry, RT_NULL, &tcp_send_stack[0], sizeof(tcp_send_stack), TCP_PRIORITY, 10);
-    rt_thread_startup(&tcp_send_thread);
-
+    rt_thread_t thread = rt_thread_create(TCP_SEND_TASK, TcpSendTaskEntry, RT_NULL, 1024*2, TCP_PRIORITY, 10);
+    rt_thread_startup(thread);
     return RT_EOK;
 }
 rt_err_t TcpRecvTaskInit(void)
 {
-    rt_thread_init(&tcp_recv_thread, TCP_RECV_TASK, TcpRecvTaskEntry, RT_NULL, &tcp_recv_stack[0], sizeof(tcp_recv_stack), TCP_PRIORITY, 10);
-    rt_thread_startup(&tcp_recv_thread);
-
+    rt_thread_t thread = rt_thread_create(TCP_RECV_TASK, TcpRecvTaskEntry, RT_NULL, 1024*2, TCP_PRIORITY, 10);
+    rt_thread_startup(thread);
     return RT_EOK;
 }
 void EthernetTaskInit(void)

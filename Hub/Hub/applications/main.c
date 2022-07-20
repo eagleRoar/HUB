@@ -31,6 +31,9 @@ extern struct ethDeviceStruct *eth;
 extern rt_uint8_t GetEthDriverLinkStatus(void);            //获取网口连接状态
 extern void GetUpdataFileFromWeb(void);
 extern int mqtt_start(void);
+extern mqtt_client *GetMqttClient(void);
+extern u8 GetRecvMqttFlg(void);
+extern void SetRecvMqttFlg(u8);
 
 static uint16_t g_Key = 97;
 
@@ -75,11 +78,11 @@ int main(void)
         rt_thread_mdelay(100);
     } while (LINKDOWN == ethStatus);
 
-//    if(LINKUP == ethStatus)
-//    {
-//        /*初始化网络线程，处理和主机之间的交互，Tcp和Udp协议*/
-//        EthernetTaskInit();
-//    }//Justin debug
+    if(LINKUP == ethStatus)
+    {
+        /*初始化网络线程，处理和主机之间的交互，Tcp和Udp协议*/
+        EthernetTaskInit();
+    }
 
     //初始化SD卡处理线程
     SDCardTaskInit();
@@ -103,28 +106,28 @@ int main(void)
     {
         time60S = TimerTask(&time60S, 60, &Timer60sTouch);         //60秒任务定时器
         /* 监视网络模块是否上线 */
-//        ethStatus = GetEthDriverLinkStatus();
-//        if(LINKUP == ethStatus)
-//        {
-//            if(RT_NULL == rt_thread_find(UDP_TASK) &&
-//               RT_NULL == rt_thread_find(TCP_SEND_TASK))
-//            {
-//                /* 重新上线,初始化网络任务 */
-//                EthernetTaskInit();
-//                LOG_D("EthernetTask init OK");
-//            }
-//        }//Justin debug
+        ethStatus = GetEthDriverLinkStatus();
+        if(LINKUP == ethStatus)
+        {
+            if(RT_NULL == rt_thread_find(UDP_TASK) &&
+               RT_NULL == rt_thread_find(TCP_SEND_TASK))
+            {
+                /* 重新上线,初始化网络任务 */
+                EthernetTaskInit();
+                LOG_D("EthernetTask init OK");
+            }
+        }
 
         //60s 主动发送给云服务
         if(ON == Timer60sTouch)
         {
             SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT);
-//            SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT_WARN);
+//            SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT_WARN);//Justin debug 还没实现告警上报
         }
 
         if(1 == GetRecvMqttFlg())
         {
-            ReplyDataToCloud(GetMqttClient());
+            ReplyDataToCloud(GetMqttClient(), RT_NULL, 0, YES);
             SetRecvMqttFlg(0);
         }
 

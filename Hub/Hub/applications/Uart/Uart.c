@@ -274,7 +274,7 @@ void SensorUart2TaskInit(void)
     rt_err_t threadStart = RT_NULL;
 
     /* 创建串口 线程 */
-    rt_thread_t thread = rt_thread_create("sensor task", SensorUart2TaskEntry, RT_NULL, 1024*4, UART2_PRIORITY, 10);
+    rt_thread_t thread = rt_thread_create("sensor task", SensorUart2TaskEntry, RT_NULL, 1024*3, UART2_PRIORITY, 10);
 
     /* 如果线程创建成功则开始启动线程，否则提示线程创建失败 */
     if (RT_NULL != thread) {

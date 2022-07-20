@@ -37,7 +37,7 @@ static u8 recvMqttFlg = 0;
 
 u8 GetStartMqttFlg(void)
 {
-    return &startMqttFlg;
+    return startMqttFlg;
 }
 
 u8 GetRecvMqttFlg(void)
@@ -58,11 +58,11 @@ mqtt_client *GetMqttClient(void)
 static void mqtt_sub_callback(mqtt_client *c, message_data *msg_data)
 {
     *((char *)msg_data->message->payload + msg_data->message->payloadlen) = '\0';
-    LOG_D("mqtt sub callback: %.*s %.*s",
-               msg_data->topic_name->lenstring.len,
-               msg_data->topic_name->lenstring.data,
-               msg_data->message->payloadlen,
-               (char *)msg_data->message->payload);
+//    LOG_D("mqtt sub callback: %.*s %.*s",
+//               msg_data->topic_name->lenstring.len,
+//               msg_data->topic_name->lenstring.data,
+//               msg_data->message->payloadlen,
+//               (char *)msg_data->message->payload);
 
     recvMqttFlg = 1;
     analyzeCloudData((char *)msg_data->message->payload);
@@ -71,11 +71,11 @@ static void mqtt_sub_callback(mqtt_client *c, message_data *msg_data)
 static void mqtt_sub_default_callback(mqtt_client *c, message_data *msg_data)
 {
     *((char *)msg_data->message->payload + msg_data->message->payloadlen) = '\0';
-    LOG_D("mqtt sub default callback: %.*s %.*s",
-               msg_data->topic_name->lenstring.len,
-               msg_data->topic_name->lenstring.data,
-               msg_data->message->payloadlen,
-               (char *)msg_data->message->payload);
+//    LOG_D("mqtt sub default callback: %.*s %.*s",
+//               msg_data->topic_name->lenstring.len,
+//               msg_data->topic_name->lenstring.data,
+//               msg_data->message->payloadlen,
+//               (char *)msg_data->message->payload);
 }
 
 static void mqtt_connect_callback(mqtt_client *c)

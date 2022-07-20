@@ -24,7 +24,7 @@
 #define TEST_PORT                 9897
 #define MASTER_PORT               9898
 #define UDP_BROADCAST_PORT        TEST_PORT//9899//     //Justin debug 仅仅测试
-#define RCV_ETH_BUFFSZ            512
+#define RCV_ETH_BUFFSZ            1024//512
 
 struct packTop{
     u16 checkId;             //标识
@@ -38,8 +38,9 @@ struct packTop{
 
 struct packageEth
 {
-    struct packTop package_top;
-    u16 buffer[RCV_ETH_BUFFSZ];
+//    struct packTop package_top;
+    u8 flag;
+    char buffer[RCV_ETH_BUFFSZ];
 };
 
 
