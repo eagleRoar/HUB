@@ -14,7 +14,7 @@
 
 #define     name_null                       "null"     //长度32的空字符串
 
-#define     ALLOCATE_ADDRESS_SIZE           70
+#define     ALLOCATE_ADDRESS_SIZE           100
 #define     MODULE_NAMESZ                   16
 #define     STORAGE_NAMESZ                  8
 #define     RECIPE_NAMESZ                   8
@@ -259,6 +259,22 @@ enum{
     LINE_BY_TIMER = 1,
     LINE_BY_CYCLE = 2,
 };
+
+enum{
+    DAY_TIME = 0,
+    NIGHT_TIME
+};
+
+enum{
+    DAY_BY_PHOTOCELL = 1,
+    DAY_BY_TIME
+};
+
+enum{
+    TIME_STYLE_12H = 1,
+    TIME_STYLE_24H
+};
+
 struct allocate
 {
     u8 address[ALLOCATE_ADDRESS_SIZE];

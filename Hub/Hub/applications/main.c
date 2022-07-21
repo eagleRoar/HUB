@@ -21,6 +21,7 @@
 #include "UartDataLayer.h"
 #include "mqtt_client.h"
 #include "CloudProtocol.h"
+#include "module.h"
 
 #define DBG_TAG "main"
 #define DBG_LVL DBG_LOG
@@ -34,6 +35,7 @@ extern int mqtt_start(void);
 extern mqtt_client *GetMqttClient(void);
 extern u8 GetRecvMqttFlg(void);
 extern void SetRecvMqttFlg(u8);
+extern sys_set_t *GetSysSet(void);
 
 static uint16_t g_Key = 97;
 
@@ -48,6 +50,7 @@ int main(void)
     static u8       Timer60sTouch   = OFF;
     static u16      time1S          = 0;
     static u16      time60S         = 0;
+    type_sys_time   time;
 
     //初始化静态变量
     initMonitor();
@@ -125,9 +128,41 @@ int main(void)
 //            SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT_WARN);//Justin debug 还没实现告警上报
         }
 
+        //分辨白天黑夜
+        if(DAY_BY_TIME == GetSysSet()->sysPara.dayNightMode)//按时间分辨
+        {
+            getRealTimeForMat(&time);
+            if((time.hour * 60 > GetSysSet()->sysPara.dayTime) &&
+               (time.hour * 60 <= GetSysSet()->sysPara.nightTime))
+            {
+                GetSysSet()->dayOrNight = DAY_TIME;
+            }
+            else
+            {
+                GetSysSet()->dayOrNight = NIGHT_TIME;
+            }
+        }
+        else if(DAY_BY_PHOTOCELL == GetSysSet()->sysPara.dayNightMode)//按灯光分辨
+        {
+            for(u8 index = 0; index < GetSensorByType(GetMonitor(), BHS_TYPE)->storage_size; index++)
+            {
+                if(F_S_LIGHT == GetSensorByType(GetMonitor(), BHS_TYPE)->__stora[index].func)
+                {
+                    if(GetSensorByType(GetMonitor(), BHS_TYPE)->__stora[index].value > GetSysSet()->sysPara.photocellSensitivity)
+                    {
+                        GetSysSet()->dayOrNight = DAY_TIME;
+                    }
+                    else
+                    {
+                        GetSysSet()->dayOrNight = NIGHT_TIME;
+                    }
+                }
+            }
+        }
+
         if(1 == GetRecvMqttFlg())
         {
-            ReplyDataToCloud(GetMqttClient(), RT_NULL, 0, YES);
+            ReplyDataToCloud(GetMqttClient(), RT_NULL, RT_NULL, YES);
             SetRecvMqttFlg(0);
         }
 
@@ -137,7 +172,6 @@ int main(void)
 
             for(int index = 0; index < sensor_size; index++)
             {
-//                LOG_I("sensor--------------------index = %d",index);
                 printSensor(GetMonitor()->sensor[index]);
             }
         }
@@ -147,7 +181,6 @@ int main(void)
 
             for(int index = 0; index < device_size; index++)
             {
-//                LOG_I("device--------------------index = %d",index);
                 printDevice(GetMonitor()->device[index]);
             }
         }
@@ -157,13 +190,9 @@ int main(void)
 
             for(int index = 0; index < timer12_size; index++)
             {
-//                LOG_I("timer12--------------------index = %d",index);
                 printTimer12(GetMonitor()->time12[index]);
             }
         }
-
-//
-//        printMuduleConnect(GetMonitor());
 
         rt_thread_mdelay(1000);
     }

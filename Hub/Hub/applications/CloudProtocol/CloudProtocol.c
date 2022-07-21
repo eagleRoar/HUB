@@ -15,6 +15,7 @@
 #include "cJSON.h"
 #include "mqtt_client.h"
 #include<math.h>
+#include "Ethernet.h"
 
 sys_set_t       sys_set;
 type_sys_time   sys_time;
@@ -23,7 +24,6 @@ hub_t           hub_info;
 
 u8 saveModuleFlag = NO;
 
-u8 dayOrNight = 1;//Justin debug 默认白天 仅仅测试
 extern void getRealTimeForMat(type_sys_time *);
 
 sys_tank_t *GetSysTank(void)
@@ -173,6 +173,7 @@ void initCloudProtocol(void)
     sys_set.co2Set.dehumidifyLock.value = 0;
     rt_memcpy(sys_set.co2Set.co2Deadband.name, "co2Deadband", KEYVALUE_NAME_SIZE);
     sys_set.co2Set.co2Deadband.value = 50;
+    sys_set.co2Set.co2Corrected = 0;
     rt_memcpy(sys_set.co2Set.timestamp.name, "timestamp", KEYVALUE_NAME_SIZE);
 
     //init humi
@@ -218,6 +219,7 @@ void initCloudProtocol(void)
     rt_memcpy(sys_set.line1Set.timestamp.name, "timestamp", KEYVALUE_NAME_SIZE);
 
     strcpy(sys_set.sysPara.ntpzone, "+00:00");
+    sys_set.sysPara.timeFormat = TIME_STYLE_24H;
 
     rt_memcpy(&sys_set.line2Set, &sys_set.line1Set, sizeof(proLine_t));
 
@@ -239,7 +241,7 @@ void setCloudCmd(char *cmd, u8 flag)
 /**
  * 发布数据(回复云服务器)
  */
-void ReplyDataToCloud(mqtt_client *client, u8 *res, u16 len, u8 sendCloudFlg)
+void ReplyDataToCloud(mqtt_client *client, u8 *res, u16 *len, u8 sendCloudFlg)
 {
     char name[20];
     char *str = RT_NULL;
@@ -341,9 +343,13 @@ void ReplyDataToCloud(mqtt_client *client, u8 *res, u16 len, u8 sendCloudFlg)
         {
             str = ReplySetPortName(CMD_SET_PORTNAME, sys_set.cloudCmd);
         }
-        else if(0 == rt_memcmp(CMD_SET_SYS_SET, sys_set.cloudCmd.cmd, sizeof(CMD_SET_SYS_SET)))//获取hub state信息
+        else if(0 == rt_memcmp(CMD_SET_SYS_SET, sys_set.cloudCmd.cmd, sizeof(CMD_SET_SYS_SET)))//设置系统设置
         {
             str = ReplySetSysPara(CMD_SET_SYS_SET, sys_set.cloudCmd, sys_set.sysPara);
+        }
+        else if(0 == rt_memcmp(CMD_GET_SYS_SET, sys_set.cloudCmd.cmd, sizeof(CMD_GET_SYS_SET)))//获取系统设置
+        {
+            str = ReplyGetSysPara(CMD_GET_SYS_SET, sys_set.cloudCmd, sys_set.sysPara, GetSensorByAddr(GetMonitor(), BHS_TYPE));
         }
 
         if(RT_NULL != str)
@@ -357,7 +363,16 @@ void ReplyDataToCloud(mqtt_client *client, u8 *res, u16 len, u8 sendCloudFlg)
             }
             else
             {
-                rt_memcpy(res, (u8 *)str, len);
+                *len = strlen(str);
+                if(RCV_ETH_BUFFSZ >= *len)
+                {
+                    rt_memcpy(res, (u8 *)str, *len);
+
+                }
+                else
+                {
+                    *len = 0;
+                }
             }
 
             //获取数据完之后需要free否知数据泄露
@@ -559,6 +574,11 @@ void analyzeCloudData(char *data)
                 GetSysSet()->saveFlag = YES;
                 setCloudCmd(cmd->valuestring, ON);
             }
+            else if(0 == rt_memcmp(CMD_GET_SYS_SET, cmd->valuestring, strlen(CMD_GET_SYS_SET)))
+            {
+                CmdGetSysSet(data, &sys_set.cloudCmd);
+                setCloudCmd(cmd->valuestring, ON);
+            }
         }
         else
         {
@@ -575,9 +595,13 @@ void analyzeCloudData(char *data)
 
 void tempProgram(type_monitor_t *monitor)
 {
-    u8              storage     = 0;
-    u16             tempNow     = 0;
-    sensor_t        *module     = RT_NULL;
+    u8              storage             = 0;
+    u16             tempNow             = 0;
+    u16             coolTarge           = 0;
+    u16             HeatTarge           = 0;
+    sensor_t        *module             = RT_NULL;
+    static time_t   time_close_cool     = 0;
+    static time_t   time_close_heat     = 0;
 
     module = GetSensorByType(monitor, BHS_TYPE);
 
@@ -605,13 +629,31 @@ void tempProgram(type_monitor_t *monitor)
         return;
     }
 
-    //白天
-    if(1 == dayOrNight)
+    if(DAY_TIME == GetSysSet()->dayOrNight)
     {
-        if(tempNow >= sys_set.tempSet.dayCoolingTarget.value)//1为deadband
+        coolTarge = GetSysSet()->tempSet.dayCoolingTarget.value;
+        HeatTarge = GetSysSet()->tempSet.dayHeatingTarget.value;
+    }
+    else if(NIGHT_TIME == GetSysSet()->dayOrNight)
+    {
+        coolTarge = GetSysSet()->tempSet.nightCoolingTarget.value;
+        HeatTarge = GetSysSet()->tempSet.nightHeatingTarget.value;
+    }
+
+    if(tempNow >= coolTarge)//1为deadband
+    {
+        //打开heat 关闭cool
+        if((OFF == GetDeviceByType(monitor, COOL_TYPE)->hotStartDelay) ||
+           (ON == GetDeviceByType(monitor, COOL_TYPE)->hotStartDelay &&
+            getTimeStamp() > (time_close_cool + 5 * 60)))//5分钟的压缩机保护时间
         {
-            //打开heat 关闭cool
             GetDeviceByType(monitor, COOL_TYPE)->_storage[0]._port.d_state = ON;
+        }
+
+        if((OFF == GetDeviceByType(monitor, HVAC_6_TYPE)->hotStartDelay) ||
+           (ON == GetDeviceByType(monitor, HVAC_6_TYPE)->hotStartDelay &&
+            getTimeStamp() > (time_close_cool + 5 * 60)))//5分钟的压缩机保护时间
+        {
             if(0x00 == GetDeviceByType(monitor, HVAC_6_TYPE)->_hvac.hvacMode)//0-conventional
             {
                 GetDeviceByType(monitor, HVAC_6_TYPE)->_storage[0]._port.d_value = 0x0C;
@@ -625,26 +667,40 @@ void tempProgram(type_monitor_t *monitor)
                 GetDeviceByType(monitor, HVAC_6_TYPE)->_storage[0]._port.d_value = 0x1C;
             }
         }
-        else if(tempNow <= (sys_set.tempSet.dayCoolingTarget.value - sys_set.tempSet.tempDeadband.value))
+    }
+    else if(tempNow <= (coolTarge - GetSysSet()->tempSet.tempDeadband.value))
+    {
+        time_close_cool = getTimeStamp();
+        GetDeviceByType(monitor, COOL_TYPE)->_storage[0]._port.d_state = OFF;
+        if(0x00 == GetDeviceByType(monitor, HVAC_6_TYPE)->_hvac.hvacMode)//0-conventional
         {
-            GetDeviceByType(monitor, COOL_TYPE)->_storage[0]._port.d_state = OFF;
-            if(0x00 == GetDeviceByType(monitor, HVAC_6_TYPE)->_hvac.hvacMode)//0-conventional
-            {
-                GetDeviceByType(monitor, HVAC_6_TYPE)->_storage[0]._port.d_value &= 0xF3;
-            }
-            else if(0x01 == GetDeviceByType(monitor, HVAC_6_TYPE)->_hvac.hvacMode)//0-conventional
-            {
-                GetDeviceByType(monitor, HVAC_6_TYPE)->_storage[0]._port.d_value &= 0xF3;
-            }
-            else if(0x02 == GetDeviceByType(monitor, HVAC_6_TYPE)->_hvac.hvacMode)//0-conventional
-            {
-                GetDeviceByType(monitor, HVAC_6_TYPE)->_storage[0]._port.d_value &= 0xE3;
-            }
+            GetDeviceByType(monitor, HVAC_6_TYPE)->_storage[0]._port.d_value &= 0xF3;
         }
+        else if(0x01 == GetDeviceByType(monitor, HVAC_6_TYPE)->_hvac.hvacMode)//0-conventional
+        {
+            GetDeviceByType(monitor, HVAC_6_TYPE)->_storage[0]._port.d_value &= 0xF3;
+        }
+        else if(0x02 == GetDeviceByType(monitor, HVAC_6_TYPE)->_hvac.hvacMode)//0-conventional
+        {
+            GetDeviceByType(monitor, HVAC_6_TYPE)->_storage[0]._port.d_value &= 0xE3;
+        }
+    }
 
-        if(tempNow <= sys_set.tempSet.dayHeatingTarget.value)
+    if(tempNow <= HeatTarge)
+    {
+
+        if((OFF == GetDeviceByType(monitor, HEAT_TYPE)->hotStartDelay) ||
+           (ON == GetDeviceByType(monitor, HEAT_TYPE)->hotStartDelay &&
+            getTimeStamp() > (time_close_heat + 5 * 60)))//5分钟的压缩机保护时间
         {
             GetDeviceByType(monitor, HEAT_TYPE)->_storage[0]._port.d_state = ON;
+        }
+
+
+        if((OFF == GetDeviceByType(monitor, HVAC_6_TYPE)->hotStartDelay) ||
+           (ON == GetDeviceByType(monitor, HVAC_6_TYPE)->hotStartDelay &&
+            getTimeStamp() > (time_close_heat + 5 * 60)))//5分钟的压缩机保护时间
+        {
             if(0x00 == GetDeviceByType(monitor, HVAC_6_TYPE)->_hvac.hvacMode)//0-conventional
             {
                 GetDeviceByType(monitor, HVAC_6_TYPE)->_storage[0]._port.d_value = 0x14;
@@ -658,26 +714,27 @@ void tempProgram(type_monitor_t *monitor)
                 GetDeviceByType(monitor, HVAC_6_TYPE)->_storage[0]._port.d_value = 0x0C;
             }
         }
-        else if(tempNow >= sys_set.tempSet.dayHeatingTarget.value + sys_set.tempSet.tempDeadband.value)
+    }
+    else if(tempNow >= HeatTarge + GetSysSet()->tempSet.tempDeadband.value)
+    {
+        time_close_heat = getTimeStamp();
+        GetDeviceByType(monitor, HEAT_TYPE)->_storage[0]._port.d_state = OFF;
+        if(0x00 == GetDeviceByType(monitor, HVAC_6_TYPE)->_hvac.hvacMode)//0-conventional
         {
-            GetDeviceByType(monitor, HEAT_TYPE)->_storage[0]._port.d_state = OFF;
-            if(0x00 == GetDeviceByType(monitor, HVAC_6_TYPE)->_hvac.hvacMode)//0-conventional
-            {
-                GetDeviceByType(monitor, HVAC_6_TYPE)->_storage[0]._port.d_value &= 0xEF;//如果也不制冷的话会在上面关闭风机了
-            }
-            else if(0x01 == GetDeviceByType(monitor, HVAC_6_TYPE)->_hvac.hvacMode)//0-conventional
-            {
-                GetDeviceByType(monitor, HVAC_6_TYPE)->_storage[0]._port.d_value &= 0xE7;
-            }
-            else if(0x02 == GetDeviceByType(monitor, HVAC_6_TYPE)->_hvac.hvacMode)//0-conventional
-            {
-                GetDeviceByType(monitor, HVAC_6_TYPE)->_storage[0]._port.d_value &= 0xF7;
-            }
+            GetDeviceByType(monitor, HVAC_6_TYPE)->_storage[0]._port.d_value &= 0xEF;//如果也不制冷的话会在上面关闭风机了
+        }
+        else if(0x01 == GetDeviceByType(monitor, HVAC_6_TYPE)->_hvac.hvacMode)//0-conventional
+        {
+            GetDeviceByType(monitor, HVAC_6_TYPE)->_storage[0]._port.d_value &= 0xE7;
+        }
+        else if(0x02 == GetDeviceByType(monitor, HVAC_6_TYPE)->_hvac.hvacMode)//0-conventional
+        {
+            GetDeviceByType(monitor, HVAC_6_TYPE)->_storage[0]._port.d_value &= 0xF7;
         }
     }
 
     //当前有一个逻辑是降温和除湿联动选择，只和ACSTATION联动
-    if(ON == sys_set.tempSet.coolingDehumidifyLock.value)
+    if(ON == GetSysSet()->tempSet.coolingDehumidifyLock.value)
     {
         //联动可能会导致降温和加热设备同时工作，除湿和加湿设备同时工作
         GetDeviceByType(monitor, DEHUMI_TYPE)->_storage[0]._port.d_state = GetDeviceByType(monitor, COOL_TYPE)->_storage[0]._port.d_state;
@@ -712,7 +769,7 @@ void timmerProgram(type_monitor_t *monitor)
                         timer._time12_ctl[index].d_state = 0;
                     }
                 }
-                else if(BY_RECYCLE == timer.mode)
+                else if(BY_RECYCLE == timer.mode)//Justin debug
                 {
 //                    if((nowTime >= timer._recycle.startAt) &&)
 //                    {
@@ -739,7 +796,8 @@ time_t changeTmTotimet(struct tm *t)
     return mktime(t);
 }
 
-void lineProgram(type_monitor_t *monitor, u8 line_no)
+//mPeroid 周期 单位ms
+void lineProgram(type_monitor_t *monitor, u8 line_no, u16 mPeroid)//Justing debug 需要优化
 {
     static u8       state_pre       = 0;
     struct tm       *tm_test        = RT_NULL;
@@ -747,8 +805,8 @@ void lineProgram(type_monitor_t *monitor, u8 line_no)
     time_t          now_time        = 0;
     static time_t   time_period     = 0;
     type_sys_time   time;
-    u8              power           = 0;
-    u16             dimming         = 0;
+    static u8       power           = 0;
+    static u16      dimming         = 0;
     line_t          *line           = RT_NULL;
     proLine_t       *line_set       = RT_NULL;
 
@@ -796,8 +854,43 @@ void lineProgram(type_monitor_t *monitor, u8 line_no)
         {
             if(line_set->tempStartDimming.value >= GetSensorByType(monitor, BHS_TYPE)->__stora[index].value)
             {
-                power = line_set->byPower.value / 2;
-                dimming = line_set->byAutoDimming.value / 2;
+                if(0 == line_set->sunriseSunSet.value)//关闭日升日落模式
+                {
+                    power = line_set->byPower.value / 2;
+                    dimming = line_set->byAutoDimming.value / 2;
+                }
+                else if(line_set->sunriseSunSet.value > 0 && line_set->sunriseSunSet.value <= 30)//日升日落单位分钟
+                {
+                    if(power + 5 < line_set->byPower.value/2)//5作为deadband
+                    {
+                        if(line_set->sunriseSunSet.value * 60 * 1000 > mPeroid)
+                        {
+                            power += (line_set->byPower.value/ 2) / (line_set->sunriseSunSet.value * 60 * 1000 / mPeroid);
+                        }
+                    }
+                    else if(power > line_set->byPower.value/2 + 5)//5作为deadband
+                    {
+                        if(line_set->sunriseSunSet.value * 60 * 1000 > mPeroid)
+                        {
+                            power -= (line_set->byPower.value / 2) / (line_set->sunriseSunSet.value * 60 * 1000 / mPeroid);
+                        }
+                    }
+
+                    if(dimming + 100 < line_set->byAutoDimming.value/2)//100作为deadband
+                    {
+                        if(line_set->sunriseSunSet.value * 60 * 1000 > mPeroid)
+                        {
+                            dimming += (line_set->byAutoDimming.value / 2) / (line_set->sunriseSunSet.value * 60 * 1000 / mPeroid);
+                        }
+                    }
+                    else if(dimming > line_set->byAutoDimming.value/2 + 100)//100作为deadband
+                    {
+                        if(line_set->sunriseSunSet.value * 60 * 1000 > mPeroid)
+                        {
+                            dimming -= (line_set->byAutoDimming.value / 2) / (line_set->sunriseSunSet.value * 60 * 1000 / mPeroid);
+                        }
+                    }
+                }
             }
             else if(line_set->tempOffDimming.value >= GetSensorByType(monitor, BHS_TYPE)->__stora[index].value)
             {
@@ -806,8 +899,44 @@ void lineProgram(type_monitor_t *monitor, u8 line_no)
             }
             else
             {
-                power = line_set->byPower.value;
-                dimming = line_set->byAutoDimming.value;
+                if(0 == line_set->sunriseSunSet.value)//关闭日升日落模式
+                {
+                    power = line_set->byPower.value;
+                    dimming = line_set->byAutoDimming.value;
+                }
+                else if(line_set->sunriseSunSet.value > 0 && line_set->sunriseSunSet.value <= 30)
+                {
+                    if(power + 5 < line_set->byPower.value)//5作为deadband
+                    {
+                        if(line_set->sunriseSunSet.value * 60 * 1000 > mPeroid)
+                        {
+                            power += line_set->byPower.value / (line_set->sunriseSunSet.value * 60 * 1000 / mPeroid);
+                        }
+                    }
+                    else if(power > line_set->byPower.value + 5)//5作为deadband
+                    {
+                        if(line_set->sunriseSunSet.value * 60 * 1000 > mPeroid)
+                        {
+                            power -= line_set->byPower.value / (line_set->sunriseSunSet.value * 60 * 1000 / mPeroid);
+                        }
+                    }
+
+                    if(dimming + 100 < line_set->byAutoDimming.value)//100作为deadband
+                    {
+                        if(line_set->sunriseSunSet.value * 60 * 1000 > mPeroid)
+                        {
+                            dimming += line_set->byAutoDimming.value / (line_set->sunriseSunSet.value * 60 * 1000 / mPeroid);
+                        }
+                    }
+                    else if(dimming > line_set->byAutoDimming.value + 100)//100作为deadband
+                    {
+                        if(line_set->sunriseSunSet.value * 60 * 1000 > mPeroid)
+                        {
+                            dimming -= line_set->byAutoDimming.value / (line_set->sunriseSunSet.value * 60 * 1000 / mPeroid);
+                        }
+                    }
+
+                }
             }
         }
     }
@@ -962,9 +1091,12 @@ void lineProgram(type_monitor_t *monitor, u8 line_no)
 
 void humiProgram(type_monitor_t *monitor)
 {
-    u8              storage     = 0;
-    u16             humiNow     = 0;
-    sensor_t        *module     = RT_NULL;
+    u8              storage             = 0;
+    u16             humiNow             = 0;
+    u16             humiTarget          = 0;
+    u16             dehumiTarget        = 0;
+    sensor_t        *module             = RT_NULL;
+    static time_t   time_close_dehu     = 0;
 
     module = GetSensorByType(monitor, BHS_TYPE);
 
@@ -991,27 +1123,41 @@ void humiProgram(type_monitor_t *monitor)
         return;
     }
 
-    //白天
-    if(1 == dayOrNight)
+    if(DAY_TIME == GetSysSet()->dayOrNight)
     {
-        //达到湿度目标
-        if(humiNow >= sys_set.humiSet.dayDehumiTarget.value)
+        humiTarget = GetSysSet()->humiSet.dayHumiTarget.value;
+        dehumiTarget = GetSysSet()->humiSet.dayDehumiTarget.value;
+    }
+    else if(NIGHT_TIME == GetSysSet()->dayOrNight)
+    {
+        humiTarget = GetSysSet()->humiSet.nightHumiTarget.value;
+        dehumiTarget = GetSysSet()->humiSet.nightDehumiTarget.value;
+    }
+
+
+    //达到湿度目标
+    if(humiNow >= dehumiTarget)
+    {
+        if((OFF == GetDeviceByType(monitor, DEHUMI_TYPE)->hotStartDelay) ||
+           (ON == GetDeviceByType(monitor, DEHUMI_TYPE)->hotStartDelay &&
+            getTimeStamp() > (time_close_dehu + 5 * 60)))//5分钟的压缩机保护时间
         {
             GetDeviceByType(monitor, DEHUMI_TYPE)->_storage[0]._port.d_state = ON;
         }
-        else if(humiNow <= sys_set.humiSet.dayDehumiTarget.value - sys_set.humiSet.humidDeadband.value)
-        {
-            GetDeviceByType(monitor, DEHUMI_TYPE)->_storage[0]._port.d_state = OFF;
-        }
+    }
+    else if(humiNow <= dehumiTarget - GetSysSet()->humiSet.humidDeadband.value)
+    {
+        time_close_dehu = getTimeStamp();
+        GetDeviceByType(monitor, DEHUMI_TYPE)->_storage[0]._port.d_state = OFF;
+    }
 
-        if(humiNow <= sys_set.humiSet.dayHumiTarget.value)
-        {
-            GetDeviceByType(monitor, HUMI_TYPE)->_storage[0]._port.d_state = ON;
-        }
-        else if(humiNow >= sys_set.humiSet.dayHumiTarget.value + sys_set.humiSet.humidDeadband.value)
-        {
-            GetDeviceByType(monitor, HUMI_TYPE)->_storage[0]._port.d_state = OFF;
-        }
+    if(humiNow <= humiTarget)
+    {
+        GetDeviceByType(monitor, HUMI_TYPE)->_storage[0]._port.d_state = ON;
+    }
+    else if(humiNow >= humiTarget + GetSysSet()->humiSet.humidDeadband.value)
+    {
+        GetDeviceByType(monitor, HUMI_TYPE)->_storage[0]._port.d_state = OFF;
     }
 
     //当前有一个逻辑是降温和除湿联动选择
@@ -1021,10 +1167,15 @@ void humiProgram(type_monitor_t *monitor)
     }
 }
 
-void co2Program(type_monitor_t *monitor)
+//mPeriod 周期 单位ms
+void co2Program(type_monitor_t *monitor, u16 mPeriod)//Justin debug 未验证
 {
     u8              storage     = 0;
-    u16             co2Now     = 0;
+    u16             co2Now      = 0;
+    u16             co2Target   = 0;
+    static u16      runTime     = 0;
+    static u16      stopTime    = 0;
+    u8              switchFlg   = 0;
     sensor_t        *module     = RT_NULL;
 
     module = GetSensorByType(monitor, BHS_TYPE);
@@ -1048,34 +1199,76 @@ void co2Program(type_monitor_t *monitor)
 
     }
 
-    //白天
-    if(1 == dayOrNight)
+    if(DAY_TIME == GetSysSet()->dayOrNight)
     {
-        if(ON == sys_set.co2Set.isFuzzyLogic.value)
-        {
+        co2Target = GetSysSet()->co2Set.dayCo2Target.value;
+    }
+    else if(NIGHT_TIME == GetSysSet()->dayOrNight)
+    {
+        co2Target = GetSysSet()->co2Set.nightCo2Target.value;
+    }
 
+    if(ON == sys_set.co2Set.isFuzzyLogic.value)
+    {
+        //检测当前
+        //开10s 再关闭 10秒
+        if((runTime < 10 * 1000) && (co2Now <= co2Target))
+        {
+            runTime += mPeriod;
+            switchFlg = 1;
         }
         else
         {
-            if(co2Now <= sys_set.co2Set.dayCo2Target.value)
+            switchFlg = 0;
+            if(stopTime < 10 * 1000)
             {
-                //如果和制冷联动 则制冷的时候不增加co2
-                //如果和除湿联动 则制冷的时候不增加co2
-                if(!((ON == sys_set.co2Set.dehumidifyLock.value && ON == GetDeviceByType(monitor, DEHUMI_TYPE)->_storage[0]._port.d_state) ||
-                     (ON == sys_set.co2Set.coolingLock.value && (ON == GetDeviceByType(monitor, COOL_TYPE)->_storage[0]._port.d_state
-                      || GetDeviceByType(monitor, HVAC_6_TYPE)->_storage[0]._port.d_value & 0x08))))
-                {
-                    GetDeviceByType(monitor, CO2_TYPE)->_storage[0]._port.d_state = ON;
-                }
-                else
-                {
-                    GetDeviceByType(monitor, CO2_TYPE)->_storage[0]._port.d_state = OFF;
-                }
+                stopTime += mPeriod;
             }
-            else if(co2Now >= sys_set.co2Set.dayCo2Target.value + sys_set.co2Set.co2Deadband.value)
+            else
+            {
+                runTime = 0;
+                stopTime = 0;
+            }
+        }
+
+        if(1 == switchFlg)
+        {
+            if(!((ON == sys_set.co2Set.dehumidifyLock.value && ON == GetDeviceByType(monitor, DEHUMI_TYPE)->_storage[0]._port.d_state) ||
+                 (ON == sys_set.co2Set.coolingLock.value && (ON == GetDeviceByType(monitor, COOL_TYPE)->_storage[0]._port.d_state
+                  || GetDeviceByType(monitor, HVAC_6_TYPE)->_storage[0]._port.d_value & 0x08))))
+            {
+                GetDeviceByType(monitor, CO2_TYPE)->_storage[0]._port.d_state = ON;
+            }
+            else
             {
                 GetDeviceByType(monitor, CO2_TYPE)->_storage[0]._port.d_state = OFF;
             }
+        }
+        else
+        {
+            GetDeviceByType(monitor, CO2_TYPE)->_storage[0]._port.d_state = OFF;
+        }
+    }
+    else
+    {
+        if(co2Now <= co2Target)
+        {
+            //如果和制冷联动 则制冷的时候不增加co2
+            //如果和除湿联动 则制冷的时候不增加co2
+            if(!((ON == sys_set.co2Set.dehumidifyLock.value && ON == GetDeviceByType(monitor, DEHUMI_TYPE)->_storage[0]._port.d_state) ||
+                 (ON == sys_set.co2Set.coolingLock.value && (ON == GetDeviceByType(monitor, COOL_TYPE)->_storage[0]._port.d_state
+                  || GetDeviceByType(monitor, HVAC_6_TYPE)->_storage[0]._port.d_value & 0x08))))
+            {
+                GetDeviceByType(monitor, CO2_TYPE)->_storage[0]._port.d_state = ON;
+            }
+            else
+            {
+                GetDeviceByType(monitor, CO2_TYPE)->_storage[0]._port.d_state = OFF;
+            }
+        }
+        else if(co2Now >= co2Target + sys_set.co2Set.co2Deadband.value)
+        {
+            GetDeviceByType(monitor, CO2_TYPE)->_storage[0]._port.d_state = OFF;
         }
     }
 }
@@ -1121,4 +1314,28 @@ time_t ReplyTimeStamp(void)
     now_time = changeTmTotimet(time);
 
     return now_time;
+}
+
+u16 getVpd(void)
+{
+    u16         res         = 0;
+    float       humi        = 0;
+    float       temp        = 0;
+    sensor_t    *sensor     = GetSensorByType(GetMonitor(), BHS_TYPE);
+
+    for(u8 index = 0; index < sensor->storage_size; index++)
+    {
+        if(F_S_TEMP == sensor->__stora[index].func)
+        {
+            temp = sensor->__stora[index].value / 10;//形如28.5 的格式
+        }
+        else if(F_S_HUMI == sensor->__stora[index].func)
+        {
+            humi = sensor->__stora[index].value / 1000;
+        }
+    }
+
+    res = (1 * 0.6107 * pow(10, 7.5 * temp /(237.3 + temp)) * (1 - humi)) * 100;
+
+    return res;
 }

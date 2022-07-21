@@ -144,9 +144,6 @@ void SensorUart2TaskEntry(void* parameter)
     static      u8              sensor_start    = 0;
     static      u8              line_start      = 0;
     static      type_sys_time   sys_time_pre;
-    struct tm   tm_test;//Justin debug 仅仅测试
-    u8          test = 0;
-    time_t      now_time;
 
     rt_memset((u8 *)&sys_time_pre, 0, sizeof(type_sys_time));
     initConnectState();
@@ -239,12 +236,12 @@ void SensorUart2TaskEntry(void* parameter)
 
                 MonitorModuleConnect(GetMonitor());
                 tempProgram(GetMonitor());
-                co2Program(GetMonitor());
+                co2Program(GetMonitor(), 1000);
                 humiProgram(GetMonitor());
                 timmerProgram(GetMonitor());
                 findLocation(GetMonitor(), &sys_set.cloudCmd, uart2_serial);
-                lineProgram(GetMonitor(), 0);//line1
-                lineProgram(GetMonitor(), 1);//line2
+                lineProgram(GetMonitor(), 0, 1000);//line1
+                lineProgram(GetMonitor(), 1, 1000);//line2
                 if(0 != sys_set.cloudCmd.delete_id.value)
                 {
                     deleteModule(GetMonitor(), sys_set.cloudCmd.delete_id.value);

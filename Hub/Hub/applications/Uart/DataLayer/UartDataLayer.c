@@ -13,6 +13,8 @@
 #include "InformationMonitor.h"
 #include "Module.h"
 
+extern sys_set_t *GetSysSet(void);
+
 void setTimer12DefaultPara(timer12_t *module, char *name, u16 ctrl_addr, u8 manual, u16 manual_on_time, u8 main_type, u8 storage_size)
 {
     u8 port = 0;
@@ -290,6 +292,8 @@ rt_err_t setTimer12Default(timer12_t *module)
 }
 
 /* 获取分配的地址 */
+
+//0x10~0x1F预留
 u8 getAllocateAddress(type_monitor_t *monitor)
 {
     u16 i = 0;
@@ -297,7 +301,7 @@ u8 getAllocateAddress(type_monitor_t *monitor)
     for(i = 2; i < ALLOCATE_ADDRESS_SIZE; i++)
     {
         if((monitor->allocateStr.address[i] != i) &&
-            (i != 0xFA) && (i != 0xFE) )                               //0xFA 是注册的代码 0xFE是PHEC通用
+            (i != 0xFA) && (i != 0xFE) && ((i < 0x10) || (i > 0x1F)))//0xFA 是注册的代码 0xFE是PHEC通用
         {
             monitor->allocateStr.address[i] = i;
             return i;
@@ -348,6 +352,7 @@ void AnlyzeDeviceRegister(type_monitor_t *monitor, rt_device_t serial, u8 *data,
     rt_memset(&sensor, 0, sizeof(sensor_t));
     rt_memset(&device, 0, sizeof(device_time4_t));
     rt_memset(&timer, 0, sizeof(timer12_t));
+    rt_memset(&line, 0, sizeof(line_t));
 
     sensor.type = data[8];
     sensor.uuid = (data[9] << 24) | (data[10] << 16) | (data[11] << 8) | data[12];
@@ -604,6 +609,10 @@ void AnlyzeStorage(type_monitor_t *monitor, u8 addr, u8 read, u8 *data, u8 lengt
             for(storage = 0; storage < length/2; storage++)
             {
                 monitor->sensor[index].__stora[storage].value = (data[2 * storage] << 8) | data[2 * storage + 1];
+                if(F_S_CO2 == monitor->sensor[index].__stora[storage].func)
+                {
+                    monitor->sensor[index].__stora[storage].value += GetSysSet()->co2Set.co2Corrected;
+                }
             }
         }
     }

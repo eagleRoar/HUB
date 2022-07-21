@@ -21,12 +21,13 @@ void initCloudProtocol(void);
 char *GetSnName(char *);
 void tempProgram(type_monitor_t *);
 void timmerProgram(type_monitor_t *);
-void co2Program(type_monitor_t *);
+void co2Program(type_monitor_t *, u16);
 void humiProgram(type_monitor_t *);
 void analyzeCloudData(char *);
-void ReplyDataToCloud(mqtt_client *, u8 *, u16 , u8);
+void ReplyDataToCloud(mqtt_client *, u8 *, u16 *, u8);
 hub_t *GetHub(void);
 void SendDataToCloud(mqtt_client *, char *);
-void lineProgram(type_monitor_t *, u8);
+void lineProgram(type_monitor_t *, u8, u16);
 time_t ReplyTimeStamp(void);
+u16 getVpd(void);
 #endif /* APPLICATIONS_CLOUDPROTOCOL_CLOUDPROTOCOL_H_ */

@@ -38,6 +38,7 @@ void TcpRecvTaskEntry(void* parameter)
         {
             //解析数据
             TcpRecvMsg(&sock, (u8 *)tcpRecvBuffer.buffer,RCV_ETH_BUFFSZ);
+//            LOG_D("%s",tcpRecvBuffer.buffer);//Justin debug
             tcpRecvBuffer.flag = YES;
         }
         rt_thread_mdelay(50);
@@ -51,6 +52,7 @@ void TcpSendTaskEntry(void* parameter)
     static u8           preLinkStatus           = LINKDOWN;
     static u8           Timer1sTouch            = OFF;
     static u16          time1S                  = 0;
+    u16                 length                  = 0;
 
     while (1)
     {
@@ -102,8 +104,8 @@ void TcpSendTaskEntry(void* parameter)
                     tcpRecvBuffer.flag = NO;
                     analyzeCloudData(tcpRecvBuffer.buffer);
 
-                    ReplyDataToCloud(RT_NULL, (u8 *)tcpSendBuffer.buffer, RCV_ETH_BUFFSZ, NO);
-                    if (RT_EOK != TcpSendMsg(&sock, (u8 *)tcpSendBuffer.buffer, RCV_ETH_BUFFSZ))
+                    ReplyDataToCloud(RT_NULL, (u8 *)tcpSendBuffer.buffer, &length, NO);
+                    if (RT_EOK != TcpSendMsg(&sock, (u8 *)tcpSendBuffer.buffer, length))
                     {
                         LOG_E("send tcp err");
                         eth->tcp.SetConnectStatus(OFF);

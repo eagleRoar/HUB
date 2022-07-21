@@ -25,7 +25,7 @@
 
 #define     STAGE_LIST_MAX                  10//最多10个阶段
 #define     RECIPE_LIST_MAX                 10//最多10个配方
-#define     TANK_LIST_MAX                   9
+#define     TANK_LIST_MAX                   4
 
 typedef     struct proTempSet               proTempSet_t;
 typedef     struct proCo2Set                proCo2Set_t;
@@ -100,6 +100,7 @@ struct proCo2Set{
     type_kv_u8      coolingLock;                //制冷联动状态
     type_kv_u8      dehumidifyLock;             //除湿联动状态
     type_kv_u16     co2Deadband;
+    int             co2Corrected;               //Co2 修正值
     type_kv_u32     timestamp;
 };
 
@@ -144,7 +145,6 @@ struct sysPara
     u8 timeFormat;              //1, //1-12 2-24 只对设备显示有效，APP 及主机用自身(不传此参数时不设置，暂时不对设备进行修改）
     u8 dayNightMode;            //1, //1-by photocell, 2-by timer 环控才有
     u16 photocellSensitivity;   //20, //光敏阈值 by photocell 才有
-    u16 lightIntensity;         //10, //光敏值
     u16 dayTime;                //480, //白天开始时间 by timer 才有
     u16 nightTime;              //1600, //晚上开始时间
     u8 maintain;                //1, //1-on 0-off
@@ -224,6 +224,7 @@ struct sysSet{
     cloudcmd_t      cloudCmd;
     stage_t         stageSet;
     sys_para_t      sysPara;
+    u8              dayOrNight;//白天黑夜 白天0 黑夜1
     u8              saveFlag;
 };
 
@@ -300,6 +301,7 @@ void CmdGetHubState(char *, cloudcmd_t *);
 void CmdSetHubName(char *data, cloudcmd_t *);
 void CmdSetPortName(char *, cloudcmd_t *);
 void CmdSetSysSet(char *, cloudcmd_t *, sys_para_t *);
+void CmdGetSysSet(char *, cloudcmd_t *);
 char *SendHubReport(char *);
 char *SendHubReportWarn(char *);
 char *ReplySetSchedule(char *, cloudcmd_t);
@@ -328,4 +330,5 @@ char *ReplySetHubName(char *, cloudcmd_t);
 char *ReplyTest(char *, cloudcmd_t);
 char *ReplySetPortName(char *, cloudcmd_t);
 char *ReplySetSysPara(char *, cloudcmd_t, sys_para_t);
+char *ReplyGetSysPara(char *, cloudcmd_t, sys_para_t, sensor_t *);
 #endif /* APPLICATIONS_CLOUDPROTOCOL_CLOUDPROTOCOLBUSINESS_H_ */

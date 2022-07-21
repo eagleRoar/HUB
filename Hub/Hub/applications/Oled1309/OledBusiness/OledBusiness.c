@@ -16,6 +16,7 @@
 #include "Module.h"
 
 char    data[80];
+extern sys_set_t *GetSysSet(void);
 
 static void ShowCursor(u8g2_t *u8g2, int16_t x0, int16_t y0, int16_t x1, int16_t y1, int16_t x2, int16_t y2, u8 show)
 {
@@ -28,6 +29,11 @@ static void ShowCursor(u8g2_t *u8g2, int16_t x0, int16_t y0, int16_t x1, int16_t
 void HomePage(u8g2_t *uiShow, type_page_t page)
 {
 //    time_t      now;
+    char        time[16]    = "";
+    char        temp[2];
+    char        temp3;
+    char        temp1[4];
+    type_sys_time   sys_time;
     u8          line        = LINE_HIGHT;
     u8          column      = 0;
 
@@ -35,9 +41,70 @@ void HomePage(u8g2_t *uiShow, type_page_t page)
 
     //1.显示时间
 //    now = time(RT_NULL);
-    strcpy(data, /*ctime(&now)*/getRealTime());
-    column = 12;
-    u8g2_DrawStr(uiShow, line, column, &data[10]);
+    if(TIME_STYLE_12H == GetSysSet()->sysPara.timeFormat)
+    {
+        getRealTimeForMat(&sys_time);
+        if(sys_time.hour > 12)
+        {
+            itoa(sys_time.hour - 12, temp, 10);
+
+            if(sys_time.hour < 20)
+            {
+                temp[1] = temp[0];
+                temp[0] = '0';
+            }
+        }
+
+        strncat(time, temp, 2);
+        temp3 = ':';
+        strncat(time, &temp3, 1);
+        itoa(sys_time.minute, temp, 10);
+        if(sys_time.minute < 10)
+        {
+            temp[1] = temp[0];
+            temp[0] = '0';
+        }
+        strncat(time, temp, 2);
+        temp3 = ':';
+        strncat(time, &temp3, 1);
+        itoa(sys_time.second, temp, 10);
+        if(sys_time.second < 10)
+        {
+            temp[1] = temp[0];
+            temp[0] = '0';
+        }
+        strncat(time, temp, 2);
+
+
+        if((sys_time.hour >= 12))
+        {
+            strcpy(temp, "PM");
+            strncat(time, temp, 2);
+//            temp3 = ' ';
+//            strncat(time, &temp3, 1);
+        }
+        else
+        {
+            strcpy(temp, "AM");
+            strncat(time, temp, 2);
+//            temp3 = ' ';
+//            strncat(time, &temp3, 1);
+        }
+
+        itoa(sys_time.year, temp1, 10);
+        strncat(time, temp1, 4);
+        LOG_D("time = %s",time);//Justin debug
+        strcpy(data, time);
+
+        column = 12;
+        u8g2_DrawStr(uiShow, line, column, data);
+    }
+    else
+    {
+        strcpy(data, getRealTime());
+        column = 12;
+        u8g2_DrawStr(uiShow, line, column, &data[10]);
+    }
 
     //2.显示sensor state
     column += COLUMN_HIGHT;

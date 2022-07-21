@@ -20,6 +20,7 @@ extern  type_sys_time   sys_time;
 
 extern sys_set_t *GetSysSet(void);
 extern sys_tank_t *GetSysTank(void);
+extern void getRealTimeForMat(type_sys_time *);
 
 rt_err_t GetValueU8(cJSON *temp, type_kv_u8 *data)
 {
@@ -36,6 +37,26 @@ rt_err_t GetValueU8(cJSON *temp, type_kv_u8 *data)
     {
         data->value = 0x00;
         LOG_E("parse u8 err, name %s",data->name);
+    }
+
+    return ret;
+}
+
+rt_err_t GetValueByInt(cJSON *temp, char *name, int *value)
+{
+    rt_err_t ret = RT_ERROR;
+
+    cJSON *json = cJSON_GetObjectItem(temp, name);
+    if(NULL != json)
+    {
+        value = json->valueint;
+        ret = RT_EOK;
+    }
+
+    if(RT_ERROR == ret)
+    {
+        value = 0x00;
+        LOG_E("parse int err, name %s",name);
     }
 
     return ret;
@@ -174,6 +195,7 @@ void CmdSetCo2(char *data)
         GetValueU8(temp, &sys_set.co2Set.isFuzzyLogic);
         GetValueU8(temp, &sys_set.co2Set.coolingLock);
         GetValueU8(temp, &sys_set.co2Set.dehumidifyLock);
+        GetValueByInt(temp, "co2Corrected", &sys_set.co2Set.co2Corrected);
 
         cJSON_Delete(temp);
     }
@@ -665,6 +687,23 @@ void CmdSetHubName(char *data, cloudcmd_t *cmd)
     }
 }
 
+void CmdGetSysSet(char *data, cloudcmd_t *cmd)
+{
+    cJSON   *temp       = RT_NULL;
+
+    temp = cJSON_Parse(data);
+    if(RT_NULL != temp)
+    {
+        GetValueC16(temp, &cmd->msgid);
+
+        cJSON_Delete(temp);
+    }
+    else
+    {
+        LOG_E("CmdGetSysSet err");
+    }
+}
+
 void CmdSetSysSet(char *data, cloudcmd_t *cmd, sys_para_t *para)
 {
     cJSON   *temp       = RT_NULL;
@@ -682,7 +721,6 @@ void CmdSetSysSet(char *data, cloudcmd_t *cmd, sys_para_t *para)
         GetValueByU8(temp, "timeFormat", &para->timeFormat);
         GetValueByU8(temp, "dayNightMode", &para->dayNightMode);
         GetValueByU16(temp, "photocellSensitivity", &para->photocellSensitivity);
-        GetValueByU16(temp, "lightIntensity", &para->lightIntensity);
         GetValueByU16(temp, "dayTime", &para->dayTime);
         GetValueByU16(temp, "nightTime", &para->nightTime);
         GetValueByU8(temp, "maintain", &para->maintain);
@@ -924,9 +962,9 @@ char *SendHubReport(char *cmd)
         cJSON_AddNumberToObject(json, "co2Lock", GetSysSet()->co2Set.dehumidifyLock.value);
         cJSON_AddNumberToObject(json, "tempLock", GetSysSet()->tempSet.coolingDehumidifyLock.value);
         cJSON_AddNumberToObject(json, "humidLock", GetSysSet()->tempSet.coolingDehumidifyLock.value);
-        cJSON_AddNumberToObject(json, "ppfd", -9999);//Justin debug 该值没有
-        cJSON_AddNumberToObject(json, "vpd", 0);//Justin debug 该值没有
-        cJSON_AddNumberToObject(json, "dayNight", 0);//Justin debug
+        cJSON_AddNumberToObject(json, "ppfd", GetSysSet()->line1Set.byAutoDimming.value);
+        cJSON_AddNumberToObject(json, "vpd", getVpd());
+        cJSON_AddNumberToObject(json, "dayNight", GetSysSet()->dayOrNight);
         cJSON_AddNumberToObject(json, "maintain", GetSysSet()->sysPara.maintain);
 
         cJSON_AddStringToObject(json, "ntpzone", GetSysSet()->sysPara.ntpzone);
@@ -980,6 +1018,7 @@ char *ReplyGetCo2(char *cmd)
         cJSON_AddNumberToObject(json, sys_set.co2Set.isFuzzyLogic.name, sys_set.co2Set.isFuzzyLogic.value);
         cJSON_AddNumberToObject(json, sys_set.co2Set.coolingLock.name, sys_set.co2Set.coolingLock.value);
         cJSON_AddNumberToObject(json, sys_set.co2Set.dehumidifyLock.name, sys_set.co2Set.dehumidifyLock.value);
+        cJSON_AddNumberToObject(json, "co2Corrected", sys_set.co2Set.co2Corrected);
         sys_set.co2Set.timestamp.value = ReplyTimeStamp();
         cJSON_AddNumberToObject(json, sys_set.co2Set.timestamp.name, sys_set.co2Set.timestamp.value);
 
@@ -1281,6 +1320,92 @@ char *ReplySetTank(char *cmd, cloudcmd_t cloud)//Justin debug 未验证
     return str;
 }
 
+char *ReplyGetSysPara(char *cmd, cloudcmd_t cloud, sys_para_t para, sensor_t *sensor)
+{
+    char            *str        = RT_NULL;
+    char            time[15]    = "";
+    char            temp1[2]    = {0};
+    char            temp2[4];
+    char            name[16];
+    cJSON           *json       = cJSON_CreateObject();
+    type_sys_time   sys_time;
+
+    if(RT_NULL != json)
+    {
+        cJSON_AddStringToObject(json, "cmd", cmd);
+        cJSON_AddStringToObject(json, cloud.msgid.name, cloud.msgid.value);
+        cJSON_AddStringToObject(json, "sn", GetSnName(name));
+
+        cJSON_AddStringToObject(json, "ntpzone", para.ntpzone);
+        cJSON_AddNumberToObject(json, "tempUnit", para.tempUnit);
+        cJSON_AddNumberToObject(json, "ecUnit", para.ecUnit);
+        cJSON_AddNumberToObject(json, "timeFormat", para.timeFormat);
+        cJSON_AddNumberToObject(json, "dayNightMode", para.dayNightMode);
+        cJSON_AddNumberToObject(json, "photocellSensitivity", para.photocellSensitivity);
+        for(u8 index = 0; index < sensor->storage_size; index++)
+        {
+            if(F_S_LIGHT == sensor->__stora[index].func)
+            {
+                cJSON_AddNumberToObject(json, "lightIntensity", sensor->__stora[index].value);
+            }
+        }
+        cJSON_AddNumberToObject(json, "dayTime", para.dayTime);
+        cJSON_AddNumberToObject(json, "nightTime", para.nightTime);
+        cJSON_AddNumberToObject(json, "maintain", para.maintain);
+        getRealTimeForMat(&sys_time);
+
+        itoa(sys_time.year, temp2, 10);
+        strncat(time, temp2, 4);
+
+        itoa(sys_time.month, temp1, 10);
+        if(sys_time.month < 10)
+        {
+            temp1[1] = temp1[0];
+            temp1[0] = '0';
+        }
+        strncat(time, temp1, 2);
+
+        itoa(sys_time.day, temp1, 10);
+        if(sys_time.day < 10)
+        {
+            temp1[1] = temp1[0];
+            temp1[0] = '0';
+        }
+        strncat(time, temp1, 2);
+
+        itoa(sys_time.hour, temp1, 10);
+        if(sys_time.hour < 10)
+        {
+            temp1[1] = temp1[0];
+            temp1[0] = '0';
+        }
+        strncat(time, temp1, 2);
+
+        itoa(sys_time.minute, temp1, 10);
+        if(sys_time.minute < 10)
+        {
+            temp1[1] = temp1[0];
+            temp1[0] = '0';
+        }
+        strncat(time, temp1, 2);
+
+        itoa(sys_time.second, temp1, 10);
+        if(sys_time.second < 10)
+        {
+            temp1[1] = temp1[0];
+            temp1[0] = '0';
+        }
+        strncat(time, temp1, 2);
+
+        cJSON_AddStringToObject(json, "time", time);
+        cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
+        str = cJSON_PrintUnformatted(json);
+        cJSON_Delete(json);
+    }
+
+    return str;
+}
+
 char *ReplySetSysPara(char *cmd, cloudcmd_t cloud, sys_para_t para)
 {
     char            *str        = RT_NULL;
@@ -1297,7 +1422,6 @@ char *ReplySetSysPara(char *cmd, cloudcmd_t cloud, sys_para_t para)
         cJSON_AddNumberToObject(json, "timeFormat", para.timeFormat);
         cJSON_AddNumberToObject(json, "dayNightMode", para.dayNightMode);
         cJSON_AddNumberToObject(json, "photocellSensitivity", para.photocellSensitivity);
-        cJSON_AddNumberToObject(json, "lightIntensity", para.lightIntensity);
         cJSON_AddNumberToObject(json, "dayTime", para.dayTime);
         cJSON_AddNumberToObject(json, "nightTime", para.nightTime);
         cJSON_AddNumberToObject(json, "maintain", para.maintain);
@@ -1425,9 +1549,9 @@ char *ReplyGetHubState(char *cmd, cloudcmd_t cloud)
         cJSON_AddNumberToObject(json, "co2Lock", GetSysSet()->co2Set.dehumidifyLock.value);
         cJSON_AddNumberToObject(json, "tempLock", GetSysSet()->tempSet.coolingDehumidifyLock.value);
         cJSON_AddNumberToObject(json, "humidLock", GetSysSet()->tempSet.coolingDehumidifyLock.value);
-        cJSON_AddNumberToObject(json, "ppfd", -9999);//Justin debug 该值没有
-        cJSON_AddNumberToObject(json, "vpd", 0);//Justin debug 该值没有
-        cJSON_AddNumberToObject(json, "dayNight", 0);//Justin debug
+        cJSON_AddNumberToObject(json, "ppfd", GetSysSet()->line1Set.byAutoDimming.value);
+        cJSON_AddNumberToObject(json, "vpd", getVpd());
+        cJSON_AddNumberToObject(json, "dayNight", GetSysSet()->dayOrNight);
         cJSON_AddNumberToObject(json, "maintain", GetSysSet()->sysPara.maintain);
 
         list = cJSON_CreateObject();
@@ -1574,7 +1698,7 @@ char *ReplyGetSchedule(char *cmd, cloudcmd_t cloud)//Justin debug 未验证
     return str;
 }
 
-char *ReplySetPortSet(char *cmd, cloudcmd_t cloud)//Justin debug 功能未验证
+char *ReplySetPortSet(char *cmd, cloudcmd_t cloud)
 {
     u8      addr         = 0;
     u8      port        = 0;
