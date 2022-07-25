@@ -17,7 +17,7 @@
 #define DBG_TAG "u.sd"
 #define DBG_LVL DBG_INFO
 
-static char sd_thread_stack[1024*3];//[1024 * 4];
+static char sd_thread_stack[1024*3];//[1024*3];//Justin debug 仅仅测试
 static struct rt_thread sd_thread;
 
 struct sdCardState      sdCard;
@@ -89,13 +89,11 @@ void sd_dfs_event_entry(void* parameter)
 
                             if(RT_EOK != TackSysSetFromSD(GetSysSet()))
                             {
-//                                initCloudProtocol();
                                 LOG_E("TackSysSetFromSD err");
                             }
 
                             if(RT_EOK != TackRecipeFromSD(GetSysRecipt()))
                             {
-//                                initSysRecipe();
                                 LOG_E("TackRecipeFromSD err");
                             }
 

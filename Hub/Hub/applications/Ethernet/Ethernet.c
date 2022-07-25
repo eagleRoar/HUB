@@ -256,7 +256,7 @@ rt_err_t UdpTaskInit(void)
 rt_err_t TcpSendTaskInit(void)
 {
     /* 创建以太网线程 */
-    rt_thread_t thread = rt_thread_create(TCP_SEND_TASK, TcpSendTaskEntry, RT_NULL, 1024*2, TCP_PRIORITY, 10);
+    rt_thread_t thread = rt_thread_create(TCP_SEND_TASK, TcpSendTaskEntry, RT_NULL, /*1024*2*/1024*3, TCP_PRIORITY, 10);
     rt_thread_startup(thread);
     return RT_EOK;
 }

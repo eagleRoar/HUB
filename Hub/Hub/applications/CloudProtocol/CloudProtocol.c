@@ -26,6 +26,17 @@ u8 saveModuleFlag = NO;
 
 extern void getRealTimeForMat(type_sys_time *);
 
+//特殊说明 传入的tm 的格式是year 需要减去1900 month需要减去1 范围0-11
+struct tm* getTimeStampByDate(time_t *t)
+{
+    return localtime(t);
+}
+
+time_t changeTmTotimet(struct tm *t)
+{
+    return mktime(t);
+}
+
 sys_tank_t *GetSysTank(void)
 {
     return &sys_tank;
@@ -351,6 +362,14 @@ void ReplyDataToCloud(mqtt_client *client, u8 *res, u16 *len, u8 sendCloudFlg)
         {
             str = ReplyGetSysPara(CMD_GET_SYS_SET, sys_set.cloudCmd, sys_set.sysPara, GetSensorByAddr(GetMonitor(), BHS_TYPE));
         }
+        else if(0 == rt_memcmp(CMD_SET_ALARM_SET, sys_set.cloudCmd.cmd, sizeof(CMD_SET_ALARM_SET)))//获取系统设置
+        {
+            str = ReplySetWarn(CMD_SET_ALARM_SET, sys_set.cloudCmd, sys_set.sysWarn);
+        }
+        else if(0 == rt_memcmp(CMD_GET_ALARM_SET, sys_set.cloudCmd.cmd, sizeof(CMD_GET_ALARM_SET)))//获取系统设置
+        {
+            str = ReplySetWarn(CMD_GET_ALARM_SET, sys_set.cloudCmd, sys_set.sysWarn);
+        }
 
         if(RT_NULL != str)
         {
@@ -367,7 +386,6 @@ void ReplyDataToCloud(mqtt_client *client, u8 *res, u16 *len, u8 sendCloudFlg)
                 if(RCV_ETH_BUFFSZ >= *len)
                 {
                     rt_memcpy(res, (u8 *)str, *len);
-
                 }
                 else
                 {
@@ -495,7 +513,7 @@ void analyzeCloudData(char *data)
                 CmdGetPortSet(data, &sys_set.cloudCmd);
                 setCloudCmd(cmd->valuestring, ON);
             }
-            else if(0 == rt_memcmp(CMD_SET_PORT_SET, cmd->valuestring, strlen(CMD_SET_PORT_SET)))
+            else if(0 == rt_memcmp(CMD_SET_PORT_SET, cmd->valuestring, strlen(CMD_SET_PORT_SET)))//Justin debug  需要继续测试该指令
             {
                 CmdSetPortSet(data, &sys_set.cloudCmd);
                 saveModuleFlag = YES;
@@ -577,6 +595,16 @@ void analyzeCloudData(char *data)
             else if(0 == rt_memcmp(CMD_GET_SYS_SET, cmd->valuestring, strlen(CMD_GET_SYS_SET)))
             {
                 CmdGetSysSet(data, &sys_set.cloudCmd);
+                setCloudCmd(cmd->valuestring, ON);
+            }
+            else if(0 == rt_memcmp(CMD_SET_ALARM_SET, cmd->valuestring, strlen(CMD_SET_ALARM_SET)))
+            {
+                CmdSetWarn(data, &sys_set.cloudCmd, &sys_set);
+                setCloudCmd(cmd->valuestring, ON);
+            }
+            else if(0 == rt_memcmp(CMD_GET_ALARM_SET, cmd->valuestring, strlen(CMD_GET_ALARM_SET)))
+            {
+                CmdGetWarn(data, &sys_set.cloudCmd);
                 setCloudCmd(cmd->valuestring, ON);
             }
         }
@@ -741,59 +769,80 @@ void tempProgram(type_monitor_t *monitor)
     }
 }
 
-void timmerProgram(type_monitor_t *monitor)
+void timmerProgram(type_monitor_t *monitor)//Justin debug 未验证
 {
-    u8          index   = 0;
-    timer12_t   timer;
-    u8          port    = 0;
-    u32         nowTime = 0;//这个时间要获取当前时间值
+    u8                  index   = 0;
+    u8                  item    = 0;
+    device_time4_t      *timer  = RT_NULL;
+    type_sys_time       sys_time;
+    time_t              now_time;
+    static time_t       time_period;
+    struct tm           *tm_test = RT_NULL;
 
-    if(TIME12_MAX >= monitor->timer12_size)
+    getRealTimeForMat(&sys_time);
+
+    for(index = 0; index < monitor->device_size; index++)
     {
-        for(index = 0; index < monitor->timer12_size; index++)
+        //如果是定时器的话
+        if(TIMER_TYPE == monitor->device[index].type)
         {
-            timer = monitor->time12[index];
-
-            for(port = 0; port < TIMER_GROUP; port++)
+            timer = &monitor->device[index];
+            //如果是by recycle
+//            LOG_D("timer mode = %d",timer->mode);
+            if(BY_RECYCLE == timer->mode)
             {
-                if(BY_SCHEDULE == timer.mode)
+                if(NO == timer->_recycle.isRunFirstCycle)
                 {
-                    if((nowTime >= timer._time12_ctl[index]._timer[port].on_at) &&
-                       (nowTime <= (timer._time12_ctl[index]._timer[port].on_at + timer._time12_ctl[index]._timer[port].duration)))//Justin debug 仅仅测试
+                    if(sys_time.hour * 60 + sys_time.minute >= timer->_recycle.startAt)
                     {
-//                        LOG_D("timmerProglram open");
-                        timer._time12_ctl[index].d_state = timer._time12_ctl[index]._timer[port].en;
-                    }
-                    else//Justin debug 仅仅测试
-                    {
-                        timer._time12_ctl[index].d_state = 0;
+                        now_time = getTimeStamp();
+                        tm_test = getTimeStampByDate(&now_time);
+                        tm_test->tm_hour = timer->_recycle.startAt / 60;
+                        tm_test->tm_min = timer->_recycle.startAt % 60;
+                        timer->_recycle.firstRuncycleTime = changeTmTotimet(tm_test);
+                        timer->_recycle.isRunFirstCycle = YES;
                     }
                 }
-                else if(BY_RECYCLE == timer.mode)//Justin debug
+                else
                 {
-//                    if((nowTime >= timer._recycle.startAt) &&)
-//                    {
-//
-//                    }
+                    time_period = timer->_recycle.duration + timer->_recycle.pauseTime;
+
+                    if(((getTimeStamp() - timer->_recycle.firstRuncycleTime) % time_period) <= timer->_recycle.duration)
+                    {
+                        timer->_storage[0]._port.d_state = ON;
+                    }
+                    else
+                    {
+                        timer->_storage[0]._port.d_state = OFF;
+                    }
+                }
+            }
+            else if(BY_SCHEDULE == timer->mode)//定时器模式
+            {
+                for(item = 0; item < TIMER_GROUP; item++)//该功能待测试
+                {
+//                    LOG_D("index = %d, on at = %d, dura = %d, en = %d",item,timer->_storage[0]._time4_ctl._timer[item].on_at,
+//                            timer->_storage[0]._time4_ctl._timer[item].duration,timer->_storage[0]._time4_ctl._timer[item].en);
+                    if((sys_time.hour * 60 + sys_time.minute > timer->_storage[0]._time4_ctl._timer[item].on_at) &&
+                       (sys_time.hour * 60 *60 + sys_time.minute * 60 + sys_time.second <= timer->_storage[0]._time4_ctl._timer[item].on_at *60 +
+                               timer->_storage[0]._time4_ctl._timer[item].duration))
+                    {
+//                        LOG_D("run index = %d, en = %d",item,timer->_storage[0]._time4_ctl._timer[item].en);//Justin debug
+                        timer->_storage[0]._port.d_state = timer->_storage[0]._time4_ctl._timer[item].en;
+
+                        break;
+                    }
+                }
+
+                if(item == TIMER_GROUP)
+                {
+                    timer->_storage[0]._port.d_state = 0;
+                    timer->_storage[0]._port.d_value = 0;
                 }
             }
         }
     }
-    else
-    {
-        LOG_E("timmerProgram err");
-    }
-}
 
-//特殊说明 传入的tm 的格式是year 需要减去1900 month需要减去1 范围0-11
-struct tm* getTimeStampByDate(time_t *t)
-{
-    return localtime(t);
-}
-
-time_t changeTmTotimet(struct tm *t)
-{
-    return mktime(t);
 }
 
 //mPeroid 周期 单位ms
@@ -1327,11 +1376,11 @@ u16 getVpd(void)
     {
         if(F_S_TEMP == sensor->__stora[index].func)
         {
-            temp = sensor->__stora[index].value / 10;//形如28.5 的格式
+            temp = sensor->__stora[index].value / 10.0;//形如28.5 的格式
         }
         else if(F_S_HUMI == sensor->__stora[index].func)
         {
-            humi = sensor->__stora[index].value / 1000;
+            humi = sensor->__stora[index].value / 1000.0;
         }
     }
 

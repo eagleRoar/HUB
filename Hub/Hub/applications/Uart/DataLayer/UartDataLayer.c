@@ -251,6 +251,11 @@ rt_err_t setDeviceDefault(device_time4_t *module)
             addr = module->addr;
             setDeviceDefaultStora(module, 0 , "Hvac_6", F_COOL_HEAT, module->type, addr , MANUAL_NO_HAND, 0);
             break;
+        case TIMER_TYPE:
+            setDeviceDefaultPara(module, "Timer", 0x0040, MANUAL_NO_HAND, 0, S_TIMER, module->type, 1);
+            addr = module->addr;
+            setDeviceDefaultStora(module, 0 , "Timer", F_TIMER, module->type, addr , MANUAL_NO_HAND, 0);
+            break;
         case AC_4_TYPE:
             //Justin debug需要再次询问一下终端具体端口的用途
             break;
@@ -279,8 +284,8 @@ rt_err_t setTimer12Default(timer12_t *module)
 {
     rt_err_t ret = RT_EOK;
     switch (module->type) {
-        case TIMER_TYPE:
-            setTimer12DefaultPara(module, "Timer", 0x0040, MANUAL_NO_HAND, 0, S_TIMER, 12);
+        case AC_12_TYPE:
+//            setTimer12DefaultPara(module, "Timer", 0x0040, MANUAL_NO_HAND, 0, S_TIMER, 12);
             break;
 
         default:
@@ -324,10 +329,8 @@ u8 getSOrD(u8 type)
         case DEHUMI_TYPE:
         case COOL_TYPE:
         case HVAC_6_TYPE:
-            ret = DEVICE_TYPE;
-            break;
         case TIMER_TYPE:
-            ret = TIMER12_TYPE;
+            ret = DEVICE_TYPE;
             break;
         case LINE_TYPE:
             ret = LINE1OR2_TYPE;

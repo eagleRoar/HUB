@@ -14,6 +14,7 @@ sys_recipe_t sys_recipe;
 void initSysRecipe(void)
 {
     rt_memset(GetSysRecipt(), 0, sizeof(sys_recipe_t));
+    GetSysRecipt()->crc = usModbusRTU_CRC((u8 *)GetSysRecipt() + 2, sizeof(sys_recipe_t) - 2);
 }
 
 //分配配方id

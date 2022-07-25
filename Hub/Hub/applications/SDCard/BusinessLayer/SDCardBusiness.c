@@ -114,7 +114,7 @@ void InitSDCard(void)
             LOG_E("InitSDCard err 3");
         }
 
-        LOG_D("initCloudProtocol ok");//Justin debug
+        LOG_D("GetSysSet()->crc = %x",GetSysSet()->crc);
     }
 
     if(NO == CheckFileAndMark(RECIPE_FILE))
@@ -124,9 +124,10 @@ void InitSDCard(void)
             LOG_E("InitSDCard err 4");
         }
 
-        rt_memset((u8 *)GetSysRecipt(), 0, recipeSize);
-        GetSysRecipt()->crc = usModbusRTU_CRC((u8 *)GetSysRecipt() + 2, recipeSize - 2);
-        LOG_I("GetSysRecipt()->crc = %x",GetSysRecipt()->crc);
+//        rt_memset((u8 *)GetSysRecipt(), 0, recipeSize);
+//        GetSysRecipt()->crc = usModbusRTU_CRC((u8 *)GetSysRecipt() + 2, recipeSize - 2);
+//        LOG_I("----------------------------------GetSysRecipt()->crc = %x",GetSysRecipt()->crc);
+        initSysRecipe();
         if(RT_ERROR == WriteSdData(RECIPE_FILE, (u8 *)GetSysRecipt(), SD_INFOR_SIZE, recipeSize))
         {
             LOG_E("InitSDCard err 5");
@@ -270,17 +271,17 @@ rt_err_t SaveSysSet(sys_set_t *set)
     return ret;
 }
 
-
 rt_err_t TackRecipeFromSD(sys_recipe_t *rec)//Justin debug 获取时crc校验出错
 {
     rt_err_t    ret             = RT_ERROR;
     u16         sysRecSize      = sizeof(sys_recipe_t);
     u16         crc             = 0;
 
-    if(RT_EOK == ReadSdData(RECIPE_FILE, (u8 *)rec, SD_INFOR_SIZE, sysRecSize))
+    if(RT_EOK == ReadSdData(RECIPE_FILE, (u8 *)rec, SD_INFOR_SIZE, sysRecSize))//Justin debug
     {
+        initSysRecipe();
         crc = usModbusRTU_CRC((u8 *)rec + 2, sysRecSize - 2);  //crc 在最后
-        LOG_D("TackRecipeFromSD sd crc = %x, crc = %x",rec->crc,crc);
+
         if(crc == rec->crc)
         {
             ret = RT_EOK;

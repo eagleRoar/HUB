@@ -55,6 +55,16 @@ int main(void)
     //初始化静态变量
     initMonitor();
 
+//    initSysRecipe();//Justin debug
+//    for(u16 index = 0; index < 10; index++)
+//    {
+//        LOG_D("%x %x %x %x %x %x %x %x %x",
+//                GetSysRecipt()->recipe[index].color,GetSysRecipt()->recipe[index].dayCo2Target,GetSysRecipt()->recipe[index].dayCoolingTarget,
+//                GetSysRecipt()->recipe[index].dayDehumidifyTarget,GetSysRecipt()->recipe[index].dayHeatingTarget,GetSysRecipt()->recipe[index].dayHumidifyTarget,
+//                GetSysRecipt()->recipe[index].id,GetSysRecipt()->recipe[index].nightCo2Target,GetSysRecipt()->recipe[index].nightHeatingTarget);
+//    }
+
+
     //初始化GPIO口
     GpioInit();
 

@@ -91,7 +91,7 @@ struct timer_timer{
     struct timer
     {
         u16     on_at;                                      //开始的时间
-        u16     duration;                                   //持续时间
+        u16     duration;                                   //持续时间 //该时间以秒为单位的
         u8      en;                                         //使能 1-on/0-off                                    //device 的控制数值
     }_timer[TIMER_GROUP];
     u8      d_state;                                        //device 的状态位
@@ -103,6 +103,8 @@ struct recycle
     u16     startAt;                                // 开启时间点 8:00 8*60=480
     u16     duration;                               //持续时间 秒
     u16     pauseTime;                              //停止时间 秒
+    u8              isRunFirstCycle;            //是否已经执行第一次循环
+    time_t          firstRuncycleTime;          //记录第一次开始执行的时间 方便回溯
 //#if (HUB_SELECT == HUB_IRRIGSTION)//环控版本的recycle times, 为跨天无限循环
     u8      times;                                  //次数 timer 时 startAt 为第一次开始时间，次数为 0
 //#endif

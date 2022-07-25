@@ -34,6 +34,7 @@ typedef     struct proLine                  proLine_t;
 typedef     struct sysPara                  sys_para_t;
 typedef     struct cloudCmd                 cloudcmd_t;
 typedef     struct sysSet                   sys_set_t;
+typedef     struct sysWarn                  sys_warn_t;
 typedef     struct keyAndVauleU8            type_kv_u8;
 typedef     struct keyAndVauleU16           type_kv_u16;
 typedef     struct keyAndVauleU32           type_kv_u32;
@@ -150,6 +151,48 @@ struct sysPara
     u8 maintain;                //1, //1-on 0-off
 };
 
+struct sysWarn
+{
+    u16 dayTempMin;         //100, //温度最小值 只传摄氏度
+    u16 dayTempMax;         //200,
+    u8 dayTempEn;           // 0-off 1-on
+    u8 dayhumidMin;         //40 湿度最小值 单位%
+    u8 dayhumidMax;         //90, //温度最大值 单位%
+    u8 dayhumidEn;          //1 // 0-off 1-on
+    u16 dayCo2Min;          //350, //co2 最小值 单位 ppm
+    u16 dayCo2Max;          //1600, //
+    u8 dayCo2En;            //1 // 0-off 1-on
+    u8 dayCo2Buzz;          //1, //0-co2 不蜂鸣 1-co2 蜂鸣
+    u16 dayVpdMin;          //50,//单位 kPa 0~2.20 step 0.1
+    u16 dayVpdMax;          //250, // 0.8-5 step 0.1
+    u8 dayVpdEn;            //1 // 0-off 1-on
+    u16 dayParMin;          //100, //PPFD Range:100-1400,Step:100
+    u16 dayParMax;          //1000, // PPFD Range:200-1500,Step:100
+    u8 dayParEn;            //1 // 0-off 1-on
+    u16 nightTempMin;       // 100, //温度最小值 只传摄氏度
+    u16 nightTempMax;       //200,
+    u8 nightTempEn;         //1 // 0-off 1-on
+    u8 nighthumidMin;       //40, //湿度最小值 单位%
+    u8 nighthumidMax;       //90, //温度最大值 单位%
+    u8 nighthumidEn;        //1 // 0-off 1-on
+    u16 nightCo2Min;        //350, //co2 最小值 单位 ppm
+    u16 nightCo2Max;        //1600, //
+    u8 nightCo2En;          //1 // 0-off 1-on
+    u8 nightCo2Buzz;        //1, //0-co2 不蜂鸣 1-co2 蜂鸣
+    u16 nightVpdMin;        //50,//单位 kPa 0~2.20 step 0.1
+    u16 nightVpdMax;        //250, // 0.8-5 step 0.1
+    u8 nightVpdEn;          //1, // 0-off 1-on
+    u8 phEn;                //1,// 0-off 1-on
+    u8 ecEn;                //1,// 0-off 1-on
+    u8 wtEn;                //1,// 0-off 1-on //水温
+    u8 wlEn;                //1, // 0-off 1-on //水位
+    u8 offlineEn;           //1 //离线警告 1-on 0-off
+    u8 lightEn;             //1, //灯光警告 1-on 2-off
+    u8 smokeEn;             //1, //烟雾报警 1-on 2-off
+    u8 waterEn;             //1,//漏水报警 1-on 2-off
+    u8 autoFillTimeout;     //1, //补水超时 1-on 2-off
+};
+
 /****************************以下是灌溉部分的内容*****/
 struct stage{//日程设置
     u8      en;
@@ -188,7 +231,7 @@ struct recipe{//配方 限制10个
 };
 
 struct sys_recipe{
-    u8 crc;
+    u16 crc;
     u8 recipe_size;
     recipe_t recipe[RECIPE_LIST_MAX];
     u8 allot_add[REC_ALLOT_ADDR];
@@ -224,6 +267,7 @@ struct sysSet{
     cloudcmd_t      cloudCmd;
     stage_t         stageSet;
     sys_para_t      sysPara;
+    sys_warn_t      sysWarn;
     u8              dayOrNight;//白天黑夜 白天0 黑夜1
     u8              saveFlag;
 };
@@ -302,6 +346,8 @@ void CmdSetHubName(char *data, cloudcmd_t *);
 void CmdSetPortName(char *, cloudcmd_t *);
 void CmdSetSysSet(char *, cloudcmd_t *, sys_para_t *);
 void CmdGetSysSet(char *, cloudcmd_t *);
+void CmdGetWarn(char *, cloudcmd_t *);
+void CmdSetWarn(char *, cloudcmd_t *, sys_set_t *);
 char *SendHubReport(char *);
 char *SendHubReportWarn(char *);
 char *ReplySetSchedule(char *, cloudcmd_t);
@@ -331,4 +377,5 @@ char *ReplyTest(char *, cloudcmd_t);
 char *ReplySetPortName(char *, cloudcmd_t);
 char *ReplySetSysPara(char *, cloudcmd_t, sys_para_t);
 char *ReplyGetSysPara(char *, cloudcmd_t, sys_para_t, sensor_t *);
+char *ReplySetWarn(char *, cloudcmd_t, sys_warn_t);
 #endif /* APPLICATIONS_CLOUDPROTOCOL_CLOUDPROTOCOLBUSINESS_H_ */
