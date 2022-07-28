@@ -124,9 +124,6 @@ void InitSDCard(void)
             LOG_E("InitSDCard err 4");
         }
 
-//        rt_memset((u8 *)GetSysRecipt(), 0, recipeSize);
-//        GetSysRecipt()->crc = usModbusRTU_CRC((u8 *)GetSysRecipt() + 2, recipeSize - 2);
-//        LOG_I("----------------------------------GetSysRecipt()->crc = %x",GetSysRecipt()->crc);
         initSysRecipe();
         if(RT_ERROR == WriteSdData(RECIPE_FILE, (u8 *)GetSysRecipt(), SD_INFOR_SIZE, recipeSize))
         {
@@ -242,8 +239,13 @@ rt_err_t TackSysSetFromSD(sys_set_t *set)
         }
         else
         {
-            rt_memset((u8 *)set, 0, setSize);
-            set->crc = usModbusRTU_CRC((u8 *)set+2, setSize - 2);
+            rt_memset((u8 *)GetSysSet(), 0, setSize);
+            initCloudProtocol();
+            GetSysSet()->crc = usModbusRTU_CRC((u8 *)GetSysSet() + 2, setSize - 2);
+            if(RT_ERROR == WriteSdData(SYSSET_FILE, (u8 *)GetSysSet(), SD_INFOR_SIZE, setSize))
+            {
+                LOG_E("TackSysSetFromSD err");
+            }
             ret = RT_ERROR;
         }
     }

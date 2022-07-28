@@ -32,6 +32,7 @@ typedef     struct line                     line_t;
 typedef     struct system_time              type_sys_time;
 typedef     struct timer_timer              type_timmer_timmer;
 typedef     struct recycle                  type_timmer_recycle;
+typedef     struct manual                   type_manual_t;
 typedef     struct buttonInfo               type_button_t;
 
 #define     SENSOR_MAX                      8//16
@@ -43,6 +44,7 @@ typedef     struct buttonInfo               type_button_t;
 #define     SENSOR_VALUE_MAX                4
 #define     TIMER_GROUP                     12
 #define     TIMER12_PORT_MAX                12
+#define     WARN_MAX                        28
 
 struct hub{
     u16 crc;
@@ -110,6 +112,13 @@ struct recycle
 //#endif
 };
 
+struct manual
+{
+    u8              manual;                                 //手动开关/ 开、关
+    u16             manual_on_time;                         //手动开启的时间
+    timer_t         manual_on_time_save;                    //保存手动开的时间
+};
+
 struct device_Timer4
 {
     u16             crc;
@@ -117,8 +126,6 @@ struct device_Timer4
     char            name[MODULE_NAMESZ];                    //产品名称
     u8              addr;                                   //hub管控的地址
     u16             ctrl_addr;                              //终端控制的寄存器地址
-    u8              manual;                                 //手动开关/ 开、关
-    u16             manual_on_time;                         //手动开启的时间
     u8              main_type;                              //主类型 如co2 温度 湿度 line timer
     u8              type;                                   //产品类型号
     u8              color;                                  //颜色
@@ -130,13 +137,10 @@ struct device_Timer4
     u8              hotStartDelay;                          //对于制冷 制热 除湿设备需要有该保护
     //device和ac_4一样有最多4个port
     union device_port{
-        u8  dev_time_type;
         struct device{
             char    name[STORAGE_NAMESZ];
             u8      func;                                       //功能，如co2
             u16     addr;                                       //module id+ port号
-            u8      manual;                                     //手动开关/ 开、关
-            u16     manual_on_time;                             //手动开启的时间
             u8      d_state;                                    //device 的状态位
             u8      d_value;                                    //device 的控制数值
         }_port;//16位
@@ -144,14 +148,15 @@ struct device_Timer4
         type_timmer_timmer _time4_ctl;
     }_storage[DEVICE_PORT_SZ];
 
+    type_timmer_recycle _recycle[DEVICE_PORT_SZ];
+    type_manual_t       _manual[DEVICE_PORT_SZ];
+
     struct hvac
     {
         u8      manualOnMode;        //1-cooling 2-heating
         u8      fanNormallyOpen;     //风扇常开 1-常开 0-自动
         u8      hvacMode;            //1-conventional 模式 2-HEAT PUM 模式 O 模式 3-HEAT PUM 模式 B 模式
     }_hvac;
-
-    type_timmer_recycle _recycle;
 };
 
 struct timer12
@@ -161,8 +166,6 @@ struct timer12
     char            name[MODULE_NAMESZ];                    //产品名称
     u8              addr;                                   //hub管控的地址
     u16             ctrl_addr;                              //终端控制的寄存器地址
-    u8              manual;                                 //手动开关/ 开、关
-    u16             manual_on_time;                         //手动开启的时间
     u8              main_type;                              //主类型 如co2 温度 湿度 line timer
     u8              type;                                   //产品类型号
     u8              color;                                  //颜色
@@ -172,9 +175,9 @@ struct timer12
     u8              storage_size;                           //寄存器数量
     u8              mode;                                   // 模式 1-By Schedule 2-By Recycle
 
-    type_timmer_timmer _time12_ctl[TIMER12_PORT_MAX];
-
-    type_timmer_recycle _recycle;
+    type_timmer_timmer      _time12_ctl[TIMER12_PORT_MAX];
+    type_timmer_recycle     _recycle[TIMER12_PORT_MAX];
+    type_manual_t           _manual[TIMER12_PORT_MAX];
 };
 
 struct line{
@@ -184,6 +187,8 @@ struct line{
     char            name[MODULE_NAMESZ];                    //产品名称
     u8              addr;                                   //hub管控的地址
     u16             ctrl_addr;                              //终端控制的寄存器地址
+    u8              manual;
+    u16             manual_on_time;
     u8              d_state;                                //device 的状态位
     u8              d_value;                                //device 的控制数值
     u8              save_state;                             //是否已经存储
@@ -277,6 +282,39 @@ enum{
     TIME_STYLE_24H
 };
 
+//WARN_MAX = 28 有添加的话需要去修改
+enum
+{
+    WARN_TEMP_HIGHT = 0x01,
+    WARN_TEMP_LOW,
+    WARN_HUMI_HIGHT,
+    WARN_HUMI_LOW,
+    WARN_CO2_HIGHT,
+    WARN_CO2_LOW,
+    WARN_VPD_HIGHT,
+    WARN_VPD_LOW,
+    WARN_PAR_HIGHT,
+    WARN_PAR_LOW,
+    WARN_PH_HIGHT,
+    WARN_PH_LOW,
+    WARN_EC_HIGHT,
+    WARN_EC_LOW,
+    WARN_WT_HIGHT,
+    WARN_WT_LOW,
+    WARN_WL_HIGHT,
+    WARN_WL_LOW,
+    WARN_WATER,
+    WARN_SMOKE,
+    WARN_LINE_STATE,
+    WARN_LINE_AUTO_T,
+    WARN_LINE_AUTO_OFF,
+    WARN_OFFLINE,
+    WARN_CO2_TIMEOUT,
+    WARN_TEMP_TIMEOUT,
+    WARN_HUMI_TIMEOUT,
+    WARN_AUTOFILL_TIMEOUT
+};
+
 struct allocate
 {
     u8 address[ALLOCATE_ADDRESS_SIZE];
@@ -316,6 +354,8 @@ struct monitor
 #define     HUB_TYPE        0xFF
 #define     LINE_TYPE       0x22        //灯光类
 #define     BHS_TYPE        0x03
+#define     PHEC_TYPE       0x05
+#define     PAR_TYPE        0x08
 #define     CO2_TYPE        0x41
 #define     HEAT_TYPE       0x42
 #define     HUMI_TYPE       0x43
@@ -364,6 +404,8 @@ enum{
     F_S_HUMI,
     F_S_TEMP,
     F_S_LIGHT,
+    F_S_PH,
+    F_S_EC
 };
 
 /*设备工作状态 0-Off 1-On 2-PPM UP 3-FUZZY LOGIC

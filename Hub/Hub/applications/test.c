@@ -18,6 +18,7 @@
 
 time_t getTimeStamp(void)
 {
+    //注意 经常使用该函数作为定时器 如果修改了当前时间初始设置会导致问题
     return time(RT_NULL);
 }
 
@@ -76,7 +77,7 @@ u8 getMonth(char *mon)
     }
 }
 
-void getRealTimeForMat(type_sys_time *time_for)//Justin debug 未验证
+void getRealTimeForMat(type_sys_time *time_for)
 {
     /* "Wed Jun 30 21:49:08 1993\n" */
     char time[25];
@@ -207,21 +208,22 @@ void printTimer12(timer12_t module)
     LOG_D("conn_state       : %x",module.conn_state);
     LOG_D("s_or_d : Timer12");
     LOG_D("storage_size     : %d",module.storage_size);
-    for(index = 0; index < /*TIMER12_PORT_MAX*/1; index++)//Justin debug
-    {
-        for(port = 0; port < TIMER_GROUP; port++)
-        {
-            LOG_D("stora %d : on_at = %d, duration = %d, en = %d",
-                   index, module._time12_ctl[index]._timer[port].on_at, module._time12_ctl[index]._timer[port].duration,
-                   module._time12_ctl[index]._timer[port].en);
-        }
-        LOG_D("d_state = %d",module._time12_ctl[index].d_state);
-        LOG_D("d_value = %d",module._time12_ctl[index].d_value);
-    }
+//    for(index = 0; index < /*TIMER12_PORT_MAX*/1; index++)//Justin debug
+//    {
+//        for(port = 0; port < TIMER_GROUP; port++)
+//        {
+//            LOG_D("stora %d : on_at = %d, duration = %d, en = %d",
+//                   index, module._time12_ctl[index]._timer[port].on_at, module._time12_ctl[index]._timer[port].duration,
+//                   module._time12_ctl[index]._timer[port].en);
+//        }
+//        LOG_D("d_state = %d",module._time12_ctl[index].d_state);
+//        LOG_D("d_value = %d",module._time12_ctl[index].d_value);
+//
+//        LOG_D("_recycle.duration = %d",module._recycle[index].duration);
+//        LOG_D("_recycle.pauseTime = %d",module._recycle[index].pauseTime);
+//        LOG_D("_recycle.startAt = %d",module._recycle[index].startAt);
+//    }
 
-    LOG_D("_recycle.duration = %d",module._recycle.duration);
-    LOG_D("_recycle.pauseTime = %d",module._recycle.pauseTime);
-    LOG_D("_recycle.startAt = %d",module._recycle.startAt);
 }
 
 void rtcTest(type_sys_time time)

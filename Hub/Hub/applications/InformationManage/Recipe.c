@@ -26,18 +26,25 @@ u8 AllotRecipeId(char *name, sys_recipe_t *sys_rec)
 
     for(index = 1; index < REC_ALLOT_ADDR; index++)
     {
-        for(rec_index = 0; rec_index < RECIPE_LIST_MAX; rec_index++)
+        if(sys_rec->allot_add[index] != index)
         {
-            if(index == sys_rec->recipe[rec_index].id)
-            {
-                break;
-            }
-        }
+            sys_rec->allot_add[index] = index;
 
-        if(index != REC_ALLOT_ADDR)
-        {
             ret = index;
+            break;
         }
+//        for(rec_index = 0; rec_index < RECIPE_LIST_MAX; rec_index++)
+//        {
+//            if(index == sys_rec->recipe[rec_index].id)
+//            {
+//                break;
+//            }
+//        }
+//
+//        if(index != REC_ALLOT_ADDR)
+//        {
+//            ret = index;
+//        }
     }
 
     return ret;

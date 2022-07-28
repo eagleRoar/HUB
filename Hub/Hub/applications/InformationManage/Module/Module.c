@@ -295,6 +295,25 @@ timer12_t *GetTimerByAddr(type_monitor_t *monitor, u8 addr)
     return RT_NULL;
 }
 
+line_t *GetLineByAddr(type_monitor_t *monitor, u8 addr)
+{
+    u8      index       = 0;
+
+    for(index = 0; index < monitor->line_size; index++)
+    {
+        if(addr == monitor->line[index].addr)
+        {
+            return &(monitor->line[index]);
+        }
+        else
+        {
+            LOG_E("can not find line addr = %d",addr);
+        }
+    }
+
+    return RT_NULL;
+}
+
 void InsertTankToTable(sys_tank_t *sys_tank, tank_t tank)
 {
     //tank_no 是从1-9

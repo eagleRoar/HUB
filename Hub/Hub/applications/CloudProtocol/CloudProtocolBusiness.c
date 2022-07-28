@@ -17,6 +17,7 @@
 
 extern  sys_set_t       sys_set;
 extern  type_sys_time   sys_time;
+extern  u8 sys_warn[WARN_MAX];
 
 extern sys_set_t *GetSysSet(void);
 extern sys_tank_t *GetSysTank(void);
@@ -344,6 +345,7 @@ void CmdSetPortSet(char *data, cloudcmd_t *cmd)
     cJSON           *list_item  = RT_NULL;
     device_time4_t  *device     = RT_NULL;
     timer12_t       *timer12    = RT_NULL;
+    line_t          *line       = RT_NULL;
     type_kv_u8      temp_v8;
     type_kv_u16     temp_v16;
 
@@ -366,17 +368,17 @@ void CmdSetPortSet(char *data, cloudcmd_t *cmd)
 
         device = GetDeviceByAddr(GetMonitor(), addr);
         timer12 = GetTimerByAddr(GetMonitor(), addr);
+        line = GetLineByAddr(GetMonitor(), addr);
 
-        LOG_I("add = %d, port = %d",addr,port);
         if(device != RT_NULL)
         {
 //            LOG_I("find device name %s",device->name);
             rt_memcpy(temp_v8.name, "manual", KEYVALUE_NAME_SIZE);
             GetValueU8(temp, &temp_v8);
-            device->_storage[port]._port.manual = temp_v8.value;
+            device->_manual[port].manual = temp_v8.value;
             rt_memcpy(temp_v16.name, "manualOnTime", KEYVALUE_NAME_SIZE);
             GetValueU16(temp, &temp_v16);
-            device->_storage[port]._port.manual_on_time = temp_v16.value;
+            device->_manual[port].manual_on_time = temp_v16.value;
             GetValueByU8(temp, "hotStartDelay", &device->hotStartDelay);
             if(HVAC_6_TYPE == device->type)
             {
@@ -391,10 +393,11 @@ void CmdSetPortSet(char *data, cloudcmd_t *cmd)
                 device->_hvac.hvacMode = temp_v8.value;
             }
 
+//            LOG_D("--------------type = %d, name = %s",device->type, device->name);
             if(TIMER_TYPE == device->type)
             {
                 GetValueByU8(temp, "mode", &device->mode);
-
+//                LOG_D("--------------mode = %d",device->mode);
                 if(BY_SCHEDULE == device->mode)
                 {
                     list = cJSON_GetObjectItem(temp, "list");
@@ -402,7 +405,6 @@ void CmdSetPortSet(char *data, cloudcmd_t *cmd)
                     if(RT_NULL != list)
                     {
                         list_num = cJSON_GetArraySize(list);
-                        LOG_D("list_num == %d",list_num);//Justin debug
                         if(list_num > TIMER_GROUP)
                         {
                             list_num = TIMER_GROUP;
@@ -429,9 +431,11 @@ void CmdSetPortSet(char *data, cloudcmd_t *cmd)
                 }
                 else if(BY_RECYCLE == device->mode)
                 {
-                    GetValueByU16(list_item, "startAt", &device->_recycle.startAt);
-                    GetValueByU16(list_item, "duration", &device->_recycle.duration);
-                    GetValueByU16(list_item, "pauseTime", &device->_recycle.pauseTime);
+//                    LOG_D("--------------anlyze recycle");
+                    GetValueByU16(temp, "startAt", &device->_recycle[port].startAt);
+                    GetValueByU16(temp, "duration", &device->_recycle[port].duration);
+                    GetValueByU16(temp, "pauseTime", &device->_recycle[port].pauseTime);
+                    GetValueByU8(temp, "times", &device->_recycle[port].times);
                 }
             }
         }
@@ -440,10 +444,10 @@ void CmdSetPortSet(char *data, cloudcmd_t *cmd)
 //            LOG_I("find timer name %s",timer12->name);
             rt_memcpy(temp_v8.name, "manual", KEYVALUE_NAME_SIZE);
             GetValueU8(temp, &temp_v8);
-            timer12->manual = temp_v8.value;
+            timer12->_manual[port].manual = temp_v8.value;
             rt_memcpy(temp_v16.name, "manualOnTime", KEYVALUE_NAME_SIZE);
             GetValueU16(temp, &temp_v16);
-            timer12->manual_on_time = temp_v16.value;
+            timer12->_manual[port].manual_on_time = temp_v16.value;
 
             rt_memcpy(temp_v8.name, "mode", KEYVALUE_NAME_SIZE);
             GetValueU8(temp, &temp_v8);
@@ -475,18 +479,24 @@ void CmdSetPortSet(char *data, cloudcmd_t *cmd)
             }
             rt_memcpy(temp_v16.name, "startAt", KEYVALUE_NAME_SIZE);
             GetValueU16(temp, &temp_v16);
-            timer12->_recycle.startAt = temp_v16.value;
+            timer12->_recycle[port].startAt = temp_v16.value;
             rt_memcpy(temp_v16.name, "duration", KEYVALUE_NAME_SIZE);
             GetValueU16(temp, &temp_v16);
-            timer12->_recycle.duration = temp_v16.value;
+            timer12->_recycle[port].duration = temp_v16.value;
             rt_memcpy(temp_v16.name, "pauseTime", KEYVALUE_NAME_SIZE);
             GetValueU16(temp, &temp_v16);
-            timer12->_recycle.pauseTime = temp_v16.value;
+            timer12->_recycle[port].pauseTime = temp_v16.value;
             rt_memcpy(temp_v8.name, "times", KEYVALUE_NAME_SIZE);
             GetValueU8(temp, &temp_v8);
-            timer12->_recycle.times = temp_v8.value;
+            timer12->_recycle[port].times = temp_v8.value;
         }
-        else {
+        else if(line != RT_NULL)
+        {
+            GetValueByU8(temp, "manual", &line->manual);
+            GetValueByU16(temp, "manualOnTime", &line->manual_on_time);
+        }
+        else
+        {
             LOG_E("no find device or timer");
         }
 
@@ -571,7 +581,7 @@ void CmdGetSchedule(char *data, cloudcmd_t *cmd)
     }
 }
 
-void CmdAddRecipe(char *data, cloudcmd_t *cmd)//Justin debug 还没完成
+void CmdAddRecipe(char *data, cloudcmd_t *cmd)
 {
     cJSON   *temp       = RT_NULL;
 
@@ -643,6 +653,100 @@ void CmdSetRecipe(char *data, cloudcmd_t *cmd)//Justin debug 还没完成
                 GetValueByU16(line, "firstCycleTime", &recipe->line_list[1].firstCycleTime);
                 GetValueByU16(line, "duration", &recipe->line_list[1].duration);
                 GetValueByU16(line, "pauseTime", &recipe->line_list[1].pauseTime);
+            }
+
+            if(recipe->dayCoolingTarget > 400)
+            {
+                //合理性检测
+                LOG_E("set cooltarget err, target > 40 ℃");
+                recipe->dayCoolingTarget = 400;
+            }
+
+            if(recipe->dayHeatingTarget > 400)
+            {
+                //合理性检测
+                LOG_E("set HeatingTarget err, target > 40 ℃");
+                recipe->dayHeatingTarget = 400;
+            }
+
+            if(recipe->dayHeatingTarget > recipe->dayCoolingTarget)//加热温度值应该低于制冷温度值
+            {
+                temp = recipe->dayCoolingTarget - 2 * GetSysSet()->tempSet.tempDeadband.value;
+                recipe->dayHeatingTarget = temp > 0 ? temp : 0;
+            }
+
+            if(recipe->nightCoolingTarget > 400)
+            {
+                //合理性检测
+                LOG_E("set cooltarget err, target > 40 ℃");
+                recipe->nightCoolingTarget = 400;
+            }
+
+            if(recipe->nightHeatingTarget > 400)
+            {
+                //合理性检测
+                LOG_E("set HeatingTarget err, target > 40 ℃");
+                recipe->nightHeatingTarget = 400;
+            }
+
+            if(recipe->nightHeatingTarget > recipe->nightCoolingTarget)//加热温度值应该低于制冷温度值
+            {
+                temp = recipe->nightCoolingTarget - 2 * GetSysSet()->tempSet.tempDeadband.value;
+                recipe->nightHeatingTarget = temp > 0 ? temp : 0;
+            }
+
+            if(recipe->dayDehumidifyTarget > 1000)
+            {
+                //合理性检测
+                LOG_E("set dehumidifyTarget err, target > 100 %");
+                recipe->dayDehumidifyTarget = 1000;
+            }
+
+            if(recipe->dayHumidifyTarget > 1000)
+            {
+                //合理性检测
+                LOG_E("set HeatingTarget err, target > 100 %");
+                recipe->dayHeatingTarget = 1000;
+            }
+
+            if(recipe->dayHumidifyTarget > recipe->dayDehumidifyTarget)//加湿目标应该低于除湿目标
+            {
+                temp = recipe->dayHumidifyTarget - 2 * GetSysSet()->humiSet.humidDeadband.value;
+                recipe->dayHumidifyTarget = temp > 0 ? temp : 0;
+            }
+
+            if(recipe->nightDehumidifyTarget > 1000)
+            {
+                //合理性检测
+                LOG_E("set dehumidifyTarget err, target > 100 %");
+                recipe->nightDehumidifyTarget = 1000;
+            }
+
+            if(recipe->nightHumidifyTarget > 1000)
+            {
+                //合理性检测
+                LOG_E("set HeatingTarget err, target > 100 %");
+                recipe->nightHeatingTarget = 1000;
+            }
+
+            if(recipe->nightHumidifyTarget > recipe->nightDehumidifyTarget)//加湿目标应该低于除湿目标
+            {
+                temp = recipe->nightHumidifyTarget - 2 * GetSysSet()->humiSet.humidDeadband.value;
+                recipe->nightHumidifyTarget = temp > 0 ? temp : 0;
+            }
+
+            if(recipe->dayCo2Target > 5000)
+            {
+                //合理性检测
+                LOG_E("set Co2Target err, target > 5000");
+                recipe->dayCo2Target = 5000;
+            }
+
+            if(recipe->nightCo2Target > 5000)
+            {
+                //合理性检测
+                LOG_E("set Co2Target err, target > 5000");
+                recipe->dayHeatingTarget = 5000;
             }
 
             AddRecipe(recipe, GetSysRecipt());
@@ -729,7 +833,7 @@ void CmdSetHubName(char *data, cloudcmd_t *cmd)
     }
 }
 
-void CmdSetWarn(char *data, cloudcmd_t *cmd, sys_set_t *set)//Justin debug 未验证
+void CmdSetWarn(char *data, cloudcmd_t *cmd, sys_set_t *set)
 {
     cJSON   *temp       = RT_NULL;
 
@@ -740,8 +844,8 @@ void CmdSetWarn(char *data, cloudcmd_t *cmd, sys_set_t *set)//Justin debug 未�
         GetValueByU16(temp, "dayTempMin", &set->sysWarn.dayTempMin);
         GetValueByU16(temp, "dayTempMax", &set->sysWarn.dayTempMax);
         GetValueByU8(temp, "dayTempEn", &set->sysWarn.dayTempEn);
-        GetValueByU8(temp, "dayhumidMin", &set->sysWarn.dayhumidMin);
-        GetValueByU8(temp, "dayhumidMax", &set->sysWarn.dayhumidMax);
+        GetValueByU16(temp, "dayhumidMin", &set->sysWarn.dayhumidMin);
+        GetValueByU16(temp, "dayhumidMax", &set->sysWarn.dayhumidMax);
         GetValueByU8(temp, "dayhumidEn", &set->sysWarn.dayhumidEn);
         GetValueByU16(temp, "dayCo2Min", &set->sysWarn.dayCo2Min);
         GetValueByU16(temp, "dayCo2Max", &set->sysWarn.dayCo2Max);
@@ -756,8 +860,8 @@ void CmdSetWarn(char *data, cloudcmd_t *cmd, sys_set_t *set)//Justin debug 未�
         GetValueByU16(temp, "nightTempMin", &set->sysWarn.nightTempMin);
         GetValueByU16(temp, "nightTempMax", &set->sysWarn.nightTempMax);
         GetValueByU8(temp, "nightTempEn", &set->sysWarn.nightTempEn);
-        GetValueByU8(temp, "nighthumidMin", &set->sysWarn.nighthumidMin);
-        GetValueByU8(temp, "nighthumidMax", &set->sysWarn.nighthumidMax);
+        GetValueByU16(temp, "nighthumidMin", &set->sysWarn.nighthumidMin);
+        GetValueByU16(temp, "nighthumidMax", &set->sysWarn.nighthumidMax);
         GetValueByU8(temp, "nighthumidEn", &set->sysWarn.nighthumidEn);
         GetValueByU16(temp, "nightCo2Min", &set->sysWarn.nightCo2Min);
         GetValueByU16(temp, "nightCo2Max", &set->sysWarn.nightCo2Max);
@@ -775,6 +879,12 @@ void CmdSetWarn(char *data, cloudcmd_t *cmd, sys_set_t *set)//Justin debug 未�
         GetValueByU8(temp, "smokeEn", &set->sysWarn.smokeEn);
         GetValueByU8(temp, "waterEn", &set->sysWarn.waterEn);
         GetValueByU8(temp, "autoFillTimeout", &set->sysWarn.autoFillTimeout);
+        GetValueByU8(temp, "co2TimeoutEn", &set->sysWarn.co2TimeoutEn);
+        GetValueByU16(temp, "co2Timeoutseconds", &set->sysWarn.co2Timeoutseconds);
+        GetValueByU8(temp, "tempTimeoutEn", &set->sysWarn.tempTimeoutEn);
+        GetValueByU16(temp, "tempTimeoutseconds", &set->sysWarn.tempTimeoutseconds);
+        GetValueByU8(temp, "humidTimeoutEn", &set->sysWarn.humidTimeoutEn);
+        GetValueByU16(temp, "humidTimeoutseconds", &set->sysWarn.humidTimeoutseconds);
 
         cJSON_Delete(temp);
     }
@@ -835,9 +945,15 @@ void CmdSetSysSet(char *data, cloudcmd_t *cmd, sys_para_t *para)
         GetValueByU8(temp, "ecUnit", &para->ecUnit);
         GetValueByU8(temp, "timeFormat", &para->timeFormat);
         GetValueByU8(temp, "dayNightMode", &para->dayNightMode);
-        GetValueByU16(temp, "photocellSensitivity", &para->photocellSensitivity);
-        GetValueByU16(temp, "dayTime", &para->dayTime);
-        GetValueByU16(temp, "nightTime", &para->nightTime);
+        if(DAY_BY_PHOTOCELL == para->dayNightMode)
+        {
+            GetValueByU16(temp, "photocellSensitivity", &para->photocellSensitivity);
+        }
+        else if(DAY_BY_TIME == para->dayNightMode)
+        {
+            GetValueByU16(temp, "dayTime", &para->dayTime);
+            GetValueByU16(temp, "nightTime", &para->nightTime);
+        }
         GetValueByU8(temp, "maintain", &para->maintain);
         cJSON_Delete(temp);
     }
@@ -853,8 +969,11 @@ void CmdSetPortName(char *data, cloudcmd_t *cmd)
     u8      port        = 0;
     char    name[MODULE_NAMESZ];
     cJSON   *temp       = RT_NULL;
+    device_time4_t *device = RT_NULL;
+    line_t *line = RT_NULL;
 
     temp = cJSON_Parse(data);
+
     if(RT_NULL != temp)
     {
         GetValueC16(temp, &cmd->msgid);
@@ -872,13 +991,31 @@ void CmdSetPortName(char *data, cloudcmd_t *cmd)
             port = 0;
         }
 
+        device = GetDeviceByAddr(GetMonitor(), addr);
+        line = GetLineByAddr(GetMonitor(), addr);
+
         if(0 == port)
         {
-            rt_memcpy(GetDeviceByAddr(GetMonitor(), addr)->name, name, MODULE_NAMESZ);
+            if(RT_NULL != device)
+            {
+//                LOG_D("CmdSetPortName device name %s",device->name);
+                rt_memcpy(device->name, name, MODULE_NAMESZ);
+            }
+            else if(RT_NULL != line)
+            {
+                rt_memcpy(line->name, name, MODULE_NAMESZ);
+            }
         }
         else
         {
-            rt_memcpy(GetDeviceByAddr(GetMonitor(), addr)->_storage[port]._port.name, name, STORAGE_NAMESZ);
+            if(RT_NULL != device)
+            {
+                rt_memcpy(device->_storage[port]._port.name, name, STORAGE_NAMESZ);
+            }
+            else if(RT_NULL != line)
+            {
+                rt_memcpy(line->name, name, STORAGE_NAMESZ);
+            }
         }
 
         cJSON_Delete(temp);
@@ -903,10 +1040,9 @@ void CmdSetSchedule(char *data, cloudcmd_t *cmd)//Justin debug 未验证
     if(RT_NULL != temp)
     {
         GetValueC16(temp, &cmd->msgid);
-        strcpy(temp_u8.name, "en");
-        GetValueU8(temp, &temp_u8);
-        strcpy(temp_u16.name, "starts");
-        GetValueU16(temp, &temp_u16);
+
+        GetValueByU8(temp, "en", &GetSysSet()->stageSet.en);
+        GetValueByC16(temp, "starts", &GetSysSet()->stageSet.starts);
 
         list = cJSON_GetObjectItem(temp, "list");
 
@@ -914,16 +1050,14 @@ void CmdSetSchedule(char *data, cloudcmd_t *cmd)//Justin debug 未验证
         {
             list_sum = cJSON_GetArraySize(list);
 
-            for(index = 0; index < list_sum; index++)
+            for(index = 0; index < (list_sum <= STAGE_LIST_MAX ? list_sum : STAGE_LIST_MAX); index++)
             {
                 item = cJSON_GetArrayItem(list, index);
 
                 if(RT_NULL != item)
                 {
-                    strcpy(temp_u8.name, "recipeId");
-                    GetValueU8(item, &temp_u8);
-                    strcpy(temp_u8.name, "duration");
-                    GetValueU8(item, &temp_u8);
+                    GetValueByU8(item, "recipeId", &GetSysSet()->stageSet._list[index].recipeId);
+                    GetValueByU8(item, "duration", &GetSysSet()->stageSet._list[index].duration_day);
                 }
             }
         }
@@ -1018,10 +1152,12 @@ void CmdSetLine(char *data, proLine_t *line)
     }
 }
 
-char *SendHubReportWarn(char *cmd)
+char *SendHubReportWarn(char *cmd, sys_set_t *set, u8 warn_no, u16 value)
 {
     char            *str        = RT_NULL;
     char            name[11];
+    u8              warn        = warn_no + 1;
+    u8              type        = 0;
     cJSON           *json       = cJSON_CreateObject();
 
     if(RT_NULL != json)
@@ -1029,10 +1165,74 @@ char *SendHubReportWarn(char *cmd)
         cJSON_AddStringToObject(json, "cmd", cmd);
         cJSON_AddStringToObject(json, "sn", GetSnName(name));
 
-        cJSON_AddNumberToObject(json, "type", 4);//Justin debug 仅仅测试
-        cJSON_AddNumberToObject(json, "warning", 5);//Justin debug 仅仅测试
-        cJSON_AddStringToObject(json, "name", "Co2");//Justin debug 仅仅测试
-        cJSON_AddNumberToObject(json, "value", 2000);//Justin debug 仅仅测试
+        // 1- device 离线和超时都在这里 2-温度 3-湿度 4-co2 5-vpd 6-par 7-
+        //漏水 8-烟雾 9-灯光设备 10-ph 11-ec 12-水温 13-水位
+
+        if((warn == WARN_CO2_TIMEOUT) ||
+           (warn == WARN_TEMP_TIMEOUT) ||
+           (warn == WARN_HUMI_TIMEOUT) ||
+           (warn == WARN_AUTOFILL_TIMEOUT))
+        {
+            type = 1;
+        }
+        else if((warn == WARN_TEMP_HIGHT) ||
+                (warn == WARN_TEMP_LOW))
+        {
+            type = 2;
+        }
+        else if((warn == WARN_HUMI_HIGHT) ||
+                (warn == WARN_HUMI_LOW))
+        {
+            type = 3;
+        }
+        else if((warn == WARN_CO2_HIGHT) ||
+                (warn == WARN_CO2_LOW))
+        {
+            type = 4;
+        }
+        else if((warn == WARN_VPD_HIGHT) ||
+                (warn == WARN_VPD_LOW))
+        {
+            type = 5;
+        }
+        else if((warn == WARN_PAR_HIGHT) ||
+                (warn == WARN_PAR_LOW))
+        {
+            type = 6;
+        }
+        else if((warn == WARN_WATER) )
+        {
+            type = 7;
+        }
+        else if((warn == WARN_SMOKE) )
+        {
+            type = 8;
+        }
+        else if((warn == WARN_LINE_STATE) || (warn == WARN_LINE_AUTO_T) ||(warn == WARN_LINE_AUTO_OFF))
+        {
+            type = 9;
+        }
+        else if((warn == WARN_PH_HIGHT) || (warn == WARN_PH_LOW))
+        {
+            type = 10;
+        }
+        else if((warn == WARN_EC_HIGHT) || (warn == WARN_EC_LOW))
+        {
+            type = 11;
+        }
+        else if((warn == WARN_WT_HIGHT) || (warn == WARN_WT_LOW))
+        {
+            type = 12;
+        }
+        else if((warn == WARN_WL_HIGHT) || (warn == WARN_WL_LOW))
+        {
+            type = 13;
+        }
+
+        cJSON_AddNumberToObject(json, "type", type);
+        cJSON_AddNumberToObject(json, "warning", warn);
+        cJSON_AddStringToObject(json, "name", "--");
+        cJSON_AddNumberToObject(json, "value", value);
         cJSON_AddStringToObject(json, "ntpzone", GetSysSet()->sysPara.ntpzone);
         cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
 
@@ -1043,8 +1243,13 @@ char *SendHubReportWarn(char *cmd)
     return str;
 }
 
-char *SendHubReport(char *cmd)
+#define NormalState     0
+#define HightState      1
+#define LowState        2
+
+char *SendHubReport(char *cmd, sys_set_t *set)
 {
+    u8              warn_type   = 0;
     char            *str        = RT_NULL;
     char            model[15];
     char            name[11];
@@ -1072,6 +1277,73 @@ char *SendHubReport(char *cmd)
             {
                 cJSON_AddNumberToObject(json, "humid", GetSensorByType(GetMonitor(), BHS_TYPE)->__stora[index].value);
             }
+        }
+
+        if(ON == set->warn[WARN_CO2_HIGHT - 1])
+        {
+            cJSON_AddNumberToObject(json, "co2State", HightState);
+        }
+        else if(ON == set->warn[WARN_CO2_LOW - 1])
+        {
+            cJSON_AddNumberToObject(json, "co2State", LowState);
+        }
+        else if((OFF == set->warn[WARN_CO2_HIGHT - 1]) && (OFF == set->warn[WARN_CO2_LOW - 1]))
+        {
+            cJSON_AddNumberToObject(json, "co2State", NormalState);
+        }
+
+
+        if(ON == set->warn[WARN_TEMP_HIGHT - 1])
+        {
+            cJSON_AddNumberToObject(json, "tempState", HightState);
+        }
+        else if(ON == set->warn[WARN_TEMP_LOW - 1])
+        {
+            cJSON_AddNumberToObject(json, "tempState", LowState);
+        }
+        else if((OFF == set->warn[WARN_TEMP_HIGHT - 1]) && (OFF == set->warn[WARN_TEMP_LOW - 1]))
+        {
+            cJSON_AddNumberToObject(json, "tempState", NormalState);
+        }
+
+
+        if(ON == set->warn[WARN_HUMI_HIGHT - 1])
+        {
+            cJSON_AddNumberToObject(json, "humidState", HightState);
+        }
+        else if(ON == set->warn[WARN_HUMI_LOW - 1])
+        {
+            cJSON_AddNumberToObject(json, "humidState", LowState);
+        }
+        else if((OFF == set->warn[WARN_HUMI_HIGHT - 1]) && (OFF == set->warn[WARN_HUMI_LOW - 1]))
+        {
+            cJSON_AddNumberToObject(json, "humidState", NormalState);
+        }
+
+        if(ON == set->warn[WARN_PAR_HIGHT - 1])
+        {
+            cJSON_AddNumberToObject(json, "ppfdState", HightState);
+        }
+        else if(ON == set->warn[WARN_PAR_LOW - 1])
+        {
+            cJSON_AddNumberToObject(json, "ppfdState", LowState);
+        }
+        else if((OFF == set->warn[WARN_PAR_HIGHT - 1]) && (OFF == set->warn[WARN_PAR_LOW - 1]))
+        {
+            cJSON_AddNumberToObject(json, "ppfdState", NormalState);
+        }
+
+        if(ON == set->warn[WARN_VPD_HIGHT - 1])
+        {
+            cJSON_AddNumberToObject(json, "vpdState", HightState);
+        }
+        else if(ON == set->warn[WARN_VPD_LOW - 1])
+        {
+            cJSON_AddNumberToObject(json, "vpdState", LowState);
+        }
+        else if((OFF == set->warn[WARN_VPD_HIGHT - 1]) && (OFF == set->warn[WARN_VPD_LOW - 1]))
+        {
+            cJSON_AddNumberToObject(json, "vpdState", NormalState);
         }
 
         cJSON_AddNumberToObject(json, "co2Lock", GetSysSet()->co2Set.dehumidifyLock.value);
@@ -1373,7 +1645,7 @@ char *ReplySetSchedule(char *cmd, cloudcmd_t cloud)//Justin debug 未验证
     return str;
 }
 
-char *ReplyAddRecipe(char *cmd, cloudcmd_t cloud)//Justin debug 未验证
+char *ReplyAddRecipe(char *cmd, cloudcmd_t cloud)
 {
     char    *str        = RT_NULL;
     type_kv_u8 id;
@@ -1485,6 +1757,12 @@ char *ReplySetWarn(char *cmd, cloudcmd_t cloud, sys_warn_t warn)
         cJSON_AddNumberToObject(json, "smokeEn",warn.smokeEn);
         cJSON_AddNumberToObject(json, "waterEn",warn.waterEn);
         cJSON_AddNumberToObject(json, "autoFillTimeout",warn.autoFillTimeout);
+        cJSON_AddNumberToObject(json, "co2TimeoutEn",warn.co2TimeoutEn);
+        cJSON_AddNumberToObject(json, "co2Timeoutseconds",warn.co2Timeoutseconds);
+        cJSON_AddNumberToObject(json, "tempTimeoutEn",warn.tempTimeoutEn);
+        cJSON_AddNumberToObject(json, "tempTimeoutseconds",warn.tempTimeoutseconds);
+        cJSON_AddNumberToObject(json, "humidTimeoutEn",warn.humidTimeoutEn);
+        cJSON_AddNumberToObject(json, "humidTimeoutseconds",warn.humidTimeoutseconds);
 
         cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
         str = cJSON_PrintUnformatted(json);
@@ -1494,7 +1772,7 @@ char *ReplySetWarn(char *cmd, cloudcmd_t cloud, sys_warn_t warn)
     return str;
 }
 
-char *ReplyGetSysPara(char *cmd, cloudcmd_t cloud, sys_para_t para, sensor_t *sensor)
+char *ReplyGetSysPara(char *cmd, cloudcmd_t cloud, sys_para_t para)
 {
     char            *str        = RT_NULL;
     char            time[15]    = "";
@@ -1502,6 +1780,7 @@ char *ReplyGetSysPara(char *cmd, cloudcmd_t cloud, sys_para_t para, sensor_t *se
     char            temp2[4];
     char            name[16];
     cJSON           *json       = cJSON_CreateObject();
+    sensor_t        *sensor     = GetSensorByType(GetMonitor(), BHS_TYPE);
     type_sys_time   sys_time;
 
     if(RT_NULL != json)
@@ -1614,6 +1893,8 @@ char *ReplySetPortName(char *cmd, cloudcmd_t cloud)
     u8              port        = 0;
     char            *str        = RT_NULL;
     cJSON           *json       = cJSON_CreateObject();
+    device_time4_t  *device     = RT_NULL;
+    line_t          *line       = RT_NULL;
 
     if(RT_NULL != json)
     {
@@ -1632,13 +1913,30 @@ char *ReplySetPortName(char *cmd, cloudcmd_t cloud)
 
         cJSON_AddNumberToObject(json, "id", cloud.set_port_id);
 
+        device = GetDeviceByAddr(GetMonitor(), addr);
+        line = GetLineByAddr(GetMonitor(), addr);
+
         if(0 == port)
         {
-            cJSON_AddStringToObject(json, "name", GetDeviceByAddr(GetMonitor(), addr)->name);
+            if(RT_NULL != device)
+            {
+                cJSON_AddStringToObject(json, "name", device->name);
+            }
+            else if(RT_NULL != line)
+            {
+                cJSON_AddStringToObject(json, "name", line->name);
+            }
         }
         else if(port < 4)
         {
-            cJSON_AddStringToObject(json, "name", GetDeviceByAddr(GetMonitor(), addr)->_storage[port]._port.name);
+            if(RT_NULL != device)
+            {
+                cJSON_AddStringToObject(json, "name", device->_storage[port]._port.name);
+            }
+            else if(RT_NULL != line)
+            {
+                cJSON_AddStringToObject(json, "name", line->name);
+            }
         }
 
         cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
@@ -1720,7 +2018,14 @@ char *ReplyGetHubState(char *cmd, cloudcmd_t cloud)
             }
         }
 
-        cJSON_AddNumberToObject(json, "co2Lock", GetSysSet()->co2Set.dehumidifyLock.value);
+        if((GetSysSet()->co2Set.coolingLock.value == ON) || (GetSysSet()->co2Set.dehumidifyLock.value == ON))
+        {
+            cJSON_AddNumberToObject(json, "co2Lock", ON);
+        }
+        else
+        {
+            cJSON_AddNumberToObject(json, "co2Lock", OFF);
+        }
         cJSON_AddNumberToObject(json, "tempLock", GetSysSet()->tempSet.coolingDehumidifyLock.value);
         cJSON_AddNumberToObject(json, "humidLock", GetSysSet()->tempSet.coolingDehumidifyLock.value);
         cJSON_AddNumberToObject(json, "ppfd", GetSysSet()->line1Set.byAutoDimming.value);
@@ -1754,6 +2059,7 @@ char *ReplySetRecipe(char *cmd, cloudcmd_t cloud)//Justin debug 未验证
     recipe_t        *recipe     = RT_NULL;
     cJSON           *json       = cJSON_CreateObject();
     cJSON           *line       = RT_NULL;
+    int             temp;
 
     if(RT_NULL != json)
     {
@@ -1793,6 +2099,24 @@ char *ReplySetRecipe(char *cmd, cloudcmd_t cloud)//Justin debug 未验证
                         cJSON_AddNumberToObject(line, "duration", recipe->line_list[index].duration);
                         cJSON_AddNumberToObject(line, "pauseTime", recipe->line_list[index].pauseTime);
 
+                        if(recipe->line_list[index].byPower < 10)
+                        {
+                            recipe->line_list[index].byPower = 10;
+                            LOG_E("bypower too low");
+                        }
+
+                        if(recipe->line_list[index].byPower > 115)
+                        {
+                            recipe->line_list[index].byPower = 115;
+                            LOG_E("bypower too hight");
+                        }
+
+                        if(recipe->line_list[index].byAutoDimming > 2500)
+                        {
+                            recipe->line_list[index].byAutoDimming = 2500;
+                            LOG_E("byAutoDimming too hight");
+                        }
+
                         if(0 == index)
                         {
                             cJSON_AddItemToObject(json, "line1", line);
@@ -1828,6 +2152,12 @@ char *ReplyGetSchedule(char *cmd, cloudcmd_t cloud)//Justin debug 未验证
     cJSON       *json       = cJSON_CreateObject();
     cJSON       *list       = RT_NULL;
     cJSON       *list_item  = RT_NULL;
+    static type_sys_time   end;
+    char        end_date[14] = "";
+    struct tm   tm_test;
+    struct tm   *tm_test1;
+    time_t      time_temp;
+    char        temp[4];
 
     if(RT_NULL != json)
     {
@@ -1856,7 +2186,69 @@ char *ReplyGetSchedule(char *cmd, cloudcmd_t cloud)//Justin debug 未验证
                         cJSON_AddNumberToObject(list_item, "color", rec.color);
                     }
                     cJSON_AddNumberToObject(list_item, "duration", sys_set.stageSet._list[index].duration_day);
-                    //Justin debug 需要回复结束时间
+
+                    if(index == 0)
+                    {
+                        rt_memset(temp, '0', 4);
+                        rt_memcpy(temp, sys_set.stageSet.starts, 4);
+                        tm_test.tm_year = atoi(temp) - 1900;
+                        rt_memset(temp, '0', 4);
+                        rt_memcpy(temp, &sys_set.stageSet.starts[4], 2);
+                        tm_test.tm_mon = atoi(temp) - 1;
+                        rt_memset(temp, '0', 4);
+                        rt_memcpy(temp, &sys_set.stageSet.starts[6], 2);
+                        tm_test.tm_mday = atoi(temp);
+                        rt_memset(temp, '0', 4);
+                        rt_memcpy(temp, &sys_set.stageSet.starts[8], 2);
+                        tm_test.tm_hour = atoi(temp);
+                        rt_memset(temp, '0', 4);
+                        rt_memcpy(temp, &sys_set.stageSet.starts[10], 2);
+                        tm_test.tm_min = atoi(temp);
+                        rt_memset(temp, '0', 4);
+                        rt_memcpy(temp, &sys_set.stageSet.starts[12], 2);
+                        tm_test.tm_sec = atoi(temp);
+                    }
+                    else
+                    {
+                        tm_test.tm_year = end.year - 1900;
+                        tm_test.tm_mon = end.month - 1;
+                        tm_test.tm_mday = end.day;
+                        tm_test.tm_hour = end.hour;
+                        tm_test.tm_min = end.minute;
+                        tm_test.tm_sec = end.second;
+                    }
+
+                    time_temp = changeTmTotimet(&tm_test);
+                    time_temp += sys_set.stageSet._list[index].duration_day * 24 * 60 * 60;
+                    tm_test1 = getTimeStampByDate(&time_temp);
+                    end.year = tm_test1->tm_year + 1900;
+                    end.month = tm_test1->tm_mon + 1;
+                    end.day = tm_test1->tm_mday;
+                    end.hour = tm_test1->tm_hour;
+                    end.minute = tm_test1->tm_min;
+                    end.second = tm_test1->tm_sec;
+                    strcpy(end_date,"");
+                    rt_memset(temp, '0', 4);
+                    itoa(end.year, temp, 10);
+                    strncat(end_date, temp, 4);
+                    rt_memset(temp, '0', 4);
+                    itoa(end.month, temp, 10);
+                    strncat(end_date, temp, 4);
+                    rt_memset(temp, '0', 4);
+                    itoa(end.day, temp, 10);
+                    strncat(end_date, temp, 4);
+                    rt_memset(temp, '0', 4);
+                    itoa(end.hour, temp, 10);
+                    strncat(end_date, temp, 4);
+                    rt_memset(temp, '0', 4);
+                    itoa(end.minute, temp, 10);
+                    strncat(end_date, temp, 4);
+                    rt_memset(temp, '0', 4);
+                    itoa(end.second, temp, 10);
+                    strncat(end_date, temp, 4);
+
+                    cJSON_AddStringToObject(list_item, "ends", end_date);
+
                     cJSON_AddItemToArray(list, list_item);
 
                 }
@@ -1877,7 +2269,7 @@ char *ReplySetPortSet(char *cmd, cloudcmd_t cloud)
     u8      addr        = 0;
     u8      port        = 0;
     u8      group       = 0;
-    u8      valid_gro   = 0;
+    u8      valid_gro   = 0xFF;
     char    *str        = RT_NULL;
     cJSON   *json       = cJSON_CreateObject();
     cJSON   *list       = RT_NULL;
@@ -1907,8 +2299,8 @@ char *ReplySetPortSet(char *cmd, cloudcmd_t cloud)
 
         if(RT_NULL != device)
         {
-            cJSON_AddNumberToObject(json, "manual", device->_storage[port]._port.manual);
-            cJSON_AddNumberToObject(json, "manualOnTime", device->_storage[port]._port.manual_on_time);
+            cJSON_AddNumberToObject(json, "manual", device->_manual[port].manual);
+            cJSON_AddNumberToObject(json, "manualOnTime", device->_manual[port].manual_on_time);
             cJSON_AddNumberToObject(json, "hotStartDelay", device->hotStartDelay);
             if(HVAC_6_TYPE == device->type)
             {
@@ -1932,16 +2324,19 @@ char *ReplySetPortSet(char *cmd, cloudcmd_t cloud)
                         }
                     }
 
-                    for(group = 0; group <= valid_gro; group++)//Justin debug
+                    if(valid_gro <= TIMER12_PORT_MAX)
                     {
-                        item = cJSON_CreateObject();
-                        if(RT_NULL != item)
+                        for(group = 0; group <= valid_gro; group++)//Justin debug
                         {
-                            cJSON_AddNumberToObject(item, "onAt", device->_storage[port]._time4_ctl._timer[group].on_at);
-                            cJSON_AddNumberToObject(item, "duration", device->_storage[port]._time4_ctl._timer[group].duration);
-                            cJSON_AddNumberToObject(item, "en", device->_storage[port]._time4_ctl._timer[group].en);
+                            item = cJSON_CreateObject();
+                            if(RT_NULL != item)
+                            {
+                                cJSON_AddNumberToObject(item, "onAt", device->_storage[port]._time4_ctl._timer[group].on_at);
+                                cJSON_AddNumberToObject(item, "duration", device->_storage[port]._time4_ctl._timer[group].duration);
+                                cJSON_AddNumberToObject(item, "en", device->_storage[port]._time4_ctl._timer[group].en);
 
-                            cJSON_AddItemToArray(list, item);
+                                cJSON_AddItemToArray(list, item);
+                            }
                         }
                     }
 
@@ -1952,15 +2347,15 @@ char *ReplySetPortSet(char *cmd, cloudcmd_t cloud)
                     LOG_E("ReplySetPortSet apply list err");
                 }
 
-                cJSON_AddNumberToObject(json, "startAt", device->_recycle.startAt);
-                cJSON_AddNumberToObject(json, "duration", device->_recycle.duration);
-                cJSON_AddNumberToObject(json, "pauseTime", device->_recycle.pauseTime);
+                cJSON_AddNumberToObject(json, "startAt", device->_recycle[port].startAt);
+                cJSON_AddNumberToObject(json, "duration", device->_recycle[port].duration);
+                cJSON_AddNumberToObject(json, "pauseTime", device->_recycle[port].pauseTime);
             }
         }
         else if(RT_NULL != timer12)
         {
-            cJSON_AddNumberToObject(json, "manual", timer12->manual);
-            cJSON_AddNumberToObject(json, "manualOnTime", timer12->manual_on_time);
+            cJSON_AddNumberToObject(json, "manual", timer12->_manual[port].manual);
+            cJSON_AddNumberToObject(json, "manualOnTime", timer12->_manual[port].manual_on_time);
 
             cJSON_AddNumberToObject(json, "mode", timer12->mode);
 
@@ -1986,10 +2381,10 @@ char *ReplySetPortSet(char *cmd, cloudcmd_t cloud)
                 cJSON_AddItemToObject(json, "list", list);
             }
 
-            cJSON_AddNumberToObject(json, "startAt", timer12->_recycle.startAt);
-            cJSON_AddNumberToObject(json, "duration", timer12->_recycle.duration);
-            cJSON_AddNumberToObject(json, "pauseTime", timer12->_recycle.pauseTime);
-            cJSON_AddNumberToObject(json, "times", timer12->_recycle.times);
+            cJSON_AddNumberToObject(json, "startAt", timer12->_recycle[port].startAt);
+            cJSON_AddNumberToObject(json, "duration", timer12->_recycle[port].duration);
+            cJSON_AddNumberToObject(json, "pauseTime", timer12->_recycle[port].pauseTime);
+            cJSON_AddNumberToObject(json, "times", timer12->_recycle[port].times);
         }
 
         cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
@@ -2009,13 +2404,14 @@ char *ReplyGetPortSet(char *cmd, cloudcmd_t cloud)
     char    *str        = RT_NULL;
     u8      port        = 0;
     u8      group       = 0;
-    u8      valid_gro   = 0;
+    u8      valid_gro   = 0xFF;
     u8      addr        = 0;
     cJSON   *timerList  = RT_NULL;
     cJSON   *timer      = RT_NULL;
     cJSON   *json       = cJSON_CreateObject();
-    device_time4_t  *module   = RT_NULL;
+    device_time4_t  *module     = RT_NULL;
     timer12_t       *timer12    = RT_NULL;
+    line_t          *line       = RT_NULL;
 
     rt_memcpy(fun_name, "port", STORAGE_NAMESZ);
 
@@ -2039,6 +2435,7 @@ char *ReplyGetPortSet(char *cmd, cloudcmd_t cloud)
 
         module = GetDeviceByAddr(GetMonitor(), addr);
         timer12 = GetTimerByAddr(GetMonitor(), addr);
+        line = GetLineByAddr(GetMonitor(), addr);
 
         if(RT_NULL != module)
         {
@@ -2051,8 +2448,8 @@ char *ReplyGetPortSet(char *cmd, cloudcmd_t cloud)
             cJSON_AddStringToObject(json, "funcName", GetFunNameByType(module->type, fun_name, 15));
             cJSON_AddNumberToObject(json, "mainType", module->main_type);
             cJSON_AddNumberToObject(json, "type", module->type);
-            cJSON_AddNumberToObject(json, "manual", module->_storage[port]._port.manual);
-            cJSON_AddNumberToObject(json, "manualOnTime", module->_storage[port]._port.manual_on_time);
+            cJSON_AddNumberToObject(json, "manual", module->_manual[port].manual);
+            cJSON_AddNumberToObject(json, "manualOnTime", module->_manual[port].manual_on_time);
             cJSON_AddNumberToObject(json, "hotStartDelay", module->hotStartDelay);
             if(HVAC_6_TYPE == module->type)
             {
@@ -2063,8 +2460,9 @@ char *ReplyGetPortSet(char *cmd, cloudcmd_t cloud)
 
             if(TIMER_TYPE == module->type)
             {
-                timerList = cJSON_CreateArray();
+                cJSON_AddNumberToObject(json, "mode", module->mode);
 
+                timerList = cJSON_CreateArray();
                 if(RT_NULL != timerList)
                 {
                     for(group = 0; group < TIMER12_PORT_MAX; group++)
@@ -2076,16 +2474,19 @@ char *ReplyGetPortSet(char *cmd, cloudcmd_t cloud)
                         }
                     }
 
-                    for(group = 0; group <= valid_gro; group++)
+                    if(valid_gro <= TIMER12_PORT_MAX)
                     {
-                        timer = cJSON_CreateObject();
-                        if(RT_NULL != timer)
+                        for(group = 0; group <= valid_gro; group++)
                         {
-                            cJSON_AddNumberToObject(timer, "onAt", module->_storage[port]._time4_ctl._timer[group].on_at);
-                            cJSON_AddNumberToObject(timer, "duration", module->_storage[port]._time4_ctl._timer[group].duration);
-                            cJSON_AddNumberToObject(timer, "en", module->_storage[port]._time4_ctl._timer[group].en);
+                            timer = cJSON_CreateObject();
+                            if(RT_NULL != timer)
+                            {
+                                cJSON_AddNumberToObject(timer, "onAt", module->_storage[port]._time4_ctl._timer[group].on_at);
+                                cJSON_AddNumberToObject(timer, "duration", module->_storage[port]._time4_ctl._timer[group].duration);
+                                cJSON_AddNumberToObject(timer, "en", module->_storage[port]._time4_ctl._timer[group].en);
 
-                            cJSON_AddItemToArray(timerList, timer);
+                                cJSON_AddItemToArray(timerList, timer);
+                            }
                         }
                     }
 
@@ -2096,9 +2497,10 @@ char *ReplyGetPortSet(char *cmd, cloudcmd_t cloud)
                     LOG_E("ReplyGetPortSet err5");
                 }
 
-                cJSON_AddNumberToObject(json, "startAt", module->_recycle.startAt);
-                cJSON_AddNumberToObject(json, "duration", module->_recycle.duration);
-                cJSON_AddNumberToObject(json, "pauseTime", module->_recycle.pauseTime);
+                cJSON_AddNumberToObject(json, "startAt", module->_recycle[port].startAt);
+                cJSON_AddNumberToObject(json, "duration", module->_recycle[port].duration);
+                cJSON_AddNumberToObject(json, "pauseTime", module->_recycle[port].pauseTime);
+                cJSON_AddNumberToObject(json, "times", module->_recycle[port].times);
             }
 
 #if (HUB_SELECT == HUB_IRRIGSTION)
@@ -2119,8 +2521,8 @@ char *ReplyGetPortSet(char *cmd, cloudcmd_t cloud)
             cJSON_AddStringToObject(json, "funcName", GetFunNameByType(timer12->type, fun_name, 15));
             cJSON_AddNumberToObject(json, "mainType", timer12->main_type);
             cJSON_AddNumberToObject(json, "type", timer12->type);
-            cJSON_AddNumberToObject(json, "manual", timer12->manual);
-            cJSON_AddNumberToObject(json, "manualOnTime", timer12->manual_on_time);
+            cJSON_AddNumberToObject(json, "manual", timer12->_manual[port].manual);
+            cJSON_AddNumberToObject(json, "manualOnTime", timer12->_manual[port].manual_on_time);
             cJSON_AddNumberToObject(json, "mode", timer12->mode);
 
             timerList = cJSON_CreateArray();
@@ -2147,9 +2549,9 @@ char *ReplyGetPortSet(char *cmd, cloudcmd_t cloud)
                 LOG_E("ReplyGetPortSet err3");
             }
 
-            cJSON_AddNumberToObject(json, "startAt", timer12->_recycle.startAt);
-            cJSON_AddNumberToObject(json, "duration", timer12->_recycle.duration);
-            cJSON_AddNumberToObject(json, "pauseTime", timer12->_recycle.pauseTime);
+            cJSON_AddNumberToObject(json, "startAt", timer12->_recycle[port].startAt);
+            cJSON_AddNumberToObject(json, "duration", timer12->_recycle[port].duration);
+            cJSON_AddNumberToObject(json, "pauseTime", timer12->_recycle[port].pauseTime);
 
             cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
 
@@ -2158,6 +2560,25 @@ char *ReplyGetPortSet(char *cmd, cloudcmd_t cloud)
             if(str == RT_NULL)
             {
                 LOG_E("ReplyGetPortSet err4");
+            }
+        }
+        else if(line != RT_NULL)
+        {
+            LOG_D("reply line name %s",line->name);//Justin debug
+
+            cJSON_AddStringToObject(json, "cmd", cmd);
+            cJSON_AddStringToObject(json, cloud.msgid.name, cloud.msgid.value);
+            cJSON_AddNumberToObject(json, "id", line->addr);
+            cJSON_AddStringToObject(json, "name", line->name);
+            cJSON_AddNumberToObject(json, "type", line->type);
+            cJSON_AddNumberToObject(json, "manual", line->manual);
+            cJSON_AddNumberToObject(json, "manualOnTime", line->manual_on_time);
+
+            str = cJSON_PrintUnformatted(json);
+
+            if(str == RT_NULL)
+            {
+                LOG_E("ReplyGetPortSet err5");
             }
         }
         else
@@ -2221,7 +2642,7 @@ char *ReplyGetDeviceList(char *cmd, type_kv_c16 msgid)
                     }
                     if(1 == module.storage_size)
                     {
-                        cJSON_AddNumberToObject(item, "manual", module.manual);
+                        cJSON_AddNumberToObject(item, "manual", module._manual[0].manual);
                         cJSON_AddNumberToObject(item, "workingStatus", module._storage[0]._port.d_state);
                         cJSON_AddNumberToObject(item, "color", module.color);
                     }
@@ -2239,9 +2660,19 @@ char *ReplyGetDeviceList(char *cmd, type_kv_c16 msgid)
 //                                    cJSON_AddNumberToObject(port, "type", module._storage[storage]._port.);
                                     cJSON_AddStringToObject(port, "name", module._storage[storage]._port.name);
                                     cJSON_AddNumberToObject(port, "id", module._storage[storage]._port.addr);
-                                    cJSON_AddNumberToObject(port, "manual", module._storage[storage]._port.manual);
+                                    cJSON_AddNumberToObject(port, "manual", module._manual[storage].manual);
 //                                    cJSON_AddNumberToObject(port, "manual_on_time", module._storage[storage]._port.manual_on_time);
-                                    cJSON_AddNumberToObject(port, "workingStatus", module._storage[storage]._port.d_state);
+                                    //Justin debug 注意 这个工作状态要遵循//设备工作状态 0-Off 1-On 2-PPM UP 3-FUZZY LOGIC 4-
+                                    //联动制冷关闭 5-联动除湿关闭 6-过高报警关闭 7-夜晚关闭 8-输出超时关闭
+                                    //9-HUMI 10-DEHUMI 11-Heating 12-Cooling 13-Lighting
+                                    if(TIMER_TYPE ==  module.type)
+                                    {
+                                        cJSON_AddNumberToObject(port, "workingStatus", module._storage[storage]._time4_ctl.d_state);
+                                    }
+                                    else
+                                    {
+                                        cJSON_AddNumberToObject(port, "workingStatus", module._storage[storage]._port.d_state);
+                                    }
 //                                    cJSON_AddNumberToObject(port, "color", module._storage[storage]._port.color);
 
                                     cJSON_AddItemToArray(portList, port);
@@ -2270,6 +2701,7 @@ char *ReplyGetDeviceList(char *cmd, type_kv_c16 msgid)
                     cJSON_AddNumberToObject(item, "mainType", 4);//4 指的是line 类型
                     cJSON_AddNumberToObject(item, "type", line.type);
                     cJSON_AddNumberToObject(item, "lineNo", line_no + 1);
+                    cJSON_AddNumberToObject(item, "manual", line.manual);
                     if(0 == line_no)
                     {
                         cJSON_AddNumberToObject(item, "lightType", GetSysSet()->line1Set.lightsType.value);

@@ -38,7 +38,6 @@ void TcpRecvTaskEntry(void* parameter)
         {
             //解析数据
             TcpRecvMsg(&sock, (u8 *)tcpRecvBuffer.buffer,RCV_ETH_BUFFSZ);
-//            LOG_D("%s",tcpRecvBuffer.buffer);//Justin debug
             tcpRecvBuffer.flag = YES;
         }
         rt_thread_mdelay(50);

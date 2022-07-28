@@ -21,6 +21,7 @@ sys_set_t       sys_set;
 type_sys_time   sys_time;
 sys_tank_t      sys_tank;
 hub_t           hub_info;
+u8 sys_warn[WARN_MAX];
 
 u8 saveModuleFlag = NO;
 
@@ -126,7 +127,6 @@ void printCloud(cloudcmd_t cmd)
     LOG_D(" %s",cmd.delete_id.name);
 }
 
-//Justin debug 仅仅测试 修改默认值 比较合理的数据
 void initCloudProtocol(void)
 {
     char name[16];
@@ -142,7 +142,7 @@ void initCloudProtocol(void)
     rt_memcpy(sys_set.cloudCmd.sys_time.value, " ",16);
     rt_memcpy(sys_set.cloudCmd.delete_id.name, "id", KEYVALUE_NAME_SIZE);
     sys_set.cloudCmd.delete_id.value = 0;
-    printCloud(sys_set.cloudCmd);//Justin debug 需要存储
+    printCloud(sys_set.cloudCmd);
 
     rt_memset(&sys_set.tempSet, 0, sizeof(proTempSet_t));
     rt_memset(&sys_set.co2Set, 0, sizeof(proCo2Set_t));
@@ -165,7 +165,7 @@ void initCloudProtocol(void)
     rt_memcpy(sys_set.tempSet.coolingDehumidifyLock.name, "coolingDehumidifyLock", KEYVALUE_NAME_SIZE);
     sys_set.tempSet.coolingDehumidifyLock.value = 0;
     rt_memcpy(sys_set.tempSet.tempDeadband.name, "tempDeadband", KEYVALUE_NAME_SIZE);
-    sys_set.tempSet.tempDeadband.value = 10;
+    sys_set.tempSet.tempDeadband.value = 20;
     rt_memcpy(sys_set.tempSet.timestamp.name, "timestamp", KEYVALUE_NAME_SIZE);
 
     //init Co2
@@ -200,7 +200,7 @@ void initCloudProtocol(void)
     rt_memcpy(sys_set.humiSet.nightDehumiTarget.name, "nightDehumidifyTarget", KEYVALUE_NAME_SIZE);
     sys_set.humiSet.nightDehumiTarget.value = 800;
     rt_memcpy(sys_set.humiSet.humidDeadband.name, "humidDeadband", KEYVALUE_NAME_SIZE);
-    sys_set.humiSet.humidDeadband.value = 30;
+    sys_set.humiSet.humidDeadband.value = 50;
     rt_memcpy(sys_set.humiSet.timestamp.name, "timestamp", KEYVALUE_NAME_SIZE);
 
     //init Line1
@@ -231,6 +231,60 @@ void initCloudProtocol(void)
 
     strcpy(sys_set.sysPara.ntpzone, "+00:00");
     sys_set.sysPara.timeFormat = TIME_STYLE_24H;
+    sys_set.sysPara.dayNightMode = DAY_BY_TIME;
+    sys_set.sysPara.photocellSensitivity = 100;
+    sys_set.sysPara.dayTime = 480;  //8 * 60
+    sys_set.sysPara.nightTime = 1200;   //20 * 60
+    sys_set.sysPara.maintain = OFF;     //非维护状态
+
+    sys_set.dayOrNight = DAY_TIME;
+
+    sys_set.sysWarn.dayTempMin = 170;
+    sys_set.sysWarn.dayTempMax = 350;
+    sys_set.sysWarn.dayTempEn = ON;
+    sys_set.sysWarn.dayhumidMin = 500;
+    sys_set.sysWarn.dayhumidMax = 900;
+    sys_set.sysWarn.dayhumidEn = ON;
+    sys_set.sysWarn.dayCo2Min = 500;
+    sys_set.sysWarn.dayCo2Max = 3000;
+    sys_set.sysWarn.dayCo2En = ON;
+    sys_set.sysWarn.dayCo2Buzz = ON;
+    sys_set.sysWarn.dayVpdMin = 100;
+    sys_set.sysWarn.dayVpdMax = 300;
+    sys_set.sysWarn.dayVpdEn = ON;
+    sys_set.sysWarn.dayParMin = 100;
+    sys_set.sysWarn.dayParMax = 2000;
+    sys_set.sysWarn.dayParEn = ON;
+
+    sys_set.sysWarn.nightTempMin = 170;
+    sys_set.sysWarn.nightTempMax = 350;
+    sys_set.sysWarn.nightTempEn = ON;
+    sys_set.sysWarn.nighthumidMin = 500;
+    sys_set.sysWarn.nighthumidMax = 900;
+    sys_set.sysWarn.nighthumidEn = ON;
+    sys_set.sysWarn.nightCo2Min = 500;
+    sys_set.sysWarn.nightCo2Max = 3000;
+    sys_set.sysWarn.nightCo2En = ON;
+    sys_set.sysWarn.nightCo2Buzz = ON;
+    sys_set.sysWarn.nightVpdMin = 100;
+    sys_set.sysWarn.nightVpdMax = 300;
+    sys_set.sysWarn.nightVpdEn = ON;
+
+    sys_set.sysWarn.phEn = ON;
+    sys_set.sysWarn.ecEn = ON;
+    sys_set.sysWarn.wtEn = ON;
+    sys_set.sysWarn.wlEn = ON;
+    sys_set.sysWarn.offlineEn = ON;
+    sys_set.sysWarn.lightEn = ON;
+    sys_set.sysWarn.smokeEn = ON;
+    sys_set.sysWarn.waterEn = ON;
+    sys_set.sysWarn.autoFillTimeout = ON;
+    sys_set.sysWarn.co2TimeoutEn = ON;
+    sys_set.sysWarn.co2Timeoutseconds = 600;
+    sys_set.sysWarn.tempTimeoutEn = ON;
+    sys_set.sysWarn.tempTimeoutseconds = 600;
+    sys_set.sysWarn.humidTimeoutEn = ON;
+    sys_set.sysWarn.humidTimeoutseconds = 600;
 
     rt_memcpy(&sys_set.line2Set, &sys_set.line1Set, sizeof(proLine_t));
 
@@ -299,7 +353,8 @@ void ReplyDataToCloud(mqtt_client *client, u8 *res, u16 *len, u8 sendCloudFlg)
         else if(0 == rt_memcmp(CMD_SET_PORT_SET, sys_set.cloudCmd.cmd, sizeof(CMD_SET_PORT_SET)))//获取设备/端口设置
         {
             //目前端口和设备都可以被设置
-            str = ReplySetPortSet(CMD_SET_PORT_SET, sys_set.cloudCmd);
+            //str = ReplySetPortSet(CMD_SET_PORT_SET, sys_set.cloudCmd);
+            str = ReplyGetPortSet(CMD_SET_PORT_SET, sys_set.cloudCmd);
         }
         else if(0 == rt_memcmp(CMD_SET_SYS_TIME, sys_set.cloudCmd.cmd, sizeof(CMD_SET_SYS_TIME)))//获取设备/端口设置
         {
@@ -360,7 +415,7 @@ void ReplyDataToCloud(mqtt_client *client, u8 *res, u16 *len, u8 sendCloudFlg)
         }
         else if(0 == rt_memcmp(CMD_GET_SYS_SET, sys_set.cloudCmd.cmd, sizeof(CMD_GET_SYS_SET)))//获取系统设置
         {
-            str = ReplyGetSysPara(CMD_GET_SYS_SET, sys_set.cloudCmd, sys_set.sysPara, GetSensorByAddr(GetMonitor(), BHS_TYPE));
+            str = ReplyGetSysPara(CMD_GET_SYS_SET, sys_set.cloudCmd, sys_set.sysPara);
         }
         else if(0 == rt_memcmp(CMD_SET_ALARM_SET, sys_set.cloudCmd.cmd, sizeof(CMD_SET_ALARM_SET)))//获取系统设置
         {
@@ -402,18 +457,18 @@ void ReplyDataToCloud(mqtt_client *client, u8 *res, u16 *len, u8 sendCloudFlg)
     }
 }
 
-void SendDataToCloud(mqtt_client *client, char *cmd)
+void SendDataToCloud(mqtt_client *client, char *cmd, u8 warn_no, u16 value)
 {
     char name[20];
     char *str = RT_NULL;
 
     if(0 == rt_memcmp(CMD_HUB_REPORT, cmd, sizeof(CMD_HUB_REPORT)))//主动上报实时值
     {
-        str = SendHubReport(CMD_HUB_REPORT);
+        str = SendHubReport(CMD_HUB_REPORT, GetSysSet());
     }
     else if(0 == rt_memcmp(CMD_HUB_REPORT_WARN, cmd, sizeof(CMD_HUB_REPORT_WARN)))//主动上报报警
     {
-        str = SendHubReportWarn(CMD_HUB_REPORT_WARN);
+        str = SendHubReportWarn(CMD_HUB_REPORT_WARN, GetSysSet(), warn_no, value);
     }
 
     if(RT_NULL != str)
@@ -513,7 +568,7 @@ void analyzeCloudData(char *data)
                 CmdGetPortSet(data, &sys_set.cloudCmd);
                 setCloudCmd(cmd->valuestring, ON);
             }
-            else if(0 == rt_memcmp(CMD_SET_PORT_SET, cmd->valuestring, strlen(CMD_SET_PORT_SET)))//Justin debug  需要继续测试该指令
+            else if(0 == rt_memcmp(CMD_SET_PORT_SET, cmd->valuestring, strlen(CMD_SET_PORT_SET)))
             {
                 CmdSetPortSet(data, &sys_set.cloudCmd);
                 saveModuleFlag = YES;
@@ -621,6 +676,72 @@ void analyzeCloudData(char *data)
     }
 }
 
+void ctrDevice(type_monitor_t *monitor, u8 type, u16 value)
+{
+    u8          index = 0;
+    static u8   manual_state[DEVICE_TIME4_MAX] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+
+    for(index = 0; index < monitor->device_size; index++)
+    {
+        if(type == monitor->device[index].type)
+        {
+            if(MANUAL_NO_HAND == monitor->device[index]._manual[0].manual)//非手动
+            {
+                if(type == TIMER_TYPE)
+                {
+                    monitor->device[index]._storage[0]._time4_ctl.d_state = value >> 8;
+                    monitor->device[index]._storage[0]._time4_ctl.d_value = value;
+                }
+                else
+                {
+                    monitor->device[index]._storage[0]._port.d_state = value >> 8;
+                    monitor->device[index]._storage[0]._port.d_value = value;
+                }
+            }
+            else if(MANUAL_HAND_ON == monitor->device[index]._manual[0].manual)
+            {
+                if(manual_state[index] != monitor->device[index]._manual[0].manual)
+                {
+                    manual_state[index] = monitor->device[index]._manual[0].manual;
+
+                    monitor->device[index]._manual[0].manual_on_time_save = getTimeStamp();
+                }
+                else
+                {
+                    if(getTimeStamp() <= (monitor->device[index]._manual[0].manual_on_time_save + monitor->device[index]._manual[0].manual_on_time))
+                    {
+                        if(type == TIMER_TYPE)
+                        {
+                            monitor->device[index]._storage[0]._time4_ctl.d_state = 1;
+                        }
+                        else
+                        {
+                            monitor->device[index]._storage[0]._port.d_state = 1;
+                            monitor->device[index]._storage[0]._port.d_value = 100;
+                        }
+                    }
+                    else
+                    {
+                        monitor->device[index]._manual[0].manual = MANUAL_NO_HAND;
+                        manual_state[index] = monitor->device[index]._manual[0].manual;
+                    }
+                }
+            }
+            else if(MANUAL_HAND_OFF == monitor->device[index]._manual[0].manual)
+            {
+                if(TIMER_TYPE == type)
+                {
+                    monitor->device[index]._storage[0]._time4_ctl.d_state = 0;
+                }
+                else
+                {
+                    monitor->device[index]._storage[0]._port.d_state = 0;
+                }
+            }
+        }
+    }
+}
+
 void tempProgram(type_monitor_t *monitor)
 {
     u8              storage             = 0;
@@ -652,10 +773,10 @@ void tempProgram(type_monitor_t *monitor)
 
     }
 
-    if(sys_set.tempSet.dayCoolingTarget.value < sys_set.tempSet.dayHeatingTarget.value + sys_set.tempSet.tempDeadband.value * 2)//Justin debug 2为cool deadband + heat deadband
-    {
-        return;
-    }
+//    if(sys_set.tempSet.dayCoolingTarget.value < sys_set.tempSet.dayHeatingTarget.value + sys_set.tempSet.tempDeadband.value * 2)
+//    {
+//        return;
+//    }//Justin debug 后续增加
 
     if(DAY_TIME == GetSysSet()->dayOrNight)
     {
@@ -667,6 +788,8 @@ void tempProgram(type_monitor_t *monitor)
         coolTarge = GetSysSet()->tempSet.nightCoolingTarget.value;
         HeatTarge = GetSysSet()->tempSet.nightHeatingTarget.value;
     }
+
+    LOG_D("tempNow %d, coolTarge %d, HeatTarge = %d",tempNow,coolTarge,HeatTarge);//Justin debug 仅仅测试
 
     if(tempNow >= coolTarge)//1为deadband
     {
@@ -769,13 +892,14 @@ void tempProgram(type_monitor_t *monitor)
     }
 }
 
-void timmerProgram(type_monitor_t *monitor)//Justin debug 未验证
+void timmerProgram(type_monitor_t *monitor)
 {
     u8                  index   = 0;
     u8                  item    = 0;
     device_time4_t      *timer  = RT_NULL;
     type_sys_time       sys_time;
     time_t              now_time;
+    static u8           manual_state[DEVICE_TIME4_MAX]={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
     static time_t       time_period;
     struct tm           *tm_test = RT_NULL;
 
@@ -787,58 +911,88 @@ void timmerProgram(type_monitor_t *monitor)//Justin debug 未验证
         if(TIMER_TYPE == monitor->device[index].type)
         {
             timer = &monitor->device[index];
-            //如果是by recycle
-//            LOG_D("timer mode = %d",timer->mode);
-            if(BY_RECYCLE == timer->mode)
-            {
-                if(NO == timer->_recycle.isRunFirstCycle)
-                {
-                    if(sys_time.hour * 60 + sys_time.minute >= timer->_recycle.startAt)
-                    {
-                        now_time = getTimeStamp();
-                        tm_test = getTimeStampByDate(&now_time);
-                        tm_test->tm_hour = timer->_recycle.startAt / 60;
-                        tm_test->tm_min = timer->_recycle.startAt % 60;
-                        timer->_recycle.firstRuncycleTime = changeTmTotimet(tm_test);
-                        timer->_recycle.isRunFirstCycle = YES;
-                    }
-                }
-                else
-                {
-                    time_period = timer->_recycle.duration + timer->_recycle.pauseTime;
 
-                    if(((getTimeStamp() - timer->_recycle.firstRuncycleTime) % time_period) <= timer->_recycle.duration)
+            if(MANUAL_NO_HAND == timer->_manual[0].manual)
+            {
+                if(BY_RECYCLE == timer->mode)
+                {
+                    if(NO == timer->_recycle[0].isRunFirstCycle)
                     {
-                        timer->_storage[0]._port.d_state = ON;
+                        if(sys_time.hour * 60 + sys_time.minute >= timer->_recycle[0].startAt)
+                        {
+                            now_time = getTimeStamp();
+                            tm_test = getTimeStampByDate(&now_time);
+                            tm_test->tm_hour = timer->_recycle[0].startAt / 60;
+                            tm_test->tm_min = timer->_recycle[0].startAt % 60;
+                            timer->_recycle[0].firstRuncycleTime = changeTmTotimet(tm_test);
+                            timer->_recycle[0].isRunFirstCycle = YES;
+                        }
                     }
                     else
                     {
-                        timer->_storage[0]._port.d_state = OFF;
+                        time_period = timer->_recycle[0].duration + timer->_recycle[0].pauseTime;
+
+                        if(((getTimeStamp() - timer->_recycle[0].firstRuncycleTime) % time_period) <=
+                                timer->_recycle[0].duration)
+                        {
+                            timer->_storage[0]._time4_ctl.d_state = ON;
+                        }
+                        else
+                        {
+                            timer->_storage[0]._time4_ctl.d_state = OFF;
+                        }
+                    }
+                }
+                else if(BY_SCHEDULE == timer->mode)//定时器模式
+                {
+                    for(item = 0; item < TIMER_GROUP; item++)//该功能待测试
+                    {
+//                        LOG_D("item = %d,systime = %d %d %d, set on_at = %d, dura = %d",item,sys_time.hour,sys_time.minute,sys_time.second,
+//                                timer->_storage[0]._time4_ctl._timer[item].on_at,timer->_storage[0]._time4_ctl._timer[item].duration);
+                        if((sys_time.hour * 60 + sys_time.minute > timer->_storage[0]._time4_ctl._timer[item].on_at) &&
+                           (sys_time.hour * 60 *60 + sys_time.minute * 60 + sys_time.second <= timer->_storage[0]._time4_ctl._timer[item].on_at *60 +
+                                   timer->_storage[0]._time4_ctl._timer[item].duration))
+                        {
+                            timer->_storage[0]._time4_ctl.d_state = timer->_storage[0]._time4_ctl._timer[item].en;
+
+                            break;
+                        }
+                    }
+
+                    if(item == TIMER_GROUP)
+                    {
+                        timer->_storage[0]._time4_ctl.d_state = 0;
+                        timer->_storage[0]._time4_ctl.d_value = 0;
                     }
                 }
             }
-            else if(BY_SCHEDULE == timer->mode)//定时器模式
+            else if(MANUAL_HAND_ON == timer->_manual[0].manual)
             {
-                for(item = 0; item < TIMER_GROUP; item++)//该功能待测试
-                {
-//                    LOG_D("index = %d, on at = %d, dura = %d, en = %d",item,timer->_storage[0]._time4_ctl._timer[item].on_at,
-//                            timer->_storage[0]._time4_ctl._timer[item].duration,timer->_storage[0]._time4_ctl._timer[item].en);
-                    if((sys_time.hour * 60 + sys_time.minute > timer->_storage[0]._time4_ctl._timer[item].on_at) &&
-                       (sys_time.hour * 60 *60 + sys_time.minute * 60 + sys_time.second <= timer->_storage[0]._time4_ctl._timer[item].on_at *60 +
-                               timer->_storage[0]._time4_ctl._timer[item].duration))
-                    {
-//                        LOG_D("run index = %d, en = %d",item,timer->_storage[0]._time4_ctl._timer[item].en);//Justin debug
-                        timer->_storage[0]._port.d_state = timer->_storage[0]._time4_ctl._timer[item].en;
 
-                        break;
+                if(manual_state[index] != timer->_manual[0].manual)
+                {
+                    manual_state[index] = timer->_manual[0].manual;
+
+                    timer->_manual[0].manual_on_time_save = getTimeStamp();
+                }
+                else
+                {
+//                    LOG_D("getTimeStamp() = %d, timer = %d, %d",getTimeStamp(),timer->_manual[0].manual_on_time_save,timer->_manual[0].manual_on_time);
+                    if(getTimeStamp() <= (timer->_manual[0].manual_on_time_save + timer->_manual[0].manual_on_time))//manual_on_time 单位秒
+                    {
+                        timer->_storage[0]._time4_ctl.d_state = 1;
+                    }
+                    else
+                    {
+                        timer->_storage[0]._time4_ctl.d_state = 0;
+                        timer->_manual[0].manual = MANUAL_NO_HAND;//恢复正常控制
+                        manual_state[index] = 0;
                     }
                 }
-
-                if(item == TIMER_GROUP)
-                {
-                    timer->_storage[0]._port.d_state = 0;
-                    timer->_storage[0]._port.d_value = 0;
-                }
+            }
+            else if(MANUAL_HAND_OFF == timer->_manual[0].manual)
+            {
+                timer->_storage[0]._time4_ctl.d_state = 0;
             }
         }
     }
@@ -1005,7 +1159,7 @@ void lineProgram(type_monitor_t *monitor, u8 line_no, u16 mPeroid)//Justing debu
                         line->d_state = 1;
                         if(LINE_MODE_BY_POWER == line_set->brightMode.value)
                         {
-                            line->d_value = power;
+                            line->d_value = power/10;//power 是乘以10的倍数
                         }
                         else if(LINE_MODE_AUTO_DIMMING == line_set->brightMode.value)
                         {
@@ -1019,7 +1173,7 @@ void lineProgram(type_monitor_t *monitor, u8 line_no, u16 mPeroid)//Justing debu
                     line->d_state = 1;
                     if(LINE_MODE_BY_POWER == line_set->brightMode.value)
                     {
-                        line->d_value = power;
+                        line->d_value = power/10;
                     }
                     else if(LINE_MODE_AUTO_DIMMING == line_set->brightMode.value)
                     {
@@ -1046,7 +1200,7 @@ void lineProgram(type_monitor_t *monitor, u8 line_no, u16 mPeroid)//Justing debu
                         line->d_state = 1;
                         if(LINE_MODE_BY_POWER == line_set->brightMode.value)
                         {
-                            line->d_value = power;
+                            line->d_value = power/10;
                         }
                         else if(LINE_MODE_AUTO_DIMMING == line_set->brightMode.value)
                         {
@@ -1060,7 +1214,7 @@ void lineProgram(type_monitor_t *monitor, u8 line_no, u16 mPeroid)//Justing debu
                     line->d_state = 1;
                     if(LINE_MODE_BY_POWER == line_set->brightMode.value)
                     {
-                        line->d_value = power;
+                        line->d_value = power/10;
                     }
                     else if(LINE_MODE_AUTO_DIMMING == line_set->brightMode.value)
                     {
@@ -1105,7 +1259,7 @@ void lineProgram(type_monitor_t *monitor, u8 line_no, u16 mPeroid)//Justing debu
                         line->d_state = 1;
                         if(LINE_MODE_BY_POWER == line_set->brightMode.value)
                         {
-                            line->d_value = power;
+                            line->d_value = power/10;
                         }
                         else if(LINE_MODE_AUTO_DIMMING == line_set->brightMode.value)
                         {
@@ -1119,7 +1273,7 @@ void lineProgram(type_monitor_t *monitor, u8 line_no, u16 mPeroid)//Justing debu
                     line->d_state = 1;
                     if(LINE_MODE_BY_POWER == line_set->brightMode.value)
                     {
-                        line->d_value = power;
+                        line->d_value = power/10;
                     }
                     else if(LINE_MODE_AUTO_DIMMING == line_set->brightMode.value)
                     {
@@ -1167,10 +1321,10 @@ void humiProgram(type_monitor_t *monitor)
         }
     }
 
-    if(sys_set.humiSet.dayDehumiTarget.value < sys_set.humiSet.dayHumiTarget.value + sys_set.humiSet.humidDeadband.value * 2)//Justin debug 30为默认的deadband
-    {
-        return;
-    }
+//    if(sys_set.humiSet.dayDehumiTarget.value < sys_set.humiSet.dayHumiTarget.value + sys_set.humiSet.humidDeadband.value * 2)
+//    {
+//        return;
+//    }//Justin debug 后续增加
 
     if(DAY_TIME == GetSysSet()->dayOrNight)
     {
@@ -1217,7 +1371,7 @@ void humiProgram(type_monitor_t *monitor)
 }
 
 //mPeriod 周期 单位ms
-void co2Program(type_monitor_t *monitor, u16 mPeriod)//Justin debug 未验证
+void co2Program(type_monitor_t *monitor, u16 mPeriod)
 {
     u8              storage     = 0;
     u16             co2Now      = 0;
@@ -1338,7 +1492,7 @@ time_t ReplyTimeStamp(void)
     p = strtok(ntpzone, delim);
     if(RT_NULL != p)
     {
-        zone = atoi(p);//Justin debug 仅仅测试
+        zone = atoi(p);
         if(zone > 0)
         {
             time->tm_hour -= zone;
@@ -1388,3 +1542,573 @@ u16 getVpd(void)
 
     return res;
 }
+
+void GetRealCal(sys_set_t *set, sys_recipe_t *recipe)//Justin debug
+{
+    struct tm tm_test;
+    char temp[4];
+    time_t starts;
+
+    rt_memset(temp, '0', 4);
+    rt_memcpy(temp, &set->stageSet.starts[0], 4);
+    tm_test.tm_year = atoi(temp) - 1900;
+    rt_memset(temp, '0', 4);
+    rt_memcpy(&temp[2], &set->stageSet.starts[4], 2);
+    tm_test.tm_mon = atoi(temp) - 1;
+    rt_memset(temp, '0', 4);
+    rt_memcpy(&temp[2], &set->stageSet.starts[6], 2);
+    tm_test.tm_mday = atoi(temp);
+    rt_memset(temp, '0', 4);
+    rt_memcpy(&temp[2], &set->stageSet.starts[8], 2);
+    tm_test.tm_hour = atoi(temp);
+    rt_memset(temp, '0', 4);
+    rt_memcpy(&temp[2], &set->stageSet.starts[10], 2);
+    tm_test.tm_min = atoi(temp);
+    rt_memset(temp, '0', 4);
+    rt_memcpy(&temp[2], &set->stageSet.starts[12], 2);
+    tm_test.tm_sec = atoi(temp);
+
+    starts = changeTmTotimet(&tm_test);
+
+    for(u8 index = 0; index < STAGE_LIST_MAX; index++)
+    {
+        if((getTimeStamp() >= starts) && (getTimeStamp() < starts + set->stageSet._list[index].duration_day * 24 * 60 * 60))
+        {
+            for(u8 item = 0; item < RECIPE_LIST_MAX; item++)
+            {
+                if(recipe->recipe[item].id == set->stageSet._list[index].recipeId)
+                {
+                    if(0 != recipe->recipe[item].id)
+                    {
+                        set->tempSet.dayCoolingTarget.value = recipe->recipe[item].dayCoolingTarget;
+                        set->tempSet.dayHeatingTarget.value = recipe->recipe[item].dayHeatingTarget;
+                        set->tempSet.nightCoolingTarget.value = recipe->recipe[item].nightCoolingTarget;
+                        set->tempSet.nightHeatingTarget.value = recipe->recipe[item].nightHeatingTarget;
+                        set->humiSet.dayHumiTarget.value = recipe->recipe[item].dayHumidifyTarget;
+                        set->humiSet.dayDehumiTarget.value = recipe->recipe[item].dayDehumidifyTarget;
+                        set->humiSet.nightHumiTarget.value = recipe->recipe[item].nightHumidifyTarget;
+                        set->humiSet.nightDehumiTarget.value = recipe->recipe[item].nightDehumidifyTarget;
+                        set->co2Set.dayCo2Target.value = recipe->recipe[item].dayCo2Target;
+                        set->co2Set.nightCo2Target.value = recipe->recipe[item].nightCo2Target;
+                        set->line1Set.brightMode.value = recipe->recipe[item].line_list[0].brightMode;
+                        set->line1Set.byPower.value = recipe->recipe[item].line_list[0].byPower;
+                        set->line1Set.byAutoDimming.value = recipe->recipe[item].line_list[0].byAutoDimming;
+                        set->line1Set.mode.value = recipe->recipe[item].line_list[0].mode;
+                        set->line1Set.lightOn.value = recipe->recipe[item].line_list[0].lightOn;
+                        set->line1Set.lightOff.value = recipe->recipe[item].line_list[0].lightOff;
+                        set->line1Set.firstCycleTime.value = recipe->recipe[item].line_list[0].firstCycleTime;
+                        set->line1Set.duration.value = recipe->recipe[item].line_list[0].duration;
+                        set->line1Set.pauseTime.value = recipe->recipe[item].line_list[0].pauseTime;
+
+                        set->line2Set.brightMode.value = recipe->recipe[item].line_list[1].brightMode;
+                        set->line2Set.byPower.value = recipe->recipe[item].line_list[1].byPower;
+                        set->line2Set.byAutoDimming.value = recipe->recipe[item].line_list[1].byAutoDimming;
+                        set->line2Set.mode.value = recipe->recipe[item].line_list[1].mode;
+                        set->line2Set.lightOn.value = recipe->recipe[item].line_list[1].lightOn;
+                        set->line2Set.lightOff.value = recipe->recipe[item].line_list[1].lightOff;
+                        set->line2Set.firstCycleTime.value = recipe->recipe[item].line_list[1].firstCycleTime;
+                        set->line2Set.duration.value = recipe->recipe[item].line_list[1].duration;
+                        set->line2Set.pauseTime.value = recipe->recipe[item].line_list[1].pauseTime;
+                    }
+                }
+            }
+        }
+
+        starts += set->stageSet._list[index].duration_day * 24 * 60 * 60;
+    }
+}
+
+void warnProgram(type_monitor_t *monitor, sys_set_t *set)
+{
+    sensor_t        *sensor;
+    u8              co2State    = OFF;
+    u8              tempState   = OFF;
+    u8              humiState   = OFF;
+    static u8       co2State_pre    = OFF;
+    static u8       tempState_pre   = OFF;
+    static u8       humiState_pre   = OFF;
+    static time_t   co2WarnTime;
+    static time_t   tempWarnTime;
+    static time_t   humiWarnTime;
+
+    rt_memset(set->warn, 0, WARN_MAX);
+
+    //白天
+    if(DAY_TIME == set->dayOrNight)
+    {
+        sensor = GetSensorByType(monitor, BHS_TYPE);
+
+        for(u8 item = 0; item < (sensor->storage_size > SENSOR_VALUE_MAX ? SENSOR_VALUE_MAX : sensor->storage_size); item++)
+        {
+            if(F_S_TEMP == sensor->__stora[item].func)
+            {
+                if(ON == set->sysWarn.dayTempEn)
+                {
+                    if(sensor->__stora[item].value <= set->sysWarn.dayTempMin)
+                    {
+                        if(WARN_TEMP_LOW <= WARN_MAX)
+                        {
+                            set->warn[WARN_TEMP_LOW - 1] = ON;
+                            set->warn_value[WARN_TEMP_LOW - 1] = sensor->__stora[item].value;
+                        }
+                    }
+                    else if(sensor->__stora[item].value >= set->sysWarn.dayTempMax)
+                    {
+                        if(WARN_TEMP_HIGHT <= WARN_MAX)
+                        {
+                            set->warn[WARN_TEMP_HIGHT - 1] = ON;
+                            set->warn_value[WARN_TEMP_HIGHT - 1] = sensor->__stora[item].value;
+                        }
+                    }
+                }
+
+                if(sensor->__stora[item].value > set->tempSet.dayCoolingTarget.value ||
+                   sensor->__stora[item].value < set->tempSet.dayHeatingTarget.value)
+                {
+                    tempState = ON;
+                }
+                else
+                {
+                    tempState = OFF;
+                }
+
+                if(tempState_pre != tempState)
+                {
+                    tempState_pre = tempState;
+
+                    if(ON == tempState_pre)
+                    {
+                        tempWarnTime = getTimeStamp();
+                    }
+                }
+
+                if(ON == tempState)
+                {
+                    if(getTimeStamp() > tempWarnTime + set->sysWarn.tempTimeoutseconds)
+                    {
+                        if(WARN_TEMP_TIMEOUT <= WARN_MAX)
+                        {
+                            if(ON == set->sysWarn.tempTimeoutEn)
+                            {
+                                set->warn[WARN_TEMP_TIMEOUT - 1] = ON;
+                                set->warn_value[WARN_TEMP_TIMEOUT - 1] = sensor->__stora[item].value;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if(F_S_HUMI == sensor->__stora[item].func)
+            {
+                if(ON == set->sysWarn.dayhumidEn)
+                {
+                    if(sensor->__stora[item].value <= set->sysWarn.dayhumidMin)
+                    {
+                        if(WARN_HUMI_LOW <= WARN_MAX)
+                        {
+                            set->warn[WARN_HUMI_LOW - 1] = ON;
+                            set->warn_value[WARN_HUMI_LOW - 1] = sensor->__stora[item].value;
+                        }
+                    }
+                    else if(sensor->__stora[item].value >= set->sysWarn.dayhumidMax)
+                    {
+                        if(WARN_HUMI_HIGHT <= WARN_MAX)
+                        {
+                            set->warn[WARN_HUMI_HIGHT - 1] = ON;
+                            set->warn_value[WARN_HUMI_HIGHT - 1] = sensor->__stora[item].value;
+                        }
+                    }
+                }
+
+                if(sensor->__stora[item].value > set->humiSet.dayDehumiTarget.value ||
+                   sensor->__stora[item].value < set->humiSet.dayHumiTarget.value)
+                {
+                    humiState = ON;
+                }
+                else
+                {
+                    humiState = OFF;
+                }
+
+                if(humiState_pre != humiState)
+                {
+                    humiState_pre = humiState;
+
+                    if(ON == humiState_pre)
+                    {
+                        humiWarnTime = getTimeStamp();
+                    }
+                }
+
+                if(ON == humiState)
+                {
+                    if(getTimeStamp() > humiWarnTime + set->sysWarn.humidTimeoutseconds)
+                    {
+                        if(WARN_HUMI_TIMEOUT <= WARN_MAX)
+                        {
+                            if(ON == set->sysWarn.humidTimeoutEn)
+                            {
+                                set->warn[WARN_HUMI_TIMEOUT - 1] = ON;
+                                set->warn_value[WARN_HUMI_TIMEOUT - 1] = sensor->__stora[item].value;
+                            }
+                        }
+                    }
+                }
+
+            }
+
+            if(F_S_CO2 == sensor->__stora[item].func)
+            {
+                if(ON == set->sysWarn.dayCo2En)
+                {
+                    if(sensor->__stora[item].value <= set->sysWarn.dayCo2Min)
+                    {
+                        if(WARN_CO2_LOW <= WARN_MAX)
+                        {
+                            set->warn[WARN_CO2_LOW - 1] = ON;
+                            set->warn_value[WARN_CO2_LOW - 1] = sensor->__stora[item].value;
+                        }
+                    }
+                    else if(sensor->__stora[item].value >= set->sysWarn.dayCo2Max)
+                    {
+                        if(WARN_CO2_HIGHT <= WARN_MAX)
+                        {
+                            set->warn[WARN_CO2_HIGHT - 1] = ON;
+                            set->warn_value[WARN_CO2_HIGHT - 1] = sensor->__stora[item].value;
+                        }
+                    }
+                }
+
+                if(sensor->__stora[item].value < set->co2Set.dayCo2Target.value)
+                {
+                    co2State = ON;
+                }
+                else
+                {
+                    co2State = OFF;
+                }
+
+                if(co2State_pre != co2State)
+                {
+                    co2State_pre = co2State;
+
+                    if(ON == co2State_pre)
+                    {
+                        co2WarnTime = getTimeStamp();
+                    }
+                }
+
+                if(ON == co2State)
+                {
+                    if(getTimeStamp() > co2WarnTime + set->sysWarn.co2Timeoutseconds)
+                    {
+                        if(WARN_CO2_TIMEOUT <= WARN_MAX)
+                        {
+                            if(ON == set->sysWarn.humidTimeoutEn)
+                            {
+                                set->warn[WARN_CO2_TIMEOUT - 1] = ON;
+                                set->warn_value[WARN_CO2_TIMEOUT - 1] = sensor->__stora[item].value;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if(ON == set->sysWarn.dayVpdEn)
+        {
+            if(getVpd() <= set->sysWarn.dayVpdMin)
+            {
+                if(WARN_VPD_LOW <= WARN_MAX)
+                {
+                    set->warn[WARN_VPD_LOW - 1] = ON;
+                    set->warn_value[WARN_VPD_LOW - 1] = getVpd();
+                }
+            }
+            else if(getVpd() >= set->sysWarn.dayVpdMax)
+            {
+                if(WARN_VPD_HIGHT <= WARN_MAX)
+                {
+                    set->warn[WARN_VPD_HIGHT - 1] = ON;
+                    set->warn_value[WARN_VPD_HIGHT - 1] = getVpd();
+                }
+            }
+        }
+
+        //par
+        sensor = GetSensorByType(monitor, PAR_TYPE);
+
+        if(ON == set->sysWarn.dayParEn)
+        {
+            if(sensor->__stora[0].value <= set->sysWarn.dayParMin)
+            {
+                if(WARN_PAR_LOW <= WARN_MAX)
+                {
+                    set->warn[WARN_PAR_LOW - 1] = ON;
+                    set->warn_value[WARN_PAR_LOW - 1] = sensor->__stora[0].value;
+                }
+            }
+            else if(sensor->__stora[0].value >= set->sysWarn.dayParMax)
+            {
+                if(WARN_PAR_HIGHT <= WARN_MAX)
+                {
+                    set->warn[WARN_PAR_HIGHT - 1] = ON;
+                    set->warn_value[WARN_PAR_HIGHT - 1] = sensor->__stora[0].value;
+                }
+            }
+        }
+    }
+    else if(NIGHT_TIME == set->dayOrNight)
+    {
+        sensor = GetSensorByType(monitor, BHS_TYPE);
+
+        for(u8 item = 0; item < (sensor->storage_size > SENSOR_VALUE_MAX ? SENSOR_VALUE_MAX : sensor->storage_size); item++)
+        {
+            if(F_S_TEMP == sensor->__stora[item].func)
+            {
+                if(ON == set->sysWarn.nightTempEn)
+                {
+                    if(sensor->__stora[item].value <= set->sysWarn.nightTempMin)
+                    {
+                        if(WARN_TEMP_LOW <= WARN_MAX)
+                        {
+                            set->warn[WARN_TEMP_LOW - 1] = ON;
+                            set->warn_value[WARN_TEMP_LOW - 1] = sensor->__stora[item].value;
+                        }
+                    }
+                    else if(sensor->__stora[item].value >= set->sysWarn.nightTempMax)
+                    {
+                        if(WARN_TEMP_HIGHT <= WARN_MAX)
+                        {
+                            set->warn[WARN_TEMP_HIGHT - 1] = ON;
+                            set->warn_value[WARN_TEMP_HIGHT - 1] = sensor->__stora[item].value;
+                        }
+                    }
+                }
+
+
+                if(sensor->__stora[item].value > set->tempSet.dayCoolingTarget.value ||
+                   sensor->__stora[item].value < set->tempSet.dayHeatingTarget.value)
+                {
+                    tempState = ON;
+                }
+                else
+                {
+                    tempState = OFF;
+                }
+
+                if(tempState_pre != tempState)
+                {
+                    tempState_pre = tempState;
+
+                    if(ON == tempState_pre)
+                    {
+                        tempWarnTime = getTimeStamp();
+                    }
+                }
+
+                if(ON == tempState)
+                {
+                    if(getTimeStamp() > tempWarnTime + set->sysWarn.tempTimeoutseconds)
+                    {
+                        if(WARN_TEMP_TIMEOUT <= WARN_MAX)
+                        {
+                            if(ON == set->sysWarn.tempTimeoutEn)
+                            {
+                                set->warn[WARN_TEMP_TIMEOUT - 1] = ON;
+                                set->warn_value[WARN_TEMP_TIMEOUT - 1] = sensor->__stora[item].value;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if(F_S_HUMI == sensor->__stora[item].func)
+            {
+                if(ON == set->sysWarn.nighthumidEn)
+                {
+                    if(sensor->__stora[item].value <= set->sysWarn.nighthumidMin)
+                    {
+                        if(WARN_HUMI_LOW <= WARN_MAX)
+                        {
+                            set->warn[WARN_HUMI_LOW - 1] = ON;
+                            set->warn_value[WARN_HUMI_LOW - 1] = sensor->__stora[item].value;
+                        }
+                    }
+                    else if(sensor->__stora[item].value >= set->sysWarn.nighthumidMax)
+                    {
+                        if(WARN_HUMI_HIGHT <= WARN_MAX)
+                        {
+                            set->warn[WARN_HUMI_HIGHT - 1] = ON;
+                            set->warn_value[WARN_HUMI_HIGHT - 1] = sensor->__stora[item].value;
+                        }
+                    }
+                }
+
+                if(sensor->__stora[item].value > set->humiSet.dayDehumiTarget.value ||
+                   sensor->__stora[item].value < set->humiSet.dayHumiTarget.value)
+                {
+                    humiState = ON;
+                }
+                else
+                {
+                    humiState = OFF;
+                }
+
+                if(humiState_pre != humiState)
+                {
+                    humiState_pre = humiState;
+
+                    if(ON == humiState_pre)
+                    {
+                        humiWarnTime = getTimeStamp();
+                    }
+                }
+
+                if(ON == humiState)
+                {
+                    if(getTimeStamp() > humiWarnTime + set->sysWarn.humidTimeoutseconds)
+                    {
+                        if(WARN_HUMI_TIMEOUT <= WARN_MAX)
+                        {
+                            if(ON == set->sysWarn.humidTimeoutEn)
+                            {
+                                set->warn[WARN_HUMI_TIMEOUT - 1] = ON;
+                                set->warn_value[WARN_HUMI_TIMEOUT - 1] = sensor->__stora[item].value;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if(F_S_CO2 == sensor->__stora[item].func)
+            {
+                if(ON == set->sysWarn.nightCo2En)
+                {
+                    if(sensor->__stora[item].value <= set->sysWarn.nightCo2Min)
+                    {
+                        if(WARN_CO2_LOW <= WARN_MAX)
+                        {
+                            set->warn[WARN_CO2_LOW - 1] = ON;
+                            set->warn_value[WARN_CO2_LOW - 1] = sensor->__stora[item].value;
+                        }
+                    }
+                    else if(sensor->__stora[item].value >= set->sysWarn.nightCo2Max)
+                    {
+                        if(WARN_CO2_HIGHT <= WARN_MAX)
+                        {
+                            set->warn[WARN_CO2_HIGHT - 1] = ON;
+                            set->warn_value[WARN_CO2_HIGHT - 1] = sensor->__stora[item].value;
+                        }
+                    }
+                }
+
+                if(sensor->__stora[item].value < set->co2Set.dayCo2Target.value)
+                {
+                    co2State = ON;
+                }
+                else
+                {
+                    co2State = OFF;
+                }
+
+                if(co2State_pre != co2State)
+                {
+                    co2State_pre = co2State;
+
+                    if(ON == co2State_pre)
+                    {
+                        co2WarnTime = getTimeStamp();
+                    }
+                }
+
+                if(ON == co2State)
+                {
+                    if(getTimeStamp() > co2WarnTime + set->sysWarn.co2Timeoutseconds)
+                    {
+                        if(WARN_CO2_TIMEOUT <= WARN_MAX)
+                        {
+
+                            if(ON == set->sysWarn.co2TimeoutEn)
+                            {
+                                set->warn[WARN_CO2_TIMEOUT - 1] = ON;
+                                set->warn_value[WARN_CO2_TIMEOUT - 1] = sensor->__stora[item].value;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if(ON == set->sysWarn.nightVpdEn)
+        {
+            if(getVpd() <= set->sysWarn.nightVpdMin)
+            {
+                if(WARN_VPD_LOW <= WARN_MAX)
+                {
+                    set->warn[WARN_VPD_LOW - 1] = ON;
+                    set->warn_value[WARN_VPD_LOW - 1] = getVpd();
+                }
+            }
+            else if(getVpd() >= set->sysWarn.nightVpdMax)
+            {
+                if(WARN_VPD_HIGHT <= WARN_MAX)
+                {
+                    set->warn[WARN_VPD_HIGHT - 1] = ON;
+                    set->warn_value[WARN_VPD_HIGHT - 1] = getVpd();
+                }
+            }
+        }
+    }
+
+    //灯光警告 比如开着的时候 检测到灯光的值是黑的
+    if(ON == set->sysWarn.lightEn)
+    {
+        if((LINE_MODE_BY_POWER == set->line1Set.brightMode.value) ||
+           (LINE_MODE_AUTO_DIMMING == set->line1Set.brightMode.value) ||
+           (LINE_MODE_BY_POWER == set->line2Set.brightMode.value) ||
+           (LINE_MODE_AUTO_DIMMING == set->line2Set.brightMode.value))
+        {
+            if((ON == monitor->line[0].d_state) || (ON == monitor->line[1].d_state))//灯开关为开
+            {
+                if(GetSensorByType(monitor, PAR_TYPE)->__stora[0].value < 30)//检测到灯光没开//Justin debug 30为暂时测试的值 需要修改
+                {
+                    if(WARN_LINE_STATE <= WARN_MAX)
+                    {
+                        set->warn[WARN_LINE_STATE - 1] = ON;
+                        set->warn_value[WARN_LINE_STATE - 1] =
+                                GetSensorByType(monitor, PAR_TYPE)->__stora[0].value;
+                    }
+                }
+            }
+            else if((OFF == monitor->line[0].d_state) && (OFF == monitor->line[1].d_state))
+            {
+                if(GetSensorByType(monitor, PAR_TYPE)->__stora[0].value > 30)//检测到灯光没开//Justin debug 30为暂时测试的值 需要修改
+                {
+                    if(WARN_LINE_STATE <= WARN_MAX)
+                    {
+                        set->warn[WARN_LINE_STATE - 1] = ON;
+                        set->warn_value[WARN_LINE_STATE - 1] =
+                                GetSensorByType(monitor, PAR_TYPE)->__stora[0].value;
+                    }
+                }
+            }
+
+        }
+        else
+        {
+            if(GetSensorByType(monitor, PAR_TYPE)->__stora[0].value > 30)
+            {
+                if(WARN_LINE_STATE <= WARN_MAX)
+                {
+                    set->warn[WARN_LINE_STATE - 1] = ON;
+                    set->warn_value[WARN_LINE_STATE - 1] =
+                            GetSensorByType(monitor, PAR_TYPE)->__stora[0].value;
+                }
+            }
+        }
+    }
+
+    rt_memcpy(sys_warn, set->warn, WARN_MAX);
+}
+

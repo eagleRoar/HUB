@@ -15,15 +15,13 @@
 
 extern sys_set_t *GetSysSet(void);
 
-void setTimer12DefaultPara(timer12_t *module, char *name, u16 ctrl_addr, u8 manual, u16 manual_on_time, u8 main_type, u8 storage_size)
+void setTimer12DefaultPara(timer12_t *module, char *name, u16 ctrl_addr, u8 main_type, u8 storage_size)
 {
     u8 port = 0;
     u8 index = 0;
 
     rt_memcpy(module->name, name, MODULE_NAMESZ);                   //产品名称
     module->ctrl_addr = ctrl_addr;                                  //终端控制的寄存器地址
-    module->manual = manual;                                        //手动开关/ 开、关
-    module->manual_on_time = manual_on_time;                        //手动开启的时间
     module->main_type = main_type;                                  //主类型 如co2 温度 湿度 line timer
     module->conn_state = CON_SUCCESS;                               //连接状态
     module->reg_state = SEND_NULL;                                  //注册状态
@@ -40,26 +38,30 @@ void setTimer12DefaultPara(timer12_t *module, char *name, u16 ctrl_addr, u8 manu
         }
         module->_time12_ctl[index].d_state = 0;
         module->_time12_ctl[index].d_value = 0;
+
+        module->_recycle[index].duration = 0;
+        module->_recycle[index].pauseTime = 0;
+        module->_recycle[index].startAt = 0;
+
+        module->_manual[index].manual = MANUAL_NO_HAND;
+        module->_manual[index].manual_on_time = 0;
+        module->_manual[index].manual_on_time_save = 0;
     }
 
-    module->_recycle.duration = 0;
-    module->_recycle.pauseTime = 0;
-    module->_recycle.startAt = 0;
 }
 
 
-void setDeviceDefaultPara(device_time4_t *module, char *name, u16 ctrl_addr, u8 manual, u16 manual_on_time, u8 main_type, u8 type, u8 storage_size)
+void setDeviceDefaultPara(device_time4_t *module, char *name, u16 ctrl_addr, u8 main_type, u8 type, u8 storage_size)
 {
     rt_memcpy(module->name, name, MODULE_NAMESZ);                   //产品名称
     module->ctrl_addr = ctrl_addr;                                  //终端控制的寄存器地址
-    module->manual = manual;                                        //手动开关/ 开、关
-    module->manual_on_time = manual_on_time;                        //手动开启的时间
     module->main_type = main_type;                                  //主类型 如co2 温度 湿度 line timer
     module->conn_state = CON_SUCCESS;                               //连接状态
     module->reg_state = SEND_NULL;                                  //注册状态
     module->save_state = NO;                                        //是否已经存储
     module->storage_size = storage_size;                            //寄存器数量
     module->hotStartDelay = 0;
+
     if(HVAC_6_TYPE == type)
     {
         module->_hvac.manualOnMode = HVAC_COOL;
@@ -94,29 +96,39 @@ void setSensorDefuleStora(sensor_t *module, sen_stora_t sen0, sen_stora_t sen1, 
     module->__stora[3].value = sen3.value;
     rt_memcpy(module->__stora[3].name, sen3.name, STORAGE_NAMESZ);
 }
-//void setModuleDefaultTimer(device_time4_t *storage, u16 on_at, u16 duration, u8 en)
-//{
-//    storage->_timmer[0].on_at = on_at;
-//    storage->_timmer[0].duration = duration;
-//    storage->_timmer[0].en = en;
-//}
 
 void setDeviceDefaultStora(device_time4_t *dev, u8 index, char *name, u8 func, u8 type, u8 addr,u8 manual,u16 manual_on_time)
 {
-    rt_memcpy(dev->_storage[index]._port.name, name, STORAGE_NAMESZ);
-    dev->_storage[index]._port.func = func;                                       //功能，如co2
-    dev->_storage[index]._port.addr = addr;                                       //module id+ port号
-    dev->_storage[index]._port.manual = manual;                                   //手动开关/ 开、关
-    dev->_storage[index]._port.manual_on_time = manual_on_time;                   //手动开启的时间
-    dev->_storage[index]._port.d_state = 0;
-    dev->_storage[index]._port.d_value = 0;
-
-    if(HVAC_6_TYPE == type)
+    if(index > (DEVICE_PORT_SZ - 1))
     {
-        dev->_hvac.manualOnMode = HVAC_COOL;
-        dev->_hvac.fanNormallyOpen = HVAC_FAN_AUTO;
-        dev->_hvac.hvacMode = HVAC_CONVENTIONAL;
+        return;
     }
+
+    if(TIMER_TYPE == type)
+    {
+        for(u8 item = 0; item < TIMER_GROUP; item++)
+        {
+            dev->_storage[index]._time4_ctl._timer[item].on_at = 0;
+            dev->_storage[index]._time4_ctl._timer[item].duration = 0;
+            dev->_storage[index]._time4_ctl._timer[item].en = 0;
+        }
+    }
+    else
+    {
+        rt_memcpy(dev->_storage[index]._port.name, name, STORAGE_NAMESZ);
+        dev->_storage[index]._port.func = func;                                       //功能，如co2
+        dev->_storage[index]._port.addr = addr;                                       //module id+ port号
+        dev->_storage[index]._port.d_state = 0;
+        dev->_storage[index]._port.d_value = 0;
+    }
+
+    dev->_recycle[index].startAt = 0;
+    dev->_recycle[index].pauseTime = 0;
+    dev->_recycle[index].duration = 0;
+
+    dev->_manual[index].manual = 0;
+    dev->_manual[index].manual_on_time = 0;
+    dev->_manual[index].manual_on_time_save = 0;
 }
 
 char *GetModelByType(u8 type, char *name, u8 len)
@@ -222,37 +234,37 @@ rt_err_t setDeviceDefault(device_time4_t *module)
     switch (module->type) {
 
         case CO2_TYPE:
-            setDeviceDefaultPara(module, "Co2", 0x0040, MANUAL_NO_HAND, 0, S_CO2, module->type, 1);
+            setDeviceDefaultPara(module, "Co2", 0x0040, S_CO2, module->type, 1);
             addr = module->addr;
             setDeviceDefaultStora(module, 0 ,"Co2", F_Co2_UP, module->type, addr , MANUAL_NO_HAND, 0);
             break;
         case HEAT_TYPE:
-            setDeviceDefaultPara(module, "Heat", 0x0040, MANUAL_NO_HAND, 0, S_TEMP, module->type, 1);
+            setDeviceDefaultPara(module, "Heat", 0x0040, S_TEMP, module->type, 1);
             addr = module->addr;
             setDeviceDefaultStora(module, 0 ,"Heat", F_HEAT, module->type, addr , MANUAL_NO_HAND, 0);
             break;
         case HUMI_TYPE:
-            setDeviceDefaultPara(module, "Humi", 0x0040, MANUAL_NO_HAND, 0, S_HUMI, module->type, 1);
+            setDeviceDefaultPara(module, "Humi", 0x0040, S_HUMI, module->type, 1);
             addr = module->addr;
             setDeviceDefaultStora(module, 0 , "Humi", F_HUMI, module->type, addr , MANUAL_NO_HAND, 0);
             break;
         case DEHUMI_TYPE:
-            setDeviceDefaultPara(module, "Dehumi", 0x0040, MANUAL_NO_HAND, 0, S_HUMI, module->type, 1);
+            setDeviceDefaultPara(module, "Dehumi", 0x0040, S_HUMI, module->type, 1);
             addr = module->addr;
             setDeviceDefaultStora(module, 0 , "Dehumi", F_DEHUMI, module->type, addr , MANUAL_NO_HAND, 0);
             break;
         case COOL_TYPE:
-            setDeviceDefaultPara(module, "Cool", 0x0040, MANUAL_NO_HAND, 0, S_TEMP, module->type, 1);
+            setDeviceDefaultPara(module, "Cool", 0x0040, S_TEMP, module->type, 1);
             addr = module->addr;
             setDeviceDefaultStora(module, 0 , "Cool", F_COOL, module->type, addr , MANUAL_NO_HAND, 0);
             break;
         case HVAC_6_TYPE:
-            setDeviceDefaultPara(module, "Hvac_6", 0x0401, MANUAL_NO_HAND, 0, S_TEMP, module->type, 1);
+            setDeviceDefaultPara(module, "Hvac_6", 0x0401, S_TEMP, module->type, 1);
             addr = module->addr;
             setDeviceDefaultStora(module, 0 , "Hvac_6", F_COOL_HEAT, module->type, addr , MANUAL_NO_HAND, 0);
             break;
         case TIMER_TYPE:
-            setDeviceDefaultPara(module, "Timer", 0x0040, MANUAL_NO_HAND, 0, S_TIMER, module->type, 1);
+            setDeviceDefaultPara(module, "Timer", 0x0040, S_TIMER, module->type, 1);
             addr = module->addr;
             setDeviceDefaultStora(module, 0 , "Timer", F_TIMER, module->type, addr , MANUAL_NO_HAND, 0);
             break;

@@ -36,13 +36,14 @@ extern mqtt_client *GetMqttClient(void);
 extern u8 GetRecvMqttFlg(void);
 extern void SetRecvMqttFlg(u8);
 extern sys_set_t *GetSysSet(void);
-
+extern int GetMqttStartFlg(void);
 static uint16_t g_Key = 97;
 
 int main(void)
 {
 //    u8              index           = 0;
     rt_uint8_t      ethStatus       = LINKDOWN;
+    static u8       warn[WARN_MAX];
     static u8       sensor_size     = 0;
     static u8       device_size     = 0;
     static u8       timer12_size    = 0;
@@ -52,18 +53,10 @@ int main(void)
     static u16      time60S         = 0;
     type_sys_time   time;
 
+    rt_memset(warn, 0, WARN_MAX);
+
     //初始化静态变量
     initMonitor();
-
-//    initSysRecipe();//Justin debug
-//    for(u16 index = 0; index < 10; index++)
-//    {
-//        LOG_D("%x %x %x %x %x %x %x %x %x",
-//                GetSysRecipt()->recipe[index].color,GetSysRecipt()->recipe[index].dayCo2Target,GetSysRecipt()->recipe[index].dayCoolingTarget,
-//                GetSysRecipt()->recipe[index].dayDehumidifyTarget,GetSysRecipt()->recipe[index].dayHeatingTarget,GetSysRecipt()->recipe[index].dayHumidifyTarget,
-//                GetSysRecipt()->recipe[index].id,GetSysRecipt()->recipe[index].nightCo2Target,GetSysRecipt()->recipe[index].nightHeatingTarget);
-//    }
-
 
     //初始化GPIO口
     GpioInit();
@@ -131,11 +124,27 @@ int main(void)
             }
         }
 
-        //60s 主动发送给云服务
-        if(ON == Timer60sTouch)
+        if(YES == GetMqttStartFlg())
         {
-            SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT);
-//            SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT_WARN);//Justin debug 还没实现告警上报
+            //60s 主动发送给云服务
+            if(ON == Timer60sTouch)
+            {
+                SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT, 0 , 0);
+            }
+
+            //主动发送告警
+            for(u8 item = 0; item < WARN_MAX; item++)
+            {
+                if(warn[item] != GetSysSet()->warn[item])
+                {
+                    warn[item] = GetSysSet()->warn[item];
+
+                    if(ON == GetSysSet()->warn[item])
+                    {
+                        SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT_WARN, item, GetSysSet()->warn_value[item]);
+                    }
+                }
+            }
         }
 
         //分辨白天黑夜

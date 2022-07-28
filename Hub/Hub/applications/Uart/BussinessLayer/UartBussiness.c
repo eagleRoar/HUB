@@ -127,8 +127,16 @@ u8 askDeviceHeart(type_monitor_t *monitor, rt_device_t serial)
         buffer[1] = WRITE_SINGLE;
         buffer[2] = (monitor->device[ask_device].ctrl_addr >> 8) & 0x00FF;
         buffer[3] = monitor->device[ask_device].ctrl_addr & 0x00FF;
-        buffer[4] = monitor->device[ask_device]._storage[0]._port.d_state;
-        buffer[5] = monitor->device[ask_device]._storage[0]._port.d_value;
+        if(TIMER_TYPE == monitor->device[ask_device].type)
+        {
+            buffer[4] = monitor->device[ask_device]._storage[0]._time4_ctl.d_state;
+            buffer[5] = monitor->device[ask_device]._storage[0]._time4_ctl.d_value;
+        }
+        else
+        {
+            buffer[4] = monitor->device[ask_device]._storage[0]._port.d_state;
+            buffer[5] = monitor->device[ask_device]._storage[0]._port.d_value;
+        }
         crc16Result = usModbusRTU_CRC(buffer, 6);
         buffer[6] = crc16Result;                             //CRC16低位
         buffer[7] = (crc16Result>>8);                        //CRC16高位

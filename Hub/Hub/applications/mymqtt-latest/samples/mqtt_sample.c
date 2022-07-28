@@ -35,6 +35,11 @@ static int is_started = 0;
 static u8 startMqttFlg = 0;
 static u8 recvMqttFlg = 0;
 
+int GetMqttStartFlg(void)
+{
+    return is_started;
+}
+
 u8 GetStartMqttFlg(void)
 {
     return startMqttFlg;
@@ -178,6 +183,7 @@ int mqtt_start(void)
 
     /* run mqtt client */
     paho_mqtt_start(&client, 20);
+
     is_started = 1;
 
     return 0;

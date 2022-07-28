@@ -156,8 +156,8 @@ struct sysWarn
     u16 dayTempMin;         //100, //温度最小值 只传摄氏度
     u16 dayTempMax;         //200,
     u8 dayTempEn;           // 0-off 1-on
-    u8 dayhumidMin;         //40 湿度最小值 单位%
-    u8 dayhumidMax;         //90, //温度最大值 单位%
+    u16 dayhumidMin;         //40 湿度最小值 单位%
+    u16 dayhumidMax;         //90, //温度最大值 单位%
     u8 dayhumidEn;          //1 // 0-off 1-on
     u16 dayCo2Min;          //350, //co2 最小值 单位 ppm
     u16 dayCo2Max;          //1600, //
@@ -172,8 +172,8 @@ struct sysWarn
     u16 nightTempMin;       // 100, //温度最小值 只传摄氏度
     u16 nightTempMax;       //200,
     u8 nightTempEn;         //1 // 0-off 1-on
-    u8 nighthumidMin;       //40, //湿度最小值 单位%
-    u8 nighthumidMax;       //90, //温度最大值 单位%
+    u16 nighthumidMin;       //40, //湿度最小值 单位%
+    u16 nighthumidMax;       //90, //温度最大值 单位%
     u8 nighthumidEn;        //1 // 0-off 1-on
     u16 nightCo2Min;        //350, //co2 最小值 单位 ppm
     u16 nightCo2Max;        //1600, //
@@ -191,12 +191,18 @@ struct sysWarn
     u8 smokeEn;             //1, //烟雾报警 1-on 2-off
     u8 waterEn;             //1,//漏水报警 1-on 2-off
     u8 autoFillTimeout;     //1, //补水超时 1-on 2-off
+    u8 co2TimeoutEn;        //1, //Co2 超时报警 1-on 2-off
+    u16 co2Timeoutseconds;  // 600, // Co2 超时秒数
+    u8 tempTimeoutEn;       //1, //temp 超时报警 1-on 2-off
+    u16 tempTimeoutseconds; //600, // temp 超时秒数
+    u8 humidTimeoutEn;      //1,   //humid 超时报警 1-on 2-off
+    u16 humidTimeoutseconds;// 600, // humid 超时秒数
 };
 
 /****************************以下是灌溉部分的内容*****/
 struct stage{//日程设置
     u8      en;
-    char    starts[14];//20220514080000
+    char    starts[16];//[14];//20220514080000//Justin debug
     struct stage_schedule{
         u8 recipeId;
         u8 duration_day;
@@ -269,6 +275,8 @@ struct sysSet{
     sys_para_t      sysPara;
     sys_warn_t      sysWarn;
     u8              dayOrNight;//白天黑夜 白天0 黑夜1
+    u8              warn[WARN_MAX];
+    u16             warn_value[WARN_MAX];//该值主要为了显示使用 数据
     u8              saveFlag;
 };
 
@@ -348,8 +356,8 @@ void CmdSetSysSet(char *, cloudcmd_t *, sys_para_t *);
 void CmdGetSysSet(char *, cloudcmd_t *);
 void CmdGetWarn(char *, cloudcmd_t *);
 void CmdSetWarn(char *, cloudcmd_t *, sys_set_t *);
-char *SendHubReport(char *);
-char *SendHubReportWarn(char *);
+char *SendHubReport(char *, sys_set_t *);
+char *SendHubReportWarn(char *, sys_set_t *, u8, u16);
 char *ReplySetSchedule(char *, cloudcmd_t);
 //char *ReplySetTempValue(char *);
 char *ReplyGetTempValue(char *);
@@ -376,6 +384,6 @@ char *ReplySetHubName(char *, cloudcmd_t);
 char *ReplyTest(char *, cloudcmd_t);
 char *ReplySetPortName(char *, cloudcmd_t);
 char *ReplySetSysPara(char *, cloudcmd_t, sys_para_t);
-char *ReplyGetSysPara(char *, cloudcmd_t, sys_para_t, sensor_t *);
+char *ReplyGetSysPara(char *, cloudcmd_t, sys_para_t);
 char *ReplySetWarn(char *, cloudcmd_t, sys_warn_t);
 #endif /* APPLICATIONS_CLOUDPROTOCOL_CLOUDPROTOCOLBUSINESS_H_ */

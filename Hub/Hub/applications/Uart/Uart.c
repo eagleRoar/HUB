@@ -19,6 +19,7 @@
 #include "Sdcard.h"
 #include "CloudProtocol.h"
 #include "Module.h"
+#include "Recipe.h"
 
 type_monitor_t monitor;
 struct rx_msg uart1_msg;                      //接收串口数据以及相关消息
@@ -28,6 +29,10 @@ struct rx_msg uart3_msg;                      //接收串口数据以及相关�
 extern  struct sdCardState      sdCard;
 extern  type_sys_time           sys_time;
 extern  sys_set_t               sys_set;
+
+extern sys_set_t *GetSysSet(void);
+extern void warnProgram(type_monitor_t *monitor, sys_set_t *set);
+
 /**
  * @brief  : 接收回调函数
  * @para   : dev   ：接收数据部分等
@@ -240,20 +245,33 @@ void SensorUart2TaskEntry(void* parameter)
                 humiProgram(GetMonitor());
                 timmerProgram(GetMonitor());
                 findLocation(GetMonitor(), &sys_set.cloudCmd, uart2_serial);
-                lineProgram(GetMonitor(), 0, 1000);//line1
+                lineProgram(GetMonitor(), 0, 1000);//line1//Justin debug 仅仅测试
                 lineProgram(GetMonitor(), 1, 1000);//line2
+                warnProgram(GetMonitor(), GetSysSet());
+                GetRealCal(GetSysSet(), GetSysRecipt());//通过日程获取配方设置
+
+                //该段程序顺序不能在以上温湿度、Co2、定时器之前
+                for(u8 index = 0; index < GetMonitor()->device_size; index++)
+                {
+                    if(TIMER_TYPE != GetMonitor()->device[index].type)
+                    {
+                        u16 value = (GetMonitor()->device[index]._storage[0]._port.d_state << 8) + GetMonitor()->device[index]._storage[0]._port.d_value;
+                        ctrDevice(GetMonitor(), GetMonitor()->device[index].type, value);
+                    }
+                }
+
                 if(0 != sys_set.cloudCmd.delete_id.value)
                 {
                     deleteModule(GetMonitor(), sys_set.cloudCmd.delete_id.value);
                     sys_set.cloudCmd.delete_id.value = 0;
                 }
+
 //                cal();//Justin debug 日历功能
             }
 
             /* 5s 事件 */
             if(ON == Timer5sTouch)
             {
-//                device_start_5s = 1;
             }
         }
         rt_thread_mdelay(UART_PERIOD);
@@ -271,7 +289,7 @@ void SensorUart2TaskInit(void)
     rt_err_t threadStart = RT_NULL;
 
     /* 创建串口 线程 */
-    rt_thread_t thread = rt_thread_create("sensor task", SensorUart2TaskEntry, RT_NULL, 1024*3, UART2_PRIORITY, 10);
+    rt_thread_t thread = rt_thread_create("sensor task", SensorUart2TaskEntry, RT_NULL, 1024*4, UART2_PRIORITY, 10);
 
     /* 如果线程创建成功则开始启动线程，否则提示线程创建失败 */
     if (RT_NULL != thread) {

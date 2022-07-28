@@ -23,11 +23,13 @@ void tempProgram(type_monitor_t *);
 void timmerProgram(type_monitor_t *);
 void co2Program(type_monitor_t *, u16);
 void humiProgram(type_monitor_t *);
+//void warnProgram(type_monitor_t *, sys_set_t *);
 void analyzeCloudData(char *);
 void ReplyDataToCloud(mqtt_client *, u8 *, u16 *, u8);
 hub_t *GetHub(void);
-void SendDataToCloud(mqtt_client *, char *);
+void SendDataToCloud(mqtt_client *client, char *cmd, u8 warn_no, u16 value);
 void lineProgram(type_monitor_t *, u8, u16);
 time_t ReplyTimeStamp(void);
 u16 getVpd(void);
+void ctrDevice(type_monitor_t *, u8, u16);
 #endif /* APPLICATIONS_CLOUDPROTOCOL_CLOUDPROTOCOL_H_ */
