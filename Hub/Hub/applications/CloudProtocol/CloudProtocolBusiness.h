@@ -23,7 +23,7 @@
 #define     CMD_NAME_SIZE           25
 #define     REC_ALLOT_ADDR          100
 
-#define     STAGE_LIST_MAX                  10//最多10个阶段
+#define     STAGE_LIST_MAX                  5//10//最多10个阶段
 #define     RECIPE_LIST_MAX                 10//最多10个配方
 #define     TANK_LIST_MAX                   4
 
@@ -356,6 +356,8 @@ void CmdSetSysSet(char *, cloudcmd_t *, sys_para_t *);
 void CmdGetSysSet(char *, cloudcmd_t *);
 void CmdGetWarn(char *, cloudcmd_t *);
 void CmdSetWarn(char *, cloudcmd_t *, sys_set_t *);
+void CmdGetRecipeList(char *, cloudcmd_t *);
+void CmdGetRecipeListAll(char *data, cloudcmd_t *cmd);
 char *SendHubReport(char *, sys_set_t *);
 char *SendHubReportWarn(char *, sys_set_t *, u8, u16);
 char *ReplySetSchedule(char *, cloudcmd_t);
@@ -386,4 +388,6 @@ char *ReplySetPortName(char *, cloudcmd_t);
 char *ReplySetSysPara(char *, cloudcmd_t, sys_para_t);
 char *ReplyGetSysPara(char *, cloudcmd_t, sys_para_t);
 char *ReplySetWarn(char *, cloudcmd_t, sys_warn_t);
+char *ReplyGetRecipeList(char *, cloudcmd_t , sys_recipe_t *);
+char *ReplyGetRecipeListAll(char *, cloudcmd_t , sys_recipe_t *);
 #endif /* APPLICATIONS_CLOUDPROTOCOL_CLOUDPROTOCOLBUSINESS_H_ */

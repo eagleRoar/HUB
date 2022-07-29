@@ -132,9 +132,11 @@ rt_err_t GetValueByC16(cJSON *temp, char *name, char *value)
     type_kv_c16 data;
     rt_err_t    ret     = RT_ERROR;
 
-    strcpy(data.name, name);
+//    strcpy(data.name, name);
+    strncpy(data.name, name, strlen(name));//Justin debug
     ret = GetValueC16(temp, &data);
-    strcpy(value, data.value);
+//    strcpy(value, data.value);
+    strncpy(value, data.value, strlen(value));
 
     return ret;
 }
@@ -571,7 +573,7 @@ void CmdGetSchedule(char *data, cloudcmd_t *cmd)
     if(RT_NULL != temp)
     {
         GetValueC16(temp, &cmd->msgid);
-        GetValueU16(temp, &cmd->delete_id);
+//        GetValueU16(temp, &cmd->delete_id);
 
         cJSON_Delete(temp);
     }
@@ -911,6 +913,39 @@ void CmdGetWarn(char *data, cloudcmd_t *cmd)
     }
 }
 
+void CmdGetRecipeList(char *data, cloudcmd_t *cmd)
+{
+    cJSON   *temp       = RT_NULL;
+
+    temp = cJSON_Parse(data);
+    if(RT_NULL != temp)
+    {
+        GetValueC16(temp, &cmd->msgid);
+
+        cJSON_Delete(temp);
+    }
+    else
+    {
+        LOG_E("CmdGetRecipeList err");
+    }
+}
+
+void CmdGetRecipeListAll(char *data, cloudcmd_t *cmd)
+{
+    cJSON   *temp       = RT_NULL;
+
+    temp = cJSON_Parse(data);
+    if(RT_NULL != temp)
+    {
+        GetValueC16(temp, &cmd->msgid);
+
+        cJSON_Delete(temp);
+    }
+    else
+    {
+        LOG_E("CmdGetRecipeListAll err");
+    }
+}
 
 void CmdGetSysSet(char *data, cloudcmd_t *cmd)
 {
@@ -1030,8 +1065,8 @@ void CmdSetSchedule(char *data, cloudcmd_t *cmd)//Justin debug 未验证
 {
     u8      index       = 0;
     u8      list_sum    = 0;
-    type_kv_u8      temp_u8;
-    type_kv_u16     temp_u16;
+//    type_kv_u8      temp_u8;
+//    type_kv_u16     temp_u16;
     cJSON   *temp       = RT_NULL;
     cJSON   *list       = RT_NULL;
     cJSON   *item       = RT_NULL;
@@ -1042,7 +1077,7 @@ void CmdSetSchedule(char *data, cloudcmd_t *cmd)//Justin debug 未验证
         GetValueC16(temp, &cmd->msgid);
 
         GetValueByU8(temp, "en", &GetSysSet()->stageSet.en);
-        GetValueByC16(temp, "starts", &GetSysSet()->stageSet.starts);
+        GetValueByC16(temp, "starts", GetSysSet()->stageSet.starts);//Justin debug 发送bug 2022.07.28
 
         list = cJSON_GetObjectItem(temp, "list");
 
@@ -1772,6 +1807,141 @@ char *ReplySetWarn(char *cmd, cloudcmd_t cloud, sys_warn_t warn)
     return str;
 }
 
+char *ReplyGetRecipeList(char *cmd, cloudcmd_t cloud, sys_recipe_t *list)
+{
+    char            *str        = RT_NULL;
+    cJSON           *json       = cJSON_CreateObject();
+    cJSON           *j_list     = cJSON_CreateArray();
+    cJSON           *item       = RT_NULL;
+
+    if(RT_NULL != json)
+    {
+        cJSON_AddStringToObject(json, "cmd", cmd);
+        cJSON_AddStringToObject(json, cloud.msgid.name, cloud.msgid.value);
+
+        if(RT_NULL != j_list)
+        {
+            for(u8 index = 0; index < RECIPE_LIST_MAX; index++)
+            {
+                item = cJSON_CreateObject();
+
+                if(RT_NULL != item)
+                {
+                    cJSON_AddNumberToObject(item, "id", list->recipe[index].id);
+                    cJSON_AddStringToObject(item, "name", list->recipe[index].name);
+                    cJSON_AddNumberToObject(item, "color", list->recipe[index].color);
+
+                    cJSON_AddItemToArray(j_list, item);//Justin debug
+                }
+            }
+
+            cJSON_AddItemToObject(json, "list", j_list);
+        }
+
+        cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
+        str = cJSON_PrintUnformatted(json);
+        cJSON_Delete(json);
+    }
+
+    return str;
+}
+
+//Justin debug 注意以下数据返回的空间太大 申请不到这么大的空间
+char *ReplyGetRecipeListAll(char *cmd, cloudcmd_t cloud, sys_recipe_t *list)
+{
+    char            *str        = RT_NULL;
+    cJSON           *json       = cJSON_CreateObject();
+    cJSON           *j_list     = cJSON_CreateArray();
+    cJSON           *line       = RT_NULL;
+    cJSON           *item       = RT_NULL;
+
+    if(RT_NULL != json)
+    {
+        cJSON_AddStringToObject(json, "cmd", cmd);
+        cJSON_AddStringToObject(json, cloud.msgid.name, cloud.msgid.value);
+
+        if(RT_NULL != j_list)
+        {
+            for(u8 index = 0; index < RECIPE_LIST_MAX; index++)
+            {
+                item = cJSON_CreateObject();
+
+                if(RT_NULL != item)
+                {
+                    cJSON_AddNumberToObject(item, "id", list->recipe[index].id);
+                    cJSON_AddStringToObject(item, "name", list->recipe[index].name);
+                    cJSON_AddNumberToObject(item, "color", list->recipe[index].color);
+
+//                    cJSON_AddNumberToObject(item, "dayCoolingTarget", list->recipe[index].dayCoolingTarget);
+//                    cJSON_AddNumberToObject(item, "dayHeatingTarget", list->recipe[index].dayHeatingTarget);
+//                    cJSON_AddNumberToObject(item, "nightCoolingTarget", list->recipe[index].nightCoolingTarget);
+//                    cJSON_AddNumberToObject(item, "nightHeatingTarget", list->recipe[index].nightHeatingTarget);
+//                    cJSON_AddNumberToObject(item, "dayHumidifyTarget", list->recipe[index].dayHumidifyTarget);
+//                    cJSON_AddNumberToObject(item, "dayDehumidifyTarget", list->recipe[index].dayDehumidifyTarget);
+//                    cJSON_AddNumberToObject(item, "nightHumidifyTarget", list->recipe[index].nightHumidifyTarget);
+//                    cJSON_AddNumberToObject(item, "nightDehumidifyTarget", list->recipe[index].nightDehumidifyTarget);
+//                    cJSON_AddNumberToObject(item, "dayCo2Target", list->recipe[index].dayCo2Target);
+//                    cJSON_AddNumberToObject(item, "nightCo2Target", list->recipe[index].nightCo2Target);
+
+//                    line = cJSON_CreateArray();
+//                    if(RT_NULL != line)
+//                    {
+//                        cJSON_AddNumberToObject(line, "brightMode", list->recipe[index].line_list[0].brightMode);
+//                        cJSON_AddNumberToObject(line, "byPower", list->recipe[index].line_list[0].byPower);
+//                        cJSON_AddNumberToObject(line, "byAutoDimming", list->recipe[index].line_list[0].byAutoDimming);
+//                        cJSON_AddNumberToObject(line, "mode", list->recipe[index].line_list[0].mode);
+//                        cJSON_AddNumberToObject(line, "lightOn", list->recipe[index].line_list[0].lightOn);
+//                        cJSON_AddNumberToObject(line, "lightOff", list->recipe[index].line_list[0].lightOff);
+//                        cJSON_AddNumberToObject(line, "firstCycleTime", list->recipe[index].line_list[0].firstCycleTime);
+//                        cJSON_AddNumberToObject(line, "duration", list->recipe[index].line_list[0].duration);
+//                        cJSON_AddNumberToObject(line, "pauseTime", list->recipe[index].line_list[0].pauseTime);
+//
+//                        cJSON_AddItemToObject(item, "line1", line);
+//                    }
+//
+//                    line = cJSON_CreateArray();
+//                    if(RT_NULL != line)
+//                    {
+////                        cJSON_AddNumberToObject(line, "brightMode", list->recipe[index].line_list[1].brightMode);
+//                        cJSON_AddNumberToObject(line, "byPower", list->recipe[index].line_list[1].byPower);
+////                        cJSON_AddNumberToObject(line, "byAutoDimming", list->recipe[index].line_list[1].byAutoDimming);
+//                        cJSON_AddNumberToObject(line, "mode", list->recipe[index].line_list[1].mode);
+//                        cJSON_AddNumberToObject(line, "lightOn", list->recipe[index].line_list[1].lightOn);
+//                        cJSON_AddNumberToObject(line, "lightOff", list->recipe[index].line_list[1].lightOff);
+//                        cJSON_AddNumberToObject(line, "firstCycleTime", list->recipe[index].line_list[1].firstCycleTime);
+//                        cJSON_AddNumberToObject(line, "duration", list->recipe[index].line_list[1].duration);
+//                        cJSON_AddNumberToObject(line, "pauseTime", list->recipe[index].line_list[1].pauseTime);
+//
+//                        cJSON_AddItemToObject(item, "line2", line);
+//                    }
+
+
+                    cJSON_AddItemToArray(j_list, item);
+                }
+            }
+
+            cJSON_AddItemToObject(json, "list", j_list);
+        }
+        else
+        {
+            LOG_E("ReplyGetRecipeListAll err1");
+        }
+
+        cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
+        str = cJSON_PrintUnformatted(json);
+
+        LOG_I("-------------length = %d",strlen(str));
+
+        cJSON_Delete(json);
+    }
+    else
+    {
+        LOG_E("ReplyGetRecipeListAll err");
+    }
+
+    return str;
+}
+
 char *ReplyGetSysPara(char *cmd, cloudcmd_t cloud, sys_para_t para)
 {
     char            *str        = RT_NULL;
@@ -2142,7 +2312,7 @@ char *ReplySetRecipe(char *cmd, cloudcmd_t cloud)//Justin debug 未验证
     return str;
 }
 
-char *ReplyGetSchedule(char *cmd, cloudcmd_t cloud)//Justin debug 未验证
+char *ReplyGetSchedule(char *cmd, cloudcmd_t cloud)//Justin debug 该函数有bug
 {
 
     u8          recipe_id   = 0;
@@ -2248,11 +2418,17 @@ char *ReplyGetSchedule(char *cmd, cloudcmd_t cloud)//Justin debug 未验证
                     strncat(end_date, temp, 4);
 
                     cJSON_AddStringToObject(list_item, "ends", end_date);
+//                      cJSON_AddStringToObject(list_item, "ends", "--");//Justin debug 以上函数段有问题
 
                     cJSON_AddItemToArray(list, list_item);
 
                 }
             }
+            cJSON_AddItemToObject(json, "list", list);
+        }
+        else
+        {
+            LOG_D("ReplyGetSchedule err");
         }
 
         cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
@@ -2735,6 +2911,7 @@ char *ReplyGetDeviceList(char *cmd, type_kv_c16 msgid)
         str = cJSON_PrintUnformatted(json);
 
         cJSON_Delete(json);
+
     }
 
     return str;

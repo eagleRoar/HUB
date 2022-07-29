@@ -16,6 +16,7 @@
 #include "mqtt_client.h"
 #include<math.h>
 #include "Ethernet.h"
+#include "Recipe.h"
 
 sys_set_t       sys_set;
 type_sys_time   sys_time;
@@ -149,6 +150,7 @@ void initCloudProtocol(void)
     rt_memset(&sys_set.humiSet, 0, sizeof(proHumiSet_t));
     rt_memset(&sys_set.line1Set, 0, sizeof(proLine_t));
     rt_memset(&sys_set.line2Set, 0, sizeof(proLine_t));
+    rt_memset(&sys_set.stageSet, 0, sizeof(stage_t));
 
     //init temp
     rt_memcpy(sys_set.tempSet.msgid.name, "msgid", KEYVALUE_NAME_SIZE);
@@ -253,7 +255,7 @@ void initCloudProtocol(void)
     sys_set.sysWarn.dayVpdMax = 300;
     sys_set.sysWarn.dayVpdEn = ON;
     sys_set.sysWarn.dayParMin = 100;
-    sys_set.sysWarn.dayParMax = 2000;
+    sys_set.sysWarn.dayParMax = 1500;
     sys_set.sysWarn.dayParEn = ON;
 
     sys_set.sysWarn.nightTempMin = 170;
@@ -424,6 +426,15 @@ void ReplyDataToCloud(mqtt_client *client, u8 *res, u16 *len, u8 sendCloudFlg)
         else if(0 == rt_memcmp(CMD_GET_ALARM_SET, sys_set.cloudCmd.cmd, sizeof(CMD_GET_ALARM_SET)))//获取系统设置
         {
             str = ReplySetWarn(CMD_GET_ALARM_SET, sys_set.cloudCmd, sys_set.sysWarn);
+        }
+        else if(0 == rt_memcmp(CMD_GET_RECIPE, sys_set.cloudCmd.cmd, sizeof(CMD_GET_RECIPE)))//获取配方列表
+        {
+            str = ReplyGetRecipeList(CMD_GET_RECIPE, sys_set.cloudCmd, GetSysRecipt());
+        }
+        else if(0 == rt_memcmp(CMD_GET_RECIPE_ALL, sys_set.cloudCmd.cmd, sizeof(CMD_GET_RECIPE_ALL)))//获取配方列表all
+        {
+            LOG_D(" recv cmd CMD_GET_RECIPE_ALL");//Justin debug
+            str = ReplyGetRecipeListAll(CMD_GET_RECIPE_ALL, sys_set.cloudCmd, GetSysRecipt());
         }
 
         if(RT_NULL != str)
@@ -662,6 +673,16 @@ void analyzeCloudData(char *data)
                 CmdGetWarn(data, &sys_set.cloudCmd);
                 setCloudCmd(cmd->valuestring, ON);
             }
+            else if(0 == rt_memcmp(CMD_GET_RECIPE, cmd->valuestring, strlen(CMD_GET_RECIPE)))
+            {
+                CmdGetRecipeList(data, &sys_set.cloudCmd);
+                setCloudCmd(cmd->valuestring, ON);
+            }
+            else if(0 == rt_memcmp(CMD_GET_RECIPE_ALL, cmd->valuestring, strlen(CMD_GET_RECIPE_ALL)))
+            {
+                CmdGetRecipeListAll(data, &sys_set.cloudCmd);
+                setCloudCmd(cmd->valuestring, ON);
+            }
         }
         else
         {
@@ -789,8 +810,6 @@ void tempProgram(type_monitor_t *monitor)
         HeatTarge = GetSysSet()->tempSet.nightHeatingTarget.value;
     }
 
-    LOG_D("tempNow %d, coolTarge %d, HeatTarge = %d",tempNow,coolTarge,HeatTarge);//Justin debug 仅仅测试
-
     if(tempNow >= coolTarge)//1为deadband
     {
         //打开heat 关闭cool
@@ -885,7 +904,7 @@ void tempProgram(type_monitor_t *monitor)
     }
 
     //当前有一个逻辑是降温和除湿联动选择，只和ACSTATION联动
-    if(ON == GetSysSet()->tempSet.coolingDehumidifyLock.value)
+    if(ON == GetSysSet() ->tempSet.coolingDehumidifyLock.value)
     {
         //联动可能会导致降温和加热设备同时工作，除湿和加湿设备同时工作
         GetDeviceByType(monitor, DEHUMI_TYPE)->_storage[0]._port.d_state = GetDeviceByType(monitor, COOL_TYPE)->_storage[0]._port.d_state;

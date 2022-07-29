@@ -125,6 +125,7 @@ void InitSDCard(void)
         }
 
         initSysRecipe();
+        GetSysRecipt()->crc = usModbusRTU_CRC((u8 *)GetSysRecipt() + 2, recipeSize - 2);
         if(RT_ERROR == WriteSdData(RECIPE_FILE, (u8 *)GetSysRecipt(), SD_INFOR_SIZE, recipeSize))
         {
             LOG_E("InitSDCard err 5");
@@ -281,7 +282,7 @@ rt_err_t TackRecipeFromSD(sys_recipe_t *rec)//Justin debug 获取时crc校验出
 
     if(RT_EOK == ReadSdData(RECIPE_FILE, (u8 *)rec, SD_INFOR_SIZE, sysRecSize))//Justin debug
     {
-        initSysRecipe();
+//        initSysRecipe();
         crc = usModbusRTU_CRC((u8 *)rec + 2, sysRecSize - 2);  //crc 在最后
 
         if(crc == rec->crc)
@@ -290,6 +291,7 @@ rt_err_t TackRecipeFromSD(sys_recipe_t *rec)//Justin debug 获取时crc校验出
         }
         else
         {
+            initSysRecipe();
             rt_memset((u8 *)rec, 0, sysRecSize);
             rec->crc = usModbusRTU_CRC((u8 *)rec+2, sysRecSize - 2);
             ret = RT_ERROR;

@@ -112,7 +112,7 @@ int main(void)
     {
         time60S = TimerTask(&time60S, 60, &Timer60sTouch);         //60秒任务定时器
         /* 监视网络模块是否上线 */
-        ethStatus = GetEthDriverLinkStatus();
+        ethStatus = GetEthDriverLinkStatus();//Justin debug
         if(LINKUP == ethStatus)
         {
             if(RT_NULL == rt_thread_find(UDP_TASK) &&
@@ -151,8 +151,8 @@ int main(void)
         if(DAY_BY_TIME == GetSysSet()->sysPara.dayNightMode)//按时间分辨
         {
             getRealTimeForMat(&time);
-            if((time.hour * 60 > GetSysSet()->sysPara.dayTime) &&
-               (time.hour * 60 <= GetSysSet()->sysPara.nightTime))
+            if(((time.hour * 60 + time.minute) > GetSysSet()->sysPara.dayTime) &&
+               ((time.hour * 60 + time.minute) <= GetSysSet()->sysPara.nightTime))
             {
                 GetSysSet()->dayOrNight = DAY_TIME;
             }
@@ -160,6 +160,7 @@ int main(void)
             {
                 GetSysSet()->dayOrNight = NIGHT_TIME;
             }
+
         }
         else if(DAY_BY_PHOTOCELL == GetSysSet()->sysPara.dayNightMode)//按灯光分辨
         {

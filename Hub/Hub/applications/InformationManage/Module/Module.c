@@ -307,7 +307,7 @@ line_t *GetLineByAddr(type_monitor_t *monitor, u8 addr)
         }
         else
         {
-            LOG_E("can not find line addr = %d",addr);
+//            LOG_E("can not find line addr = %d",addr);
         }
     }
 

@@ -96,6 +96,10 @@ void sd_dfs_event_entry(void* parameter)
                             {
                                 LOG_E("TackRecipeFromSD err");
                             }
+                            else
+                            {
+                                LOG_I("TackRecipeFromSD OK");
+                            }
 
                             initHubinfo();//Justin debug 仅仅测试
                         }

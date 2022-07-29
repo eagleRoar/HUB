@@ -59,7 +59,8 @@ rt_err_t GetRecipeByid(u8 id, sys_recipe_t *sys_rec, recipe_t *rec)
     {
         if(id == sys_rec->recipe[index].id)
         {
-            rec = &sys_rec->recipe[index];
+//            rec = &sys_rec->recipe[index];
+            rt_memcpy((u8 *)rec, (u8 *)&sys_rec->recipe[index], sizeof(recipe_t));
             ret = RT_EOK;
         }
     }

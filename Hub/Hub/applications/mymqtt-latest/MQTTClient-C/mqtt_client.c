@@ -57,7 +57,7 @@
 #error "Please update the 'rtdbg.h' file to GitHub latest version (https://github.com/RT-Thread/rt-thread/blob/master/include/rtdbg.h)"
 #endif
 
-static char mqtt_thread_stack[1024 * 3];
+static char mqtt_thread_stack[1024 * 4];//[1024 * 3];//Justin debug
 static struct rt_thread mqtt_thread;
 
 /*********************************************************************************************************
