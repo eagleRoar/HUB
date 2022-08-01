@@ -13,6 +13,7 @@
 #include "CloudProtocol.h"
 
 extern sys_set_t *GetSysSet(void);
+extern sys_tank_t *GetSysTank(void);
 
 /**
  * @brief 检测文件夹是否存在
@@ -74,6 +75,7 @@ void InitSDCard(void)
     u16             monitorSize     = sizeof(type_monitor_t);
     u16             syssetSize      = sizeof(sys_set_t);
     u16             recipeSize      = sizeof(sys_recipe_t);
+    u16             tankListSize    = sizeof(sys_tank_t);
 
     //检查文件是否存在
     CheckDirectory(MODULE_DIR);
@@ -96,7 +98,6 @@ void InitSDCard(void)
             LOG_E("InitSDCard err 2");
         }
 
-//        LOG_D("-----------------InitSDCard OK, monitor->crc = %x",GetMonitor()->crc);
     }
 
     if(NO == CheckFileAndMark(SYSSET_FILE))
@@ -130,8 +131,21 @@ void InitSDCard(void)
         {
             LOG_E("InitSDCard err 5");
         }
+    }
 
-        LOG_D("initCloudProtocol ok");//Justin debug
+    if(NO == CheckFileAndMark(TANK_FILE))
+    {
+        if(RT_ERROR == WriteSdData(TANK_FILE, &size, SD_HEAD_SIZE, SD_PAGE_SIZE))
+        {
+            LOG_E("InitSDCard err 6");
+        }
+
+        initSysTank();
+        GetSysTank()->crc = usModbusRTU_CRC((u8 *)GetSysTank() + 2, tankListSize - 2);
+        if(RT_ERROR == WriteSdData(TANK_FILE, (u8 *)GetSysTank(), SD_INFOR_SIZE, tankListSize))
+        {
+            LOG_E("InitSDCard err 7");
+        }
     }
 }
 
@@ -274,15 +288,34 @@ rt_err_t SaveSysSet(sys_set_t *set)
     return ret;
 }
 
-rt_err_t TackRecipeFromSD(sys_recipe_t *rec)//Justin debug 获取时crc校验出错
+rt_err_t SaveSysRecipe(sys_recipe_t *recipe)
+{
+    rt_err_t    ret             = RT_EOK;
+    u16         sysRecipeSize   = sizeof(sys_recipe_t);
+
+    recipe->crc = usModbusRTU_CRC((u8 *)recipe + 2, sysRecipeSize - 2);
+
+    if(RT_EOK != WriteSdData(RECIPE_FILE, (u8 *)recipe, SD_INFOR_SIZE, sysRecipeSize))
+    {
+        LOG_E("SaveSysRecipe err");
+        ret = RT_ERROR;
+    }
+    else
+    {
+        LOG_D("save recipe ok");
+    }
+
+    return ret;
+}
+
+rt_err_t TackRecipeFromSD(sys_recipe_t *rec)
 {
     rt_err_t    ret             = RT_ERROR;
     u16         sysRecSize      = sizeof(sys_recipe_t);
     u16         crc             = 0;
 
-    if(RT_EOK == ReadSdData(RECIPE_FILE, (u8 *)rec, SD_INFOR_SIZE, sysRecSize))//Justin debug
+    if(RT_EOK == ReadSdData(RECIPE_FILE, (u8 *)rec, SD_INFOR_SIZE, sysRecSize))
     {
-//        initSysRecipe();
         crc = usModbusRTU_CRC((u8 *)rec + 2, sysRecSize - 2);  //crc 在最后
 
         if(crc == rec->crc)
@@ -292,11 +325,54 @@ rt_err_t TackRecipeFromSD(sys_recipe_t *rec)//Justin debug 获取时crc校验出
         else
         {
             initSysRecipe();
-            rt_memset((u8 *)rec, 0, sysRecSize);
-            rec->crc = usModbusRTU_CRC((u8 *)rec+2, sysRecSize - 2);
             ret = RT_ERROR;
         }
     }
 
     return ret;
 }
+
+rt_err_t SaveSysTank(sys_tank_t *tank)
+{
+    rt_err_t    ret             = RT_EOK;
+    u16         sysTankSize     = sizeof(sys_tank_t);
+
+    tank->crc = usModbusRTU_CRC((u8 *)tank + 2, sysTankSize - 2);
+
+    if(RT_EOK != WriteSdData(TANK_FILE, (u8 *)tank, SD_INFOR_SIZE, sysTankSize))
+    {
+        LOG_E("SaveSysTank err");
+        ret = RT_ERROR;
+    }
+    else
+    {
+        LOG_D("save tank ok");
+    }
+
+    return ret;
+}
+
+rt_err_t TackSysTankFromSD(sys_tank_t *tank)
+{
+    rt_err_t    ret             = RT_ERROR;
+    u16         sysTankSize     = sizeof(sys_tank_t);
+    u16         crc             = 0;
+
+    if(RT_EOK == ReadSdData(TANK_FILE, (u8 *)tank, SD_INFOR_SIZE, sysTankSize))
+    {
+        crc = usModbusRTU_CRC((u8 *)tank + 2, sysTankSize - 2);  //crc 在最后
+
+        if(crc == tank->crc)
+        {
+            ret = RT_EOK;
+        }
+        else
+        {
+            initSysTank();
+            ret = RT_ERROR;
+        }
+    }
+
+    return ret;
+}
+

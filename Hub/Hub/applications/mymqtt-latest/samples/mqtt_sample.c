@@ -63,11 +63,11 @@ mqtt_client *GetMqttClient(void)
 static void mqtt_sub_callback(mqtt_client *c, message_data *msg_data)
 {
     *((char *)msg_data->message->payload + msg_data->message->payloadlen) = '\0';
-//    LOG_D("mqtt sub callback: %.*s %.*s",
-//               msg_data->topic_name->lenstring.len,
-//               msg_data->topic_name->lenstring.data,
-//               msg_data->message->payloadlen,
-//               (char *)msg_data->message->payload);
+    LOG_D("mqtt sub callback: %.*s %.*s",
+               msg_data->topic_name->lenstring.len,
+               msg_data->topic_name->lenstring.data,
+               msg_data->message->payloadlen,
+               (char *)msg_data->message->payload);
 
     recvMqttFlg = 1;
     analyzeCloudData((char *)msg_data->message->payload);

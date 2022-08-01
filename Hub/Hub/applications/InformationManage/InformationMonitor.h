@@ -153,7 +153,7 @@ struct device_Timer4
 
     struct hvac
     {
-        u8      manualOnMode;        //1-cooling 2-heating
+        u8      manualOnMode;        //1-cooling 2-heating //手动开关的时候 该选项才有意义
         u8      fanNormallyOpen;     //风扇常开 1-常开 0-自动
         u8      hvacMode;            //1-conventional 模式 2-HEAT PUM 模式 O 模式 3-HEAT PUM 模式 B 模式
     }_hvac;

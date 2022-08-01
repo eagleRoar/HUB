@@ -44,6 +44,12 @@ sys_tank_t *GetSysTank(void)
     return &sys_tank;
 }
 
+void initSysTank(void)
+{
+    rt_memset((u8 *)GetSysTank(), 0, sizeof(sys_tank_t));
+    GetSysTank()->crc = usModbusRTU_CRC((u8 *)GetSysTank() + 2, sizeof(sys_tank_t) - 2);
+}
+
 sys_set_t *GetSysSet(void)
 {
     return &sys_set;
@@ -308,12 +314,19 @@ void setCloudCmd(char *cmd, u8 flag)
 /**
  * 发布数据(回复云服务器)
  */
-void ReplyDataToCloud(mqtt_client *client, u8 *res, u16 *len, u8 sendCloudFlg)
+rt_err_t ReplyDataToCloud(mqtt_client *client, u8 *res, u16 *len, u8 sendCloudFlg)
 {
-    char name[20];
-    char *str = RT_NULL;
+    rt_err_t    ret         = RT_ERROR;
+    char        name[20];
+    char        *str        = RT_NULL;
+
+//    LOG_D("enter ReplyDataToCloud");//Justin print
+
     if(ON == sys_set.cloudCmd.recv_flag)
     {
+
+        LOG_D("reply sys_set.cloudCmd.cmd = %s",sys_set.cloudCmd.cmd);//Justin debug
+
         if(0 == rt_memcmp(CMD_SET_TEMP, sys_set.cloudCmd.cmd, sizeof(CMD_SET_TEMP)) ||
            0 == rt_memcmp(CMD_GET_TEMP, sys_set.cloudCmd.cmd, sizeof(CMD_GET_TEMP)))   //获取/设置温度参数
         {
@@ -331,6 +344,7 @@ void ReplyDataToCloud(mqtt_client *client, u8 *res, u16 *len, u8 sendCloudFlg)
         }
         else if(0 == rt_memcmp(CMD_GET_DEVICELIST, sys_set.cloudCmd.cmd, sizeof(CMD_GET_DEVICELIST)))   //获取设备列表
         {
+            LOG_D("CMD_GET_DEVICELIST");
             str = ReplyGetDeviceList(CMD_GET_DEVICELIST, sys_set.cloudCmd.msgid);
         }
         else if(0 == rt_memcmp(CMD_GET_L1, sys_set.cloudCmd.cmd, sizeof(CMD_GET_L1)) ||
@@ -391,17 +405,22 @@ void ReplyDataToCloud(mqtt_client *client, u8 *res, u16 *len, u8 sendCloudFlg)
         {
             str = ReplySetRecipe(CMD_SET_RECIPE_SET, sys_set.cloudCmd);
         }
-        else if(0 == rt_memcmp(CMD_SET_TANK_INFO, sys_set.cloudCmd.cmd, sizeof(CMD_SET_TANK_INFO)))//增加配方
+//        else if(0 == rt_memcmp(CMD_SET_TANK_INFO, sys_set.cloudCmd.cmd, sizeof(CMD_SET_TANK_INFO)))//设置桶设置
+//        {
+//            str = ReplySetTank(CMD_SET_TANK_INFO, sys_set.cloudCmd);
+//        }
+        else if(0 == rt_memcmp(CMD_GET_TANK_INFO, sys_set.cloudCmd.cmd, sizeof(CMD_GET_TANK_INFO)))//获取桶设置
         {
-            str = ReplySetTank(CMD_SET_TANK_INFO, sys_set.cloudCmd);
+            str = ReplySetTank(CMD_GET_TANK_INFO, sys_set.cloudCmd);
         }
         else if(0 == rt_memcmp(CMD_GET_HUB_STATE, sys_set.cloudCmd.cmd, sizeof(CMD_GET_HUB_STATE)))//获取hub state信息
         {
             str = ReplyGetHubState(CMD_GET_HUB_STATE, sys_set.cloudCmd);
         }
-        else if(0 == rt_memcmp(CMD_SET_HUB_NAME, sys_set.cloudCmd.cmd, sizeof(CMD_SET_HUB_NAME)))//获取hub state信息
+        else if(0 == rt_memcmp(CMD_SET_HUB_NAME, sys_set.cloudCmd.cmd, sizeof(CMD_SET_HUB_NAME)))//设置hub nane
         {
             str = ReplySetHubName(CMD_SET_HUB_NAME, sys_set.cloudCmd);
+            saveModuleFlag = YES;
         }
         else if(0 == rt_memcmp(TEST_CMD, sys_set.cloudCmd.cmd, sizeof(TEST_CMD)))//获取hub state信息
         {
@@ -462,10 +481,17 @@ void ReplyDataToCloud(mqtt_client *client, u8 *res, u16 *len, u8 sendCloudFlg)
             //获取数据完之后需要free否知数据泄露
             cJSON_free(str);
             str = RT_NULL;
+            ret = RT_EOK;
+            setCloudCmd(RT_NULL, OFF);//Justin debug
+        }
+        else
+        {
+            LOG_E("str == RT_NULL");
         }
 
-        setCloudCmd(RT_NULL, OFF);
     }
+
+    return ret;
 }
 
 void SendDataToCloud(mqtt_client *client, char *cmd, u8 warn_no, u16 value)
@@ -507,6 +533,7 @@ void analyzeCloudData(char *data)
     if(NULL != json)
     {
         cJSON * cmd = cJSON_GetObjectItem(json, CMD_NAME);
+        LOG_I("----------------cmd = %s",cmd->valuestring);//Justin debug
         if(NULL != cmd)
         {
             if(0 == rt_memcmp(CMD_SET_TEMP, cmd->valuestring, strlen(CMD_SET_TEMP)))
@@ -624,11 +651,18 @@ void analyzeCloudData(char *data)
             else if(0 == rt_memcmp(CMD_SET_RECIPE_SET, cmd->valuestring, strlen(CMD_SET_RECIPE_SET)))
             {
                 CmdSetRecipe(data, &sys_set.cloudCmd);
+                GetSysRecipt()->saveFlag = YES;
                 setCloudCmd(cmd->valuestring, ON);
             }
-            else if(0 == rt_memcmp(CMD_SET_TANK_INFO, cmd->valuestring, strlen(CMD_SET_TANK_INFO)))
+//            else if(0 == rt_memcmp(CMD_SET_TANK_INFO, cmd->valuestring, strlen(CMD_SET_TANK_INFO)))
+//            {
+//                CmdSetTank(data, &sys_set.cloudCmd);
+//                GetSysTank()->saveFlag = YES
+//                setCloudCmd(cmd->valuestring, ON);
+//            }
+            else if(0 == rt_memcmp(CMD_GET_TANK_INFO, cmd->valuestring, strlen(CMD_GET_TANK_INFO)))
             {
-                CmdSetTank(data, &sys_set.cloudCmd);
+                CmdGetTankInfo(data, &sys_set.cloudCmd);
                 setCloudCmd(cmd->valuestring, ON);
             }
             else if(0 == rt_memcmp(CMD_GET_HUB_STATE, cmd->valuestring, strlen(CMD_GET_HUB_STATE)))
@@ -649,7 +683,7 @@ void analyzeCloudData(char *data)
             else if(0 == rt_memcmp(CMD_SET_PORTNAME, cmd->valuestring, strlen(CMD_SET_PORTNAME)))
             {
                 CmdSetPortName(data, &sys_set.cloudCmd);
-                saveModuleFlag = 1;
+                saveModuleFlag = YES;
                 setCloudCmd(cmd->valuestring, ON);
             }
             else if(0 == rt_memcmp(CMD_SET_SYS_SET, cmd->valuestring, strlen(CMD_SET_SYS_SET)))
@@ -681,6 +715,11 @@ void analyzeCloudData(char *data)
             else if(0 == rt_memcmp(CMD_GET_RECIPE_ALL, cmd->valuestring, strlen(CMD_GET_RECIPE_ALL)))
             {
                 CmdGetRecipeListAll(data, &sys_set.cloudCmd);
+                setCloudCmd(cmd->valuestring, ON);
+            }
+            else if(0 == rt_memcmp(CMD_ADD_PUMP_VALUE, cmd->valuestring, strlen(CMD_ADD_PUMP_VALUE)))
+            {
+                CmdAddPumpValue(data, &sys_set.cloudCmd);
                 setCloudCmd(cmd->valuestring, ON);
             }
         }
@@ -772,6 +811,7 @@ void tempProgram(type_monitor_t *monitor)
     sensor_t        *module             = RT_NULL;
     static time_t   time_close_cool     = 0;
     static time_t   time_close_heat     = 0;
+    static u8       menual_state        = 0;
 
     module = GetSensorByType(monitor, BHS_TYPE);
 
@@ -902,6 +942,8 @@ void tempProgram(type_monitor_t *monitor)
             GetDeviceByType(monitor, HVAC_6_TYPE)->_storage[0]._port.d_value &= 0xF7;
         }
     }
+
+//    LOG_D("tempNow = %d, coolTarge = %d, HeatTarge = %d",tempNow,coolTarge,HeatTarge);//Justin print
 
     //当前有一个逻辑是降温和除湿联动选择，只和ACSTATION联动
     if(ON == GetSysSet() ->tempSet.coolingDehumidifyLock.value)

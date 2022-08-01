@@ -816,6 +816,24 @@ void CmdGetHubState(char *data, cloudcmd_t *cmd)
     }
 }
 
+void CmdGetTankInfo(char *data, cloudcmd_t *cmd)
+{
+    cJSON   *temp       = RT_NULL;
+
+    temp = cJSON_Parse(data);
+    if(RT_NULL != temp)
+    {
+        GetValueC16(temp, &cmd->msgid);
+        GetValueByU8(temp, "tankNo", &cmd->tank_no);
+
+        cJSON_Delete(temp);
+    }
+    else
+    {
+        LOG_E("CmdGetTankInfo err");
+    }
+}
+
 void CmdSetHubName(char *data, cloudcmd_t *cmd)
 {
     cJSON   *temp       = RT_NULL;
@@ -931,6 +949,23 @@ void CmdGetRecipeList(char *data, cloudcmd_t *cmd)
 }
 
 void CmdGetRecipeListAll(char *data, cloudcmd_t *cmd)
+{
+    cJSON   *temp       = RT_NULL;
+
+    temp = cJSON_Parse(data);
+    if(RT_NULL != temp)
+    {
+        GetValueC16(temp, &cmd->msgid);
+
+        cJSON_Delete(temp);
+    }
+    else
+    {
+        LOG_E("CmdGetRecipeListAll err");
+    }
+}
+
+void CmdAddPumpValue(char *data, cloudcmd_t *cmd)
 {
     cJSON   *temp       = RT_NULL;
 
@@ -2134,7 +2169,7 @@ char *ReplyTest(char *cmd, cloudcmd_t cloud)
     return str;
 }
 
-char *ReplySetHubName(char *cmd, cloudcmd_t cloud)//Justin debug 需要加入SD卡
+char *ReplySetHubName(char *cmd, cloudcmd_t cloud)
 {
     char            *str        = RT_NULL;
     cJSON           *json       = cJSON_CreateObject();
@@ -2778,12 +2813,15 @@ char *ReplyGetDeviceList(char *cmd, type_kv_c16 msgid)
     u8      index       = 0;
     u8      line_no     = 0;
     u8      storage     = 0;
+    u8      temp        = 0;
+    u8      temp1        = 0;
     char    *str        = RT_NULL;
     char    name[16];
     device_time4_t   module;
     line_t  line;
     cJSON   *list       = RT_NULL;
     cJSON   *item     = RT_NULL;
+    cJSON   *line_i     = RT_NULL;
     cJSON   *portList   = RT_NULL;
     cJSON   *port       = RT_NULL;
     cJSON   *json = cJSON_CreateObject();
@@ -2793,6 +2831,8 @@ char *ReplyGetDeviceList(char *cmd, type_kv_c16 msgid)
         cJSON_AddStringToObject(json, "cmd", cmd);
         cJSON_AddStringToObject(json, msgid.name, msgid.value);
         cJSON_AddStringToObject(json, "sn", GetSnName(name));
+
+        LOG_D("cmd %s, msgid.value %s, sn %s",cmd,msgid.value,GetSnName(name));//Justin print
 
         list = cJSON_CreateArray();
         if(RT_NULL != list)
@@ -2816,13 +2856,14 @@ char *ReplyGetDeviceList(char *cmd, type_kv_c16 msgid)
                     {
                         cJSON_AddNumberToObject(item, "online", 1);
                     }
+
                     if(1 == module.storage_size)
                     {
                         cJSON_AddNumberToObject(item, "manual", module._manual[0].manual);
                         cJSON_AddNumberToObject(item, "workingStatus", module._storage[0]._port.d_state);
                         cJSON_AddNumberToObject(item, "color", module.color);
                     }
-                    else
+                    else if(module.storage_size > 1 && module.storage_size <= DEVICE_PORT_SZ)
                     {
                         portList = cJSON_CreateArray();
 
@@ -2864,41 +2905,50 @@ char *ReplyGetDeviceList(char *cmd, type_kv_c16 msgid)
                 }
             }
 
-            for(line_no = 0; line_no < GetMonitor()->line_size; line_no++)
-            {
-                line = GetMonitor()->line[line_no];
+//            LOG_D("GetMonitor()->line_size = %d",GetMonitor()->line_size);//Justin debug
+//            for(line_no = 0; line_no < GetMonitor()->line_size; line_no++)
+//            {
+//                line = GetMonitor()->line[line_no];
+//
+//                line_i = cJSON_CreateObject();
+//
+//                if(RT_NULL != line_i)
+//                {
+//                    cJSON_AddStringToObject(line_i, "name", line.name);
+//                    cJSON_AddNumberToObject(line_i, "id", line.addr);
+//                    cJSON_AddNumberToObject(line_i, "mainType", 4);//4 指的是line 类型
+//                    cJSON_AddNumberToObject(line_i, "type", line.type);
+//                    cJSON_AddNumberToObject(line_i, "lineNo", line_no + 1);
+//                    cJSON_AddNumberToObject(line_i, "manual", line.manual);
 
-                item = cJSON_CreateObject();
+//                    temp = GetSysSet()->line1Set.lightsType.value;
+//                    temp1 = GetSysSet()->line1Set.byPower.value;
+//                    if(0 == line_no)
+//                    {
+////                        cJSON_AddNumberToObject(line_i, "lightType", 0);//Justin debug 这个地方很奇怪同样的命令，电脑的mqtt可以获取，手机的不行
+////                        cJSON_AddNumberToObject(line_i, "lightPower", 1);
+//                        cJSON_AddNumberToObject(line_i, "aabbccdde", 0);//Justin debug 这个地方很奇怪同样的命令，电脑的mqtt可以获取，手机的不行
+//                        cJSON_AddNumberToObject(line_i, "aabbccddee", 1);
+//                    }
+//                    else if(1 == line_no)
+//                    {
+//                        cJSON_AddNumberToObject(line_i, "lightType", 0);
+//                        cJSON_AddNumberToObject(line_i, "lightPower", 1);
+//                    }
+//                    if(CON_FAIL == line.conn_state)
+//                    {
+//                        cJSON_AddNumberToObject(line_i, "online", 0);//Justin debug test 该函数有问题
+//                    }
+//                    else
+//                    {
+//                        cJSON_AddNumberToObject(line_i, "online", 1);
+//                    }
+//                    cJSON_AddNumberToObject(line_i, "lightType", LINE_MODE_BY_POWER);//Justin debug test
+//                    cJSON_AddNumberToObject(line_i, "lightPower", line.d_value);
 
-                if(RT_NULL != item)
-                {
-                    cJSON_AddStringToObject(item, "name", line.name);
-                    cJSON_AddNumberToObject(item, "id", line.addr);
-                    cJSON_AddNumberToObject(item, "mainType", 4);//4 指的是line 类型
-                    cJSON_AddNumberToObject(item, "type", line.type);
-                    cJSON_AddNumberToObject(item, "lineNo", line_no + 1);
-                    cJSON_AddNumberToObject(item, "manual", line.manual);
-                    if(0 == line_no)
-                    {
-                        cJSON_AddNumberToObject(item, "lightType", GetSysSet()->line1Set.lightsType.value);
-                        cJSON_AddNumberToObject(item, "lightPower", GetSysSet()->line1Set.byPower.value);
-                    }
-                    else if(1 == line_no)
-                    {
-                        cJSON_AddNumberToObject(item, "lightType", GetSysSet()->line2Set.lightsType.value);
-                        cJSON_AddNumberToObject(item, "lightPower", GetSysSet()->line2Set.byPower.value);
-                    }
-                    if(CON_FAIL == line.conn_state)
-                    {
-                        cJSON_AddNumberToObject(item, "online", 0);
-                    }
-                    else
-                    {
-                        cJSON_AddNumberToObject(item, "online", 1);
-                    }
-                    cJSON_AddItemToArray(list, item);
-                }
-            }
+//                    cJSON_AddItemToArray(list, line_i);
+//                }
+//            }
 
             cJSON_AddItemToObject(json, "list", list);
         }
@@ -2910,8 +2960,14 @@ char *ReplyGetDeviceList(char *cmd, type_kv_c16 msgid)
         cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
         str = cJSON_PrintUnformatted(json);
 
+        LOG_I("device list length = %d",strlen(str));//Justin print
+
         cJSON_Delete(json);
 
+    }
+    else
+    {
+        LOG_E("ReplyGetDeviceList err");
     }
 
     return str;

@@ -21,6 +21,8 @@ u8                  ask_device          = 0;
 u8                  ask_sensor          = 0;
 u8                  ask_line            = 0;
 
+extern u8 saveModuleFlag;
+
 void initConnectState(void)
 {
     rt_memset(senConnectState, 0, sizeof(type_connect_t) * SENSOR_MAX);
@@ -111,9 +113,10 @@ u8 askLineHeart(type_monitor_t *monitor, rt_device_t serial)//Justin debug 未�
 
 u8 askDeviceHeart(type_monitor_t *monitor, rt_device_t serial)
 {
-    u8              ret                 = NO;
+    u8              ret                                 = NO;
     u8              buffer[8];
-    u16             crc16Result         = 0x0000;
+    static u8       manual_state[DEVICE_TIME4_MAX]      ={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+    u16             crc16Result                         = 0x0000;
 
     if(ask_device >= monitor->device_size)
     {
@@ -127,16 +130,150 @@ u8 askDeviceHeart(type_monitor_t *monitor, rt_device_t serial)
         buffer[1] = WRITE_SINGLE;
         buffer[2] = (monitor->device[ask_device].ctrl_addr >> 8) & 0x00FF;
         buffer[3] = monitor->device[ask_device].ctrl_addr & 0x00FF;
+
+        if(manual_state[ask_device] != monitor->device[ask_device]._manual[0].manual)
+        {
+            manual_state[ask_device] = monitor->device[ask_device]._manual[0].manual;
+
+            //如果是手动开启的话 记录开启时的时间
+            if(MANUAL_HAND_ON == manual_state[ask_device])
+            {
+                monitor->device[ask_device]._manual[0].manual_on_time_save = getTimeStamp();
+            }
+        }
+
         if(TIMER_TYPE == monitor->device[ask_device].type)
         {
+            if(MANUAL_HAND_ON == monitor->device[ask_device]._manual[0].manual)
+            {
+                monitor->device[ask_device]._storage[0]._time4_ctl.d_state = ON;
+
+                if(getTimeStamp() >=
+                        (monitor->device[ask_device]._manual[0].manual_on_time_save +
+                         monitor->device[ask_device]._manual[0].manual_on_time))
+                {
+                    monitor->device[ask_device]._manual[0].manual = MANUAL_NO_HAND;
+                    monitor->device[ask_device]._storage[0]._time4_ctl.d_state = OFF;
+                    saveModuleFlag = YES;
+                }
+            }
+            else if(MANUAL_HAND_OFF == monitor->device[ask_device]._manual[0].manual)
+            {
+                monitor->device[ask_device]._storage[0]._time4_ctl.d_state = OFF;
+            }
+
             buffer[4] = monitor->device[ask_device]._storage[0]._time4_ctl.d_state;
             buffer[5] = monitor->device[ask_device]._storage[0]._time4_ctl.d_value;
         }
         else
         {
+            //如果是手动开启的话需要对比开启时间 时间到达后需要返回非手动状态
+            if(MANUAL_HAND_ON == monitor->device[ask_device]._manual[0].manual)
+            {
+                if(HVAC_6_TYPE == monitor->device[ask_device].type)//Justin debug
+                {
+                    LOG_D("hvacMode = %d,manualOnMode %d",monitor->device[ask_device]._hvac.hvacMode,
+                            monitor->device[ask_device]._hvac.manualOnMode);//Justin debug
+                    if(HVAC_CONVENTIONAL == monitor->device[ask_device]._hvac.hvacMode)
+                    {
+                        if(HVAC_COOL == monitor->device[ask_device]._hvac.manualOnMode)
+                        {
+                            monitor->device[ask_device]._storage[0]._port.d_value = 0x08;//0x0C;
+                        }
+                        else if(HVAC_HEAT == monitor->device[ask_device]._hvac.manualOnMode)
+                        {
+                            monitor->device[ask_device]._storage[0]._port.d_value = 0x10;//0x14;
+                        }
+
+                    }
+                    else if(HVAC_PUM_O == monitor->device[ask_device]._hvac.hvacMode)
+                    {
+                        if(HVAC_COOL == monitor->device[ask_device]._hvac.manualOnMode)
+                        {
+                            monitor->device[ask_device]._storage[0]._port.d_value = 0x08;//0x0C;
+                        }
+                        else if(HVAC_HEAT == monitor->device[ask_device]._hvac.manualOnMode)
+                        {
+                            monitor->device[ask_device]._storage[0]._port.d_value = 0x18;//0x1C;
+                        }
+                    }
+                    else if(HVAC_PUM_B == monitor->device[ask_device]._hvac.hvacMode)
+                    {
+                        if(HVAC_COOL == monitor->device[ask_device]._hvac.manualOnMode)
+                        {
+                            monitor->device[ask_device]._storage[0]._port.d_value = 0x18;//0x1C;
+                        }
+                        else if(HVAC_HEAT == monitor->device[ask_device]._hvac.manualOnMode)
+                        {
+                            monitor->device[ask_device]._storage[0]._port.d_value = 0x08;//0x0C;
+                        }
+                    }
+                }
+                else
+                {
+                    monitor->device[ask_device]._storage[0]._port.d_state = ON;
+                }
+
+                if(getTimeStamp() >=
+                        (monitor->device[ask_device]._manual[0].manual_on_time_save +
+                         monitor->device[ask_device]._manual[0].manual_on_time))
+                {
+                    monitor->device[ask_device]._manual[0].manual = MANUAL_NO_HAND;
+
+                    if(HVAC_6_TYPE == monitor->device[ask_device].type)
+                    {
+                        if(HVAC_CONVENTIONAL == monitor->device[ask_device]._hvac.hvacMode)
+                        {
+                            if(HVAC_COOL == monitor->device[ask_device]._hvac.manualOnMode)
+                            {
+                                monitor->device[ask_device]._storage[0]._port.d_value &= 0xF7;//0xF3;
+                            }
+                            else if(HVAC_HEAT == monitor->device[ask_device]._hvac.manualOnMode)
+                            {
+                                monitor->device[ask_device]._storage[0]._port.d_value &= 0xEF;//0xEB;
+                            }
+
+                        }
+                        else if(HVAC_PUM_O == monitor->device[ask_device]._hvac.hvacMode)
+                        {
+                            if(HVAC_COOL == monitor->device[ask_device]._hvac.manualOnMode)
+                            {
+                                monitor->device[ask_device]._storage[0]._port.d_value &= 0xF7;//0xF3;
+                            }
+                            else if(HVAC_HEAT == monitor->device[ask_device]._hvac.manualOnMode)
+                            {
+                                monitor->device[ask_device]._storage[0]._port.d_value &= 0xE7;//0xE3;
+                            }
+                        }
+                        else if(HVAC_PUM_B == monitor->device[ask_device]._hvac.hvacMode)
+                        {
+                            if(HVAC_COOL == monitor->device[ask_device]._hvac.manualOnMode)
+                            {
+                                monitor->device[ask_device]._storage[0]._port.d_value &= 0xE7;//0xE3;
+                            }
+                            else if(HVAC_HEAT == monitor->device[ask_device]._hvac.manualOnMode)
+                            {
+                                monitor->device[ask_device]._storage[0]._port.d_value &= 0xF7;//0xF3;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        monitor->device[ask_device]._storage[0]._port.d_state = OFF;
+                    }
+                    saveModuleFlag = YES;
+                }
+            }
+            else if(MANUAL_HAND_OFF == monitor->device[ask_device]._manual[0].manual)
+            {
+                monitor->device[ask_device]._storage[0]._port.d_state = OFF;
+            }
+
             buffer[4] = monitor->device[ask_device]._storage[0]._port.d_state;
             buffer[5] = monitor->device[ask_device]._storage[0]._port.d_value;
         }
+
+
         crc16Result = usModbusRTU_CRC(buffer, 6);
         buffer[6] = crc16Result;                             //CRC16低位
         buffer[7] = (crc16Result>>8);                        //CRC16高位

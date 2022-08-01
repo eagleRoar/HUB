@@ -241,6 +241,7 @@ struct sys_recipe{
     u8 recipe_size;
     recipe_t recipe[RECIPE_LIST_MAX];
     u8 allot_add[REC_ALLOT_ADDR];
+    u8 saveFlag;
 };
 
 //Justin debug 这是灌溉版本的
@@ -259,6 +260,7 @@ struct sys_tank{
     u16         crc;
     u8          tank_size;
     tank_t      tank[TANK_LIST_MAX];
+    u8          saveFlag;
 };
 
 /****************************     灌溉部分的内容*****/
@@ -316,7 +318,7 @@ struct sysSet{
 #define         CMD_GET_RECIPE          "getRecipeList"         //获取配方列表
 #define         CMD_GET_RECIPE_ALL      "getRecipeListAll"      //获取全部配方列表
 #define         CMD_ADD_RECIPE          "addRecipe"             //增加配方
-#define         CMD_DELETE_RECIPE       "delRecipe"             //删除配方
+#define         CMD_DELETE_RECIPE       "delRecipe"             //删除配方          //Justin debug 还没完成
 #define         CMD_GET_RECIPE_SET      "getRecipeSetting"      //获取配方设置
 #define         CMD_SET_RECIPE_SET      "setRecipeSetting"      //设置配方设置
 #define         CMD_GET_TANK_INFO       "getTankInfo"           //获取桶设置
@@ -357,7 +359,8 @@ void CmdGetSysSet(char *, cloudcmd_t *);
 void CmdGetWarn(char *, cloudcmd_t *);
 void CmdSetWarn(char *, cloudcmd_t *, sys_set_t *);
 void CmdGetRecipeList(char *, cloudcmd_t *);
-void CmdGetRecipeListAll(char *data, cloudcmd_t *cmd);
+void CmdGetRecipeListAll(char *data, cloudcmd_t *);
+void CmdGetTankInfo(char *data, cloudcmd_t *);
 char *SendHubReport(char *, sys_set_t *);
 char *SendHubReportWarn(char *, sys_set_t *, u8, u16);
 char *ReplySetSchedule(char *, cloudcmd_t);

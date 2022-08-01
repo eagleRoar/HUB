@@ -110,19 +110,23 @@ void LedTaskInit(void)
  */
 void LedTaskEntry(void* parameter)
 {
-    static u8 ledState = 0;
-
     while(1)
     {
+
+//        LedProgram();
+
+        rt_thread_mdelay(500);
+    }
+}
+
+void LedProgram(void)
+{
+    static u8 ledState = 0;
 //        Ctrl_LED(LED_SENSOR,0);//Justin debug
 //        Ctrl_LED(LED_DEVICE,0);
         Ctrl_LED(LED_LIGHT,ledState++ % 2);
 //        Ctrl_LED(LED_COMMS,0);
 //        Ctrl_LED(LED_BLUETOOTH,0);
 //        Ctrl_LED(LED_POWER,0);
-
-
-        rt_thread_mdelay(500);
-    }
 }
 

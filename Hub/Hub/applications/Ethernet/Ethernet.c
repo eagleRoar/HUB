@@ -104,6 +104,7 @@ void TcpSendTaskEntry(void* parameter)
                     analyzeCloudData(tcpRecvBuffer.buffer);
 
                     ReplyDataToCloud(RT_NULL, (u8 *)tcpSendBuffer.buffer, &length, NO);
+
                     if (RT_EOK != TcpSendMsg(&sock, (u8 *)tcpSendBuffer.buffer, length))
                     {
                         LOG_E("send tcp err");

@@ -92,6 +92,7 @@ void rtcTest(type_sys_time);
 char *getRealTime(void);
 time_t getTimeStamp(void);
 void printTimer12(timer12_t);
+void LedProgram(void);
 //void PrintHumiSet(proHumiSet_t set);
 //void PrintTempSet(proTempSet_t set);
 #endif /* APPLICATIONS_GPIO_H_ */

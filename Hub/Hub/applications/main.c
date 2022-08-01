@@ -47,10 +47,14 @@ int main(void)
     static u8       sensor_size     = 0;
     static u8       device_size     = 0;
     static u8       timer12_size    = 0;
+    static u8       Timer100msTouch    = OFF;
     static u8       Timer1sTouch    = OFF;
     static u8       Timer60sTouch   = OFF;
+    static u8       TimerInitTouch    = OFF;
+    static u16      time100mS          = 0;
     static u16      time1S          = 0;
     static u16      time60S         = 0;
+    static u16      timeInit         = 0;
     type_sys_time   time;
 
     rt_memset(warn, 0, WARN_MAX);
@@ -62,7 +66,7 @@ int main(void)
     GpioInit();
 
     //初始化灯光线程,仅作为呼吸灯
-    LedTaskInit();
+//    LedTaskInit();
 
     //oled1309屏线程初始化
     OledTaskInit();
@@ -72,11 +76,11 @@ int main(void)
 
     //等待网络部分初始化完成 */
     do {
-        time1S = TimerTask(&time1S, 100, &Timer1sTouch);         //10秒任务定时器
+        timeInit = TimerTask(&timeInit, 100, &TimerInitTouch);         //10秒任务定时器
         ethStatus = GetEthDriverLinkStatus();
         LOG_D("waitting for eth init...");
 
-        if(ON == Timer1sTouch)
+        if(ON == TimerInitTouch)
         {
             LOG_E("Ethernet divice init fail......");
             break;
@@ -110,7 +114,11 @@ int main(void)
 
     while(1)
     {
-        time60S = TimerTask(&time60S, 60, &Timer60sTouch);         //60秒任务定时器
+        time100mS = TimerTask(&time100mS, 5, &Timer100msTouch);            //1秒任务定时器
+        time1S = TimerTask(&time1S, 50, &Timer1sTouch);            //1秒任务定时器
+        time60S = TimerTask(&time60S, 3000, &Timer60sTouch);         //60秒任务定时器
+        LedProgram();
+
         /* 监视网络模块是否上线 */
         ethStatus = GetEthDriverLinkStatus();//Justin debug
         if(LINKUP == ethStatus)
@@ -121,6 +129,23 @@ int main(void)
                 /* 重新上线,初始化网络任务 */
                 EthernetTaskInit();
                 LOG_D("EthernetTask init OK");
+            }
+        }
+
+        //100ms
+        if(ON == Timer100msTouch)
+        {
+            if(1 == GetRecvMqttFlg())
+            {
+                LOG_D("main reply...........");//Justin debug
+                if(RT_EOK == ReplyDataToCloud(GetMqttClient(), RT_NULL, RT_NULL, YES))
+                {
+                    SetRecvMqttFlg(0);
+                }
+                else
+                {
+                    LOG_E("reply ReplyDataToCloud err");//Justin  debug 问题:为什么有加输出的命令手机就可以正常返回get device list命令
+                }
             }
         }
 
@@ -147,74 +172,73 @@ int main(void)
             }
         }
 
-        //分辨白天黑夜
-        if(DAY_BY_TIME == GetSysSet()->sysPara.dayNightMode)//按时间分辨
+        //1s event
+        if(ON == Timer1sTouch)
         {
-            getRealTimeForMat(&time);
-            if(((time.hour * 60 + time.minute) > GetSysSet()->sysPara.dayTime) &&
-               ((time.hour * 60 + time.minute) <= GetSysSet()->sysPara.nightTime))
+            //分辨白天黑夜
+            if(DAY_BY_TIME == GetSysSet()->sysPara.dayNightMode)//按时间分辨
             {
-                GetSysSet()->dayOrNight = DAY_TIME;
+                getRealTimeForMat(&time);
+                if(((time.hour * 60 + time.minute) > GetSysSet()->sysPara.dayTime) &&
+                   ((time.hour * 60 + time.minute) <= GetSysSet()->sysPara.nightTime))
+                {
+                    GetSysSet()->dayOrNight = DAY_TIME;
+                }
+                else
+                {
+                    GetSysSet()->dayOrNight = NIGHT_TIME;
+                }
+
             }
-            else
+            else if(DAY_BY_PHOTOCELL == GetSysSet()->sysPara.dayNightMode)//按灯光分辨
             {
-                GetSysSet()->dayOrNight = NIGHT_TIME;
+                for(u8 index = 0; index < GetSensorByType(GetMonitor(), BHS_TYPE)->storage_size; index++)
+                {
+                    if(F_S_LIGHT == GetSensorByType(GetMonitor(), BHS_TYPE)->__stora[index].func)
+                    {
+                        if(GetSensorByType(GetMonitor(), BHS_TYPE)->__stora[index].value > GetSysSet()->sysPara.photocellSensitivity)
+                        {
+                            GetSysSet()->dayOrNight = DAY_TIME;
+                        }
+                        else
+                        {
+                            GetSysSet()->dayOrNight = NIGHT_TIME;
+                        }
+                    }
+                }
             }
 
-        }
-        else if(DAY_BY_PHOTOCELL == GetSysSet()->sysPara.dayNightMode)//按灯光分辨
-        {
-            for(u8 index = 0; index < GetSensorByType(GetMonitor(), BHS_TYPE)->storage_size; index++)
+//            LOG_D("sensor_size = %d, GetMonitor()->sensor_size = %d",sensor_size,GetMonitor()->sensor_size);
+            if(sensor_size != GetMonitor()->sensor_size)
             {
-                if(F_S_LIGHT == GetSensorByType(GetMonitor(), BHS_TYPE)->__stora[index].func)
+                sensor_size = GetMonitor()->sensor_size;
+
+                for(int index = 0; index < sensor_size; index++)
                 {
-                    if(GetSensorByType(GetMonitor(), BHS_TYPE)->__stora[index].value > GetSysSet()->sysPara.photocellSensitivity)
-                    {
-                        GetSysSet()->dayOrNight = DAY_TIME;
-                    }
-                    else
-                    {
-                        GetSysSet()->dayOrNight = NIGHT_TIME;
-                    }
+                    printSensor(GetMonitor()->sensor[index]);
+                }
+            }
+            if(device_size != GetMonitor()->device_size)
+            {
+                device_size = GetMonitor()->device_size;
+
+                for(int index = 0; index < device_size; index++)
+                {
+                    printDevice(GetMonitor()->device[index]);
+                }
+            }
+            if(timer12_size != GetMonitor()->timer12_size)
+            {
+                timer12_size = GetMonitor()->timer12_size;
+
+                for(int index = 0; index < timer12_size; index++)
+                {
+                    printTimer12(GetMonitor()->time12[index]);
                 }
             }
         }
 
-        if(1 == GetRecvMqttFlg())
-        {
-            ReplyDataToCloud(GetMqttClient(), RT_NULL, RT_NULL, YES);
-            SetRecvMqttFlg(0);
-        }
-
-        if(sensor_size != GetMonitor()->sensor_size)
-        {
-            sensor_size = GetMonitor()->sensor_size;
-
-            for(int index = 0; index < sensor_size; index++)
-            {
-                printSensor(GetMonitor()->sensor[index]);
-            }
-        }
-        if(device_size != GetMonitor()->device_size)
-        {
-            device_size = GetMonitor()->device_size;
-
-            for(int index = 0; index < device_size; index++)
-            {
-                printDevice(GetMonitor()->device[index]);
-            }
-        }
-        if(timer12_size != GetMonitor()->timer12_size)
-        {
-            timer12_size = GetMonitor()->timer12_size;
-
-            for(int index = 0; index < timer12_size; index++)
-            {
-                printTimer12(GetMonitor()->time12[index]);
-            }
-        }
-
-        rt_thread_mdelay(1000);
+        rt_thread_mdelay(20);
     }
 
     return RT_EOK;

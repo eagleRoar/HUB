@@ -21,8 +21,10 @@ static char sd_thread_stack[1024*3];
 static struct rt_thread sd_thread;
 
 struct sdCardState      sdCard;
-extern sys_set_t *GetSysSet(void);
+
 extern u8 saveModuleFlag;
+extern sys_set_t *GetSysSet(void);
+extern sys_tank_t *GetSysTank(void);
 
 /**
  * @brief SD处理线程初始化
@@ -91,6 +93,10 @@ void sd_dfs_event_entry(void* parameter)
                             {
                                 LOG_E("TackSysSetFromSD err");
                             }
+                            else
+                            {
+                                LOG_I("TackSysSetFromSD OK");
+                            }
 
                             if(RT_EOK != TackRecipeFromSD(GetSysRecipt()))
                             {
@@ -99,6 +105,15 @@ void sd_dfs_event_entry(void* parameter)
                             else
                             {
                                 LOG_I("TackRecipeFromSD OK");
+                            }
+
+                            if(RT_EOK != TackSysTankFromSD(GetSysTank()))
+                            {
+                                LOG_E("TackSysTankFromSD err");
+                            }
+                            else
+                            {
+                                LOG_I("TackSysTankFromSD OK");
                             }
 
                             initHubinfo();//Justin debug 仅仅测试
@@ -162,6 +177,38 @@ void sd_dfs_event_entry(void* parameter)
                         else
                         {
                             LOG_I("saveSysSet fail");
+                        }
+                    }
+
+                    if(YES == GetSysRecipt()->saveFlag)
+                    {
+                        GetSysRecipt()->crc = usModbusRTU_CRC((u8 *)GetSysRecipt()+2, sizeof(sys_recipe_t) - 2);
+                        LOG_I("----------------sys_recipe save OK");
+                        GetSysRecipt()->saveFlag = NO;
+
+                        if(RT_EOK == SaveSysRecipe(GetSysRecipt()))
+                        {
+                            LOG_I("SaveSysRecipe OK");
+                        }
+                        else
+                        {
+                            LOG_I("SaveSysRecipe fail");
+                        }
+                    }
+
+                    if(YES == GetSysTank()->saveFlag)//Justin debug
+                    {
+                        GetSysTank()->crc = usModbusRTU_CRC((u8 *)GetSysTank() + 2, sizeof(sys_tank_t) - 2);
+                        LOG_I("----------------sys_tank save OK");
+                        GetSysTank()->saveFlag = NO;
+
+                        if(RT_EOK == SaveSysTank(GetSysTank()))
+                        {
+                            LOG_I("SaveSysTank OK");
+                        }
+                        else
+                        {
+                            LOG_I("SaveSysTank fail");
                         }
                     }
                 }
