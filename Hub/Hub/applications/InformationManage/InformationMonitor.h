@@ -187,12 +187,11 @@ struct line{
     char            name[MODULE_NAMESZ];                    //产品名称
     u8              addr;                                   //hub管控的地址
     u16             ctrl_addr;                              //终端控制的寄存器地址
-    u8              manual;
-    u16             manual_on_time;
     u8              d_state;                                //device 的状态位
     u8              d_value;                                //device 的控制数值
     u8              save_state;                             //是否已经存储
     u8              conn_state;
+    type_manual_t   _manual;
 };
 
 

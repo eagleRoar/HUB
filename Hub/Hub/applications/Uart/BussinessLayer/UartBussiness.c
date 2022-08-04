@@ -13,6 +13,7 @@
 #include "Module.h"
 #include "InformationMonitor.h"
 
+
 type_connect_t      senConnectState[SENSOR_MAX];
 type_connect_t      devConnectState[DEVICE_TIME4_MAX];
 type_connect_t      timeConnectState[TIME12_MAX];
@@ -22,6 +23,7 @@ u8                  ask_sensor          = 0;
 u8                  ask_line            = 0;
 
 extern u8 saveModuleFlag;
+extern sys_set_t *GetSysSet(void);
 
 void initConnectState(void)
 {
@@ -76,9 +78,14 @@ u8 askSensorStorage(type_monitor_t *monitor, rt_device_t serial)
 
 u8 askLineHeart(type_monitor_t *monitor, rt_device_t serial)//Justin debug 未测试
 {
-    u8              ret                 = NO;
+    u8              ret                         = NO;
     u8              buffer[8];
-    u16             crc16Result         = 0x0000;
+    u16             crc16Result                 = 0x0000;
+    proLine_t       line_set;
+    static u8       manual_state[LINE_MAX]      = {0,0};
+    static u8       value_pre[LINE_MAX]         = {0,0};
+    static u8       state_pre[LINE_MAX]         = {0,0};
+    static time_t   protectTime[LINE_MAX]       = {0,0};
 
     if(ask_line >= monitor->line_size)
     {
@@ -88,12 +95,89 @@ u8 askLineHeart(type_monitor_t *monitor, rt_device_t serial)//Justin debug 未�
 
     if(0 < monitor->line_size)
     {
+//        if(0 == ask_line)
+//        {
+//            LOG_D("askLineHeart d_state = %d, d_value = %d",
+//                    monitor->line[ask_line].d_state,monitor->line[ask_line].d_value);//Justin debug
+//        }
+
         buffer[0] = monitor->line[ask_line].addr;
         buffer[1] = WRITE_SINGLE;
         buffer[2] = (monitor->line[ask_line].ctrl_addr >> 8) & 0x00FF;
         buffer[3] = monitor->line[ask_line].ctrl_addr & 0x00FF;
+
+        if(manual_state[ask_line] != monitor->line[ask_line]._manual.manual)
+        {
+            manual_state[ask_line] = monitor->line[ask_line]._manual.manual;
+
+            if(MANUAL_HAND_ON == manual_state[ask_line])
+            {
+                monitor->line[ask_line]._manual.manual_on_time_save = getTimeStamp();
+            }
+        }
+
+        if(MANUAL_HAND_ON == monitor->line[ask_line]._manual.manual)
+        {
+            monitor->line[ask_line].d_state = ON;
+            value_pre[ask_line] = monitor->line[ask_line].d_value;
+            monitor->line[ask_line].d_value = 100;
+
+            if(getTimeStamp() >=
+                    (monitor->line[ask_line]._manual.manual_on_time_save +
+                     monitor->line[ask_line]._manual.manual_on_time))
+            {
+                monitor->line[ask_line]._manual.manual = MANUAL_NO_HAND;
+                monitor->line[ask_line].d_state = OFF;
+                monitor->line[ask_line].d_value = value_pre[ask_line];
+                saveModuleFlag = YES;
+            }
+            if(0 == ask_line)
+            {
+                LOG_W("hand on line state = %d, value = %d",monitor->line[ask_line].d_state,monitor->line[ask_line].d_value);//Justin debug
+            }
+        }
+        else if(MANUAL_HAND_OFF == monitor->line[ask_line]._manual.manual)
+        {
+            monitor->line[ask_line].d_state = OFF;
+        }
+        else if(MANUAL_NO_HAND == monitor->line[ask_line]._manual.manual)
+        {
+            //如果是HID 类型的灯, 保护时间不足的话就不能开
+            if(0 == ask_line)
+            {
+                line_set = GetSysSet()->line1Set;
+            }
+            else if(1 == ask_line)
+            {
+                line_set = GetSysSet()->line2Set;
+            }
+
+            if(LINE_HID == line_set.lightsType.value)
+            {
+                if(ON == monitor->line[ask_line].d_state)
+                {
+                    if(getTimeStamp() <= protectTime[ask_line] + line_set.hidDelay.value * 60)
+                    {
+                        monitor->line[ask_line].d_state = OFF;
+                        LOG_W("name %s is in hot start delay",monitor->line[ask_line].name);
+                    }
+                }
+            }
+        }
+
+        if(state_pre[ask_line] != monitor->line[ask_line].d_state)
+        {
+            state_pre[ask_line] = monitor->line[ask_line].d_state;
+
+            if(OFF == monitor->line[ask_line].d_state)
+            {
+                protectTime[ask_line] = getTimeStamp();
+            }
+        }
+
         buffer[4] = monitor->line[ask_line].d_state;
-        buffer[5] = monitor->line[ask_line].d_value;
+        buffer[5] = monitor->line[ask_line].d_value;//Justin debug 仅仅测试
+
         crc16Result = usModbusRTU_CRC(buffer, 6);
         buffer[6] = crc16Result;                             //CRC16低位
         buffer[7] = (crc16Result>>8);                        //CRC16高位
@@ -115,8 +199,10 @@ u8 askDeviceHeart(type_monitor_t *monitor, rt_device_t serial)
 {
     u8              ret                                 = NO;
     u8              buffer[8];
-    static u8       manual_state[DEVICE_TIME4_MAX]      ={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
     u16             crc16Result                         = 0x0000;
+    static u8       manual_state[DEVICE_TIME4_MAX]      ={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+    static u8       state_pre[DEVICE_TIME4_MAX]         ={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+    static time_t   protectTime[DEVICE_TIME4_MAX]       ={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
     if(ask_device >= monitor->device_size)
     {
@@ -268,15 +354,59 @@ u8 askDeviceHeart(type_monitor_t *monitor, rt_device_t serial)
             {
                 monitor->device[ask_device]._storage[0]._port.d_state = OFF;
             }
+            else if(MANUAL_NO_HAND == monitor->device[ask_device]._manual[0].manual)
+            {
+                //制冷 制热 除湿
+                if((COOL_TYPE == monitor->device[ask_device].type) || (HEAT_TYPE == monitor->device[ask_device].type) ||
+                   (DEHUMI_TYPE == monitor->device[ask_device].type))
+                {
+                    if(ON == monitor->device[ask_device]._storage[0]._port.d_state)
+                    {
+                        if(ON == monitor->device[ask_device].hotStartDelay)
+                        {
+                            if(getTimeStamp() <= protectTime[ask_device] + 5 * 60)//保护时间为5分钟
+                            {
+                                monitor->device[ask_device]._storage[0]._port.d_state = OFF;//压缩机保护
+                                LOG_W("name %s is in hot start delay",monitor->device[ask_device].name);
+                            }
+                        }
+                    }
+                }
+            }
+
+            if(state_pre[ask_device] != monitor->device[ask_device]._storage[0]._port.d_state)
+            {
+                state_pre[ask_device] = monitor->device[ask_device]._storage[0]._port.d_state;
+
+                //制冷 制热 除湿
+                if((COOL_TYPE == monitor->device[ask_device].type) || (HEAT_TYPE == monitor->device[ask_device].type) ||
+                   (DEHUMI_TYPE == monitor->device[ask_device].type))
+                {
+                    if(OFF == state_pre[ask_device])
+                    {
+                        protectTime[ask_device] = getTimeStamp();
+                    }
+                }
+            }
+
+            //设置HVAC 风扇常开
+            if(HVAC_6_TYPE == monitor->device[ask_device].type)
+            {
+                if(ON == monitor->device[ask_device]._hvac.fanNormallyOpen)
+                {
+                    monitor->device[ask_device]._storage[0]._port.d_value |= 0x04;
+                }
+            }
 
             buffer[4] = monitor->device[ask_device]._storage[0]._port.d_state;
             buffer[5] = monitor->device[ask_device]._storage[0]._port.d_value;
         }
 
-
         crc16Result = usModbusRTU_CRC(buffer, 6);
         buffer[6] = crc16Result;                             //CRC16低位
         buffer[7] = (crc16Result>>8);                        //CRC16高位
+
+//        LOG_D("-------------------ask name = %s",monitor->device[ask_device].name);//Justin debug
 
         rt_device_write(serial, 0, buffer, 8);
         devConnectState[ask_device].send_count ++;
@@ -293,6 +423,14 @@ u8 askDeviceHeart(type_monitor_t *monitor, rt_device_t serial)
 
 void UpdateModuleConnect(type_monitor_t *monitor, u8 addr)
 {
+//    for(u8 index = 0; index < monitor->device_size; index++)
+//    {
+//        if(addr == monitor->device[index].addr)
+//        {
+//            LOG_D("-----------recv name %s",monitor->device[index].name);//Justin debug
+//        }
+//    }
+
     if(addr == monitor->device[ask_device].addr)
     {
         devConnectState[ask_device].send_state = OFF;

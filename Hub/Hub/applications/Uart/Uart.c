@@ -240,13 +240,15 @@ void SensorUart2TaskEntry(void* parameter)
                 line_start = 1;
 
                 MonitorModuleConnect(GetMonitor());
-//                tempProgram(GetMonitor());
-//                co2Program(GetMonitor(), 1000);
-//                humiProgram(GetMonitor());
-//                timmerProgram(GetMonitor());
-//                findLocation(GetMonitor(), &sys_set.cloudCmd, uart2_serial);
+                tempProgram(GetMonitor());
+                co2Program(GetMonitor(), 1000);
+                humiProgram(GetMonitor());
+                timmerProgram(GetMonitor());
+                findLocation(GetMonitor(), &sys_set.cloudCmd, uart2_serial);
 //                lineProgram(GetMonitor(), 0, 1000);//line1//Justin debug 仅仅测试
 //                lineProgram(GetMonitor(), 1, 1000);//line2
+                lineProgram_new(GetMonitor(), 0, 1000);//line1//Justin debug 仅仅测试
+                lineProgram_new(GetMonitor(), 1, 1000);//line2
                 warnProgram(GetMonitor(), GetSysSet());
                 GetRealCal(GetSysSet(), GetSysRecipt());//通过日程获取配方设置
 

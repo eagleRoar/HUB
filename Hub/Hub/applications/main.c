@@ -88,11 +88,11 @@ int main(void)
         rt_thread_mdelay(100);
     } while (LINKDOWN == ethStatus);
 
-    if(LINKUP == ethStatus)
-    {
-        /*初始化网络线程，处理和主机之间的交互，Tcp和Udp协议*/
-        EthernetTaskInit();
-    }
+//    if(LINKUP == ethStatus)
+//    {
+//        /*初始化网络线程，处理和主机之间的交互，Tcp和Udp协议*/
+//        EthernetTaskInit();
+//    }
 
     //初始化SD卡处理线程
     SDCardTaskInit();
@@ -117,20 +117,20 @@ int main(void)
         time100mS = TimerTask(&time100mS, 5, &Timer100msTouch);            //1秒任务定时器
         time1S = TimerTask(&time1S, 50, &Timer1sTouch);            //1秒任务定时器
         time60S = TimerTask(&time60S, 3000, &Timer60sTouch);         //60秒任务定时器
-        LedProgram();
+
 
         /* 监视网络模块是否上线 */
-        ethStatus = GetEthDriverLinkStatus();//Justin debug
-        if(LINKUP == ethStatus)
-        {
-            if(RT_NULL == rt_thread_find(UDP_TASK) &&
-               RT_NULL == rt_thread_find(TCP_SEND_TASK))
-            {
-                /* 重新上线,初始化网络任务 */
-                EthernetTaskInit();
-                LOG_D("EthernetTask init OK");
-            }
-        }
+//        ethStatus = GetEthDriverLinkStatus();//Justin debug
+//        if(LINKUP == ethStatus)
+//        {
+//            if(RT_NULL == rt_thread_find(UDP_TASK) &&
+//               RT_NULL == rt_thread_find(TCP_SEND_TASK))
+//            {
+//                /* 重新上线,初始化网络任务 */
+//                EthernetTaskInit();
+//                LOG_D("EthernetTask init OK");
+//            }
+//        }
 
         //100ms
         if(ON == Timer100msTouch)
@@ -175,6 +175,8 @@ int main(void)
         //1s event
         if(ON == Timer1sTouch)
         {
+            LedProgram();
+
             //分辨白天黑夜
             if(DAY_BY_TIME == GetSysSet()->sysPara.dayNightMode)//按时间分辨
             {

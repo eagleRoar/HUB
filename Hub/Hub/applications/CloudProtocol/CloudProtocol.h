@@ -29,6 +29,7 @@ rt_err_t ReplyDataToCloud(mqtt_client *, u8 *, u16 *, u8);
 hub_t *GetHub(void);
 void SendDataToCloud(mqtt_client *client, char *cmd, u8 warn_no, u16 value);
 void lineProgram(type_monitor_t *, u8, u16);
+void lineProgram_new(type_monitor_t *, u8 , u16);
 time_t ReplyTimeStamp(void);
 u16 getVpd(void);
 void ctrDevice(type_monitor_t *, u8, u16);

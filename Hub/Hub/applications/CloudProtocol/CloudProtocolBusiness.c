@@ -381,7 +381,10 @@ void CmdSetPortSet(char *data, cloudcmd_t *cmd)
             rt_memcpy(temp_v16.name, "manualOnTime", KEYVALUE_NAME_SIZE);
             GetValueU16(temp, &temp_v16);
             device->_manual[port].manual_on_time = temp_v16.value;
-            GetValueByU8(temp, "hotStartDelay", &device->hotStartDelay);
+            if((COOL_TYPE == device->type) || (HEAT_TYPE == device->type) || (DEHUMI_TYPE == device->type))
+            {
+                GetValueByU8(temp, "hotStartDelay", &device->hotStartDelay);
+            }
             if(HVAC_6_TYPE == device->type)
             {
                 rt_memcpy(temp_v8.name, "manualOnMode", KEYVALUE_NAME_SIZE);
@@ -494,8 +497,8 @@ void CmdSetPortSet(char *data, cloudcmd_t *cmd)
         }
         else if(line != RT_NULL)
         {
-            GetValueByU8(temp, "manual", &line->manual);
-            GetValueByU16(temp, "manualOnTime", &line->manual_on_time);
+            GetValueByU8(temp, "manual", &line->_manual.manual);
+            GetValueByU16(temp, "manualOnTime", &line->_manual.manual_on_time);
         }
         else
         {
@@ -1190,8 +1193,14 @@ void CmdSetLine(char *data, proLine_t *line)
         GetValueC16(temp, &line->msgid);
         GetValueU8(temp, &line->lightsType);
         GetValueU8(temp, &line->brightMode);
-        GetValueU8(temp, &line->byPower);
-        GetValueU16(temp, &line->byAutoDimming);
+        if(LINE_MODE_BY_POWER == line->brightMode.value)
+        {
+            GetValueU8(temp, &line->byPower);
+        }
+        else if(LINE_MODE_AUTO_DIMMING == line->brightMode.value)
+        {
+            GetValueU16(temp, &line->byAutoDimming);
+        }
         GetValueU8(temp, &line->mode);
         if(LINE_BY_TIMER == line->mode.value)
         {
@@ -1209,7 +1218,11 @@ void CmdSetLine(char *data, proLine_t *line)
             GetValueU16(temp, &line->duration);
             GetValueU16(temp, &line->pauseTime);
         }
-        GetValueU8(temp, &line->hidDelay);
+
+        if(LINE_HID == line->lightsType.value)
+        {
+            GetValueU8(temp, &line->hidDelay);
+        }
         GetValueU16(temp, &line->tempStartDimming);
         GetValueU16(temp, &line->tempOffDimming);
         GetValueU8(temp, &line->sunriseSunSet);
@@ -2512,7 +2525,12 @@ char *ReplySetPortSet(char *cmd, cloudcmd_t cloud)
         {
             cJSON_AddNumberToObject(json, "manual", device->_manual[port].manual);
             cJSON_AddNumberToObject(json, "manualOnTime", device->_manual[port].manual_on_time);
-            cJSON_AddNumberToObject(json, "hotStartDelay", device->hotStartDelay);
+
+            if((COOL_TYPE == device->type) || (HEAT_TYPE == device->type) || (DEHUMI_TYPE == device->type))
+            {
+                cJSON_AddNumberToObject(json, "hotStartDelay", device->hotStartDelay);
+            }
+
             if(HVAC_6_TYPE == device->type)
             {
                 cJSON_AddNumberToObject(json, "manualOnMode", device->_hvac.manualOnMode);
@@ -2661,7 +2679,12 @@ char *ReplyGetPortSet(char *cmd, cloudcmd_t cloud)
             cJSON_AddNumberToObject(json, "type", module->type);
             cJSON_AddNumberToObject(json, "manual", module->_manual[port].manual);
             cJSON_AddNumberToObject(json, "manualOnTime", module->_manual[port].manual_on_time);
-            cJSON_AddNumberToObject(json, "hotStartDelay", module->hotStartDelay);
+
+            if((COOL_TYPE == module->type) || (HEAT_TYPE == module->type) || (DEHUMI_TYPE == module->type))
+            {
+                cJSON_AddNumberToObject(json, "hotStartDelay", module->hotStartDelay);
+            }
+
             if(HVAC_6_TYPE == module->type)
             {
                 cJSON_AddNumberToObject(json, "manualOnMode", module->_hvac.manualOnMode);
@@ -2782,8 +2805,8 @@ char *ReplyGetPortSet(char *cmd, cloudcmd_t cloud)
             cJSON_AddNumberToObject(json, "id", line->addr);
             cJSON_AddStringToObject(json, "name", line->name);
             cJSON_AddNumberToObject(json, "type", line->type);
-            cJSON_AddNumberToObject(json, "manual", line->manual);
-            cJSON_AddNumberToObject(json, "manualOnTime", line->manual_on_time);
+            cJSON_AddNumberToObject(json, "manual", line->_manual.manual);
+            cJSON_AddNumberToObject(json, "manualOnTime", line->_manual.manual_on_time);
 
             str = cJSON_PrintUnformatted(json);
 
@@ -2813,8 +2836,6 @@ char *ReplyGetDeviceList(char *cmd, type_kv_c16 msgid)
     u8      index       = 0;
     u8      line_no     = 0;
     u8      storage     = 0;
-    u8      temp        = 0;
-    u8      temp1        = 0;
     char    *str        = RT_NULL;
     char    name[16];
     device_time4_t   module;
@@ -2860,7 +2881,14 @@ char *ReplyGetDeviceList(char *cmd, type_kv_c16 msgid)
                     if(1 == module.storage_size)
                     {
                         cJSON_AddNumberToObject(item, "manual", module._manual[0].manual);
-                        cJSON_AddNumberToObject(item, "workingStatus", module._storage[0]._port.d_state);
+                        if(TIMER_TYPE == module.type)
+                        {
+                            cJSON_AddNumberToObject(item, "workingStatus", module._storage[0]._time4_ctl.d_state);
+                        }
+                        else
+                        {
+                            cJSON_AddNumberToObject(item, "workingStatus", module._storage[0]._port.d_state);
+                        }
                         cJSON_AddNumberToObject(item, "color", module.color);
                     }
                     else if(module.storage_size > 1 && module.storage_size <= DEVICE_PORT_SZ)
@@ -2906,49 +2934,48 @@ char *ReplyGetDeviceList(char *cmd, type_kv_c16 msgid)
             }
 
 //            LOG_D("GetMonitor()->line_size = %d",GetMonitor()->line_size);//Justin debug
-//            for(line_no = 0; line_no < GetMonitor()->line_size; line_no++)
-//            {
-//                line = GetMonitor()->line[line_no];
-//
-//                line_i = cJSON_CreateObject();
-//
-//                if(RT_NULL != line_i)
-//                {
-//                    cJSON_AddStringToObject(line_i, "name", line.name);
-//                    cJSON_AddNumberToObject(line_i, "id", line.addr);
-//                    cJSON_AddNumberToObject(line_i, "mainType", 4);//4 指的是line 类型
-//                    cJSON_AddNumberToObject(line_i, "type", line.type);
-//                    cJSON_AddNumberToObject(line_i, "lineNo", line_no + 1);
-//                    cJSON_AddNumberToObject(line_i, "manual", line.manual);
+            for(line_no = 0; line_no < GetMonitor()->line_size; line_no++)
+            {
+                line = GetMonitor()->line[line_no];
+
+                line_i = cJSON_CreateObject();
+
+                if(RT_NULL != line_i)
+                {
+                    cJSON_AddStringToObject(line_i, "name", line.name);
+                    cJSON_AddNumberToObject(line_i, "id", line.addr);
+                    cJSON_AddNumberToObject(line_i, "mainType", 4);//4 指的是line 类型
+                    cJSON_AddNumberToObject(line_i, "type", line.type);
+                    cJSON_AddNumberToObject(line_i, "lineNo", line_no + 1);
+                    cJSON_AddNumberToObject(line_i, "manual", line._manual.manual);
 
 //                    temp = GetSysSet()->line1Set.lightsType.value;
 //                    temp1 = GetSysSet()->line1Set.byPower.value;
 //                    if(0 == line_no)
 //                    {
-////                        cJSON_AddNumberToObject(line_i, "lightType", 0);//Justin debug 这个地方很奇怪同样的命令，电脑的mqtt可以获取，手机的不行
-////                        cJSON_AddNumberToObject(line_i, "lightPower", 1);
-//                        cJSON_AddNumberToObject(line_i, "aabbccdde", 0);//Justin debug 这个地方很奇怪同样的命令，电脑的mqtt可以获取，手机的不行
-//                        cJSON_AddNumberToObject(line_i, "aabbccddee", 1);
+//                        cJSON_AddNumberToObject(line_i, "lightType", 0);//Justin debug 这个地方很奇怪同样的命令，电脑的mqtt可以获取，手机的不行
+//                        cJSON_AddNumberToObject(line_i, "lightPower", 1);
 //                    }
 //                    else if(1 == line_no)
 //                    {
 //                        cJSON_AddNumberToObject(line_i, "lightType", 0);
 //                        cJSON_AddNumberToObject(line_i, "lightPower", 1);
 //                    }
-//                    if(CON_FAIL == line.conn_state)
-//                    {
-//                        cJSON_AddNumberToObject(line_i, "online", 0);//Justin debug test 该函数有问题
-//                    }
-//                    else
-//                    {
-//                        cJSON_AddNumberToObject(line_i, "online", 1);
-//                    }
-//                    cJSON_AddNumberToObject(line_i, "lightType", LINE_MODE_BY_POWER);//Justin debug test
-//                    cJSON_AddNumberToObject(line_i, "lightPower", line.d_value);
 
-//                    cJSON_AddItemToArray(list, line_i);
-//                }
-//            }
+                    if(CON_FAIL == line.conn_state)
+                    {
+                        cJSON_AddNumberToObject(line_i, "online", 0);//Justin debug test 该函数有问题
+                    }
+                    else
+                    {
+                        cJSON_AddNumberToObject(line_i, "online", 1);
+                    }
+                    cJSON_AddNumberToObject(line_i, "lightType", /*LINE_MODE_BY_POWER*/GetSysSet()->line1Set.lightsType.value);//Justin debug test
+                    cJSON_AddNumberToObject(line_i, "lightPower", line.d_value);
+
+                    cJSON_AddItemToArray(list, line_i);
+                }
+            }
 
             cJSON_AddItemToObject(json, "list", list);
         }
