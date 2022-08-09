@@ -210,6 +210,7 @@ rt_err_t TakeMonitorFromSD(type_monitor_t *monitor)
     u16         monitorSize     = sizeof(type_monitor_t);
     u16         crc             = 0;
     rt_err_t    ret             = RT_ERROR;
+    u16         deviceCrc       = 0;
 
     LOG_D("TakeMonitorFromSD");
 
@@ -225,9 +226,49 @@ rt_err_t TakeMonitorFromSD(type_monitor_t *monitor)
         }
         else
         {
-            rt_memset((u8 *)monitor, 0, monitorSize);
-            monitor->crc = usModbusRTU_CRC((u8 *)monitor, monitorSize - 2);
-            ret = RT_ERROR;
+            //Justin debug 仅仅测试
+            for(u8 index = 0; index < monitor->device_size; index++)
+            {
+//                printDevice(monitor->device[index]);
+                deviceCrc = usModbusRTU_CRC((u8 *)&monitor->device[index] + 2, sizeof(device_time4_t) - 2);
+                if(deviceCrc != monitor->device[index].crc)
+                {
+                    LOG_E("device name %s crc err",monitor->device[index].name);
+                }
+            }
+
+            for(u8 index = 0; index < monitor->sensor_size; index++)
+            {
+//                printDevice(monitor->device[index]);
+                deviceCrc = usModbusRTU_CRC((u8 *)&monitor->sensor[index] + 2, sizeof(sensor_t) - 2);
+                if(deviceCrc != monitor->sensor[index].crc)
+                {
+                    LOG_E("sensor name %s crc err",monitor->sensor[index].name);
+                }
+            }
+
+            for(u8 index = 0; index < monitor->timer12_size; index++)
+            {
+//                printDevice(monitor->device[index]);
+                deviceCrc = usModbusRTU_CRC((u8 *)&monitor->time12[index] + 2, sizeof(timer12_t) - 2);
+                if(deviceCrc != monitor->time12[index].crc)
+                {
+                    LOG_E("time12 name %s crc err",monitor->time12[index].name);
+                }
+            }
+
+            for(u8 index = 0; index < monitor->line_size; index++)
+            {
+//                printDevice(monitor->device[index]);
+                deviceCrc = usModbusRTU_CRC((u8 *)&monitor->line[index] + 2, sizeof(line_t) - 2);
+                if(deviceCrc != monitor->line[index].crc)
+                {
+                    LOG_E("line name %s crc err",monitor->line[index].name);
+                }
+            }
+//            rt_memset((u8 *)monitor, 0, monitorSize);//Justin debug 暂时屏蔽
+//            monitor->crc = usModbusRTU_CRC((u8 *)monitor, monitorSize - 2);
+//            ret = RT_ERROR;//Justin debug
         }
     }
     else

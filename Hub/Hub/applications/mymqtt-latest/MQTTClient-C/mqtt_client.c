@@ -57,7 +57,7 @@
 #error "Please update the 'rtdbg.h' file to GitHub latest version (https://github.com/RT-Thread/rt-thread/blob/master/include/rtdbg.h)"
 #endif
 
-static char mqtt_thread_stack[1024 * 4];//[1024 * 3];//Justin debug
+static char mqtt_thread_stack[1024 * 3];//Justin debug
 static struct rt_thread mqtt_thread;
 
 /*********************************************************************************************************
@@ -1040,7 +1040,7 @@ static void paho_mqtt_thread(void *param)
   mqtt_client *c = (mqtt_client *)param;
   int i, rc, len;
   int rc_t = 0;
-  
+
   // ���ò������
   if(c->keepalive_interval == 0) {
     c->keepalive_interval = 60;
@@ -1162,6 +1162,7 @@ __mqtt_start:
     if(c->is_quit) {
       goto __mqtt_disconnect_exit;
     }
+
   }
   
 __mqtt_disconnect:

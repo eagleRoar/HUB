@@ -40,6 +40,8 @@ typedef     struct buttonInfo               type_button_t;
 #define     LINE_MAX                        2
 #define     DEVICE_PORT_SZ                  4
 #define     DEVICE_TIME4_MAX                16
+#define     VALVE_MAX                       16
+#define     TANK_SENSOR_MAX                 2
 #define     LINE_MAX                        2
 #define     SENSOR_VALUE_MAX                4
 #define     TIMER_GROUP                     12

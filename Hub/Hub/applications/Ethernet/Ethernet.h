@@ -25,6 +25,7 @@
 #define MASTER_PORT               9898
 #define UDP_BROADCAST_PORT        TEST_PORT//9899//
 #define RCV_ETH_BUFFSZ            1024//512
+#define SEND_ETH_BUFFSZ           2048
 
 struct packTop{
     u16 checkId;             //标识

@@ -38,6 +38,7 @@ extern void SetRecvMqttFlg(u8);
 extern sys_set_t *GetSysSet(void);
 extern int GetMqttStartFlg(void);
 static uint16_t g_Key = 97;
+rt_mutex_t dynamic_mutex = RT_NULL;//互斥量
 
 int main(void)
 {
@@ -54,8 +55,15 @@ int main(void)
     static u16      time100mS          = 0;
     static u16      time1S          = 0;
     static u16      time60S         = 0;
-    static u16      timeInit         = 0;
+    static u16      timeInit        = 0;
+//    static u8       cnt             = 0;
     type_sys_time   time;
+
+    dynamic_mutex = rt_mutex_create("dmutex", RT_IPC_FLAG_FIFO);
+    if(RT_NULL == dynamic_mutex)
+    {
+        LOG_E("create mutex fail");
+    }
 
     rt_memset(warn, 0, WARN_MAX);
 
@@ -88,11 +96,11 @@ int main(void)
         rt_thread_mdelay(100);
     } while (LINKDOWN == ethStatus);
 
-//    if(LINKUP == ethStatus)
-//    {
-//        /*初始化网络线程，处理和主机之间的交互，Tcp和Udp协议*/
-//        EthernetTaskInit();
-//    }
+    if(LINKUP == ethStatus)
+    {
+        /*初始化网络线程，处理和主机之间的交互，Tcp和Udp协议*/
+        EthernetTaskInit();
+    }
 
     //初始化SD卡处理线程
     SDCardTaskInit();
@@ -120,55 +128,15 @@ int main(void)
 
 
         /* 监视网络模块是否上线 */
-//        ethStatus = GetEthDriverLinkStatus();//Justin debug
-//        if(LINKUP == ethStatus)
-//        {
-//            if(RT_NULL == rt_thread_find(UDP_TASK) &&
-//               RT_NULL == rt_thread_find(TCP_SEND_TASK))
-//            {
-//                /* 重新上线,初始化网络任务 */
-//                EthernetTaskInit();
-//                LOG_D("EthernetTask init OK");
-//            }
-//        }
-
-        //100ms
-        if(ON == Timer100msTouch)
+        ethStatus = GetEthDriverLinkStatus();//Justin debug
+        if(LINKUP == ethStatus)
         {
-            if(1 == GetRecvMqttFlg())
+            if(RT_NULL == rt_thread_find(UDP_TASK) &&
+               RT_NULL == rt_thread_find(TCP_SEND_TASK))
             {
-                LOG_D("main reply...........");//Justin debug
-                if(RT_EOK == ReplyDataToCloud(GetMqttClient(), RT_NULL, RT_NULL, YES))
-                {
-                    SetRecvMqttFlg(0);
-                }
-                else
-                {
-                    LOG_E("reply ReplyDataToCloud err");//Justin  debug 问题:为什么有加输出的命令手机就可以正常返回get device list命令
-                }
-            }
-        }
-
-        if(YES == GetMqttStartFlg())
-        {
-            //60s 主动发送给云服务
-            if(ON == Timer60sTouch)
-            {
-                SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT, 0 , 0);
-            }
-
-            //主动发送告警
-            for(u8 item = 0; item < WARN_MAX; item++)
-            {
-                if(warn[item] != GetSysSet()->warn[item])
-                {
-                    warn[item] = GetSysSet()->warn[item];
-
-                    if(ON == GetSysSet()->warn[item])
-                    {
-                        SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT_WARN, item, GetSysSet()->warn_value[item]);
-                    }
-                }
+                /* 重新上线,初始化网络任务 */
+                EthernetTaskInit();
+                LOG_D("EthernetTask init OK");
             }
         }
 
@@ -181,6 +149,8 @@ int main(void)
             if(DAY_BY_TIME == GetSysSet()->sysPara.dayNightMode)//按时间分辨
             {
                 getRealTimeForMat(&time);
+//                LOG_D("date : %d %d %d , %d %d %d",
+//                        time.year,time.month,time.day,time.hour,time.minute,time.second);//Justin debug
                 if(((time.hour * 60 + time.minute) > GetSysSet()->sysPara.dayTime) &&
                    ((time.hour * 60 + time.minute) <= GetSysSet()->sysPara.nightTime))
                 {
@@ -238,6 +208,7 @@ int main(void)
                     printTimer12(GetMonitor()->time12[index]);
                 }
             }
+
         }
 
         rt_thread_mdelay(20);

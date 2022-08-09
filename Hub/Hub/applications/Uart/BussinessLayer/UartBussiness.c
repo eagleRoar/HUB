@@ -248,6 +248,13 @@ u8 askDeviceHeart(type_monitor_t *monitor, rt_device_t serial)
                 monitor->device[ask_device]._storage[0]._time4_ctl.d_state = OFF;
             }
 
+            //如果是在检修状态则不输出
+            if(ON == GetSysSet()->sysPara.maintain)
+            {
+                monitor->device[ask_device]._storage[0]._time4_ctl.d_state = OFF;
+                LOG_D("in maintain, all device off");
+            }
+
             buffer[4] = monitor->device[ask_device]._storage[0]._time4_ctl.d_state;
             buffer[5] = monitor->device[ask_device]._storage[0]._time4_ctl.d_value;
         }
@@ -396,6 +403,13 @@ u8 askDeviceHeart(type_monitor_t *monitor, rt_device_t serial)
                 {
                     monitor->device[ask_device]._storage[0]._port.d_value |= 0x04;
                 }
+            }
+
+            //维修中关闭输出
+            if(ON == GetSysSet()->sysPara.maintain)
+            {
+                monitor->device[ask_device]._storage[0]._port.d_state = OFF;
+                LOG_D("in maintain, all device off");
             }
 
             buffer[4] = monitor->device[ask_device]._storage[0]._port.d_state;
@@ -570,7 +584,7 @@ void AnlyzeModuleInfo(type_monitor_t *monitor, u8 *data, u8 dataLen)
     }
 }
 
-void findLocation(type_monitor_t *monitor, cloudcmd_t *cmd,rt_device_t serial)
+void findDeviceLocation(type_monitor_t *monitor, cloudcmd_t *cmd,rt_device_t serial)
 {
     u16 i = 0;
     u8 buffer[15];
@@ -605,9 +619,52 @@ void findLocation(type_monitor_t *monitor, cloudcmd_t *cmd,rt_device_t serial)
                 buffer[7] = (crc16Result>>8);                    //CRC16高位
 
                 rt_device_write(serial, 0, buffer, 8);
+
+                cmd->get_id.value = 0;
             }
         }
 
-        cmd->get_id.value = 0;
+    }
+}
+
+void findLineLocation(type_monitor_t *monitor, cloudcmd_t *cmd,rt_device_t serial)
+{
+    u16 i = 0;
+    u8 buffer[15];
+    u16 crc16Result = 0x0000;
+    u8 addr = 0x00;
+
+    if(0 != cmd->get_id.value)
+    {
+        //无论是device还是指定的port口，都是device闪烁
+        if(cmd->get_id.value > 0xFF)
+        {
+            addr = (cmd->get_id.value >> 8) & 0x00FF;
+        }
+        else
+        {
+            addr = cmd->get_id.value;
+        }
+
+        for(i = 0; i < monitor->line_size; i++)
+        {
+            if(addr == monitor->line[i].addr)
+            {
+                buffer[0] = monitor->line[i].addr;
+                buffer[1] = READ_MUTI;
+                buffer[2] = 0x00;
+                buffer[3] = 0x00;
+                buffer[4] = 0x00;
+                buffer[5] = 0x01;
+
+                crc16Result = usModbusRTU_CRC(buffer, 6);
+                buffer[6] = crc16Result;                         //CRC16低位
+                buffer[7] = (crc16Result>>8);                    //CRC16高位
+
+                rt_device_write(serial, 0, buffer, 8);
+                cmd->get_id.value = 0;
+            }
+        }
+
     }
 }

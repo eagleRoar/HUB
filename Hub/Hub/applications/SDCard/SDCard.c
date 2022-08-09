@@ -82,7 +82,6 @@ void sd_dfs_event_entry(void* parameter)
                             if(RT_EOK == TakeMonitorFromSD(GetMonitor()))
                             {
                                 LOG_I("TakeMonitorFromSD OK");
-                                sdCard.readInfo = YES;
                             }
                             else
                             {
@@ -117,6 +116,7 @@ void sd_dfs_event_entry(void* parameter)
                             }
 
                             initHubinfo();//Justin debug 仅仅测试
+                            sdCard.readInfo = YES;
                         }
                         else //挂载失败
                         {

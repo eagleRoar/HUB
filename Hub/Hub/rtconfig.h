@@ -174,10 +174,10 @@
 #define RT_LWIP_PBUF_NUM 16
 #define RT_LWIP_RAW_PCB_NUM 2
 #define RT_LWIP_UDP_PCB_NUM 2
-#define RT_LWIP_TCP_PCB_NUM 2
+#define RT_LWIP_TCP_PCB_NUM 3
 #define RT_LWIP_TCP_SEG_NUM 40
 #define RT_LWIP_TCP_SND_BUF 3072
-#define RT_LWIP_TCP_WND 3072
+#define RT_LWIP_TCP_WND 2048
 #define RT_LWIP_TCPTHREAD_PRIORITY 10
 #define RT_LWIP_TCPTHREAD_MBOX_SIZE 32
 #define RT_LWIP_TCPTHREAD_STACKSIZE 1024
@@ -291,6 +291,10 @@
 
 /* peripheral libraries and drivers */
 
+
+/* Kendryte SDK */
+
+/* end of Kendryte SDK */
 #define PKG_USING_EXTERN_RTC_DRIVERS
 /* end of peripheral libraries and drivers */
 

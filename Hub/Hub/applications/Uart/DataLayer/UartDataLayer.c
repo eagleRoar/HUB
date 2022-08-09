@@ -162,6 +162,9 @@ char *GetModelByType(u8 type, char *name, u8 len)
         case TIMER_TYPE:
             rt_memcpy(name, "BDS-Ti", len);
             break;
+        case LINE_TYPE:
+            rt_memcpy(name, "BDS-lin1", len);
+            break;
         default:
             break;
     }

@@ -14,116 +14,71 @@
 #include "Uart.h"
 #include "CloudProtocol.h"
 
+
 struct ethDeviceStruct *eth = RT_NULL;          //申请ethernet实例化对象
 
-int                 sock                    = 0;
-type_package_t      tcpRecvBuffer;
-type_package_t      tcpSendBuffer;
+u8                  tcp_recv_flag           = NO;
+int                 tcp_sock                    = 0;
+char                *tcpRecvBuffer          = RT_NULL;
+char                *tcpSendBuffer          = RT_NULL;
 u8                  udpSendBuffer[30];
 
 extern rt_uint8_t GetEthDriverLinkStatus(void);             //获取网口连接状态
+extern sys_set_t *GetSysSet(void);
+extern rt_mutex_t dynamic_mutex;
+
+extern u8 GetRecvMqttFlg(void);
+extern mqtt_client *GetMqttClient(void);
+extern void SetRecvMqttFlg(u8);
+extern int GetMqttStartFlg(void);
 
 void TcpRecvTaskEntry(void* parameter)
 {
     static u8 Timer1sTouch      = OFF;
     static u16 time1S = 0;
+    int length;
 
     while(1)
     {
         /* 启用定时器 */
         time1S = TimerTask(&time1S, 20, &Timer1sTouch);                 //1秒任务定时器
 
+        rt_mutex_take(dynamic_mutex, RT_WAITING_FOREVER);//加锁保护
         //正常连接
         if(ON == eth->tcp.GetConnectStatus())
         {
-            //解析数据
-            TcpRecvMsg(&sock, (u8 *)tcpRecvBuffer.buffer,RCV_ETH_BUFFSZ);
-            tcpRecvBuffer.flag = YES;
-        }
-        rt_thread_mdelay(50);
-    }
-}
-/**
- * @brief  : 以太网线程入口,TCP协议
- */
-void TcpSendTaskEntry(void* parameter)
-{
-    static u8           preLinkStatus           = LINKDOWN;
-    static u8           Timer1sTouch            = OFF;
-    static u16          time1S                  = 0;
-    u16                 length                  = 0;
+            //申请内存
+            tcpRecvBuffer = rt_malloc(RCV_ETH_BUFFSZ);
 
-    while (1)
-    {
-        /* 启用定时器 */
-        time1S = TimerTask(&time1S, 20, &Timer1sTouch);                 //1秒任务定时器
-
-        eth->SetethLinkStatus(GetEthDriverLinkStatus());
-        if(preLinkStatus != eth->GetethLinkStatus())
-        {
-            preLinkStatus = eth->GetethLinkStatus();
-
-            if(LINKDOWN == eth->GetethLinkStatus())
+            if(RT_NULL != tcpRecvBuffer)
             {
-                LOG_D("eth link dowm");
-            }
-            else if(LINKUP == eth->GetethLinkStatus())
-            {
-                LOG_D("eth link up");
-            }
-        }
-        else
-        {
-            /* 网口断线时不执行以下功能 */
-            if(LINKDOWN == eth->GetethLinkStatus())
-            {
-                rt_thread_mdelay(1000);
-                continue;
-            }
-        }
-
-        if((ON == eth->tcp.GetConnectTry()) &&
-           (OFF == eth->tcp.GetConnectStatus()))
-        {
-            //尝试连接
-            if(RT_EOK == ConnectToSever(&sock, eth->GetIp(), eth->GetPort()))
-            {
-                eth->tcp.SetConnectStatus(ON);
-                eth->tcp.SetConnectTry(OFF);
-                LOG_D("tcp try to reconnrct......");
-            }
-        }
-        else
-        {
-            if((OFF == eth->tcp.GetConnectTry()) &&
-               (ON == eth->tcp.GetConnectStatus()))
-            {
-                if(YES == tcpRecvBuffer.flag)
+                rt_memset(tcpRecvBuffer, ' ', RCV_ETH_BUFFSZ);
+                //解析数据
+                if(0 != tcp_sock)
                 {
-                    tcpRecvBuffer.flag = NO;
-                    analyzeCloudData(tcpRecvBuffer.buffer);
-
-                    ReplyDataToCloud(RT_NULL, (u8 *)tcpSendBuffer.buffer, &length, NO);
-
-                    if (RT_EOK != TcpSendMsg(&sock, (u8 *)tcpSendBuffer.buffer, length))
+                    if(RT_EOK == TcpRecvMsg(&tcp_sock, (u8 *)tcpRecvBuffer, RCV_ETH_BUFFSZ, &length))
                     {
-                        LOG_E("send tcp err");
-                        eth->tcp.SetConnectStatus(OFF);
-                        eth->tcp.SetConnectTry(ON);
+                        if(length < RCV_ETH_BUFFSZ)
+                        {
+                            tcpRecvBuffer[length] = '\0';
+                        }
+                        tcp_recv_flag = YES;
                     }
-
-                    rt_memset((u8 *)tcpRecvBuffer.buffer, 0, RCV_ETH_BUFFSZ);
-                    rt_memset((u8 *)tcpSendBuffer.buffer, 0, RCV_ETH_BUFFSZ);
                 }
-
-                /* 1s 定时任务 */
-                if(ON == Timer1sTouch)
+                else
                 {
-
+                    //释放内存
+                    rt_free(tcpRecvBuffer);
+                    tcpRecvBuffer = RT_NULL;
                 }
+            }
+            else
+            {
+                LOG_E("apply recv eth buf fail");
             }
         }
 
+        rt_mutex_release(dynamic_mutex);//解锁
         rt_thread_mdelay(50);
     }
 }
@@ -134,23 +89,26 @@ void TcpSendTaskEntry(void* parameter)
  *           1.开启广播接收主机发送的信息(时间同步、版本号)
  *           2.控制Tcp线程的创建和销毁
  *           3.开启Udp线程
+ *           4.将TCP接收数据部分的也放在这边
  * @param   : NULL
  * @author : Qiuyijie
  * @date   : 2022.01.19
  */
 void UdpTaskEntry(void* parameter)
 {
-    u8          Timer1sTouch        = OFF;
+    u8          Timer10sTouch       = OFF;
     int         broadcastSock       = 0x00;
-    int         masterUdpSock       = RT_NULL;
     int         bytes_read          = 0x00;
+    u16         length              = 0;
     socklen_t   addr_len;
 
     struct sockaddr_in      broadcastSerAddr;
     struct sockaddr_in      broadcastRecvSerAddr;
-    struct sockaddr_in      masterUdpSerAddr;
-    static u16  time1S              = 0;
-
+    static u8               warn[WARN_MAX];
+    static u16  time10S             = 0;
+    static u8 cnt = 0;
+    static u8       Timer60sTouch   = OFF;
+    static u16      time60S         = 0;
 
     eth->SetethLinkStatus(GetEthDriverLinkStatus());
     if(LINKUP == eth->GetethLinkStatus())    //检查网口是否有连接
@@ -175,33 +133,62 @@ void UdpTaskEntry(void* parameter)
     while (1)
     {
         /* 启用定时器 */
-        time1S = TimerTask(&time1S, 20, &Timer1sTouch);           //1秒任务定时器
+        time10S = TimerTask(&time10S, 200, &Timer10sTouch);           //1秒任务定时器
+        time60S = TimerTask(&time60S, 1200, &Timer60sTouch);         //60秒任务定时器
 
-        if(YES == eth->udp.GetNotifyChange())
-        {
-            if(RT_NULL != masterUdpSock)
-            {
-                DestoryUdpSocket(masterUdpSock);
-            }
-
-            if(RT_EOK == UdpSetingInit(NORMAL_TYPE, eth->GetIp(), eth->GetPort(), &masterUdpSerAddr, &masterUdpSock))
-            {
-                eth->udp.SetConnectStatus(SOCKET_ON);
-            }
-            else
-            {
-                eth->udp.SetConnectStatus(SOCKET_OFF);
-                LOG_E("udp socket for eth init error");
-            }
-
-            eth->udp.SetNotifyChange(NO);    //关闭通知
-        }
+        rt_mutex_take(dynamic_mutex, RT_WAITING_FOREVER);//加锁保护
 
         /* 网络掉线 */
         if(LINKDOWN == eth->GetethLinkStatus())
         {
             rt_thread_mdelay(1000);
             continue;
+        }
+
+        //50ms 云服务器
+        if(1 == GetRecvMqttFlg())
+        {
+            if(RT_EOK == ReplyDataToCloud(GetMqttClient(), RT_NULL, RT_NULL, YES))//Justin debug 该函数需要使用锁
+            {
+                SetRecvMqttFlg(0);
+            }
+            else
+            {
+                if(cnt < 10)//Justin debug 排查问题 为什么 打包失败
+                {
+                    cnt++;
+                }
+                else
+                {
+                    cnt = 0;
+                    SetRecvMqttFlg(0);
+                }
+                LOG_E("reply ReplyDataToCloud err");
+            }
+        }
+
+
+        if(YES == GetMqttStartFlg())
+        {
+            //60s 主动发送给云服务
+            if(ON == Timer60sTouch)
+            {
+                SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT, 0 , 0, RT_NULL, RT_NULL, YES);
+            }
+
+            //主动发送告警
+            for(u8 item = 0; item < WARN_MAX; item++)
+            {
+                if(warn[item] != GetSysSet()->warn[item])
+                {
+                    warn[item] = GetSysSet()->warn[item];
+
+                    if(ON == GetSysSet()->warn[item])
+                    {
+                        SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT_WARN, item, GetSysSet()->warn_value[item], RT_NULL, RT_NULL, YES);
+                    }
+                }
+            }
         }
 
         /* 50ms任务 */
@@ -215,8 +202,7 @@ void UdpTaskEntry(void* parameter)
                 eth->udp.SetNotifyChange(YES);
                 eth->tcp.SetConnectTry(ON);
                 eth->tcp.SetConnectStatus(OFF);
-                rt_memset((u8 *)tcpRecvBuffer.buffer, 0, RCV_ETH_BUFFSZ);
-                rt_memset((u8 *)tcpSendBuffer.buffer, 0, RCV_ETH_BUFFSZ);
+
                 SetIpAndPort(inet_ntoa(broadcastRecvSerAddr.sin_addr), ntohs(broadcastRecvSerAddr.sin_port), eth);
                 LOG_I("recv new master register massge, ip = %s, port = %d", eth->GetIp(), eth->GetPort());
             }
@@ -232,13 +218,136 @@ void UdpTaskEntry(void* parameter)
             }
         }
 
-        /* 1s定时任务 */
-        if(ON == Timer1sTouch)
+        if((ON == eth->tcp.GetConnectTry()) &&
+           (OFF == eth->tcp.GetConnectStatus()))
         {
-            /* 向主机发送sensor数据 */
-//            TransmitSensorData(masterUdpSock, &masterUdpSerAddr);
+            //尝试连接
+            if(RT_EOK == ConnectToSever(&tcp_sock, eth->GetIp(), eth->GetPort()))
+            {
+                eth->tcp.SetConnectStatus(ON);
+                eth->tcp.SetConnectTry(OFF);
+                LOG_D("tcp try to reconnrct......");
+            }
+        }
+        else
+        {
+            if((OFF == eth->tcp.GetConnectTry()) &&
+               (ON == eth->tcp.GetConnectStatus()))
+            {
+                if(YES == tcp_recv_flag)
+                {
+                    tcp_recv_flag = NO;
+
+                    if(RT_NULL != tcpRecvBuffer)
+                    {
+                        analyzeCloudData(tcpRecvBuffer, NO);
+                        //释放内存
+                        rt_free(tcpRecvBuffer);
+                        tcpRecvBuffer = RT_NULL;
+                    }
+
+                    if(ON == GetSysSet()->cloudCmd.recv_flag)
+                    {
+                        tcpSendBuffer = rt_malloc(SEND_ETH_BUFFSZ);
+                        if(RT_NULL != tcpSendBuffer)
+                        {
+                            rt_memset(tcpSendBuffer, ' ', SEND_ETH_BUFFSZ);
+                            ReplyDataToCloud(RT_NULL, (u8 *)tcpSendBuffer, &length, NO);
+
+                            if(length > 0)
+                            {
+                                if (RT_EOK != TcpSendMsg(&tcp_sock, (u8 *)tcpSendBuffer, length))
+                                {
+                                    LOG_D("length = %d",length);//Justin debug
+                                    LOG_E("data = : %s",tcpSendBuffer);//Justin debug
+                                    LOG_E("send tcp err 1");
+                                    eth->tcp.SetConnectStatus(OFF);
+                                    eth->tcp.SetConnectTry(ON);
+                                }
+                            }
+
+                            //释放内存
+                            if(RT_NULL != tcpSendBuffer)
+                            {
+                                rt_free(tcpSendBuffer);
+                                tcpSendBuffer = RT_NULL;
+                            }
+                        }
+                    }
+                }
+
+                //主动发送告警
+                for(u8 item = 0; item < WARN_MAX; item++)
+                {
+                    if(warn[item] != GetSysSet()->warn[item])
+                    {
+                        warn[item] = GetSysSet()->warn[item];
+
+                        if(ON == GetSysSet()->warn[item])
+                        {
+                            //申请内存
+                            tcpSendBuffer = rt_malloc(SEND_ETH_BUFFSZ);
+                            if(RT_NULL != tcpSendBuffer)
+                            {
+                                rt_memset(tcpSendBuffer, ' ', SEND_ETH_BUFFSZ);
+                                if(RT_EOK == SendDataToCloud(RT_NULL, CMD_HUB_REPORT_WARN, item,
+                                        GetSysSet()->warn_value[item], (u8 *)tcpSendBuffer, &length, NO))
+                                {
+                                    if(length > 0)
+                                    {
+                                        if (RT_EOK != TcpSendMsg(&tcp_sock, (u8 *)tcpSendBuffer, length))
+                                        {
+                                            LOG_E("send tcp err 2");
+                                            eth->tcp.SetConnectStatus(OFF);
+                                            eth->tcp.SetConnectTry(ON);
+                                        }
+                                    }
+                                }
+                            }
+
+                            //释放内存
+                            if(RT_NULL != tcpSendBuffer)
+                            {
+                                rt_free(tcpSendBuffer);
+                                tcpSendBuffer = RT_NULL;
+                            }
+                        }
+                    }
+                }
+
+                /* 10s 定时任务 */
+                if(ON == Timer10sTouch)
+                {
+                    //申请内存
+                    tcpSendBuffer = rt_malloc(SEND_ETH_BUFFSZ);
+                    if(RT_NULL != tcpSendBuffer)
+                    {
+                        rt_memset(tcpSendBuffer, ' ', SEND_ETH_BUFFSZ);
+                        if(RT_EOK == SendDataToCloud(RT_NULL, CMD_HUB_REPORT, 0 , 0, (u8 *)tcpSendBuffer, &length, NO))
+                        {
+                            if(length > 0)
+                            {
+                                if (RT_EOK != TcpSendMsg(&tcp_sock, (u8 *)tcpSendBuffer, length))
+                                {
+                                    LOG_E("send tcp err 3");
+                                    eth->tcp.SetConnectStatus(OFF);
+                                    eth->tcp.SetConnectTry(ON);
+                                }
+                            }
+                        }
+                    }
+
+                    //释放内存
+                    if(RT_NULL != tcpSendBuffer)
+                    {
+                        rt_free(tcpSendBuffer);
+                        tcpSendBuffer = RT_NULL;
+                    }
+                }
+            }
         }
 
+        rt_mutex_release(dynamic_mutex);//解锁
         /* 线程休眠一段时间 */
         rt_thread_mdelay(50);
     }
@@ -247,22 +356,15 @@ void UdpTaskEntry(void* parameter)
 }
 rt_err_t UdpTaskInit(void)
 {
-    rt_thread_t thread = rt_thread_create(UDP_TASK, UdpTaskEntry, RT_NULL, 1024, UDP_PRIORITY, 10);
+    rt_thread_t thread = rt_thread_create(UDP_TASK, UdpTaskEntry, RT_NULL, 1024 * 3, UDP_PRIORITY, 10);
     rt_thread_startup(thread);
 
     return RT_EOK;
 }
 
-rt_err_t TcpSendTaskInit(void)
-{
-    /* 创建以太网线程 */
-    rt_thread_t thread = rt_thread_create(TCP_SEND_TASK, TcpSendTaskEntry, RT_NULL, /*1024*2*/1024*3, TCP_PRIORITY, 10);
-    rt_thread_startup(thread);
-    return RT_EOK;
-}
 rt_err_t TcpRecvTaskInit(void)
 {
-    rt_thread_t thread = rt_thread_create(TCP_RECV_TASK, TcpRecvTaskEntry, RT_NULL, 1024*2, TCP_PRIORITY, 10);
+    rt_thread_t thread = rt_thread_create(TCP_RECV_TASK, TcpRecvTaskEntry, RT_NULL, 1024 * 2, TCP_PRIORITY, 10);
     rt_thread_startup(thread);
     return RT_EOK;
 }
@@ -276,6 +378,5 @@ void EthernetTaskInit(void)
     }
 
     UdpTaskInit();
-    TcpSendTaskInit();
     TcpRecvTaskInit();
 }

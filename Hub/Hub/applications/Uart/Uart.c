@@ -244,23 +244,12 @@ void SensorUart2TaskEntry(void* parameter)
                 co2Program(GetMonitor(), 1000);
                 humiProgram(GetMonitor());
                 timmerProgram(GetMonitor());
-                findLocation(GetMonitor(), &sys_set.cloudCmd, uart2_serial);
-//                lineProgram(GetMonitor(), 0, 1000);//line1//Justin debug 仅仅测试
-//                lineProgram(GetMonitor(), 1, 1000);//line2
-                lineProgram_new(GetMonitor(), 0, 1000);//line1//Justin debug 仅仅测试
+                findDeviceLocation(GetMonitor(), &sys_set.cloudCmd, uart2_serial);
+                findLineLocation(GetMonitor(), &sys_set.cloudCmd, uart3_serial);
+                lineProgram_new(GetMonitor(), 0, 1000);
                 lineProgram_new(GetMonitor(), 1, 1000);//line2
                 warnProgram(GetMonitor(), GetSysSet());
                 GetRealCal(GetSysSet(), GetSysRecipt());//通过日程获取配方设置
-
-                //该段程序顺序不能在以上温湿度、Co2、定时器之前
-//                for(u8 index = 0; index < GetMonitor()->device_size; index++)
-//                {
-//                    if(TIMER_TYPE != GetMonitor()->device[index].type)
-//                    {
-//                        u16 value = (GetMonitor()->device[index]._storage[0]._port.d_state << 8) + GetMonitor()->device[index]._storage[0]._port.d_value;
-//                        ctrDevice(GetMonitor(), GetMonitor()->device[index].type, value);
-//                    }
-//                }
 
                 if(0 != sys_set.cloudCmd.delete_id.value)
                 {

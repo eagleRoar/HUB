@@ -77,6 +77,11 @@ struct cloudCmd{
     u8              recipe_id;                  //添加recipe id
     u16             set_port_id;
     u8              tank_no;
+    u8              pump_no;                    //设置泵的颜色的id
+    u8              color;                      //设置泵的颜色
+    u8              valve_id;                   //需要添加的阀id
+    u8              pump_sensor_type;           //设置泵传感器type
+    u8              pump_sensor_id;             //设置泵传感器id
 };
 
 //cmd : getTempSetting
@@ -253,6 +258,9 @@ struct tank{
     u8 highEcProtection;        //EC 高停止值
     u8 lowPhProtection;         //PH 低停止值
     u8 highPhProtection;        //PH 高停止值
+    u8 valve[VALVE_MAX];        //关联的阀的ID
+    u8 sensor[TANK_SENSOR_MAX]; //桶内存在两个sensor 一个是测试桶内的 一个测试管道的
+    u8 color;                   //颜色
 };
 
 //桶
@@ -282,6 +290,11 @@ struct sysSet{
     u8              saveFlag;
 };
 
+
+enum{
+    TANK_SENSOR_TANK = 0x01,        //桶内
+    TANK_SENSOR_INLINE              //管道内
+};
 /****************************灌溉内容 End*************/
 #define         TEST_CMD                "test"                  //Hub 主动上报
 #define         CMD_HUB_REPORT_WARN     "reportWarning"         //Hub 主动上报
@@ -352,15 +365,17 @@ void CmdAddRecipe(char *, cloudcmd_t *);
 void CmdSetRecipe(char *, cloudcmd_t *);
 void CmdSetTank(char *, cloudcmd_t *);
 void CmdGetHubState(char *, cloudcmd_t *);
-void CmdSetHubName(char *data, cloudcmd_t *);
+void CmdSetHubName(char *, cloudcmd_t *);
 void CmdSetPortName(char *, cloudcmd_t *);
 void CmdSetSysSet(char *, cloudcmd_t *, sys_para_t *);
 void CmdGetSysSet(char *, cloudcmd_t *);
 void CmdGetWarn(char *, cloudcmd_t *);
 void CmdSetWarn(char *, cloudcmd_t *, sys_set_t *);
 void CmdGetRecipeList(char *, cloudcmd_t *);
-void CmdGetRecipeListAll(char *data, cloudcmd_t *);
-void CmdGetTankInfo(char *data, cloudcmd_t *);
+void CmdGetRecipeListAll(char *, cloudcmd_t *);
+void CmdGetTankInfo(char *, cloudcmd_t *);
+void CmdAddPumpValue(char *, cloudcmd_t *);
+void CmdSetPumpColor(char *, cloudcmd_t *);
 char *SendHubReport(char *, sys_set_t *);
 char *SendHubReportWarn(char *, sys_set_t *, u8, u16);
 char *ReplySetSchedule(char *, cloudcmd_t);
@@ -393,4 +408,7 @@ char *ReplyGetSysPara(char *, cloudcmd_t, sys_para_t);
 char *ReplySetWarn(char *, cloudcmd_t, sys_warn_t);
 char *ReplyGetRecipeList(char *, cloudcmd_t , sys_recipe_t *);
 char *ReplyGetRecipeListAll(char *, cloudcmd_t , sys_recipe_t *);
+char *ReplyAddPumpValue(char *, cloudcmd_t , sys_tank_t *);
+char *ReplySetPumpColor(char *, cloudcmd_t , sys_tank_t *);
+char *ReplySetPumpSensor(char *, cloudcmd_t);
 #endif /* APPLICATIONS_CLOUDPROTOCOL_CLOUDPROTOCOLBUSINESS_H_ */

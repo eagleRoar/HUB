@@ -127,16 +127,14 @@ rt_err_t GetValueC16(cJSON *temp, type_kv_c16 *data)
     return ret;
 }
 
-rt_err_t GetValueByC16(cJSON *temp, char *name, char *value)
+rt_err_t GetValueByC16(cJSON *temp, char *name, char *value, u8 length)
 {
     type_kv_c16 data;
     rt_err_t    ret     = RT_ERROR;
 
-//    strcpy(data.name, name);
-    strncpy(data.name, name, strlen(name));//Justin debug
+    strcpy(data.name, name);
     ret = GetValueC16(temp, &data);
-//    strcpy(value, data.value);
-    strncpy(value, data.value, strlen(value));
+    strncpy(value, data.value, length);
 
     return ret;
 }
@@ -619,7 +617,7 @@ void CmdSetRecipe(char *data, cloudcmd_t *cmd)//Justin debug 还没完成
         if(RT_NULL != recipe)
         {
             GetValueByU8(temp, "id", &recipe->id);
-            GetValueByC16(temp, "name", recipe->name);
+            GetValueByC16(temp, "name", recipe->name, RECIPE_NAMESZ);
             GetValueByU8(temp, "color", &recipe->color);
             GetValueByU16(temp, "dayCoolingTarget", &recipe->dayCoolingTarget);
             GetValueByU16(temp, "dayHeatingTarget", &recipe->dayHeatingTarget);
@@ -768,7 +766,7 @@ void CmdSetRecipe(char *data, cloudcmd_t *cmd)//Justin debug 还没完成
     }
 }
 
-void CmdSetTank(char *data, cloudcmd_t *cmd)//Justin debug 未验证
+void CmdSetTank(char *data, cloudcmd_t *cmd)
 {
     cJSON   *temp       = RT_NULL;
     tank_t  *tank       = RT_NULL;
@@ -845,7 +843,7 @@ void CmdSetHubName(char *data, cloudcmd_t *cmd)
     if(RT_NULL != temp)
     {
         GetValueC16(temp, &cmd->msgid);
-        GetValueByC16(temp, "name", GetHub()->name);
+        GetValueByC16(temp, "name", GetHub()->name, MODULE_NAMESZ);
         GetValueByU8(temp, "nameSeq", &GetHub()->nameSeq);
 
         cJSON_Delete(temp);
@@ -976,12 +974,144 @@ void CmdAddPumpValue(char *data, cloudcmd_t *cmd)
     if(RT_NULL != temp)
     {
         GetValueC16(temp, &cmd->msgid);
+        GetValueByU8(temp, "id", &cmd->pump_no);
+        GetValueByU8(temp, "valveId", &cmd->valve_id);
+
+        //添加阀
+        if((cmd->pump_no > 0) && (cmd->pump_no <= TANK_LIST_MAX))
+        {
+            for(u8 item = 0; item < VALVE_MAX; item++)
+            {
+                if(0 == GetSysTank()->tank[cmd->pump_no - 1].valve[item])
+                {
+                    GetSysTank()->tank[cmd->pump_no - 1].valve[item] = cmd->valve_id;
+                    break;
+                }
+            }
+        }
 
         cJSON_Delete(temp);
     }
     else
     {
-        LOG_E("CmdGetRecipeListAll err");
+        LOG_E("CmdAddPumpValue err");
+    }
+}
+
+void CmdDelPumpValue(char *data, cloudcmd_t *cmd)
+{
+    cJSON   *temp       = RT_NULL;
+
+    temp = cJSON_Parse(data);
+    if(RT_NULL != temp)
+    {
+        GetValueC16(temp, &cmd->msgid);
+        GetValueByU8(temp, "id", &cmd->pump_no);
+        GetValueByU8(temp, "valveId", &cmd->valve_id);
+
+        //删除阀
+        if((cmd->pump_no > 0) && (cmd->pump_no <= TANK_LIST_MAX))
+        {
+            for(u8 item = 0; item < VALVE_MAX; item++)
+            {
+                if(cmd->valve_id == GetSysTank()->tank[cmd->pump_no - 1].valve[item])
+                {
+                    if(item == VALVE_MAX - 1)
+                    {
+                        GetSysTank()->tank[cmd->pump_no - 1].valve[item] = 0;
+                    }
+                    else
+                    {
+                        for(;item < VALVE_MAX - 1; item++)
+                        {
+                            GetSysTank()->tank[cmd->pump_no - 1].valve[item] =
+                                    GetSysTank()->tank[cmd->pump_no - 1].valve[item + 1];
+                        }
+                    }
+                }
+            }
+        }
+
+        cJSON_Delete(temp);
+    }
+    else
+    {
+        LOG_E("CmdDelPumpValue err");
+    }
+}
+
+void CmdSetTankSensor(char *data, cloudcmd_t *cmd)
+{
+    cJSON   *temp       = RT_NULL;
+
+    temp = cJSON_Parse(data);
+    if(RT_NULL != temp)
+    {
+        GetValueC16(temp, &cmd->msgid);
+        GetValueByU8(temp, "tankNo", &cmd->pump_no);
+        GetValueByU8(temp, "type", &cmd->pump_sensor_type);
+        GetValueByU8(temp, "id", &cmd->pump_sensor_id);
+
+        //如果是删除泵传感器(协议规定)
+        if((0 == cmd->pump_no) && (0 == cmd->pump_sensor_type))
+        {
+            for(u8 index = 0; index < GetSysTank()->tank_size; index++)
+            {
+                for(u8 item = 0; item < TANK_SENSOR_MAX; item++)
+                {
+                    if(cmd->pump_sensor_id == GetSysTank()->tank[index].sensor[item])
+                    {
+                        GetSysTank()->tank[index].sensor[item] = 0;
+                    }
+                }
+            }
+        }
+        else    //添加泵传感器
+        {
+            if((cmd->pump_no > 0) && (cmd->pump_no <= TANK_LIST_MAX))
+            {
+                if(TANK_SENSOR_TANK == cmd->pump_sensor_type)
+                {
+                    GetSysTank()->tank[cmd->pump_no - 1].sensor[0] = cmd->pump_sensor_id;
+                }
+                else if(TANK_SENSOR_INLINE == cmd->pump_sensor_type)
+                {
+                    GetSysTank()->tank[cmd->pump_no - 1].sensor[1] = cmd->pump_sensor_id;
+                }
+            }
+        }
+
+        cJSON_Delete(temp);
+    }
+    else
+    {
+        LOG_E("CmdSetTankSensor err");
+    }
+}
+
+
+void CmdSetPumpColor(char *data, cloudcmd_t *cmd)
+{
+    cJSON   *temp       = RT_NULL;
+
+    temp = cJSON_Parse(data);
+    if(RT_NULL != temp)
+    {
+        GetValueC16(temp, &cmd->msgid);
+        GetValueByU8(temp, "id", &cmd->pump_no);
+        GetValueByU8(temp, "color", &cmd->color);
+
+        //增加泵颜色 //泵Id 和 桶序号的对应为 泵Id = 桶序号 + 1
+        if((cmd->pump_no <= TANK_LIST_MAX) && (cmd->pump_no > 0))
+        {
+            GetSysTank()->tank[cmd->pump_no - 1].color = cmd->color;
+        }
+
+        cJSON_Delete(temp);
+    }
+    else
+    {
+        LOG_E("CmdSetPumpColor err");
     }
 }
 
@@ -1011,9 +1141,10 @@ void CmdSetSysSet(char *data, cloudcmd_t *cmd, sys_para_t *para)
     if(RT_NULL != temp)
     {
         GetValueC16(temp, &cmd->msgid);
-        GetValueByC16(temp, "ntpzone", ntpzone);
+        GetValueByC16(temp, "ntpzone", ntpzone, 16);
         ntpzone[7] = '\0';
-        strcpy(para->ntpzone, ntpzone);
+//        strcpy(para->ntpzone, ntpzone);
+        strncpy(para->ntpzone, ntpzone, 8);
         GetValueByU8(temp, "tempUnit", &para->tempUnit);
         GetValueByU8(temp, "ecUnit", &para->ecUnit);
         GetValueByU8(temp, "timeFormat", &para->timeFormat);
@@ -1040,7 +1171,7 @@ void CmdSetPortName(char *data, cloudcmd_t *cmd)
 {
     u8      addr        = 0;
     u8      port        = 0;
-    char    name[MODULE_NAMESZ];
+    char    name[MODULE_NAMESZ] = "";
     cJSON   *temp       = RT_NULL;
     device_time4_t *device = RT_NULL;
     line_t *line = RT_NULL;
@@ -1051,7 +1182,7 @@ void CmdSetPortName(char *data, cloudcmd_t *cmd)
     {
         GetValueC16(temp, &cmd->msgid);
         GetValueByU16(temp, "id", &cmd->set_port_id);
-        GetValueByC16(temp, "name", name);
+        GetValueByC16(temp, "name", name, MODULE_NAMESZ);
 
         if(cmd->set_port_id >= 0xFF)
         {
@@ -1071,7 +1202,6 @@ void CmdSetPortName(char *data, cloudcmd_t *cmd)
         {
             if(RT_NULL != device)
             {
-//                LOG_D("CmdSetPortName device name %s",device->name);
                 rt_memcpy(device->name, name, MODULE_NAMESZ);
             }
             else if(RT_NULL != line)
@@ -1115,7 +1245,7 @@ void CmdSetSchedule(char *data, cloudcmd_t *cmd)//Justin debug 未验证
         GetValueC16(temp, &cmd->msgid);
 
         GetValueByU8(temp, "en", &GetSysSet()->stageSet.en);
-        GetValueByC16(temp, "starts", GetSysSet()->stageSet.starts);//Justin debug 发送bug 2022.07.28
+        GetValueByC16(temp, "starts", GetSysSet()->stageSet.starts, 16);//Justin debug 发送bug 2022.07.28
 
         list = cJSON_GetObjectItem(temp, "list");
 
@@ -1990,6 +2120,93 @@ char *ReplyGetRecipeListAll(char *cmd, cloudcmd_t cloud, sys_recipe_t *list)
     return str;
 }
 
+char *ReplyAddPumpValue(char *cmd, cloudcmd_t cloud, sys_tank_t *tank_list)
+{
+    char            *str        = RT_NULL;
+    cJSON           *json       = cJSON_CreateObject();
+    cJSON           *list       = cJSON_CreateArray();
+
+    if(RT_NULL != json)
+    {
+        cJSON_AddStringToObject(json, "cmd", cmd);
+        cJSON_AddStringToObject(json, cloud.msgid.name, cloud.msgid.value);
+        cJSON_AddNumberToObject(json, "id", cloud.pump_no);
+
+        if(RT_NULL != list)
+        {
+            if((cloud.pump_no > 0) && (cloud.pump_no <= TANK_LIST_MAX))
+            {
+                for(u8 item = 0; item < VALVE_MAX; item++)
+                {
+                    if(0 != tank_list->tank[cloud.pump_no - 1].valve[item])
+                    {
+                        cJSON_AddItemToArray(list, cJSON_CreateNumber(tank_list->tank[cloud.pump_no - 1].valve[item]));
+                    }
+                }
+            }
+            cJSON_AddItemToObject(json, "valve", list);
+        }
+
+        cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
+        str = cJSON_PrintUnformatted(json);
+        cJSON_Delete(json);
+    }
+    else
+    {
+        LOG_E("ReplySetPumpColor err");
+    }
+
+    return str;
+}
+
+char *ReplySetPumpColor(char *cmd, cloudcmd_t cloud, sys_tank_t *tank_list)
+{
+    char            *str        = RT_NULL;
+    cJSON           *json       = cJSON_CreateObject();
+
+    if(RT_NULL != json)
+    {
+        cJSON_AddStringToObject(json, "cmd", cmd);
+        cJSON_AddStringToObject(json, cloud.msgid.name, cloud.msgid.value);
+
+        cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
+        str = cJSON_PrintUnformatted(json);
+        cJSON_Delete(json);
+    }
+    else
+    {
+        LOG_E("ReplySetPumpColor err");
+    }
+
+    return str;
+}
+
+char *ReplySetPumpSensor(char *cmd, cloudcmd_t cloud)
+{
+    char            *str        = RT_NULL;
+    cJSON           *json       = cJSON_CreateObject();
+
+    if(RT_NULL != json)
+    {
+        cJSON_AddStringToObject(json, "cmd", cmd);
+        cJSON_AddStringToObject(json, cloud.msgid.name, cloud.msgid.value);
+
+        cJSON_AddNumberToObject(json, "tankNo", cloud.pump_no);
+        cJSON_AddNumberToObject(json, "type", cloud.pump_sensor_type);
+        cJSON_AddNumberToObject(json, "id", cloud.pump_sensor_id);
+
+        cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
+        str = cJSON_PrintUnformatted(json);
+        cJSON_Delete(json);
+    }
+    else
+    {
+        LOG_E("ReplySetPumpSensor err");
+    }
+
+    return str;
+}
+
 char *ReplyGetSysPara(char *cmd, cloudcmd_t cloud, sys_para_t para)
 {
     char            *str        = RT_NULL;
@@ -2252,18 +2469,19 @@ char *ReplyGetHubState(char *cmd, cloudcmd_t cloud)
         cJSON_AddNumberToObject(json, "maintain", GetSysSet()->sysPara.maintain);
 
         list = cJSON_CreateObject();
-
         if(RT_NULL != list)
         {
             cJSON_AddStringToObject(list, "name", "--");//Justin debug
             cJSON_AddStringToObject(list, "week", "--");
             cJSON_AddStringToObject(list, "day", "--");
+
+            cJSON_AddItemToObject(json, "calendar", list);
         }
 
-        cJSON_AddItemToObject(json, "calendar", list);
-
         cJSON_AddStringToObject(json, "ntpzone", GetSysSet()->sysPara.ntpzone);
+
         cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
+
         str = cJSON_PrintUnformatted(json);
         cJSON_Delete(json);
     }
@@ -2805,6 +3023,10 @@ char *ReplyGetPortSet(char *cmd, cloudcmd_t cloud)
             cJSON_AddNumberToObject(json, "id", line->addr);
             cJSON_AddStringToObject(json, "name", line->name);
             cJSON_AddNumberToObject(json, "type", line->type);
+
+            cJSON_AddStringToObject(json, "model", GetModelByType(line->type, model, 15));
+            cJSON_AddNumberToObject(json, "mainType", S_LIGHT);//Justin debug
+            cJSON_AddStringToObject(json, "funcName", "Line");
             cJSON_AddNumberToObject(json, "manual", line->_manual.manual);
             cJSON_AddNumberToObject(json, "manualOnTime", line->_manual.manual_on_time);
 
@@ -2841,7 +3063,7 @@ char *ReplyGetDeviceList(char *cmd, type_kv_c16 msgid)
     device_time4_t   module;
     line_t  line;
     cJSON   *list       = RT_NULL;
-    cJSON   *item     = RT_NULL;
+    cJSON   *item       = RT_NULL;
     cJSON   *line_i     = RT_NULL;
     cJSON   *portList   = RT_NULL;
     cJSON   *port       = RT_NULL;
@@ -2984,13 +3206,15 @@ char *ReplyGetDeviceList(char *cmd, type_kv_c16 msgid)
             LOG_E("ReplyGetDeviceList apply memeory err");
         }
 
-        cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
-        str = cJSON_PrintUnformatted(json);
+        if(RT_NULL != json)//Justin debug 仅仅测试
+        {
+            cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
+            str = cJSON_PrintUnformatted(json);
+            LOG_I("device list length = %d",strlen(str));//Justin print
 
-        LOG_I("device list length = %d",strlen(str));//Justin print
-
-        cJSON_Delete(json);
-
+            cJSON_Delete(json);
+            json = RT_NULL;
+        }
     }
     else
     {

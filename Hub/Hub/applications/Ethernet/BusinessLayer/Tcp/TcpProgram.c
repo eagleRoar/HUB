@@ -40,14 +40,16 @@ rt_err_t ConnectToSever(int *sock, char *ip, uint32_t port)
     return ret;
 }
 
-rt_err_t TcpRecvMsg(int *sock, u8 *buff, u16 size)
+rt_err_t TcpRecvMsg(int *sock, u8 *buff, u16 size, int *recLen)
 {
     rt_err_t ret = RT_EOK;
-    u16 bytes_received = 0;
+    int bytes_received = 0;
 
     bytes_received = recv(*sock, buff, size, 0);
+    *recLen = bytes_received;
     if (bytes_received <= 0)
     {
+        LOG_E("TcpRecvMsg err");
         closesocket(*sock);
         *sock = 0;
         ret = RT_ERROR;
@@ -60,11 +62,14 @@ rt_err_t TcpSendMsg(int *sock, u8 *buff, u16 size)
 {
     rt_err_t ret = RT_EOK;
 
-    if(send(*sock, buff, size, 0) < 0)
+    if(0 != *sock)
     {
-        closesocket(*sock);
-        *sock = 0;
-        ret = RT_ERROR;
+        if(send(*sock, buff, size, 0) < 0)
+        {
+            closesocket(*sock);
+            *sock = 0;
+            ret = RT_ERROR;
+        }
     }
 
     return ret;
