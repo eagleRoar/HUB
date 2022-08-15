@@ -59,8 +59,8 @@ sys_set_t *GetSysSet(void)
 
 void initHubinfo(void)
 {
-    char name[11];
-    strcpy(hub_info.name,GetSnName(name));
+    char name[12];
+    strcpy(hub_info.name,GetSnName(name, 12));
     hub_info.nameSeq = 0;
 }
 
@@ -69,11 +69,17 @@ hub_t *GetHub(void)
     return &hub_info;
 }
 
-char *GetSnName(char *name)
+char *GetSnName(char *name, u8 len)
 {
     u8 index = 0;
     char temp[16];
     u32  id;
+
+    if(len < 12)
+    {
+        LOG_E("GetSnName err");
+        return RT_NULL;
+    }
 
     rt_memcpy(name, HUB_NAME, 3);
     ReadUniqueId(&id);
@@ -141,7 +147,7 @@ void printCloud(cloudcmd_t cmd)
 
 void initCloudProtocol(void)
 {
-    char name[16];
+    char name[12];
 
     sys_set.cloudCmd.recv_flag = OFF;
     rt_memcpy(sys_set.cloudCmd.msgid.name, "msgid", KEYVALUE_NAME_SIZE);
@@ -166,7 +172,7 @@ void initCloudProtocol(void)
     //init temp
     rt_memcpy(sys_set.tempSet.msgid.name, "msgid", KEYVALUE_NAME_SIZE);
     rt_memcpy(sys_set.tempSet.sn.name, "sn", KEYVALUE_NAME_SIZE);
-    rt_memcpy(sys_set.tempSet.sn.value, GetSnName(name), 16);
+    rt_memcpy(sys_set.tempSet.sn.value, GetSnName(name,12), 12);
     rt_memcpy(sys_set.tempSet.dayCoolingTarget.name, "dayCoolingTarget", KEYVALUE_NAME_SIZE);
     sys_set.tempSet.dayCoolingTarget.value = 320;
     rt_memcpy(sys_set.tempSet.dayHeatingTarget.name, "dayHeatingTarget", KEYVALUE_NAME_SIZE);
@@ -184,7 +190,7 @@ void initCloudProtocol(void)
     //init Co2
     rt_memcpy(sys_set.co2Set.msgid.name, "msgid", KEYVALUE_NAME_SIZE);
     rt_memcpy(sys_set.co2Set.sn.name, "sn", KEYVALUE_NAME_SIZE);
-    rt_memcpy(sys_set.co2Set.sn.value, GetSnName(name), 16);
+    rt_memcpy(sys_set.co2Set.sn.value, GetSnName(name, 12), 12);
     rt_memcpy(sys_set.co2Set.dayCo2Target.name, "dayCo2Target", KEYVALUE_NAME_SIZE);
     sys_set.co2Set.dayCo2Target.value = 1000;
     rt_memcpy(sys_set.co2Set.nightCo2Target.name, "nightCo2Target", KEYVALUE_NAME_SIZE);
@@ -203,7 +209,7 @@ void initCloudProtocol(void)
     //init humi
     rt_memcpy(sys_set.humiSet.msgid.name, "msgid", KEYVALUE_NAME_SIZE);
     rt_memcpy(sys_set.humiSet.sn.name, "sn", KEYVALUE_NAME_SIZE);
-    rt_memcpy(sys_set.humiSet.sn.value, GetSnName(name), 16);
+    rt_memcpy(sys_set.humiSet.sn.value, GetSnName(name, 12), 12);
     rt_memcpy(sys_set.humiSet.dayHumiTarget.name, "dayHumidifyTarget", KEYVALUE_NAME_SIZE);
     sys_set.humiSet.dayHumiTarget.value = 600;
     rt_memcpy(sys_set.humiSet.dayDehumiTarget.name, "dayDehumidifyTarget", KEYVALUE_NAME_SIZE);
@@ -410,6 +416,10 @@ rt_err_t ReplyDataToCloud(mqtt_client *client, u8 *res, u16 *len, u8 sendCloudFl
         {
             str = ReplySetRecipe(CMD_SET_RECIPE_SET, sys_set.cloudCmd);
         }
+        else if(0 == rt_memcmp(CMD_GET_RECIPE_SET, sys_set.cloudCmd.cmd, sizeof(CMD_GET_RECIPE_SET)))//返回配方
+        {
+            str = ReplySetRecipe(CMD_GET_RECIPE_SET, sys_set.cloudCmd);
+        }
         else if(0 == rt_memcmp(CMD_SET_TANK_INFO, sys_set.cloudCmd.cmd, sizeof(CMD_SET_TANK_INFO)))//设置桶设置
         {
             str = ReplySetTank(CMD_SET_TANK_INFO, sys_set.cloudCmd);
@@ -451,6 +461,10 @@ rt_err_t ReplyDataToCloud(mqtt_client *client, u8 *res, u16 *len, u8 sendCloudFl
         {
             str = ReplySetWarn(CMD_GET_ALARM_SET, sys_set.cloudCmd, sys_set.sysWarn);
         }
+        else if(0 == rt_memcmp(CMD_DELETE_RECIPE, sys_set.cloudCmd.cmd, sizeof(CMD_DELETE_RECIPE)))//删除配方
+        {
+            str = ReplyDelRecipe(CMD_DELETE_RECIPE, sys_set.cloudCmd);
+        }
         else if(0 == rt_memcmp(CMD_GET_RECIPE, sys_set.cloudCmd.cmd, sizeof(CMD_GET_RECIPE)))//获取配方列表
         {
             str = ReplyGetRecipeList(CMD_GET_RECIPE, sys_set.cloudCmd, GetSysRecipt());
@@ -486,7 +500,7 @@ rt_err_t ReplyDataToCloud(mqtt_client *client, u8 *res, u16 *len, u8 sendCloudFl
             if(YES == sendCloudFlg)
             {
                 rt_memset(name, ' ', 20);
-                GetSnName(name);
+                GetSnName(name, 12);
                 strcpy(name + 11, "/reply");
                 paho_mqtt_publish(client, QOS1, /*MQTT_PUBTOPIC*/name, str, strlen(str));
             }
@@ -539,7 +553,7 @@ rt_err_t SendDataToCloud(mqtt_client *client, char *cmd, u8 warn_no, u16 value, 
     if(RT_NULL != str)
     {
         rt_memset(name, ' ', 20);
-        GetSnName(name);
+        GetSnName(name, 12);
         strcpy(name + 11, "/reply");
 
         //是否是云端
@@ -690,16 +704,23 @@ void analyzeCloudData(char *data, u8 cloudFlg)
             {
                 CmdSetSchedule(data, &sys_set.cloudCmd);
                 setCloudCmd(cmd->valuestring, ON);
+                GetSysSet()->saveFlag = YES;
             }
             else if(0 == rt_memcmp(CMD_ADD_RECIPE, cmd->valuestring, strlen(CMD_ADD_RECIPE)))
             {
                 CmdAddRecipe(data, &sys_set.cloudCmd);
                 setCloudCmd(cmd->valuestring, ON);
+                GetSysRecipt()->saveFlag = YES;
             }
             else if(0 == rt_memcmp(CMD_SET_RECIPE_SET, cmd->valuestring, strlen(CMD_SET_RECIPE_SET)))
             {
                 CmdSetRecipe(data, &sys_set.cloudCmd);
                 GetSysRecipt()->saveFlag = YES;
+                setCloudCmd(cmd->valuestring, ON);
+            }
+            else if(0 == rt_memcmp(CMD_GET_RECIPE_SET, cmd->valuestring, strlen(CMD_GET_RECIPE_SET)))
+            {
+                CmdGetRecipe(data, &sys_set.cloudCmd);
                 setCloudCmd(cmd->valuestring, ON);
             }
             else if(0 == rt_memcmp(CMD_SET_TANK_INFO, cmd->valuestring, strlen(CMD_SET_TANK_INFO)))
@@ -788,6 +809,12 @@ void analyzeCloudData(char *data, u8 cloudFlg)
                 CmdSetTankSensor(data, &sys_set.cloudCmd); //Justin debug 未测试
                 GetSysTank()->saveFlag = YES;
                 setCloudCmd(cmd->valuestring, ON);
+            }
+            else if(0 == rt_memcmp(CMD_DELETE_RECIPE, cmd->valuestring, strlen(CMD_DELETE_RECIPE)))
+            {
+                CmdDelRecipe(data, &sys_set.cloudCmd); //Justin debug 未测试
+                setCloudCmd(cmd->valuestring, ON);
+                GetSysRecipt()->saveFlag = YES;
             }
         }
         else
@@ -2372,3 +2399,53 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
     rt_memcpy(sys_warn, set->warn, WARN_MAX);
 }
 
+void pumpProgram(type_monitor_t *monitor, sys_tank_t *tank_list)//Justin debug 未完成
+{
+    u8          sensor_index            = 0;
+    u8          tank                    = 0;
+    u16         ph                      = 0;
+    u16         ec                      = 0;
+    u16         wl                      = 0;
+    sensor_t    *sensor                 = RT_NULL;
+
+    for(tank = 0; tank < tank_list->tank_size; tank++)
+    {
+        for(sensor_index = 0; sensor_index < monitor->sensor_size; sensor_index++)
+        {
+            for(u8 item = 0; item < TANK_SENSOR_MAX; item++)
+            {
+                //只管桶内的ph ec wl
+                if(tank_list->tank[tank].sensor[0][item] == monitor->sensor[sensor_index].addr)
+                {
+                    for(u8 stor = 0; stor < monitor->sensor[sensor_index].storage_size; stor++)
+                    {
+                        if(F_S_PH == monitor->sensor[sensor_index].__stora[stor].func)
+                        {
+                            ph = monitor->sensor[sensor_index].__stora[stor].value;
+                        }
+                        else if(F_S_EC == monitor->sensor[sensor_index].__stora[stor].func)
+                        {
+                            ec = monitor->sensor[sensor_index].__stora[stor].value;
+                        }
+                        else if(F_S_WL == monitor->sensor[sensor_index].__stora[stor].func)
+                        {
+                            wl = monitor->sensor[sensor_index].__stora[stor].value;
+                        }
+                    }
+                }
+            }
+        }
+
+        if(wl < tank_list->tank[tank].autoFillHeight)
+        {
+            //开始加水
+        }
+        else if(wl >= tank_list->tank[tank].autoFillFulfilHeight)
+        {
+
+        }
+
+        //1.灌溉的逻辑是
+        //PH太高和太低 EC太高都 停止灌溉 ，低水位停止灌溉
+    }
+}

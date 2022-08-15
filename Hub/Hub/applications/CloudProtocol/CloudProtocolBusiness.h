@@ -80,8 +80,10 @@ struct cloudCmd{
     u8              pump_no;                    //设置泵的颜色的id
     u8              color;                      //设置泵的颜色
     u8              valve_id;                   //需要添加的阀id
+    u8              pump_id;                    //关联的泵id
     u8              pump_sensor_type;           //设置泵传感器type
     u8              pump_sensor_id;             //设置泵传感器id
+    u8              del_recipe_id;              //删除配方id
 };
 
 //cmd : getTempSetting
@@ -205,13 +207,16 @@ struct sysWarn
 };
 
 /****************************以下是灌溉部分的内容*****/
+struct stage_schedule
+{
+    u8 recipeId;
+    u8 duration_day;
+};
+
 struct stage{//日程设置
     u8      en;
     char    starts[16];//[14];//20220514080000//Justin debug
-    struct stage_schedule{
-        u8 recipeId;
-        u8 duration_day;
-    }_list[STAGE_LIST_MAX];
+    struct stage_schedule _list[STAGE_LIST_MAX];
 };
 
 struct recipe{//配方 限制10个
@@ -258,8 +263,9 @@ struct tank{
     u8 highEcProtection;        //EC 高停止值
     u8 lowPhProtection;         //PH 低停止值
     u8 highPhProtection;        //PH 高停止值
+    u8 pumpId;                  //水泵Id
     u8 valve[VALVE_MAX];        //关联的阀的ID
-    u8 sensor[TANK_SENSOR_MAX]; //桶内存在两个sensor 一个是测试桶内的 一个测试管道的
+    u8 sensor[2][TANK_SENSOR_MAX]; //桶内存在两个sensor 一个是测试桶内的 一个测试管道的
     u8 color;                   //颜色
 };
 

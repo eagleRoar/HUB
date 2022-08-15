@@ -273,6 +273,8 @@ rt_err_t setDeviceDefault(device_time4_t *module)
             break;
         case AC_4_TYPE:
             //Justin debug需要再次询问一下终端具体端口的用途
+            setDeviceDefaultPara(module, "AC_4", 0x0401, S_AC_4, module->type, 4);
+
             break;
         case AC_12_TYPE:
             //Justin debug需要再次询问一下终端具体端口的用途
@@ -345,6 +347,7 @@ u8 getSOrD(u8 type)
         case COOL_TYPE:
         case HVAC_6_TYPE:
         case TIMER_TYPE:
+        case AC_4_TYPE:
             ret = DEVICE_TYPE;
             break;
         case LINE_TYPE:

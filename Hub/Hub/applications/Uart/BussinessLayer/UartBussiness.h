@@ -46,5 +46,6 @@ void AnalyzeData(rt_device_t , type_monitor_t *, u8 *, u8);
 void AnlyzeModuleInfo(type_monitor_t *, u8 *, u8);
 void findDeviceLocation(type_monitor_t *, cloudcmd_t *,rt_device_t);
 void findLineLocation(type_monitor_t *, cloudcmd_t *,rt_device_t);
+void replyStrorageType(type_monitor_t *, u8, u8 *, u8);
 
 #endif /* APPLICATIONS_UART_BUSSINESSLAYER_UARTBUSSINESS_H_ */

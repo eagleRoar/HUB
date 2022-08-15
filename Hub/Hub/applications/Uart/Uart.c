@@ -247,9 +247,10 @@ void SensorUart2TaskEntry(void* parameter)
                 findDeviceLocation(GetMonitor(), &sys_set.cloudCmd, uart2_serial);
                 findLineLocation(GetMonitor(), &sys_set.cloudCmd, uart3_serial);
                 lineProgram_new(GetMonitor(), 0, 1000);
-                lineProgram_new(GetMonitor(), 1, 1000);//line2
+                lineProgram_new(GetMonitor(), 1, 1000);             //line2
                 warnProgram(GetMonitor(), GetSysSet());
-                GetRealCal(GetSysSet(), GetSysRecipt());//通过日程获取配方设置
+                GetRealCal(GetSysSet(), GetSysRecipt());            //通过日程获取配方设置
+                pumpProgram(GetMonitor(), GetSysTank());            //水泵的工作
 
                 if(0 != sys_set.cloudCmd.delete_id.value)
                 {

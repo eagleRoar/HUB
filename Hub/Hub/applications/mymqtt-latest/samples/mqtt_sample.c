@@ -118,7 +118,7 @@ int mqtt_start(void)
 
         /* generate the random client ID */
 //        rt_snprintf(cid, sizeof(cid), "rtthread%d", rt_tick_get());
-        GetSnName(cid);
+        GetSnName(cid, 12);
         /* config connect param */
         memcpy(&client.condata, &condata, sizeof(condata));
         client.condata.clientID.cstring = cid;
@@ -132,7 +132,7 @@ int mqtt_start(void)
         client.condata.will.qos = 1;
         client.condata.will.retained = 0;
         rt_memset(name, ' ', 20);
-        GetSnName(name);
+        GetSnName(name, 12);
         strcpy(name + 11, "/reply");
         client.condata.will.topicName.cstring = name;
         client.condata.will.message.cstring = MQTT_WILLMSG;
@@ -154,7 +154,7 @@ int mqtt_start(void)
 
         /* set subscribe table and event callback */
         rt_memset(name, ' ', 20);
-        GetSnName(name);
+        GetSnName(name, 12);
         strcpy(name + 11, "/ctr");
         client.message_handlers[0].topicFilter = rt_strdup(name);
         client.message_handlers[0].callback = mqtt_sub_callback;
@@ -214,7 +214,7 @@ static int mqtt_publish(int argc, char **argv)
     if (argc == 2)
     {
         rt_memset(name, ' ', 20);
-        GetSnName(name);
+        GetSnName(name, 12);
         strcpy(name + 11, "/reply");
         paho_mqtt_publish(&client, QOS1, /*MQTT_PUBTOPIC*/name, argv[1], strlen(argv[1]));
     }

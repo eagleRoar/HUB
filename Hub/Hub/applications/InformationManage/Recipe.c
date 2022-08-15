@@ -96,6 +96,40 @@ void AddRecipe(recipe_t *rec, sys_recipe_t *sys_rec)
     }
 }
 
+rt_err_t deleteRecipe(u8 id, sys_recipe_t *list)
+{
+    rt_err_t ret = RT_ERROR;
+
+    for(u8 index = 0; index < list->recipe_size; index++)
+    {
+        if(id == list->recipe[index].id)
+        {
+            //如果是在最后面的删除 则不同往前推
+            if(index == list->recipe_size - 1)
+            {
+                rt_memset((u8 *)&list->recipe[index], 0, sizeof(recipe_t));
+            }
+            else
+            {
+                if(list->recipe_size > 0)
+                {
+                    for(u8 item = index; item < list->recipe_size - 1; item++)
+                    {
+                        rt_memcpy((u8 *)&list->recipe[index], (u8 *)&list->recipe[index + 1], sizeof(recipe_t));
+                    }
+                }
+            }
+
+            if(list->recipe_size > 0)
+            {
+                list->recipe_size--;
+            }
+        }
+    }
+
+    return ret;
+}
+
 sys_recipe_t *GetSysRecipt(void)
 {
     return &sys_recipe;

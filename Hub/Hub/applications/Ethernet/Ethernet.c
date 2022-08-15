@@ -18,7 +18,7 @@
 struct ethDeviceStruct *eth = RT_NULL;          //申请ethernet实例化对象
 
 u8                  tcp_recv_flag           = NO;
-int                 tcp_sock                    = 0;
+static int                 tcp_sock                = 0;
 char                *tcpRecvBuffer          = RT_NULL;
 char                *tcpSendBuffer          = RT_NULL;
 u8                  udpSendBuffer[30];
@@ -63,6 +63,12 @@ void TcpRecvTaskEntry(void* parameter)
                             tcpRecvBuffer[length] = '\0';
                         }
                         tcp_recv_flag = YES;
+                    }
+                    else
+                    {
+                        //释放内存
+                        rt_free(tcpRecvBuffer);
+                        tcpRecvBuffer = RT_NULL;
                     }
                 }
                 else
@@ -188,6 +194,14 @@ void UdpTaskEntry(void* parameter)
                         SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT_WARN, item, GetSysSet()->warn_value[item], RT_NULL, RT_NULL, YES);
                     }
                 }
+//                else
+//                {
+//                    //Justin debug 仅仅测试
+//                    if(ON == GetSysSet()->warn[item])
+//                    {
+//                        LOG_I("warn value = %d", GetSysSet()->warn_value[item]);
+//                    }
+//                }
             }
         }
 
@@ -258,8 +272,8 @@ void UdpTaskEntry(void* parameter)
                             {
                                 if (RT_EOK != TcpSendMsg(&tcp_sock, (u8 *)tcpSendBuffer, length))
                                 {
-                                    LOG_D("length = %d",length);//Justin debug
-                                    LOG_E("data = : %s",tcpSendBuffer);//Justin debug
+//                                    LOG_D("length = %d",length);
+//                                    LOG_E("data = : %s",tcpSendBuffer);
                                     LOG_E("send tcp err 1");
                                     eth->tcp.SetConnectStatus(OFF);
                                     eth->tcp.SetConnectTry(ON);

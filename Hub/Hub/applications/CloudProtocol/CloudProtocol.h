@@ -18,7 +18,7 @@
 
 //sys_set_t *GetSysSet(void);//为什么识别不了sys_set_t
 void initCloudProtocol(void);
-char *GetSnName(char *);
+char *GetSnName(char *,u8);
 void tempProgram(type_monitor_t *);
 void timmerProgram(type_monitor_t *);
 void co2Program(type_monitor_t *, u16);

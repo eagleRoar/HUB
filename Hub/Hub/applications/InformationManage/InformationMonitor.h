@@ -137,6 +137,7 @@ struct device_Timer4
     u8              storage_size;                           //寄存器数量
     u8              mode;                                   // 模式 1-By Schedule 2-By Recycle
     u8              hotStartDelay;                          //对于制冷 制热 除湿设备需要有该保护
+    u8              device_timer_type[DEVICE_PORT_SZ];      //device 或者  timer 类型
     //device和ac_4一样有最多4个port
     union device_port{
         struct device{
@@ -387,6 +388,8 @@ enum{
     S_HUMI              = 3,
     S_LIGHT             = 4,
     S_TIMER             = 5,
+    S_AC_4              = 6,
+    S_AC_12             = 7
 };
 
 enum{
@@ -406,7 +409,8 @@ enum{
     F_S_TEMP,
     F_S_LIGHT,
     F_S_PH,
-    F_S_EC
+    F_S_EC,
+    F_S_WL
 };
 
 /*设备工作状态 0-Off 1-On 2-PPM UP 3-FUZZY LOGIC
