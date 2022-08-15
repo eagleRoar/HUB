@@ -21,7 +21,8 @@
 #include "Module.h"
 #include "Recipe.h"
 
-type_monitor_t monitor;
+__attribute__((section(".ccmbss"))) type_monitor_t monitor;
+//__attribute__((section(".ccmbss"))) u8 test_test;//Justin debug
 struct rx_msg uart1_msg;                      //接收串口数据以及相关消息
 struct rx_msg uart2_msg;                      //接收串口数据以及相关消息
 struct rx_msg uart3_msg;                      //接收串口数据以及相关消息

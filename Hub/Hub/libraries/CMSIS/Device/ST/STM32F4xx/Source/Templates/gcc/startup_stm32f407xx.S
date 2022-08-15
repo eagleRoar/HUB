@@ -62,6 +62,13 @@ defined in linker script */
 .word  _ebss
 /* stack used for SystemInit_ExtMemCtl; always internal RAM used */
 
+/* start address for the initialization values of the .data ccm section. defined in linker script */
+.word  _siccm
+/* start address for the .ccm section. defined in linker script */
+.word  _sccm
+/* end address for the .ccm section. defined in linker script */
+.word  _eccm
+
 /**
  * @brief  This is the code that gets called when the processor first
  *          starts execution following a reset event. Only the absolutely
@@ -95,6 +102,24 @@ LoopCopyDataInit:
   bcc  CopyDataInit
   ldr  r2, =_sbss
   b  LoopFillZerobss
+  /* Copy the data CCM segment initializers from flash to SRAM */
+  movs  r1, #0
+  b  LoopCopyCCMInit	/* 调用 LoopCopyCCMInit */
+
+CopyCCMInit:
+  ldr   r3, =_siccm		/* Flash 中存储的 CCM RAM 变量初始值的起始地址 */
+  ldr   r3, [r3, r1]	/* r3 <-[r3+r1] */
+  str   r3, [r0, r1]	/* [r0 + r1] <- r3 */
+  adds   r1, r1, #4		/*  偏移量加 4*/
+
+LoopCopyCCMInit:
+  ldr   r0, =_sccm     /* .ccm section 的起始地址 */
+  ldr r3, =_eccm /* .ccm section 的终止地址 */
+  adds   r2, r0, r1       /* r2 <- 指针加偏移量*/
+  cmp   r2, r3	/*  指针是否已经指向了终止地址？ */
+  bcc  CopyCCMInit
+
+
 /* Zero fill the bss segment. */  
 FillZerobss:
   movs  r3, #0

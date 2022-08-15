@@ -363,6 +363,8 @@ struct monitor
 #define     HUMI_TYPE       0x43
 #define     DEHUMI_TYPE     0x44
 #define     COOL_TYPE       0x45
+#define     VALVE_TYPE      0x49        //阀
+#define     PUMP_TYPE       0x4B        //水泵
 #define     TIMER_TYPE      0x4f
 #define     HVAC_6_TYPE     0x61
 #define     AC_4_TYPE       0x50    //如果注册检测到该类型的话需要再次询问看看每个端口的作用(Justin debug 考虑一下如果有端口的功能改变之后需要去询问，否则有问题)

@@ -69,8 +69,8 @@ static void mqtt_sub_callback(mqtt_client *c, message_data *msg_data)
                msg_data->message->payloadlen,
                (char *)msg_data->message->payload);
 
-    recvMqttFlg = 1;
     analyzeCloudData((char *)msg_data->message->payload, YES);
+    SetRecvMqttFlg(ON);
 }
 
 static void mqtt_sub_default_callback(mqtt_client *c, message_data *msg_data)

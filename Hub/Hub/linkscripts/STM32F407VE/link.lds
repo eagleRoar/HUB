@@ -7,6 +7,7 @@ MEMORY
 {
     ROM (rx) : ORIGIN = 0x08000000, LENGTH =  512k /* 512K flash */
     RAM (rw) : ORIGIN = 0x20000000, LENGTH =  128k /* 128K sram */
+    CCM (rw) : ORIGIN = 0x10000000, LENGTH =   64k  /* 64K ccm sram */
 }
 ENTRY(Reset_Handler)
 _system_stack_size = 0x400;
@@ -71,20 +72,22 @@ SECTIONS
     } > ROM = 0
 
     /* .ARM.exidx is sorted, so has to go in its own output section.  */
-    
+    __exidx_start = .;
     .ARM.exidx :
     {
-	    __exidx_start = .;
         *(.ARM.exidx* .gnu.linkonce.armexidx.*)
 
         /* This is used by the startup in order to initialize the .data secion */
         _sidata = .;
-	    __exidx_end = .;	
+        _siccmram = .; /* Justin debug */
     } > ROM
+    __exidx_end = .;
 
     /* .data section which is used for initialized data */
 
-    .data : AT (_sidata)
+	_sidata = LOADADDR(.data);
+
+    .data :
     {
         . = ALIGN(4);
         /* This is used by the startup in order to initialize the .data secion */
@@ -103,7 +106,42 @@ SECTIONS
         . = ALIGN(4);
         /* This is used by the startup in order to initialize the .data secion */
         _edata = . ;
-    } >RAM
+    } >RAM AT>ROM
+
+	_siccm = LOADADDR(.ccm);
+	.ccm :
+	{
+	
+	. = ALIGN(4);
+	
+	_sccm = .;	/*create a global symbol at ccmram start */
+	
+	*(.ccmram)	     /* .ccm sections */
+	
+	*(.ccmram*)	/* .ccm* sections */
+	
+	. = ALIGN(4);
+	
+	_eccm = .;   /*create a global symbol at ccmram end */
+	
+	} >CCM AT>ROM
+	
+	.ccmbss (NOLOAD):
+	{
+
+	. = ALIGN(4);
+	
+	_sccmbss = .;   /*create a global symbol at ccmram start */
+	
+	*(.ccmbss)	/* .data sections */
+	
+	*(.ccmbss*)	/* .data* sections */
+	
+	. = ALIGN(4);
+	
+	_eccmbss = .;  /*create a global symbol at ccmram end */
+	
+	} >CCM
 
     .stack : 
     {

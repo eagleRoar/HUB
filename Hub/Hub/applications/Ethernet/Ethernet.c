@@ -112,7 +112,6 @@ void UdpTaskEntry(void* parameter)
     struct sockaddr_in      broadcastRecvSerAddr;
     static u8               warn[WARN_MAX];
     static u16  time10S             = 0;
-    static u8 cnt = 0;
     static u8       Timer60sTouch   = OFF;
     static u16      time60S         = 0;
 
@@ -149,60 +148,6 @@ void UdpTaskEntry(void* parameter)
         {
             rt_thread_mdelay(1000);
             continue;
-        }
-
-        //50ms 云服务器
-        if(1 == GetRecvMqttFlg())
-        {
-            if(RT_EOK == ReplyDataToCloud(GetMqttClient(), RT_NULL, RT_NULL, YES))//Justin debug 该函数需要使用锁
-            {
-                SetRecvMqttFlg(0);
-            }
-            else
-            {
-                if(cnt < 10)//Justin debug 排查问题 为什么 打包失败
-                {
-                    cnt++;
-                }
-                else
-                {
-                    cnt = 0;
-                    SetRecvMqttFlg(0);
-                }
-                LOG_E("reply ReplyDataToCloud err");
-            }
-        }
-
-
-        if(YES == GetMqttStartFlg())
-        {
-            //60s 主动发送给云服务
-            if(ON == Timer60sTouch)
-            {
-                SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT, 0 , 0, RT_NULL, RT_NULL, YES);
-            }
-
-            //主动发送告警
-            for(u8 item = 0; item < WARN_MAX; item++)
-            {
-                if(warn[item] != GetSysSet()->warn[item])
-                {
-                    warn[item] = GetSysSet()->warn[item];
-
-                    if(ON == GetSysSet()->warn[item])
-                    {
-                        SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT_WARN, item, GetSysSet()->warn_value[item], RT_NULL, RT_NULL, YES);
-                    }
-                }
-//                else
-//                {
-//                    //Justin debug 仅仅测试
-//                    if(ON == GetSysSet()->warn[item])
-//                    {
-//                        LOG_I("warn value = %d", GetSysSet()->warn_value[item]);
-//                    }
-//                }
-            }
         }
 
         /* 50ms任务 */
@@ -272,8 +217,6 @@ void UdpTaskEntry(void* parameter)
                             {
                                 if (RT_EOK != TcpSendMsg(&tcp_sock, (u8 *)tcpSendBuffer, length))
                                 {
-//                                    LOG_D("length = %d",length);
-//                                    LOG_E("data = : %s",tcpSendBuffer);
                                     LOG_E("send tcp err 1");
                                     eth->tcp.SetConnectStatus(OFF);
                                     eth->tcp.SetConnectTry(ON);
@@ -286,6 +229,10 @@ void UdpTaskEntry(void* parameter)
                                 rt_free(tcpSendBuffer);
                                 tcpSendBuffer = RT_NULL;
                             }
+                        }
+                        else
+                        {
+                            LOG_E("apply tcpSendBuffer fail");//Justin debug
                         }
                     }
                 }
@@ -370,7 +317,7 @@ void UdpTaskEntry(void* parameter)
 }
 rt_err_t UdpTaskInit(void)
 {
-    rt_thread_t thread = rt_thread_create(UDP_TASK, UdpTaskEntry, RT_NULL, 1024 * 3, UDP_PRIORITY, 10);
+    rt_thread_t thread = rt_thread_create(UDP_TASK, UdpTaskEntry, RT_NULL, 1024 * 3, UDP_PRIORITY, 10);//Justin debug 仅仅测试
     rt_thread_startup(thread);
 
     return RT_EOK;

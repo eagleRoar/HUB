@@ -2399,14 +2399,19 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
     rt_memcpy(sys_warn, set->warn, WARN_MAX);
 }
 
+#define     ADD_WATER       1
+#define     NO_ADD_WATER    0
+
 void pumpProgram(type_monitor_t *monitor, sys_tank_t *tank_list)//Justin debug 未完成
 {
     u8          sensor_index            = 0;
+    u8          device_index            = 0;
     u8          tank                    = 0;
     u16         ph                      = 0;
     u16         ec                      = 0;
     u16         wl                      = 0;
     sensor_t    *sensor                 = RT_NULL;
+    static u8   waterState[TANK_LIST_MAX] = {NO_ADD_WATER,NO_ADD_WATER,NO_ADD_WATER,NO_ADD_WATER};
 
     for(tank = 0; tank < tank_list->tank_size; tank++)
     {
@@ -2436,16 +2441,53 @@ void pumpProgram(type_monitor_t *monitor, sys_tank_t *tank_list)//Justin debug �
             }
         }
 
+        //1.判断是否需要补水
         if(wl < tank_list->tank[tank].autoFillHeight)
         {
-            //开始加水
+            waterState[tank] = ADD_WATER;
         }
-        else if(wl >= tank_list->tank[tank].autoFillFulfilHeight)
+        else
         {
-
+            if(wl > tank_list->tank[tank].autoFillFulfilHeight)
+            {
+                //如果高过目标水位则关闭
+                waterState[tank] = NO_ADD_WATER;
+            }
         }
 
-        //1.灌溉的逻辑是
-        //PH太高和太低 EC太高都 停止灌溉 ，低水位停止灌溉
+        for(device_index = 0; device_index < monitor->device_size; device_index++)
+        {
+            //1.1如果需要补水
+            if(tank_list->tank[tank].autoFillValveId == monitor->device[device_index].addr)
+            {
+                if(ADD_WATER == waterState[tank])
+                {
+                    monitor->device[device_index]._storage[0]._port.d_state = ON;
+                }
+                else if(NO_ADD_WATER == waterState[tank])
+                {
+                    monitor->device[device_index]._storage[0]._port.d_state = OFF;
+                }
+            }
+
+
+            //2.灌溉的逻辑是
+            //PH太高和太低 EC太高都 停止灌溉 ，低水位停止灌溉
+            if(tank_list->tank[tank].pumpId == monitor->device[device_index].addr)
+            {
+                //如果桶没有关联的阀门,则按照水泵的定时器工作；
+                //如果桶有关联的阀门,则按照阀门的定时器工作
+
+                if(PUMP_TYPE == monitor->device[device_index].type)
+                {
+                    //如果处于需要开启的时间段
+//                    if()
+//                    {
+//
+//                    }
+                }
+            }
+        }
+
     }
 }

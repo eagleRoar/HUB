@@ -9,7 +9,6 @@
  */
 
 #include <rtthread.h>
-
 #include "Gpio.h"
 #include "Ble.h"
 #include "Ethernet.h"
@@ -33,7 +32,6 @@ extern rt_uint8_t GetEthDriverLinkStatus(void);            //获取网口连接�
 extern void GetUpdataFileFromWeb(void);
 extern int mqtt_start(void);
 extern mqtt_client *GetMqttClient(void);
-extern u8 GetRecvMqttFlg(void);
 extern void SetRecvMqttFlg(u8);
 extern sys_set_t *GetSysSet(void);
 extern int GetMqttStartFlg(void);
@@ -56,7 +54,7 @@ int main(void)
     static u16      time1S          = 0;
     static u16      time60S         = 0;
     static u16      timeInit        = 0;
-//    static u8       cnt             = 0;
+    static u8       cnt             = 0;
     type_sys_time   time;
 
     dynamic_mutex = rt_mutex_create("dmutex", RT_IPC_FLAG_FIFO);
@@ -120,6 +118,7 @@ int main(void)
     //从网络上获取新的app包
     //GetUpdataFileFromWeb();
 
+//    LOG_D("----------------monitor size = %d",sizeof(type_monitor_t));
     while(1)
     {
         time100mS = TimerTask(&time100mS, 5, &Timer100msTouch);            //1秒任务定时器
@@ -137,6 +136,51 @@ int main(void)
                 /* 重新上线,初始化网络任务 */
                 EthernetTaskInit();
                 LOG_D("EthernetTask init OK");
+            }
+        }
+
+        //50ms 云服务器
+        if(ON == GetRecvMqttFlg())
+        {
+            if(RT_EOK == ReplyDataToCloud(GetMqttClient(), RT_NULL, RT_NULL, YES))//Justin debug 该函数需要使用锁
+            {
+                SetRecvMqttFlg(OFF);
+            }
+            else
+            {
+                if(cnt < 10)
+                {
+                    cnt++;
+                }
+                else
+                {
+                    cnt = 0;
+                    SetRecvMqttFlg(OFF);
+                }
+                LOG_E("reply ReplyDataToCloud err");
+            }
+        }
+
+        if(YES == GetMqttStartFlg())
+        {
+            //60s 主动发送给云服务
+            if(ON == Timer60sTouch)
+            {
+                SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT, 0 , 0, RT_NULL, RT_NULL, YES);
+            }
+
+            //主动发送告警
+            for(u8 item = 0; item < WARN_MAX; item++)
+            {
+                if(warn[item] != GetSysSet()->warn[item])
+                {
+                    warn[item] = GetSysSet()->warn[item];
+
+                    if(ON == GetSysSet()->warn[item])
+                    {
+                        SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT_WARN, item, GetSysSet()->warn_value[item], RT_NULL, RT_NULL, YES);
+                    }
+                }
             }
         }
 
