@@ -34,5 +34,10 @@ time_t ReplyTimeStamp(void);
 u16 getVpd(void);
 void ctrDevice(type_monitor_t *, u8, u16);
 void initSysTank(void);
+time_t changeTmTotimet(struct tm *);
+struct tm* getTimeStampByDate(time_t *);
+//void pumpProgram(type_monitor_t *, sys_tank_t *);
+void pumpDoing(device_time4_t *, u8);
+//void GetNowSysSet(proTempSet_t *, proCo2Set_t *, proHumiSet_t *, proLine_t *, proLine_t *);
 //sys_tank_t *GetSysTank(void);
 #endif /* APPLICATIONS_CLOUDPROTOCOL_CLOUDPROTOCOL_H_ */

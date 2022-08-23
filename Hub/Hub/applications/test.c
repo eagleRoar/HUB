@@ -196,8 +196,8 @@ void printLine(line_t line)
 
 void printTimer12(timer12_t module)
 {
-    int         index       = 0;
-    int         port        = 0;
+//    int         index       = 0;
+//    int         port        = 0;
 
     LOG_D("----------------------print new mnodule-----------");
     LOG_D("type             : %x",module.type);
@@ -208,7 +208,7 @@ void printTimer12(timer12_t module)
     LOG_D("conn_state       : %x",module.conn_state);
     LOG_D("s_or_d : Timer12");
     LOG_D("storage_size     : %d",module.storage_size);
-//    for(index = 0; index < /*TIMER12_PORT_MAX*/1; index++)//Justin debug
+//    for(index = 0; index < /*TIMER12_PORT_MAX*/1; index++)
 //    {
 //        for(port = 0; port < TIMER_GROUP; port++)
 //        {

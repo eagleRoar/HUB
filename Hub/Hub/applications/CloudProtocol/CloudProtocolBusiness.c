@@ -22,6 +22,7 @@ extern  u8 sys_warn[WARN_MAX];
 extern sys_set_t *GetSysSet(void);
 extern sys_tank_t *GetSysTank(void);
 extern void getRealTimeForMat(type_sys_time *);
+extern void GetNowSysSet(proTempSet_t *, proCo2Set_t *, proHumiSet_t *, proLine_t *, proLine_t *, struct recipeInfor *);
 
 rt_err_t GetValueU8(cJSON *temp, type_kv_u8 *data)
 {
@@ -615,7 +616,7 @@ void CmdDelRecipe(char *data, cloudcmd_t *cmd)
     {
         GetValueC16(temp, &cmd->msgid);
         GetValueByU8(temp, "id", &cmd->del_recipe_id);
-        deleteRecipe(cmd->del_recipe_id, GetSysRecipt());
+        deleteRecipe(cmd->del_recipe_id, GetSysRecipt(), GetSysSet());
 
         cJSON_Delete(temp);
     }
@@ -643,8 +644,9 @@ void CmdGetRecipe(char *data, cloudcmd_t *cmd)
     }
 }
 
-void CmdSetRecipe(char *data, cloudcmd_t *cmd)//Justin debug 还没完成
+void CmdSetRecipe(char *data, cloudcmd_t *cmd)
 {
+    u16             tempValue   = 0;
     cJSON           *temp       = RT_NULL;
     cJSON           *line       = RT_NULL;
     recipe_t        *recipe     = RT_NULL;
@@ -715,8 +717,8 @@ void CmdSetRecipe(char *data, cloudcmd_t *cmd)//Justin debug 还没完成
 
             if(recipe->dayHeatingTarget > recipe->dayCoolingTarget)//加热温度值应该低于制冷温度值
             {
-                temp = recipe->dayCoolingTarget - 2 * GetSysSet()->tempSet.tempDeadband.value;
-                recipe->dayHeatingTarget = temp > 0 ? temp : 0;
+                tempValue = recipe->dayCoolingTarget - 2 * GetSysSet()->tempSet.tempDeadband.value;
+                recipe->dayHeatingTarget = tempValue > 0 ? tempValue : 0;
             }
 
             if(recipe->nightCoolingTarget > 400)
@@ -735,8 +737,8 @@ void CmdSetRecipe(char *data, cloudcmd_t *cmd)//Justin debug 还没完成
 
             if(recipe->nightHeatingTarget > recipe->nightCoolingTarget)//加热温度值应该低于制冷温度值
             {
-                temp = recipe->nightCoolingTarget - 2 * GetSysSet()->tempSet.tempDeadband.value;
-                recipe->nightHeatingTarget = temp > 0 ? temp : 0;
+                tempValue = recipe->nightCoolingTarget - 2 * GetSysSet()->tempSet.tempDeadband.value;
+                recipe->nightHeatingTarget = tempValue > 0 ? tempValue : 0;
             }
 
             if(recipe->dayDehumidifyTarget > 1000)
@@ -755,8 +757,8 @@ void CmdSetRecipe(char *data, cloudcmd_t *cmd)//Justin debug 还没完成
 
             if(recipe->dayHumidifyTarget > recipe->dayDehumidifyTarget)//加湿目标应该低于除湿目标
             {
-                temp = recipe->dayHumidifyTarget - 2 * GetSysSet()->humiSet.humidDeadband.value;
-                recipe->dayHumidifyTarget = temp > 0 ? temp : 0;
+                tempValue = recipe->dayHumidifyTarget - 2 * GetSysSet()->humiSet.humidDeadband.value;
+                recipe->dayHumidifyTarget = tempValue > 0 ? tempValue : 0;
             }
 
             if(recipe->nightDehumidifyTarget > 1000)
@@ -775,8 +777,8 @@ void CmdSetRecipe(char *data, cloudcmd_t *cmd)//Justin debug 还没完成
 
             if(recipe->nightHumidifyTarget > recipe->nightDehumidifyTarget)//加湿目标应该低于除湿目标
             {
-                temp = recipe->nightHumidifyTarget - 2 * GetSysSet()->humiSet.humidDeadband.value;
-                recipe->nightHumidifyTarget = temp > 0 ? temp : 0;
+                tempValue = recipe->nightHumidifyTarget - 2 * GetSysSet()->humiSet.humidDeadband.value;
+                recipe->nightHumidifyTarget = tempValue > 0 ? tempValue : 0;
             }
 
             if(recipe->dayCo2Target > 5000)
@@ -825,9 +827,9 @@ void CmdSetTank(char *data, cloudcmd_t *cmd)
             GetValueByU8(temp, "autoFillValveId", &tank->autoFillValveId);
             GetValueByU8(temp, "autoFillHeight", &tank->autoFillHeight);
             GetValueByU8(temp, "autoFillFulfilHeight", &tank->autoFillFulfilHeight);
-            GetValueByU8(temp, "highEcProtection", &tank->highEcProtection);
-            GetValueByU8(temp, "lowPhProtection", &tank->lowPhProtection);
-            GetValueByU8(temp, "highPhProtection", &tank->highPhProtection);
+            GetValueByU16(temp, "highEcProtection", &tank->highEcProtection);
+            GetValueByU16(temp, "lowPhProtection", &tank->lowPhProtection);
+            GetValueByU16(temp, "highPhProtection", &tank->highPhProtection);
 
             InsertTankToTable(GetSysTank(), *tank);
 
@@ -1018,8 +1020,8 @@ void CmdAddPumpValue(char *data, cloudcmd_t *cmd)
     if(RT_NULL != temp)
     {
         GetValueC16(temp, &cmd->msgid);
-        GetValueByU8(temp, "id", &cmd->pump_id);
-        GetValueByU8(temp, "valveId", &cmd->valve_id);
+        GetValueByU16(temp, "id", &cmd->pump_id);
+        GetValueByU16(temp, "valveId", &cmd->valve_id);
 
         //添加阀
         for(index = 0; index < tank_list->tank_size; index++)
@@ -1292,7 +1294,7 @@ void CmdSetPortName(char *data, cloudcmd_t *cmd)
     }
 }
 
-void CmdSetSchedule(char *data, cloudcmd_t *cmd)//Justin debug 未验证
+void CmdSetSchedule(char *data, cloudcmd_t *cmd)
 {
     u8      index       = 0;
     u8      list_sum    = 0;
@@ -1308,13 +1310,14 @@ void CmdSetSchedule(char *data, cloudcmd_t *cmd)//Justin debug 未验证
         GetValueC16(temp, &cmd->msgid);
 
         GetValueByU8(temp, "en", &GetSysSet()->stageSet.en);
-        GetValueByC16(temp, "starts", GetSysSet()->stageSet.starts, 16);//Justin debug 发送bug 2022.07.28
+        GetValueByC16(temp, "starts", GetSysSet()->stageSet.starts, 16);
 
         list = cJSON_GetObjectItem(temp, "list");
 
         if(RT_NULL != list)
         {
             list_sum = cJSON_GetArraySize(list);
+//            LOG_I("----------------list_sum = %d",list_sum);
             rt_memset((u8 *)GetSysSet()->stageSet._list, 0, STAGE_LIST_MAX * sizeof(struct stage_schedule));
             if(list_sum > STAGE_LIST_MAX)
             {
@@ -1329,6 +1332,9 @@ void CmdSetSchedule(char *data, cloudcmd_t *cmd)//Justin debug 未验证
                 {
                     GetValueByU8(item, "recipeId", &GetSysSet()->stageSet._list[index].recipeId);
                     GetValueByU8(item, "duration", &GetSysSet()->stageSet._list[index].duration_day);
+
+//                    LOG_I("recipeId = %d, duration_day = %d",GetSysSet()->stageSet._list[index].recipeId,
+//                            GetSysSet()->stageSet._list[index].duration_day);
                 }
             }
         }
@@ -1530,7 +1536,6 @@ char *SendHubReportWarn(char *cmd, sys_set_t *set, u8 warn_no, u16 value)
 
 char *SendHubReport(char *cmd, sys_set_t *set)
 {
-    u8              warn_type   = 0;
     char            *str        = RT_NULL;
     char            model[15];
     char            name[12];
@@ -1879,7 +1884,7 @@ char *ReplyDeleteDevice(char *cmd, cloudcmd_t cloud)
     return str;
 }
 
-char *ReplySetSchedule(char *cmd, cloudcmd_t cloud)//Justin debug 未验证
+char *ReplySetSchedule(char *cmd, cloudcmd_t cloud)
 {
     u8      index       = 0;
     char    *str        = RT_NULL;
@@ -1953,6 +1958,7 @@ char *ReplyAddRecipe(char *cmd, cloudcmd_t cloud)
 
     if(RT_NULL != json)
     {
+        rt_memset((u8 *)&recipe, 0, sizeof(recipe_t));
         cJSON_AddStringToObject(json, "cmd", cmd);
         cJSON_AddStringToObject(json, cloud.msgid.name, cloud.msgid.value);
         cJSON_AddStringToObject(json, cloud.recipe_name.name, cloud.recipe_name.value);
@@ -2091,7 +2097,7 @@ char *ReplyGetRecipeList(char *cmd, cloudcmd_t cloud, sys_recipe_t *list)
 
         if(RT_NULL != j_list)
         {
-            for(u8 index = 0; index < RECIPE_LIST_MAX; index++)
+            for(u8 index = 0; index < list->recipe_size; index++)
             {
                 item = cJSON_CreateObject();
 
@@ -2129,7 +2135,7 @@ char *ReplyGetRecipeListAll(char *cmd, cloudcmd_t cloud, sys_recipe_t *list)
     char            *str        = RT_NULL;
     cJSON           *json       = cJSON_CreateObject();
     cJSON           *j_list     = cJSON_CreateArray();
-    cJSON           *line       = RT_NULL;
+//    cJSON           *line       = RT_NULL;
     cJSON           *item       = RT_NULL;
 
     if(RT_NULL != json)
@@ -2524,8 +2530,11 @@ char *ReplyGetHubState(char *cmd, cloudcmd_t cloud)
     char            *str        = RT_NULL;
     char            model[15];
     char            name[12];
+    char            week[2]     = "";
+    char            day[2]      = "";
     cJSON           *json       = cJSON_CreateObject();
     cJSON           *list       = RT_NULL;
+    struct recipeInfor info;
 
     if(RT_NULL != json)
     {
@@ -2562,7 +2571,14 @@ char *ReplyGetHubState(char *cmd, cloudcmd_t cloud)
         }
         cJSON_AddNumberToObject(json, "tempLock", GetSysSet()->tempSet.coolingDehumidifyLock.value);
         cJSON_AddNumberToObject(json, "humidLock", GetSysSet()->tempSet.coolingDehumidifyLock.value);
-        cJSON_AddNumberToObject(json, "ppfd", GetSysSet()->line1Set.byAutoDimming.value);
+        if(RT_NULL == GetSensorByType(GetMonitor(), PAR_TYPE))
+        {
+            cJSON_AddNumberToObject(json, "ppfd", VALUE_NULL);
+        }
+        else
+        {
+            cJSON_AddNumberToObject(json, "ppfd", GetSensorByType(GetMonitor(), PAR_TYPE)->__stora[0].value);
+        }
         cJSON_AddNumberToObject(json, "vpd", getVpd());
         cJSON_AddNumberToObject(json, "dayNight", GetSysSet()->dayOrNight);
         cJSON_AddNumberToObject(json, "maintain", GetSysSet()->sysPara.maintain);
@@ -2570,9 +2586,22 @@ char *ReplyGetHubState(char *cmd, cloudcmd_t cloud)
         list = cJSON_CreateObject();
         if(RT_NULL != list)
         {
-            cJSON_AddStringToObject(list, "name", "--");//Justin debug
-            cJSON_AddStringToObject(list, "week", "--");
-            cJSON_AddStringToObject(list, "day", "--");
+            GetNowSysSet(RT_NULL, RT_NULL, RT_NULL, RT_NULL, RT_NULL, &info);
+            if(0 == strcmp(info.name, "--"))
+            {
+                cJSON_AddStringToObject(list, "name", "--");
+                cJSON_AddStringToObject(list, "week", "--");
+                cJSON_AddStringToObject(list, "day", "--");
+
+            }
+            else
+            {
+                cJSON_AddStringToObject(list, "name", info.name);
+                itoa(info.week, week,10);
+                cJSON_AddStringToObject(list, "week", week);
+                itoa(info.day, day,10);
+                cJSON_AddStringToObject(list, "day", day);
+            }
 
             cJSON_AddItemToObject(json, "calendar", list);
         }
@@ -2589,18 +2618,19 @@ char *ReplyGetHubState(char *cmd, cloudcmd_t cloud)
 }
 
 
-char *ReplySetRecipe(char *cmd, cloudcmd_t cloud)//Justin debug 未验证
+char *ReplySetRecipe(char *cmd, cloudcmd_t cloud)
 {
     char            *str        = RT_NULL;
     recipe_t        *recipe     = RT_NULL;
     cJSON           *json       = cJSON_CreateObject();
     cJSON           *line       = RT_NULL;
-    int             temp;
 
     if(RT_NULL != json)
     {
         cJSON_AddStringToObject(json, "cmd", cmd);
         cJSON_AddStringToObject(json, cloud.msgid.name, cloud.msgid.value);
+
+        recipe = rt_malloc(sizeof(recipe_t));
 
         if(RT_NULL != recipe)
         {
@@ -2668,6 +2698,9 @@ char *ReplySetRecipe(char *cmd, cloudcmd_t cloud)//Justin debug 未验证
             {
                 LOG_E("ReplySetRecipe apply recipe memory fail");
             }
+
+            rt_free(recipe);
+            recipe = RT_NULL;
         }
 
         cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
@@ -2678,7 +2711,7 @@ char *ReplySetRecipe(char *cmd, cloudcmd_t cloud)//Justin debug 未验证
     return str;
 }
 
-char *ReplyGetSchedule(char *cmd, cloudcmd_t cloud)//Justin debug 该函数有bug
+char *ReplyGetSchedule(char *cmd, cloudcmd_t cloud)
 {
 
     u8          recipe_id   = 0;
@@ -2886,7 +2919,7 @@ char *ReplySetPortSet(char *cmd, cloudcmd_t cloud)
 
                     if(valid_gro <= TIMER12_PORT_MAX)
                     {
-                        for(group = 0; group <= valid_gro; group++)//Justin debug
+                        for(group = 0; group <= valid_gro; group++)
                         {
                             item = cJSON_CreateObject();
                             if(RT_NULL != item)
@@ -3025,7 +3058,7 @@ char *ReplyGetPortSet(char *cmd, cloudcmd_t cloud)
 
             if(TIMER_TYPE == module->type)
             {
-                cJSON_AddNumberToObject(json, "mode", module->mode);
+                cJSON_AddNumberToObject(json, "mode", module->mode[port]);
 
                 timerList = cJSON_CreateArray();
                 if(RT_NULL != timerList)
@@ -3129,7 +3162,7 @@ char *ReplyGetPortSet(char *cmd, cloudcmd_t cloud)
         }
         else if(line != RT_NULL)
         {
-            LOG_D("reply line name %s",line->name);//Justin debug
+//            LOG_D("reply line name %s",line->name);
 
             cJSON_AddStringToObject(json, "cmd", cmd);
             cJSON_AddStringToObject(json, cloud.msgid.name, cloud.msgid.value);
@@ -3138,7 +3171,7 @@ char *ReplyGetPortSet(char *cmd, cloudcmd_t cloud)
             cJSON_AddNumberToObject(json, "type", line->type);
 
             cJSON_AddStringToObject(json, "model", GetModelByType(line->type, model, 15));
-            cJSON_AddNumberToObject(json, "mainType", S_LIGHT);//Justin debug
+            cJSON_AddNumberToObject(json, "mainType", S_LIGHT);
             cJSON_AddStringToObject(json, "funcName", "Line");
             cJSON_AddNumberToObject(json, "manual", line->_manual.manual);
             cJSON_AddNumberToObject(json, "manualOnTime", line->_manual.manual_on_time);
@@ -3188,7 +3221,7 @@ char *ReplyGetDeviceList(char *cmd, type_kv_c16 msgid)
         cJSON_AddStringToObject(json, msgid.name, msgid.value);
         cJSON_AddStringToObject(json, "sn", GetSnName(name, 12));
 
-        LOG_D("cmd %s, msgid.value %s, sn %s",cmd,msgid.value,GetSnName(name, 12));//Justin print
+//        LOG_D("cmd %s, msgid.value %s, sn %s",cmd,msgid.value,GetSnName(name, 12));
 
         list = cJSON_CreateArray();
         if(RT_NULL != list)
@@ -3268,7 +3301,7 @@ char *ReplyGetDeviceList(char *cmd, type_kv_c16 msgid)
                 }
             }
 
-//            LOG_D("GetMonitor()->line_size = %d",GetMonitor()->line_size);//Justin debug
+//            LOG_D("GetMonitor()->line_size = %d",GetMonitor()->line_size);
             for(line_no = 0; line_no < GetMonitor()->line_size; line_no++)
             {
                 line = GetMonitor()->line[line_no];
@@ -3286,7 +3319,7 @@ char *ReplyGetDeviceList(char *cmd, type_kv_c16 msgid)
 
                     if(CON_FAIL == line.conn_state)
                     {
-                        cJSON_AddNumberToObject(line_i, "online", 0);//Justin debug test 该函数有问题
+                        cJSON_AddNumberToObject(line_i, "online", 0);
                     }
                     else
                     {
@@ -3306,11 +3339,11 @@ char *ReplyGetDeviceList(char *cmd, type_kv_c16 msgid)
             LOG_E("ReplyGetDeviceList apply memeory err");
         }
 
-        if(RT_NULL != json)//Justin debug 仅仅测试
+        if(RT_NULL != json)
         {
             cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
             str = cJSON_PrintUnformatted(json);
-            LOG_I("device list length = %d",strlen(str));//Justin print
+//            LOG_I("device list length = %d",strlen(str));
 
             cJSON_Delete(json);
             json = RT_NULL;

@@ -93,7 +93,7 @@ void HomePage(u8g2_t *uiShow, type_page_t page)
 
         itoa(sys_time.year, temp1, 10);
         strncat(time, temp1, 4);
-        LOG_D("time = %s",time);//Justin debug
+//        LOG_D("time = %s",time);
         strcpy(data, time);
 
         column = 12;
@@ -138,7 +138,7 @@ void SensorStatePage(u8g2_t *uiShow, type_page_t page)
             for(storage = 0; storage < module->storage_size; storage++)
             {
                itoa(module->__stora[storage].value, data ,10);
-//               LOG_D("SensorStatePage--------------name %s",module->__stora[storage].name);//Justin debug
+//               LOG_D("SensorStatePage--------------name %s",module->__stora[storage].name);
                u8g2_DrawStr(uiShow, line, column, module->__stora[storage].name);
                u8g2_DrawStr(uiShow, line + LINE_HIGHT*10, column, data);
 
@@ -176,7 +176,7 @@ void DeviceStatePage(u8g2_t *uiShow, type_page_t page)
         device_sum++;
     }
 
-    if(device_sum > 4)//Justin debug 仅仅测试 最多显示4行
+    if(device_sum > 4)
     {
         device_sum = 4;
     }

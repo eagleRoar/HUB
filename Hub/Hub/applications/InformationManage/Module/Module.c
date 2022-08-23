@@ -263,12 +263,12 @@ device_time4_t *GetDeviceByAddr(type_monitor_t *monitor, u8 addr)
     {
         if(addr == monitor->device[index].addr)
         {
-//            LOG_I("find device add = %d",addr);//Justin debug
+//            LOG_I("find device add = %d",addr);
             return &(monitor->device[index]);
         }
         else
         {
-//            LOG_E("can not find device addr = %d",addr);//Justin debug 仅仅测试
+//            LOG_E("can not find device addr = %d",addr);
         }
     }
 
@@ -283,12 +283,12 @@ timer12_t *GetTimerByAddr(type_monitor_t *monitor, u8 addr)
     {
         if(addr == monitor->time12[index].addr)
         {
-            LOG_I("find timer add = %d",addr);//Justin debug
+//            LOG_I("find timer add = %d",addr);
             return &(monitor->time12[index]);
         }
         else
         {
-            LOG_E("can not find timer addr = %d",addr);//Justin debug 仅仅测试
+//            LOG_E("can not find timer addr = %d",addr);
         }
     }
 

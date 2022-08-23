@@ -47,6 +47,7 @@
 
 //LCD GPIO
 //#define RST_CTR GET_PIN(A, 15) //硬件上没有该脚
+#define LCD_RST           GET_PIN(E, 12)
 #define LCD_WR            GET_PIN(E, 10)
 #define LCD_RD            GET_PIN(E, 11)
 #define LCD_DC            GET_PIN(E, 9)
@@ -93,6 +94,7 @@ char *getRealTime(void);
 time_t getTimeStamp(void);
 void printTimer12(timer12_t);
 void LedProgram(void);
+void getRealTimeForMat(type_sys_time *);
 //void PrintHumiSet(proHumiSet_t set);
 //void PrintTempSet(proTempSet_t set);
 #endif /* APPLICATIONS_GPIO_H_ */

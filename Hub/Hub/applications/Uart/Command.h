@@ -29,6 +29,6 @@
 #define             WRITE_MUTI                  0x10        //Write multiple registers
 
 /* module 通用码 */
-#define             MODULE_TYPE_ADDR            0x0007//Justin debug
+#define             MODULE_TYPE_ADDR            0x0007
 
 #endif /* APPLICATIONS_UART_COMMAND_H_ */

@@ -224,7 +224,7 @@ void GetUpdataFileFromWeb(void)
         goto __exit;
     }
 
-    sdInitFlag = RT_EOK;//SDInit();//Justin debug
+    sdInitFlag = RT_EOK;//SDInit();
 
     content_length = webclient_content_length_get(session);
     LOG_I("get connect data length = %d-----------------",content_length);
@@ -239,7 +239,7 @@ void GetUpdataFileFromWeb(void)
         if(RT_EOK == checkUpdataApp(&dest, &src))
         {
             /* 删除原来位置的文件 */
-            if(RT_EOK == deleteFile(DOWNLOAD_FILE))//Justin debug
+            if(RT_EOK == deleteFile(DOWNLOAD_FILE))
             {
                 LOG_I("delete file successful");
             }

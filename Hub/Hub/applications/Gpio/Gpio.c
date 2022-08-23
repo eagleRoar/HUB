@@ -31,6 +31,7 @@ void GpioInit(void)
     rt_pin_mode(LCD_DB0, PIN_MODE_OUTPUT);
     rt_pin_mode(LCD_DB1, PIN_MODE_OUTPUT);
     rt_pin_mode(LCD_DB2, PIN_MODE_OUTPUT);
+    rt_pin_write(LCD_DB2, 1);
     rt_pin_mode(LCD_DB3, PIN_MODE_OUTPUT);
     rt_pin_mode(LCD_DB4, PIN_MODE_OUTPUT);
     rt_pin_mode(LCD_DB5, PIN_MODE_OUTPUT);
@@ -41,6 +42,7 @@ void GpioInit(void)
     rt_pin_mode(LCD_RD, PIN_MODE_OUTPUT);
     rt_pin_mode(LCD_CS, PIN_MODE_OUTPUT);
     rt_pin_mode(LCD_DC, PIN_MODE_OUTPUT);
+    rt_pin_mode(LCD_RST, PIN_MODE_OUTPUT);
 
     //手动启动OLCD的PIN脚
     rt_pin_write(LCD_RD, PIN_HIGH);
@@ -122,7 +124,7 @@ void LedTaskEntry(void* parameter)
 void LedProgram(void)
 {
     static u8 ledState = 0;
-//        Ctrl_LED(LED_SENSOR,0);//Justin debug
+//        Ctrl_LED(LED_SENSOR,0);
 //        Ctrl_LED(LED_DEVICE,0);
         Ctrl_LED(LED_LIGHT,ledState++ % 2);
 //        Ctrl_LED(LED_COMMS,0);

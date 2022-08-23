@@ -34,4 +34,5 @@ void senRegisterAnswer(type_monitor_t *, rt_device_t , u32);
 void devRegisterAnswer(type_monitor_t *, rt_device_t , u32);
 void timer12Answer(type_monitor_t *, rt_device_t, u32);
 u8 getSOrD(u8);
+void lineAnswer(type_monitor_t *, rt_device_t , u32);
 #endif /* APPLICATIONS_UART_DATALAYER_UARTDATALAYER_H_ */

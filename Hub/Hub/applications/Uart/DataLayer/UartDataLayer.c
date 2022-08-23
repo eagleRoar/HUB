@@ -72,7 +72,7 @@ void setDeviceDefaultPara(device_time4_t *module, char *name, u16 ctrl_addr, u8 
 
 void setSensorDefaultPara(sensor_t *module, char *name, u16 ctrl_addr, u8 type, u8 storage_size)
 {
-    rt_memcpy(module->name, name, MODULE_NAMESZ-1);                   //产品名称//Justin debug
+    rt_memcpy(module->name, name, MODULE_NAMESZ-1);                   //产品名称
     module->ctrl_addr = ctrl_addr;                                  //终端控制的寄存器地址
     module->conn_state = CON_SUCCESS;                               //连接状态
     module->reg_state = SEND_NULL;                                  //注册状态
@@ -208,7 +208,7 @@ rt_err_t setSensorDefault(sensor_t *module)
     switch (module->type) {
         case BHS_TYPE:
             setSensorDefaultPara(module, "Bhs", 0x0010, module->type, 4);
-            rt_memcpy(sen_stora[0].name, "Co2", STORAGE_NAMESZ);//Justin debug
+            rt_memcpy(sen_stora[0].name, "Co2", STORAGE_NAMESZ);
             rt_memcpy(sen_stora[1].name, "Humi", STORAGE_NAMESZ);
             rt_memcpy(sen_stora[2].name, "Temp", STORAGE_NAMESZ);
             rt_memcpy(sen_stora[3].name, "Light", STORAGE_NAMESZ);
@@ -272,7 +272,6 @@ rt_err_t setDeviceDefault(device_time4_t *module)
             setDeviceDefaultStora(module, 0 , "Timer", F_TIMER, module->type, addr , MANUAL_NO_HAND, 0);
             break;
         case AC_4_TYPE:
-            //Justin debug需要再次询问一下终端具体端口的用途
             setDeviceDefaultPara(module, "AC_4", 0x0401, S_AC_4, module->type, 4);
 
             break;
@@ -393,7 +392,7 @@ void AnlyzeDeviceRegister(type_monitor_t *monitor, rt_device_t serial, u8 *data,
             sensor.addr = getAllocateAddress(monitor);
             if(RT_EOK == setSensorDefault(&sensor))
             {
-                InsertSensorToTable(monitor, sensor, no);//Justin debug
+                InsertSensorToTable(monitor, sensor, no);
             }
             else
             {

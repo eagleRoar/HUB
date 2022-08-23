@@ -22,7 +22,6 @@
 #include "Recipe.h"
 
 __attribute__((section(".ccmbss"))) type_monitor_t monitor;
-//__attribute__((section(".ccmbss"))) u8 test_test;//Justin debug
 struct rx_msg uart1_msg;                      //接收串口数据以及相关消息
 struct rx_msg uart2_msg;                      //接收串口数据以及相关消息
 struct rx_msg uart3_msg;                      //接收串口数据以及相关消息
@@ -207,14 +206,13 @@ void SensorUart2TaskEntry(void* parameter)
                     }
                 }
 
-                if(ON == uart3_msg.messageFlag)//Justin debug 2022.07.15
+                if(ON == uart3_msg.messageFlag)
                 {
                     uart3_msg.messageFlag = OFF;
                     AnalyzeData(uart3_serial, &monitor, uart3_msg.data, uart3_msg.size);
                 }
                 else
                 {
-                    //Justin debug未完待续
                     if(1 == line_start)
                     {
                         if(YES == askLineHeart(&monitor, uart3_serial))
@@ -249,8 +247,7 @@ void SensorUart2TaskEntry(void* parameter)
                 findLineLocation(GetMonitor(), &sys_set.cloudCmd, uart3_serial);
                 lineProgram_new(GetMonitor(), 0, 1000);
                 lineProgram_new(GetMonitor(), 1, 1000);             //line2
-                warnProgram(GetMonitor(), GetSysSet());
-                GetRealCal(GetSysSet(), GetSysRecipt());            //通过日程获取配方设置
+                warnProgram(GetMonitor(), GetSysSet());             //监听告警信息
                 pumpProgram(GetMonitor(), GetSysTank());            //水泵的工作
 
                 if(0 != sys_set.cloudCmd.delete_id.value)
@@ -259,7 +256,7 @@ void SensorUart2TaskEntry(void* parameter)
                     sys_set.cloudCmd.delete_id.value = 0;
                 }
 
-//                cal();//Justin debug 日历功能
+//                cal();
             }
 
             /* 5s 事件 */

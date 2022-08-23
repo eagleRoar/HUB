@@ -226,7 +226,6 @@ rt_err_t TakeMonitorFromSD(type_monitor_t *monitor)
         }
         else
         {
-            //Justin debug 仅仅测试
             for(u8 index = 0; index < monitor->device_size; index++)
             {
 //                printDevice(monitor->device[index]);
@@ -268,7 +267,7 @@ rt_err_t TakeMonitorFromSD(type_monitor_t *monitor)
             }
 //            rt_memset((u8 *)monitor, 0, monitorSize);//Justin debug 暂时屏蔽
 //            monitor->crc = usModbusRTU_CRC((u8 *)monitor, monitorSize - 2);
-//            ret = RT_ERROR;//Justin debug
+//            ret = RT_ERROR;
         }
     }
     else

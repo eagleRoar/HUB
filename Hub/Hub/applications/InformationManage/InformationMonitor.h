@@ -13,6 +13,7 @@
 #include "Gpio.h"
 
 #define     name_null                       "null"     //长度32的空字符串
+#define     VALUE_NULL                      -9999       //如果没有值上传给MQTT的值
 
 #define     ALLOCATE_ADDRESS_SIZE           100
 #define     MODULE_NAMESZ                   16
@@ -135,7 +136,7 @@ struct device_Timer4
     u8              reg_state;                              //注册状态
     u8              save_state;                             //是否已经存储
     u8              storage_size;                           //寄存器数量
-    u8              mode;                                   // 模式 1-By Schedule 2-By Recycle
+    u8              mode[DEVICE_PORT_SZ];                                   // 模式 1-By Schedule 2-By Recycle
     u8              hotStartDelay;                          //对于制冷 制热 除湿设备需要有该保护
     u8              device_timer_type[DEVICE_PORT_SZ];      //device 或者  timer 类型
     //device和ac_4一样有最多4个port
@@ -307,9 +308,9 @@ enum
     WARN_WL_LOW,
     WARN_WATER,
     WARN_SMOKE,
-    WARN_LINE_STATE,
-    WARN_LINE_AUTO_T,
-    WARN_LINE_AUTO_OFF,
+    WARN_LINE_STATE,        //灯光状态异常 回复数据为ppfd 即当前显示的亮度
+    WARN_LINE_AUTO_T,       //回复的值为当前的温度值
+    WARN_LINE_AUTO_OFF,     //回复的值为当前的温度值
     WARN_OFFLINE,
     WARN_CO2_TIMEOUT,
     WARN_TEMP_TIMEOUT,
@@ -358,6 +359,7 @@ struct monitor
 #define     BHS_TYPE        0x03
 #define     PHEC_TYPE       0x05
 #define     PAR_TYPE        0x08
+#define     WATERlEVEL_TYPE 0x0A
 #define     CO2_TYPE        0x41
 #define     HEAT_TYPE       0x42
 #define     HUMI_TYPE       0x43
@@ -367,7 +369,7 @@ struct monitor
 #define     PUMP_TYPE       0x4B        //水泵
 #define     TIMER_TYPE      0x4f
 #define     HVAC_6_TYPE     0x61
-#define     AC_4_TYPE       0x50    //如果注册检测到该类型的话需要再次询问看看每个端口的作用(Justin debug 考虑一下如果有端口的功能改变之后需要去询问，否则有问题)
+#define     AC_4_TYPE       0x50
 #define     AC_12_TYPE      0x80
 
 /**************************************从机 End*******************************************/

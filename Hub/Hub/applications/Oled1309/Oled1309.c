@@ -20,6 +20,10 @@ extern "C" {
 #include "Uart.h"
 #include "UartBussiness.h"
 #include "ButtonTask.h"
+#include "ascii_fonts.h"
+#include "ST7567.h"
+
+#define     NEW_OLED    1
 
 #define  GO_RIGHT  1
 #define  GO_LEFT   2
@@ -42,6 +46,12 @@ u32             pageInfor       = 0x00000000;   //只支持最多四级目录
 #define SSD1309_8080_PIN_DC                    73  // PE9
 #define SSD1309_8080_PIN_RST                   76  // PE12
 
+#define OLED_SPI_PIN_CLK                   SSD1309_8080_PIN_D0
+#define OLED_SPI_PIN_MOSI                  SSD1309_8080_PIN_D1
+#define OLED_SPI_PIN_RES                   SSD1309_8080_PIN_RST
+#define OLED_SPI_PIN_DC                    SSD1309_8080_PIN_DC
+#define OLED_SPI_PIN_CS                    SSD1309_8080_PIN_CS
+
 void u8x8_SetPin_8Bit_8080(u8x8_t *u8x8, uint8_t d0, uint8_t d1, uint8_t d2, uint8_t d3, uint8_t d4, uint8_t d5,
         uint8_t d6, uint8_t d7, uint8_t wr, uint8_t cs, uint8_t dc, uint8_t reset)
 {
@@ -57,12 +67,14 @@ void u8x8_SetPin_8Bit_8080(u8x8_t *u8x8, uint8_t d0, uint8_t d1, uint8_t d2, uin
     u8x8_SetPin(u8x8, U8X8_PIN_CS, cs);
     u8x8_SetPin(u8x8, U8X8_PIN_DC, dc);
     u8x8_SetPin(u8x8, U8X8_PIN_RESET, reset);
+
 }
 
 //static void st7920_12864_8080_example(int argc, char *argv[])
 void oledInit(void)
 {
     // Initialization
+//#if (0 == NEW_OLED)
     u8g2_Setup_ssd1309_128x64_el2_1(&uiShow, U8G2_R0, u8x8_byte_8bit_8080mode, u8x8_rt_gpio_and_delay);
     u8x8_SetPin_8Bit_8080(u8g2_GetU8x8(&uiShow),
     SSD1309_8080_PIN_D0, SSD1309_8080_PIN_D1,
@@ -71,16 +83,48 @@ void oledInit(void)
     SSD1309_8080_PIN_D6, SSD1309_8080_PIN_D7,
     SSD1309_8080_PIN_EN, SSD1309_8080_PIN_CS,
     SSD1309_8080_PIN_DC, SSD1309_8080_PIN_RST);
-
+//#else
+//    u8g2_Setup_ssd1309_128x64_el2_1( &uiShow, U8G2_R0, u8x8_byte_4wire_sw_spi, u8x8_rt_gpio_and_delay);
+//
+//    u8x8_SetPin(u8g2_GetU8x8(&uiShow), U8X8_PIN_SPI_CLOCK, OLED_SPI_PIN_CLK);
+//    u8x8_SetPin(u8g2_GetU8x8(&uiShow), U8X8_PIN_SPI_DATA, OLED_SPI_PIN_MOSI);
+//    u8x8_SetPin(u8g2_GetU8x8(&uiShow), U8X8_PIN_CS, OLED_SPI_PIN_CS);
+//    u8x8_SetPin(u8g2_GetU8x8(&uiShow), U8X8_PIN_DC, OLED_SPI_PIN_DC);
+//    u8x8_SetPin(u8g2_GetU8x8(&uiShow), U8X8_PIN_RESET, OLED_SPI_PIN_RES);
+//#endif
     u8g2_InitDisplay(&uiShow);
     u8g2_SetPowerSave(&uiShow, 0);
 
     // Draw Graphics
     /* full buffer example, setup procedure ends in _f */
     u8g2_ClearBuffer(&uiShow);
-    u8g2_SetFont(&uiShow, /*u8g2_font_6x12_tf*/u8g2_font_8x13_tf);//修改字体的话需要修改LINE_HIGHT和COLUMN_HIGHT
+    u8g2_SetFont(&uiShow, u8g2_font_8x13_tf);//修改字体的话需要修改LINE_HIGHT和COLUMN_HIGHT
     u8g2_DrawStr(&uiShow, 1, 18, "BBL");
     u8g2_SendBuffer(&uiShow);
+}
+
+void clear_screen(void)
+{
+  ST7567_Fill(0);
+  ST7567_UpdateScreen();
+}
+
+void st7567Init(void)
+{
+    ST7567_Init();
+    rt_thread_mdelay(100);
+    clear_screen();
+}
+
+void LCD_Test(void)
+{
+    ST7567_GotoXY(5, 5);
+    ST7567_Puts("hub", &Font_16x32, 1);
+//    ST7567_GotoXY(5, 18);
+//    ST7567_Puts("Test HVAC", &Font_6x12, 1);
+//    ST7567_GotoXY(10, 52);
+//    ST7567_Puts("HVAC Demo", &Font_6x12, 1);
+    ST7567_UpdateScreen();
 }
 
 void MenuBtnCallBack(u8 type)
@@ -189,9 +233,13 @@ void OledTaskEntry(void* parameter)
     static      u8              Timer1sTouch        = OFF;
     static      u16             time1S              = 0;
     static      u8              nowPagePre          = 0xFF;
-
-    oledInit();
-
+    static      u8              testCnt             = 0;
+#if (NO == NEW_OLED)
+    oledInit();//Justin debug 仅仅测试
+#else
+    st7567Init();
+    LCD_Test();
+#endif
     pageInfor <<= 8;
     pageInfor |= HOME_PAGE;
 

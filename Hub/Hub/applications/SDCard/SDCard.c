@@ -115,7 +115,7 @@ void sd_dfs_event_entry(void* parameter)
                                 LOG_I("TackSysTankFromSD OK");
                             }
 
-                            initHubinfo();//Justin debug 仅仅测试
+                            initHubinfo();
                             sdCard.readInfo = YES;
                         }
                         else //挂载失败
@@ -196,7 +196,7 @@ void sd_dfs_event_entry(void* parameter)
                         }
                     }
 
-                    if(YES == GetSysTank()->saveFlag)//Justin debug
+                    if(YES == GetSysTank()->saveFlag)
                     {
                         GetSysTank()->crc = usModbusRTU_CRC((u8 *)GetSysTank() + 2, sizeof(sys_tank_t) - 2);
                         LOG_I("----------------sys_tank save OK");

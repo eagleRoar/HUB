@@ -35,6 +35,7 @@ extern mqtt_client *GetMqttClient(void);
 extern void SetRecvMqttFlg(u8);
 extern sys_set_t *GetSysSet(void);
 extern int GetMqttStartFlg(void);
+extern u8 GetRecvMqttFlg(void);
 static uint16_t g_Key = 97;
 rt_mutex_t dynamic_mutex = RT_NULL;//互斥量
 
@@ -127,7 +128,7 @@ int main(void)
 
 
         /* 监视网络模块是否上线 */
-        ethStatus = GetEthDriverLinkStatus();//Justin debug
+        ethStatus = GetEthDriverLinkStatus();
         if(LINKUP == ethStatus)
         {
             if(RT_NULL == rt_thread_find(UDP_TASK) &&
@@ -142,7 +143,7 @@ int main(void)
         //50ms 云服务器
         if(ON == GetRecvMqttFlg())
         {
-            if(RT_EOK == ReplyDataToCloud(GetMqttClient(), RT_NULL, RT_NULL, YES))//Justin debug 该函数需要使用锁
+            if(RT_EOK == ReplyDataToCloud(GetMqttClient(), RT_NULL, RT_NULL, YES))
             {
                 SetRecvMqttFlg(OFF);
             }
@@ -194,7 +195,7 @@ int main(void)
             {
                 getRealTimeForMat(&time);
 //                LOG_D("date : %d %d %d , %d %d %d",
-//                        time.year,time.month,time.day,time.hour,time.minute,time.second);//Justin debug
+//                        time.year,time.month,time.day,time.hour,time.minute,time.second);
                 if(((time.hour * 60 + time.minute) > GetSysSet()->sysPara.dayTime) &&
                    ((time.hour * 60 + time.minute) <= GetSysSet()->sysPara.nightTime))
                 {

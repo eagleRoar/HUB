@@ -41,7 +41,7 @@ extern "C" {
 #endif
 
 #ifndef AT_SERVER_DEVICE
-#define AT_SERVER_DEVICE               "uart6"/*"uart2"*///Justin debug
+#define AT_SERVER_DEVICE               "uart6"
 #endif
 
 /* the maximum number of supported AT clients */

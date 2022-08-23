@@ -1200,14 +1200,12 @@ static unsigned char *print(const cJSON * const item, cJSON_bool format, const i
     buffer->hooks = *hooks;
     if (buffer->buffer == NULL)
     {
-        LOG_E("print err 1");//Justin debug 排查打包失败原因
         goto fail;
     }
 
     /* print the value */
     if (!print_value(item, buffer))
     {
-        LOG_E("print err 2");//Justin debug 排查打包失败原因
         goto fail;
     }
     update_offset(buffer);
@@ -1217,7 +1215,6 @@ static unsigned char *print(const cJSON * const item, cJSON_bool format, const i
     {
         printed = (unsigned char*) hooks->reallocate(buffer->buffer, buffer->offset + 1);
         if (printed == NULL) {
-            LOG_E("print err 3");//Justin debug 排查打包失败原因
             goto fail;
         }
         buffer->buffer = NULL;
@@ -1227,7 +1224,6 @@ static unsigned char *print(const cJSON * const item, cJSON_bool format, const i
         printed = (unsigned char*) hooks->allocate(buffer->offset + 1);
         if (printed == NULL)
         {
-            LOG_E("print err 4");//Justin debug 排查打包失败原因
             goto fail;
         }
         rt_memcpy(printed, buffer->buffer, cjson_min(buffer->length, buffer->offset + 1));

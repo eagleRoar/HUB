@@ -79,8 +79,8 @@ struct cloudCmd{
     u8              tank_no;
     u8              pump_no;                    //设置泵的颜色的id
     u8              color;                      //设置泵的颜色
-    u8              valve_id;                   //需要添加的阀id
-    u8              pump_id;                    //关联的泵id
+    u16             valve_id;                   //需要添加的阀id
+    u16             pump_id;                    //关联的泵id
     u8              pump_sensor_type;           //设置泵传感器type
     u8              pump_sensor_id;             //设置泵传感器id
     u8              del_recipe_id;              //删除配方id
@@ -215,7 +215,7 @@ struct stage_schedule
 
 struct stage{//日程设置
     u8      en;
-    char    starts[16];//[14];//20220514080000//Justin debug
+    char    starts[16];
     struct stage_schedule _list[STAGE_LIST_MAX];
 };
 
@@ -254,19 +254,19 @@ struct sys_recipe{
     u8 saveFlag;
 };
 
-//Justin debug 这是灌溉版本的
+
 struct tank{
-    u8 tankNo;                  //桶编号 1-9
-    u8 autoFillValveId;         //自动补水阀 ID ,0 为未指定
-    u8 autoFillHeight;          //低水位补水高度,单位 cm
-    u8 autoFillFulfilHeight;    //补满高度,单位 cm
-    u8 highEcProtection;        //EC 高停止值
-    u8 lowPhProtection;         //PH 低停止值
-    u8 highPhProtection;        //PH 高停止值
-    u8 pumpId;                  //水泵Id
-    u8 valve[VALVE_MAX];        //关联的阀的ID
-    u8 sensor[2][TANK_SENSOR_MAX]; //桶内存在两个sensor 一个是测试桶内的 一个测试管道的
-    u8 color;                   //颜色
+    u8      tankNo;                         //桶编号 1-9
+    u8      autoFillValveId;                //自动补水阀 ID ,0 为未指定
+    u8      autoFillHeight;                 //低水位补水高度,单位 cm
+    u8      autoFillFulfilHeight;           //补满高度,单位 cm
+    u16     highEcProtection;               //EC 高停止值
+    u16     lowPhProtection;                //PH 低停止值
+    u16     highPhProtection;               //PH 高停止值
+    u16     pumpId;                         //水泵Id
+    u16     valve[VALVE_MAX];               //关联的阀的ID
+    u8      sensor[2][TANK_SENSOR_MAX];     //桶内存在两个sensor 一个是测试桶内的 一个测试管道的
+    u8      color;                          //颜色
 };
 
 //桶
@@ -277,8 +277,13 @@ struct sys_tank{
     u8          saveFlag;
 };
 
-/****************************     灌溉部分的内容*****/
+struct recipeInfor{
+    char            name[RECIPE_NAMESZ];
+    u8              week;
+    u8              day;
+};
 
+/****************************     灌溉部分的内容*****/
 struct sysSet{
     u16 crc;
     proTempSet_t    tempSet;
@@ -287,7 +292,7 @@ struct sysSet{
     proLine_t       line1Set;
     proLine_t       line2Set;
     cloudcmd_t      cloudCmd;
-    stage_t         stageSet;
+    stage_t         stageSet;   //阶段(日历)
     sys_para_t      sysPara;
     sys_warn_t      sysWarn;
     u8              dayOrNight;//白天黑夜 白天0 黑夜1
@@ -337,7 +342,7 @@ enum{
 #define         CMD_GET_RECIPE          "getRecipeList"         //获取配方列表
 #define         CMD_GET_RECIPE_ALL      "getRecipeListAll"      //获取全部配方列表
 #define         CMD_ADD_RECIPE          "addRecipe"             //增加配方
-#define         CMD_DELETE_RECIPE       "delRecipe"             //删除配方          //Justin debug 还没完成
+#define         CMD_DELETE_RECIPE       "delRecipe"             //删除配方
 #define         CMD_GET_RECIPE_SET      "getRecipeSetting"      //获取配方设置
 #define         CMD_SET_RECIPE_SET      "setRecipeSetting"      //设置配方设置
 #define         CMD_GET_TANK_INFO       "getTankInfo"           //获取桶设置
@@ -382,6 +387,10 @@ void CmdGetRecipeListAll(char *, cloudcmd_t *);
 void CmdGetTankInfo(char *, cloudcmd_t *);
 void CmdAddPumpValue(char *, cloudcmd_t *);
 void CmdSetPumpColor(char *, cloudcmd_t *);
+void CmdDelPumpValue(char *, cloudcmd_t *);
+void CmdSetTankSensor(char *, cloudcmd_t *);
+void CmdDelRecipe(char *, cloudcmd_t *);
+void CmdGetRecipe(char *, cloudcmd_t *);
 char *SendHubReport(char *, sys_set_t *);
 char *SendHubReportWarn(char *, sys_set_t *, u8, u16);
 char *ReplySetSchedule(char *, cloudcmd_t);
@@ -417,4 +426,5 @@ char *ReplyGetRecipeListAll(char *, cloudcmd_t , sys_recipe_t *);
 char *ReplyAddPumpValue(char *, cloudcmd_t , sys_tank_t *);
 char *ReplySetPumpColor(char *, cloudcmd_t , sys_tank_t *);
 char *ReplySetPumpSensor(char *, cloudcmd_t);
+char *ReplyDelRecipe(char *, cloudcmd_t);
 #endif /* APPLICATIONS_CLOUDPROTOCOL_CLOUDPROTOCOLBUSINESS_H_ */

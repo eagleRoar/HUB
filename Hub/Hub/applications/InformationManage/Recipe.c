@@ -21,7 +21,6 @@ void initSysRecipe(void)
 u8 AllotRecipeId(char *name, sys_recipe_t *sys_rec)
 {
     u8          index       = 0;
-    u8          rec_index   = 0;
     u8          ret         = 0xFF;
 
     for(index = 1; index < REC_ALLOT_ADDR; index++)
@@ -33,18 +32,6 @@ u8 AllotRecipeId(char *name, sys_recipe_t *sys_rec)
             ret = index;
             break;
         }
-//        for(rec_index = 0; rec_index < RECIPE_LIST_MAX; rec_index++)
-//        {
-//            if(index == sys_rec->recipe[rec_index].id)
-//            {
-//                break;
-//            }
-//        }
-//
-//        if(index != REC_ALLOT_ADDR)
-//        {
-//            ret = index;
-//        }
     }
 
     return ret;
@@ -96,14 +83,26 @@ void AddRecipe(recipe_t *rec, sys_recipe_t *sys_rec)
     }
 }
 
-rt_err_t deleteRecipe(u8 id, sys_recipe_t *list)
+rt_err_t deleteRecipe(u8 id, sys_recipe_t *list, sys_set_t *sys_set)
 {
     rt_err_t ret = RT_ERROR;
 
+//    LOG_D("list->recipe_size = %d",list->recipe_size);
+
+    //1.删除配方列表当前的配方项
     for(u8 index = 0; index < list->recipe_size; index++)
     {
         if(id == list->recipe[index].id)
         {
+            //删除分配的地址
+            for(u8 addr = 0; addr < REC_ALLOT_ADDR; addr++)
+            {
+                if(list->allot_add[addr] == list->recipe[index].id)
+                {
+                    list->allot_add[addr] = 0;
+                }
+            }
+
             //如果是在最后面的删除 则不同往前推
             if(index == list->recipe_size - 1)
             {
@@ -116,6 +115,7 @@ rt_err_t deleteRecipe(u8 id, sys_recipe_t *list)
                     for(u8 item = index; item < list->recipe_size - 1; item++)
                     {
                         rt_memcpy((u8 *)&list->recipe[index], (u8 *)&list->recipe[index + 1], sizeof(recipe_t));
+                        rt_memset((u8 *)&list->recipe[index + 1], 0, sizeof(recipe_t));
                     }
                 }
             }
@@ -124,6 +124,15 @@ rt_err_t deleteRecipe(u8 id, sys_recipe_t *list)
             {
                 list->recipe_size--;
             }
+        }
+    }
+
+    //2.同步删除日历关联的配方
+    for(u8 cal = 0; cal < STAGE_LIST_MAX; cal++)
+    {
+        if(sys_set->stageSet._list[cal].recipeId == id)
+        {
+            sys_set->stageSet._list[cal].recipeId = 0;
         }
     }
 

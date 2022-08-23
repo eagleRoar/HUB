@@ -248,21 +248,21 @@ void HAL_SD_MspInit(SD_HandleTypeDef* hsd)
 //    GPIO_InitStruct.Pin = GPIO_PIN_5;
 //    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
 //    GPIO_InitStruct.Pull = /*GPIO_NOPULL*/GPIO_PULLUP;
-//    GPIO_InitStruct.Speed = /*GPIO_SPEED_FREQ_VERY_HIGH*/GPIO_SPEED_FREQ_HIGH;//Justin debug
+//    GPIO_InitStruct.Speed = /*GPIO_SPEED_FREQ_VERY_HIGH*/GPIO_SPEED_FREQ_HIGH;
 //    GPIO_InitStruct.Alternate = GPIO_AF5_SPI1;
 //    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 //
 //    GPIO_InitStruct.Pin = GPIO_PIN_6;
-//    GPIO_InitStruct.Mode = /*GPIO_MODE_INPUT*/GPIO_MODE_AF_PP;//Justin debug
+//    GPIO_InitStruct.Mode = /*GPIO_MODE_INPUT*/GPIO_MODE_AF_PP;
 //    GPIO_InitStruct.Pull = /*GPIO_NOPULL*/GPIO_PULLUP;
-//    GPIO_InitStruct.Speed = /*GPIO_SPEED_FREQ_VERY_HIGH*/GPIO_SPEED_FREQ_HIGH;//Justin debug
+//    GPIO_InitStruct.Speed = /*GPIO_SPEED_FREQ_VERY_HIGH*/GPIO_SPEED_FREQ_HIGH;
 //    GPIO_InitStruct.Alternate = GPIO_AF5_SPI1;
 //    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 //
 //    GPIO_InitStruct.Pin = GPIO_PIN_5;
 //    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
 //    GPIO_InitStruct.Pull = /*GPIO_NOPULL*/GPIO_PULLUP;
-//    GPIO_InitStruct.Speed = /*GPIO_SPEED_FREQ_VERY_HIGH*/GPIO_SPEED_FREQ_HIGH;//Justin debug
+//    GPIO_InitStruct.Speed = /*GPIO_SPEED_FREQ_VERY_HIGH*/GPIO_SPEED_FREQ_HIGH;
 //    GPIO_InitStruct.Alternate = GPIO_AF5_SPI1;
 //    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 //
@@ -298,7 +298,7 @@ void HAL_SD_MspInit(SD_HandleTypeDef* hsd)
 //
 //    /* Peripheral clock enable */
 //    __HAL_RCC_RTC_ENABLE();
-////    __HAL_RCC_BKP_CLK_ENABLE(); //Justin debug
+////    __HAL_RCC_BKP_CLK_ENABLE();
 //  /* USER CODE BEGIN RTC_MspInit 1 */
 //
 //  /* USER CODE END RTC_MspInit 1 */

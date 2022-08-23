@@ -76,7 +76,7 @@ u8 askSensorStorage(type_monitor_t *monitor, rt_device_t serial)
     return ret;
 }
 
-u8 askLineHeart(type_monitor_t *monitor, rt_device_t serial)//Justin debug 未测试
+u8 askLineHeart(type_monitor_t *monitor, rt_device_t serial)
 {
     u8              ret                         = NO;
     u8              buffer[8];
@@ -98,7 +98,7 @@ u8 askLineHeart(type_monitor_t *monitor, rt_device_t serial)//Justin debug 未�
 //        if(0 == ask_line)
 //        {
 //            LOG_D("askLineHeart d_state = %d, d_value = %d",
-//                    monitor->line[ask_line].d_state,monitor->line[ask_line].d_value);//Justin debug
+//                    monitor->line[ask_line].d_state,monitor->line[ask_line].d_value);
 //        }
 
         buffer[0] = monitor->line[ask_line].addr;
@@ -131,10 +131,10 @@ u8 askLineHeart(type_monitor_t *monitor, rt_device_t serial)//Justin debug 未�
                 monitor->line[ask_line].d_value = value_pre[ask_line];
                 saveModuleFlag = YES;
             }
-            if(0 == ask_line)
-            {
-                LOG_W("hand on line state = %d, value = %d",monitor->line[ask_line].d_state,monitor->line[ask_line].d_value);//Justin debug
-            }
+//            if(0 == ask_line)
+//            {
+//                LOG_W("hand on line state = %d, value = %d",monitor->line[ask_line].d_state,monitor->line[ask_line].d_value);
+//            }
         }
         else if(MANUAL_HAND_OFF == monitor->line[ask_line]._manual.manual)
         {
@@ -176,7 +176,7 @@ u8 askLineHeart(type_monitor_t *monitor, rt_device_t serial)//Justin debug 未�
         }
 
         buffer[4] = monitor->line[ask_line].d_state;
-        buffer[5] = monitor->line[ask_line].d_value;//Justin debug 仅仅测试
+        buffer[5] = monitor->line[ask_line].d_value;
 
         crc16Result = usModbusRTU_CRC(buffer, 6);
         buffer[6] = crc16Result;                             //CRC16低位
@@ -279,10 +279,10 @@ u8 askDeviceHeart(type_monitor_t *monitor, rt_device_t serial)
                 //如果是手动开启的话需要对比开启时间 时间到达后需要返回非手动状态
                 if(MANUAL_HAND_ON == monitor->device[ask_device]._manual[0].manual)
                 {
-                    if(HVAC_6_TYPE == monitor->device[ask_device].type)//Justin debug
+                    if(HVAC_6_TYPE == monitor->device[ask_device].type)
                     {
                         LOG_D("hvacMode = %d,manualOnMode %d",monitor->device[ask_device]._hvac.hvacMode,
-                                monitor->device[ask_device]._hvac.manualOnMode);//Justin debug
+                                monitor->device[ask_device]._hvac.manualOnMode);
                         if(HVAC_CONVENTIONAL == monitor->device[ask_device]._hvac.hvacMode)
                         {
                             if(HVAC_COOL == monitor->device[ask_device]._hvac.manualOnMode)
@@ -487,16 +487,6 @@ u8 askDeviceHeart(type_monitor_t *monitor, rt_device_t serial)
                     LOG_D("in maintain, all device off");
                 }
 
-//                if(AC_4_TYPE == monitor->device[ask_device].type)//Justin debug 仅仅测试
-//                {
-//                    monitor->device[ask_device]._storage[0]._port.d_state = 0;
-//                    monitor->device[ask_device]._storage[1]._port.d_state = 1;
-//                    monitor->device[ask_device]._storage[2]._port.d_state = 0;
-//                    monitor->device[ask_device]._storage[3]._port.d_state = 1;
-//
-//                    LOG_D("ac_4 test");//Justin debug
-//                }
-
                 if(1 == monitor->device[ask_device].storage_size)
                 {
                     buffer[1] = WRITE_SINGLE;
@@ -527,7 +517,7 @@ u8 askDeviceHeart(type_monitor_t *monitor, rt_device_t serial)
         buffer[6] = crc16Result;                             //CRC16低位
         buffer[7] = (crc16Result>>8);                        //CRC16高位
 
-//        LOG_D("-------------------ask name = %s",monitor->device[ask_device].name);//Justin debug
+//        LOG_D("-------------------ask name = %s",monitor->device[ask_device].name);
 
         rt_device_write(serial, 0, buffer, 8);
         devConnectState[ask_device].send_count ++;

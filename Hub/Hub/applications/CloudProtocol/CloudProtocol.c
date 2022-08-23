@@ -17,6 +17,7 @@
 #include<math.h>
 #include "Ethernet.h"
 #include "Recipe.h"
+#include "UartBussiness.h"
 
 sys_set_t       sys_set;
 type_sys_time   sys_time;
@@ -331,12 +332,10 @@ rt_err_t ReplyDataToCloud(mqtt_client *client, u8 *res, u16 *len, u8 sendCloudFl
     char        name[20];
     char        *str        = RT_NULL;
 
-//    LOG_D("enter ReplyDataToCloud");//Justin print
-
 //    rt_mutex_take(dynamic_mutex, RT_WAITING_FOREVER);//加锁保护
     if(ON == sys_set.cloudCmd.recv_flag)
     {
-        LOG_D("reply sys_set.cloudCmd.cmd = %s",sys_set.cloudCmd.cmd);//Justin debug
+//        LOG_D("reply sys_set.cloudCmd.cmd = %s",sys_set.cloudCmd.cmd);
 
         if(0 == rt_memcmp(CMD_SET_TEMP, sys_set.cloudCmd.cmd, sizeof(CMD_SET_TEMP)) ||
            0 == rt_memcmp(CMD_GET_TEMP, sys_set.cloudCmd.cmd, sizeof(CMD_GET_TEMP)))   //获取/设置温度参数
@@ -356,7 +355,7 @@ rt_err_t ReplyDataToCloud(mqtt_client *client, u8 *res, u16 *len, u8 sendCloudFl
         else if(0 == rt_memcmp(CMD_GET_DEVICELIST, sys_set.cloudCmd.cmd, sizeof(CMD_GET_DEVICELIST)))   //获取设备列表
         {
             LOG_D("CMD_GET_DEVICELIST");
-            str = ReplyGetDeviceList(CMD_GET_DEVICELIST, sys_set.cloudCmd.msgid);//Justin debug 该函数可能存在bug 导致数字越界
+            str = ReplyGetDeviceList(CMD_GET_DEVICELIST, sys_set.cloudCmd.msgid);
         }
         else if(0 == rt_memcmp(CMD_GET_L1, sys_set.cloudCmd.cmd, sizeof(CMD_GET_L1)) ||
                 0 == rt_memcmp(CMD_SET_L1, sys_set.cloudCmd.cmd, sizeof(CMD_SET_L1)))   //获取/设置灯光1
@@ -488,7 +487,7 @@ rt_err_t ReplyDataToCloud(mqtt_client *client, u8 *res, u16 *len, u8 sendCloudFl
         }
         else if(0 == rt_memcmp(CMD_SET_TANK_SENSOR, sys_set.cloudCmd.cmd, sizeof(CMD_SET_TANK_SENSOR)))//设置泵颜色
         {
-            str = ReplySetPumpSensor(CMD_SET_TANK_SENSOR, sys_set.cloudCmd);//Justin debug 未测试
+            str = ReplySetPumpSensor(CMD_SET_TANK_SENSOR, sys_set.cloudCmd);
         }
         else
         {
@@ -507,7 +506,6 @@ rt_err_t ReplyDataToCloud(mqtt_client *client, u8 *res, u16 *len, u8 sendCloudFl
             else
             {
                 *len = strlen(str);
-                LOG_D("----------------reply length = %d",*len);//Justin debug
                 if(SEND_ETH_BUFFSZ >= *len)
                 {
                     rt_memcpy(res, (u8 *)str, *len);
@@ -522,7 +520,7 @@ rt_err_t ReplyDataToCloud(mqtt_client *client, u8 *res, u16 *len, u8 sendCloudFl
             cJSON_free(str);
             str = RT_NULL;
             ret = RT_EOK;
-            setCloudCmd(RT_NULL, OFF);//Justin debug
+            setCloudCmd(RT_NULL, OFF);
         }
         else
         {
@@ -595,7 +593,7 @@ void analyzeCloudData(char *data, u8 cloudFlg)
     if(NULL != json)
     {
         cJSON * cmd = cJSON_GetObjectItem(json, CMD_NAME);
-        LOG_I("----------------cmd = %s",cmd->valuestring);//Justin debug
+//        LOG_I("----------------cmd = %s",cmd->valuestring);
         if(NULL != cmd)
         {
             if(0 == rt_memcmp(CMD_SET_TEMP, cmd->valuestring, strlen(CMD_SET_TEMP)))
@@ -812,7 +810,7 @@ void analyzeCloudData(char *data, u8 cloudFlg)
             }
             else if(0 == rt_memcmp(CMD_DELETE_RECIPE, cmd->valuestring, strlen(CMD_DELETE_RECIPE)))
             {
-                CmdDelRecipe(data, &sys_set.cloudCmd); //Justin debug 未测试
+                CmdDelRecipe(data, &sys_set.cloudCmd);
                 setCloudCmd(cmd->valuestring, ON);
                 GetSysRecipt()->saveFlag = YES;
             }
@@ -827,7 +825,7 @@ void analyzeCloudData(char *data, u8 cloudFlg)
     else
     {
         LOG_E("analyzeCloudData err1");
-        LOG_E("cloudFlg %d ,err data: %s",cloudFlg,data);//Justin debug
+        LOG_E("cloudFlg %d ,err data: %s",cloudFlg,data);
     }
 }
 
@@ -897,6 +895,182 @@ void ctrDevice(type_monitor_t *monitor, u8 type, u16 value)
     }
 }
 
+//获取当前的参数设置 //Justin debug 有bug 获取到的配方值不对
+void GetNowSysSet(proTempSet_t *tempSet, proCo2Set_t *co2Set, proHumiSet_t *humiSet,
+        proLine_t *line1Set, proLine_t *line2Set, struct recipeInfor *info)
+{
+    struct tm       tm_test;
+    char            temp[4];
+    u8              item = 0;
+    u8              index = 0;
+    time_t          starts;
+    sys_set_t       *set = GetSysSet();
+    sys_recipe_t    *recipe = GetSysRecipt();
+    u8              usedCalFlg = OFF; // 如果为OFF 则使用系统设置 否则
+
+    rt_memset(temp, '0', 4);
+    rt_memcpy(temp, &set->stageSet.starts[0], 4);
+    tm_test.tm_year = atoi(temp) - 1900;
+    rt_memset(temp, '0', 4);
+    rt_memcpy(&temp[2], &set->stageSet.starts[4], 2);
+    tm_test.tm_mon = atoi(temp) - 1;
+    rt_memset(temp, '0', 4);
+    rt_memcpy(&temp[2], &set->stageSet.starts[6], 2);
+    tm_test.tm_mday = atoi(temp);
+    rt_memset(temp, '0', 4);
+    rt_memcpy(&temp[2], &set->stageSet.starts[8], 2);
+    tm_test.tm_hour = atoi(temp);
+    rt_memset(temp, '0', 4);
+    rt_memcpy(&temp[2], &set->stageSet.starts[10], 2);
+    tm_test.tm_min = atoi(temp);
+    rt_memset(temp, '0', 4);
+    rt_memcpy(&temp[2], &set->stageSet.starts[12], 2);
+    tm_test.tm_sec = atoi(temp);
+
+    starts = changeTmTotimet(&tm_test);
+
+    //如果不使能日历 或者 不处于日历的
+    if(OFF == set->stageSet.en)
+    {
+        usedCalFlg = OFF;
+    }
+    else if(ON == set->stageSet.en)
+    {
+        usedCalFlg = OFF;
+
+        for(index = 0; index < STAGE_LIST_MAX; index++)
+        {
+            if((0 != set->stageSet._list[index].recipeId) && (0 != set->stageSet._list[index].duration_day))
+            {
+                if((getTimeStamp() >= starts) && (getTimeStamp() <= starts + set->stageSet._list[index].duration_day * 24 * 60 * 60))
+                {
+                    for(item = 0; item < recipe->recipe_size; item++)
+                    {
+                        if(recipe->recipe[item].id == set->stageSet._list[index].recipeId)
+                        {
+//                            LOG_D("recipe name %s",recipe->recipe[item].name);
+//                            LOG_D("recipeId = %d, item = %d, id = %d, dayCoolingTarget = %d",set->stageSet._list[index].recipeId,
+//                                    item,recipe->recipe[item].id,recipe->recipe[item].dayCoolingTarget);
+//                            LOG_I("set->stageSet._list[index].duration_day = %d",set->stageSet._list[index].duration_day);
+                            usedCalFlg = ON;
+                            break;
+                        }
+                    }
+                }
+
+                if(ON == usedCalFlg)
+                {
+                    break;
+                }
+
+                starts += set->stageSet._list[index].duration_day * 24 * 60 * 60;
+            }
+        }
+    }
+
+//    LOG_I("usedCalFlg = %d",usedCalFlg);
+
+    if(OFF == usedCalFlg)
+    {
+        //使用系统设置
+        if(RT_NULL != tempSet)
+        {
+            rt_memcpy((u8 *)tempSet, (u8 *)&set->tempSet, sizeof(proTempSet_t));
+        }
+
+        if(RT_NULL != co2Set)
+        {
+            rt_memcpy((u8 *)co2Set, (u8 *)&set->co2Set, sizeof(proCo2Set_t));
+        }
+
+        if(RT_NULL != humiSet)
+        {
+            rt_memcpy((u8 *)humiSet, (u8 *)&set->humiSet, sizeof(proHumiSet_t));
+        }
+
+        if(RT_NULL != line1Set)
+        {
+            rt_memcpy((u8 *)line1Set, (u8 *)&set->line1Set, sizeof(proLine_t));
+        }
+
+        if(RT_NULL != line2Set)
+        {
+            rt_memcpy((u8 *)line2Set, (u8 *)&set->line2Set, sizeof(proLine_t));
+        }
+
+        if(RT_NULL != info)
+        {
+            strncpy(info->name, "--", RECIPE_NAMESZ);
+            info->week = 0;//天化为星期
+            info->day = 0;
+        }
+    }
+    else if(ON == usedCalFlg)
+    {
+        //使用日历设置, 但是相关联的一些标志要使用系统的
+        if(RT_NULL != tempSet)
+        {
+            rt_memcpy((u8 *)tempSet, (u8 *)&set->tempSet, sizeof(proTempSet_t));
+            tempSet->dayCoolingTarget.value = recipe->recipe[item].dayCoolingTarget;
+            tempSet->dayHeatingTarget.value = recipe->recipe[item].dayHeatingTarget;
+            tempSet->nightCoolingTarget.value = recipe->recipe[item].nightCoolingTarget;
+            tempSet->nightHeatingTarget.value = recipe->recipe[item].nightHeatingTarget;
+        }
+
+        if(RT_NULL != co2Set)
+        {
+            rt_memcpy((u8 *)co2Set, (u8 *)&set->co2Set, sizeof(proCo2Set_t));
+            co2Set->dayCo2Target.value = recipe->recipe[item].dayCo2Target;
+            co2Set->nightCo2Target.value = recipe->recipe[item].nightCo2Target;
+        }
+
+        if(RT_NULL != humiSet)
+        {
+            rt_memcpy((u8 *)humiSet, (u8 *)&set->humiSet, sizeof(proHumiSet_t));
+            humiSet->dayHumiTarget.value = recipe->recipe[item].dayHumidifyTarget;
+            humiSet->dayDehumiTarget.value = recipe->recipe[item].dayDehumidifyTarget;
+            humiSet->nightHumiTarget.value = recipe->recipe[item].nightHumidifyTarget;
+            humiSet->nightDehumiTarget.value = recipe->recipe[item].nightDehumidifyTarget;
+        }
+
+        if(RT_NULL != line1Set)
+        {
+            rt_memcpy((u8 *)line1Set, (u8 *)&set->line1Set, sizeof(proLine_t));
+            line1Set->brightMode.value = recipe->recipe[item].line_list[0].brightMode;
+            line1Set->byPower.value = recipe->recipe[item].line_list[0].byPower;
+            line1Set->byAutoDimming.value = recipe->recipe[item].line_list[0].byAutoDimming;
+            line1Set->mode.value = recipe->recipe[item].line_list[0].mode;
+            line1Set->lightOn.value = recipe->recipe[item].line_list[0].lightOn;
+            line1Set->lightOff.value = recipe->recipe[item].line_list[0].lightOff;
+            line1Set->firstCycleTime.value = recipe->recipe[item].line_list[0].firstCycleTime;
+            line1Set->duration.value = recipe->recipe[item].line_list[0].duration;
+            line1Set->pauseTime.value = recipe->recipe[item].line_list[0].pauseTime;
+        }
+
+        if(RT_NULL != line2Set)
+        {
+            rt_memcpy((u8 *)line2Set, (u8 *)&set->line2Set, sizeof(proLine_t));
+            line2Set->brightMode.value = recipe->recipe[item].line_list[1].brightMode;
+            line2Set->byPower.value = recipe->recipe[item].line_list[1].byPower;
+            line2Set->byAutoDimming.value = recipe->recipe[item].line_list[1].byAutoDimming;
+            line2Set->mode.value = recipe->recipe[item].line_list[1].mode;
+            line2Set->lightOn.value = recipe->recipe[item].line_list[1].lightOn;
+            line2Set->lightOff.value = recipe->recipe[item].line_list[1].lightOff;
+            line2Set->firstCycleTime.value = recipe->recipe[item].line_list[1].firstCycleTime;
+            line2Set->duration.value = recipe->recipe[item].line_list[1].duration;
+            line2Set->pauseTime.value = recipe->recipe[item].line_list[1].pauseTime;
+        }
+
+        if(RT_NULL != info)
+        {
+            rt_memcpy((u8 *)info->name, (u8 *)recipe->recipe[item].name, RECIPE_NAMESZ);
+            info->week = set->stageSet._list[index].duration_day / 7;//天化为星期
+            info->day = set->stageSet._list[index].duration_day % 7;
+//            LOG_D("duration_day = %d, week = %d, day = %d",set->stageSet._list[index].duration_day,info->week,info->day);
+        }
+    }
+}
+
 void tempProgram(type_monitor_t *monitor)
 {
     u8              storage             = 0;
@@ -904,9 +1078,9 @@ void tempProgram(type_monitor_t *monitor)
     u16             coolTarge           = 0;
     u16             HeatTarge           = 0;
     sensor_t        *module             = RT_NULL;
-//    static time_t   time_close_cool     = 0;
-//    static time_t   time_close_heat     = 0;
-//    static u8       menual_state        = 0;
+    proTempSet_t    tempSet;
+
+    GetNowSysSet(&tempSet, RT_NULL, RT_NULL, RT_NULL, RT_NULL, RT_NULL);
 
     module = GetSensorByType(monitor, BHS_TYPE);
 
@@ -929,20 +1103,20 @@ void tempProgram(type_monitor_t *monitor)
 
     }
 
-//    if(sys_set.tempSet.dayCoolingTarget.value < sys_set.tempSet.dayHeatingTarget.value + sys_set.tempSet.tempDeadband.value * 2)
+//    if(tempSet.dayCoolingTarget.value < tempSet.dayHeatingTarget.value + tempSet.tempDeadband.value * 2)
 //    {
 //        return;
-//    }//Justin debug 后续增加
+//    }
 
     if(DAY_TIME == GetSysSet()->dayOrNight)
     {
-        coolTarge = GetSysSet()->tempSet.dayCoolingTarget.value;
-        HeatTarge = GetSysSet()->tempSet.dayHeatingTarget.value;
+        coolTarge = tempSet.dayCoolingTarget.value;
+        HeatTarge = tempSet.dayHeatingTarget.value;
     }
     else if(NIGHT_TIME == GetSysSet()->dayOrNight)
     {
-        coolTarge = GetSysSet()->tempSet.nightCoolingTarget.value;
-        HeatTarge = GetSysSet()->tempSet.nightHeatingTarget.value;
+        coolTarge = tempSet.nightCoolingTarget.value;
+        HeatTarge = tempSet.nightHeatingTarget.value;
     }
 
     if(tempNow >= coolTarge)
@@ -963,7 +1137,7 @@ void tempProgram(type_monitor_t *monitor)
             GetDeviceByType(monitor, HVAC_6_TYPE)->_storage[0]._port.d_value = 0x1C;
         }
     }
-    else if(tempNow <= (coolTarge - GetSysSet()->tempSet.tempDeadband.value))
+    else if(tempNow <= (coolTarge - tempSet.tempDeadband.value))
     {
         GetDeviceByType(monitor, COOL_TYPE)->_storage[0]._port.d_state = OFF;
         if(HVAC_CONVENTIONAL == GetDeviceByType(monitor, HVAC_6_TYPE)->_hvac.hvacMode)//0-conventional
@@ -998,7 +1172,7 @@ void tempProgram(type_monitor_t *monitor)
             GetDeviceByType(monitor, HVAC_6_TYPE)->_storage[0]._port.d_value = 0x0C;
         }
     }
-    else if(tempNow >= HeatTarge + GetSysSet()->tempSet.tempDeadband.value)
+    else if(tempNow >= HeatTarge + tempSet.tempDeadband.value)
     {
         GetDeviceByType(monitor, HEAT_TYPE)->_storage[0]._port.d_state = OFF;
         if(HVAC_CONVENTIONAL == GetDeviceByType(monitor, HVAC_6_TYPE)->_hvac.hvacMode)//0-conventional
@@ -1016,7 +1190,7 @@ void tempProgram(type_monitor_t *monitor)
     }
 
     //当前有一个逻辑是降温和除湿联动选择，只和ACSTATION联动
-    if(ON == GetSysSet() ->tempSet.coolingDehumidifyLock.value)
+    if(ON == tempSet.coolingDehumidifyLock.value)
     {
         //联动可能会导致降温和加热设备同时工作，除湿和加湿设备同时工作
         GetDeviceByType(monitor, DEHUMI_TYPE)->_storage[0]._port.d_state = GetDeviceByType(monitor, COOL_TYPE)->_storage[0]._port.d_state;
@@ -1029,10 +1203,7 @@ void timmerProgram(type_monitor_t *monitor)
     u8                  item    = 0;
     device_time4_t      *timer  = RT_NULL;
     type_sys_time       sys_time;
-    time_t              now_time;
     static u8           manual_state[DEVICE_TIME4_MAX]={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-    static time_t       time_period;
-    struct tm           *tm_test = RT_NULL;
 
     getRealTimeForMat(&sys_time);
 
@@ -1045,8 +1216,7 @@ void timmerProgram(type_monitor_t *monitor)
 
             if(MANUAL_NO_HAND == timer->_manual[0].manual)
             {
-//                LOG_D("-------------mode %d",timer->mode);//Justin debug 仅仅测试
-                if(BY_RECYCLE == timer->mode)
+                if(BY_RECYCLE == timer->mode[0])
                 {
                     //达到循环的条件
 //                    LOG_D("now time %d, start time %d",sys_time.hour * 60 * 60 + sys_time.minute * 60 + sys_time.second,
@@ -1057,13 +1227,11 @@ void timmerProgram(type_monitor_t *monitor)
                         if((sys_time.hour * 60 * 60 + sys_time.minute * 60 + sys_time.second - timer->_recycle[0].startAt * 60) /
                            (timer->_recycle[0].duration + timer->_recycle[0].pauseTime) <= timer->_recycle[0].times)
                         {
-//                            LOG_D("timmerProgram   1");//Justin debug
                             //当前时间 - 开始时间
                             if((sys_time.hour * 60 * 60 + sys_time.minute * 60 + sys_time.second - timer->_recycle[0].startAt * 60) %
                                 (timer->_recycle[0].duration + timer->_recycle[0].pauseTime) <= timer->_recycle[0].duration)
                             {
                                 timer->_storage[0]._time4_ctl.d_state = ON;
-//                                LOG_D("timmerProgram   2");//Justin debug
                             }
                             else
                             {
@@ -1081,13 +1249,13 @@ void timmerProgram(type_monitor_t *monitor)
                         timer->_storage[0]._time4_ctl.d_state = OFF;
                     }
 
-//                    LOG_I("timer state %d",timer->_storage[0]._time4_ctl.d_state);//Justin debug
+//                    LOG_I("timer state %d",timer->_storage[0]._time4_ctl.d_state);
                 }
-                else if(BY_SCHEDULE == timer->mode)//定时器模式
+                else if(BY_SCHEDULE == timer->mode[0])//定时器模式
                 {
                     for(item = 0; item < TIMER_GROUP; item++)//该功能待测试
                     {
-                        //选择处于第几组定时器 //Justin debug 待验证 2022 08 03
+                        //选择处于第几组定时器
                         if(sys_time.hour * 60 * 60 + sys_time.minute * 60 + sys_time.second > timer->_storage[0]._time4_ctl._timer[item].on_at * 60)
                         {
                             //小于持续时间
@@ -1182,7 +1350,7 @@ void lineProgram_new(type_monitor_t *monitor, u8 line_no, u16 mPeroid)
     time_t          period_time     = 0;    //化一个循环时间为hour + minute +second 格式
     time_t          temp_time       = 0;
     line_t          *line           = RT_NULL;
-    proLine_t       *line_set       = RT_NULL;
+    proLine_t       line_set;
     type_sys_time   time;
     u16             temperature     = 0;
     static u8       stage[LINE_MAX] = {LINE_MIN_VALUE,LINE_MIN_VALUE};
@@ -1192,12 +1360,12 @@ void lineProgram_new(type_monitor_t *monitor, u8 line_no, u16 mPeroid)
     if(0 == line_no)
     {
         line = &monitor->line[0];
-        line_set = &sys_set.line1Set;
+        GetNowSysSet(RT_NULL, RT_NULL, RT_NULL, &line_set, RT_NULL, RT_NULL);
     }
     else if(1 == line_no)
     {
         line = &monitor->line[1];
-        line_set = &sys_set.line2Set;
+        GetNowSysSet(RT_NULL, RT_NULL, RT_NULL, RT_NULL, &line_set, RT_NULL);
     }
     else
     {
@@ -1206,39 +1374,38 @@ void lineProgram_new(type_monitor_t *monitor, u8 line_no, u16 mPeroid)
     }
 
     //2.判断灯光设置的合理性
-    if(line_set->hidDelay.value > 180 || line_set->hidDelay.value < 3)
+    if(line_set.hidDelay.value > 180 || line_set.hidDelay.value < 3)
     {
-        line_set->hidDelay.value = 3;
+        line_set.hidDelay.value = 3;
     }
 
-    if(line_set->byPower.value > 115 || line_set->byPower.value < 10)
+    if(line_set.byPower.value > 115 || line_set.byPower.value < 10)
     {
-        line_set->byPower.value = 10;
+        line_set.byPower.value = 10;
     }
 
     //3.判断模式是recycle 还是 timer,是否需要开灯
     getRealTimeForMat(&time);
-    if(LINE_BY_TIMER == line_set->mode.value)
+    if(LINE_BY_TIMER == line_set.mode.value)
     {
         //3.1 如果是定时器模式 那就需要看看是否处于定时器范围内
-        if(((time.hour * 60 + time.minute) >= line_set->lightOn.value) &&
-           ((time.hour * 60 + time.minute) < line_set->lightOff.value))
+        if(((time.hour * 60 + time.minute) >= line_set.lightOn.value) &&
+           ((time.hour * 60 + time.minute) < line_set.lightOff.value))
         {
             state = ON;
 
             // 3.1.1 lightOff - lightOn <= sunriseSunSet  该过程只有上升过程
             now_time = time.hour * 60 * 60 + time.minute * 60 + time.second;
-            start_time = line_set->lightOn.value;
-            if(line_set->lightOff.value <= line_set->lightOn.value + line_set->sunriseSunSet.value)
+            start_time = line_set.lightOn.value;
+            if(line_set.lightOff.value <= line_set.lightOn.value + line_set.sunriseSunSet.value)
             {
                 sunriseFlg = LINE_UP;
-//                LOG_E("---------------1");
             }
             // 3.1.2 sunriseSunSet <= lightOff - lightOn &&  2*sunriseSunSet >= lightOff - lightOn  该过程有上升过程 下降过程不完整
-            else if((line_set->lightOff.value >= line_set->lightOn.value + line_set->sunriseSunSet.value) &&
-                    (line_set->lightOff.value <= line_set->lightOn.value + 2 *line_set->sunriseSunSet.value))
+            else if((line_set.lightOff.value >= line_set.lightOn.value + line_set.sunriseSunSet.value) &&
+                    (line_set.lightOff.value <= line_set.lightOn.value + 2 *line_set.sunriseSunSet.value))
             {
-                if(now_time <= (line_set->sunriseSunSet.value + line_set->lightOn.value) * 60)
+                if(now_time <= (line_set.sunriseSunSet.value + line_set.lightOn.value) * 60)
                 {
                     sunriseFlg = LINE_UP;
                 }
@@ -1246,17 +1413,16 @@ void lineProgram_new(type_monitor_t *monitor, u8 line_no, u16 mPeroid)
                 {
                     sunriseFlg = LINE_DOWN;
                 }
-//                LOG_E("---------------2");
             }
             // 3.1.3 2*sunriseSunSet < lightOff - lightOn  该过程有上升过程 下降过程 恒定过程
-            else if(line_set->lightOff.value > line_set->lightOn.value + 2 *line_set->sunriseSunSet.value)
+            else if(line_set.lightOff.value > line_set.lightOn.value + 2 *line_set.sunriseSunSet.value)
             {
-                if(now_time <= (line_set->sunriseSunSet.value + line_set->lightOn.value) * 60)
+                if(now_time <= (line_set.sunriseSunSet.value + line_set.lightOn.value) * 60)
                 {
                     sunriseFlg = LINE_UP;
                 }
                 //now_time - lightOn < lightOff - lightOn - sunriseSunSet 恒定
-                else if(now_time + line_set->sunriseSunSet.value * 60 < line_set->lightOff.value * 60)
+                else if(now_time + line_set.sunriseSunSet.value * 60 < line_set.lightOff.value * 60)
                 {
                     sunriseFlg = LINE_STABLE;
                 }
@@ -1264,7 +1430,6 @@ void lineProgram_new(type_monitor_t *monitor, u8 line_no, u16 mPeroid)
                 {
                     sunriseFlg = LINE_DOWN;
                 }
-//                LOG_E("---------------3");
             }
         }
         else
@@ -1272,30 +1437,29 @@ void lineProgram_new(type_monitor_t *monitor, u8 line_no, u16 mPeroid)
             state = OFF;
         }
     }
-    else if(LINE_BY_CYCLE == line_set->mode.value)
+    else if(LINE_BY_CYCLE == line_set.mode.value)
     {
         //3.2 判断当前时间处于开还是关的状态
         now_time = time.hour * 60 * 60 + time.minute * 60 + time.second;
-        start_time = line_set->firstCycleTime.value * 60;
-        period_time = line_set->duration.value + line_set->pauseTime.value;
+        start_time = line_set.firstCycleTime.value * 60;
+        period_time = line_set.duration.value + line_set.pauseTime.value;
         if(now_time >= start_time)
         {
-            if(((now_time - start_time) % period_time) <= line_set->duration.value)
+            if(((now_time - start_time) % period_time) <= line_set.duration.value)
             {
                 state = ON;
 
                 temp_time = (now_time - start_time) % period_time;
                 // 3.2.1 duration <= sunriseSunSet  该过程只有上升过程
-                if(line_set->duration.value <= line_set->sunriseSunSet.value * 60)
+                if(line_set.duration.value <= line_set.sunriseSunSet.value * 60)
                 {
                     sunriseFlg = LINE_UP;
-//                    LOG_D("-----------------4");//Justin debug
                 }
                 // 3.2.2 sunriseSunSet <= duration &&  2*sunriseSunSet >= duration  该过程有上升过程 下降过程不完整
-                else if((line_set->duration.value >= line_set->sunriseSunSet.value * 60) &&
-                        (line_set->duration.value <= 2 * line_set->sunriseSunSet.value * 60))
+                else if((line_set.duration.value >= line_set.sunriseSunSet.value * 60) &&
+                        (line_set.duration.value <= 2 * line_set.sunriseSunSet.value * 60))
                 {
-                    if(temp_time <= line_set->sunriseSunSet.value * 60)
+                    if(temp_time <= line_set.sunriseSunSet.value * 60)
                     {
                         sunriseFlg = LINE_UP;
                     }
@@ -1303,18 +1467,16 @@ void lineProgram_new(type_monitor_t *monitor, u8 line_no, u16 mPeroid)
                     {
                         sunriseFlg = LINE_DOWN;
                     }
-//                    LOG_D("-----------------5");//Justin debug
                 }
                 // 3.2.3 2*sunriseSunSet < duration  该过程有上升过程 下降过程 恒定过程
-                else if(line_set->duration.value > 2 *line_set->sunriseSunSet.value * 60)
+                else if(line_set.duration.value > 2 *line_set.sunriseSunSet.value * 60)
                 {
-//                    LOG_D("temp_time = %d",temp_time);//Justin debug
-                    if(temp_time <= line_set->sunriseSunSet.value * 60)
+                    if(temp_time <= line_set.sunriseSunSet.value * 60)
                     {
                         sunriseFlg = LINE_UP;
                     }
                     //temp_time < duration - sunriseSunSet 恒定
-                    else if(line_set->duration.value > temp_time + line_set->sunriseSunSet.value * 60)
+                    else if(line_set.duration.value > temp_time + line_set.sunriseSunSet.value * 60)
                     {
                         sunriseFlg = LINE_STABLE;
                     }
@@ -1322,10 +1484,8 @@ void lineProgram_new(type_monitor_t *monitor, u8 line_no, u16 mPeroid)
                     {
                         sunriseFlg = LINE_DOWN;
                     }
-//                    LOG_D("-----------------6");//Justin debug
                 }
 
-//                LOG_I("sunriseFlg = %d",sunriseFlg);//Justin debug
             }
             else
             {
@@ -1338,71 +1498,66 @@ void lineProgram_new(type_monitor_t *monitor, u8 line_no, u16 mPeroid)
     if(ON == state)
     {
         //4.0 计算升档时间
-        if(LINE_BY_TIMER == line_set->mode.value)
+        if(LINE_BY_TIMER == line_set.mode.value)
         {
             now_time = time.hour * 60 * 60 + time.minute * 60 + time.second;
-            if(LINE_MODE_BY_POWER == line_set->brightMode.value)
+            if(LINE_MODE_BY_POWER == line_set.brightMode.value)
             {
                 if(LINE_UP == sunriseFlg)
                 {
-                    if((line_set->sunriseSunSet.value + line_set->lightOn.value) * 60 > now_time)
+                    if((line_set.sunriseSunSet.value + line_set.lightOn.value) * 60 > now_time)
                     {
-                        if(line_set->byPower.value > line->d_value)
+                        if(line_set.byPower.value > line->d_value)
                         {
-//                            LOG_D("now time rest   %d",(line_set->sunriseSunSet.value + line_set->lightOn.value)* 60 - now_time) ;//Justin debug
-                            temp_stage = (((line_set->sunriseSunSet.value + line_set->lightOn.value) * 60 - now_time) *1000 / mPeroid)/
-                                         (line_set->byPower.value - line->d_value);
+                            temp_stage = (((line_set.sunriseSunSet.value + line_set.lightOn.value) * 60 - now_time) *1000 / mPeroid)/
+                                         (line_set.byPower.value - line->d_value);
                         }
                     }
                 }
                 else if(LINE_DOWN == sunriseFlg)
                 {
                     //(结束时间 - 当前时间))/(目标值 - 当前值)
-                    if(line_set->lightOff.value * 60 <= now_time + line_set->sunriseSunSet.value * 60)
+                    if(line_set.lightOff.value * 60 <= now_time + line_set.sunriseSunSet.value * 60)
                     {
                         if(line->d_value > LINE_MIN_VALUE)
                         {
-//                            LOG_D("now time rest   %d",line_set->lightOff.value * 60 - now_time);//Justin debug
-                            temp_stage = ((line_set->lightOff.value * 60 - now_time) *1000 / mPeroid)/
+                            temp_stage = ((line_set.lightOff.value * 60 - now_time) *1000 / mPeroid)/
                                          (line->d_value - LINE_MIN_VALUE);
                         }
                     }
                 }
             }
         }
-        else if(LINE_BY_CYCLE == line_set->mode.value)
+        else if(LINE_BY_CYCLE == line_set.mode.value)
         {
-            if(LINE_MODE_BY_POWER == line_set->brightMode.value)
+            if(LINE_MODE_BY_POWER == line_set.brightMode.value)
             {
                 now_time = time.hour * 60 * 60 + time.minute * 60 + time.second;
-                start_time = line_set->firstCycleTime.value * 60;
+                start_time = line_set.firstCycleTime.value * 60;
                 if(now_time > start_time)
                 {
-                    period_time = line_set->duration.value + line_set->pauseTime.value;
+                    period_time = line_set.duration.value + line_set.pauseTime.value;
                     temp_time = (now_time - start_time) % period_time;
                     if(LINE_UP == sunriseFlg)
                     {
                         //(日升日落 - 当前时间)/(目标值 - 当前值)
-                        if(line_set->sunriseSunSet.value * 60 > temp_time)
+                        if(line_set.sunriseSunSet.value * 60 > temp_time)
                         {
-//                            LOG_D("------rest time = %d",line_set->sunriseSunSet.value * 60 - temp_time);//Justin debug
-                            if(line_set->byPower.value > line->d_value)
+                            if(line_set.byPower.value > line->d_value)
                             {
-                                temp_stage = ((line_set->sunriseSunSet.value * 60 - temp_time)*1000/mPeroid)/
-                                        (line_set->byPower.value - line->d_value);
+                                temp_stage = ((line_set.sunriseSunSet.value * 60 - temp_time)*1000/mPeroid)/
+                                        (line_set.byPower.value - line->d_value);
                             }
                         }
                     }
                     else if(LINE_DOWN == sunriseFlg)
                     {
                         //(结束时间 - 当前时间)/(当前值 - 最小值)
-//                        LOG_D("period_time = %d, temp_time = %d",line_set->duration.value,temp_time);//Justin debug
-                        if(line_set->duration.value <= temp_time + line_set->sunriseSunSet.value * 60)//结束时间 - 当前时间 <= 日升日落
+                        if(line_set.duration.value <= temp_time + line_set.sunriseSunSet.value * 60)//结束时间 - 当前时间 <= 日升日落
                         {
-//                            LOG_D("------rest time = %d",line_set->duration.value - temp_time);//Justin debug
                             if(line->d_value > LINE_MIN_VALUE)
                             {
-                                temp_stage = ((line_set->duration.value - temp_time) * 1000/mPeroid) / (line->d_value - LINE_MIN_VALUE);
+                                temp_stage = ((line_set.duration.value - temp_time) * 1000/mPeroid) / (line->d_value - LINE_MIN_VALUE);
                             }
                         }
                     }
@@ -1410,24 +1565,24 @@ void lineProgram_new(type_monitor_t *monitor, u8 line_no, u16 mPeroid)
             }
         }
 
-        //4.1 恒光模式 //Justin debug 疑问该模式 是缓慢上升灯光直到恒光范围附近还是直接有计算公式
-        if(LINE_MODE_AUTO_DIMMING == line_set->brightMode.value)
+        //4.1 恒光模式
+        if(LINE_MODE_AUTO_DIMMING == line_set.brightMode.value)
         {
-            dimmingLineCtrl(monitor, &stage[line_no], line_set->byAutoDimming.value);
+            dimmingLineCtrl(monitor, &stage[line_no], line_set.byAutoDimming.value);
             value = stage[line_no];
         }
         //4.2 固定比例
-        else if(LINE_MODE_BY_POWER == line_set->brightMode.value)
+        else if(LINE_MODE_BY_POWER == line_set.brightMode.value)
         {
-            if(0 == line_set->sunriseSunSet.value)
+            if(0 == line_set.sunriseSunSet.value)
             {
-                value = line_set->byPower.value;
+                value = line_set.byPower.value;
             }
-            else if((line_set->sunriseSunSet.value > 0) && (line_set->sunriseSunSet.value <= 30))//sunriseSunSet 单位分钟
+            else if((line_set.sunriseSunSet.value > 0) && (line_set.sunriseSunSet.value <= 30))//sunriseSunSet 单位分钟
             {
                 if(LINE_UP == sunriseFlg)
                 {
-                    if(LINE_BY_CYCLE == line_set->mode.value)
+                    if(LINE_BY_CYCLE == line_set.mode.value)
                     {
 //                        temp_stage = (line_set->sunriseSunSet.value * 60 * 1000 / mPeroid )/
 //                                (line_set->byPower.value - LINE_MIN_VALUE);// 计算一个挡位升级的时间
@@ -1444,14 +1599,14 @@ void lineProgram_new(type_monitor_t *monitor, u8 line_no, u16 mPeroid)
                         {
                             cnt[line_no] = 0;
                             //stage[line_no] <= line_set->byPower.value - (byPower/(duration / mperiod))
-                            if(stage[line_no]  + 1 <= line_set->byPower.value)
+                            if(stage[line_no]  + 1 <= line_set.byPower.value)
                             {
                                 stage[line_no] ++;
                             }
                         }
 
                     }
-                    else if(LINE_BY_TIMER == line_set->mode.value)
+                    else if(LINE_BY_TIMER == line_set.mode.value)
                     {
 //                        temp_stage = (line_set->sunriseSunSet.value * 60 * 1000 / mPeroid )/
 //                                     (line_set->byPower.value - LINE_MIN_VALUE);// 计算一个挡位升级的时间
@@ -1467,7 +1622,7 @@ void lineProgram_new(type_monitor_t *monitor, u8 line_no, u16 mPeroid)
                         else
                         {
                             cnt[line_no] = 0;
-                            if(stage[line_no]  + 1 <= line_set->byPower.value)
+                            if(stage[line_no]  + 1 <= line_set.byPower.value)
                             {
                                 stage[line_no] ++;
                             }
@@ -1476,11 +1631,11 @@ void lineProgram_new(type_monitor_t *monitor, u8 line_no, u16 mPeroid)
                 }
                 else if(LINE_STABLE == sunriseFlg)
                 {
-                    stage[line_no] = line_set->byPower.value;
+                    stage[line_no] = line_set.byPower.value;
                 }
                 else if(LINE_DOWN == sunriseFlg)
                 {
-                    if(LINE_BY_CYCLE == line_set->mode.value)
+                    if(LINE_BY_CYCLE == line_set.mode.value)
                     {
 //                        temp_stage = (line_set->sunriseSunSet.value * 60 * 1000 / mPeroid )/
 //                                     (line_set->byPower.value - LINE_MIN_VALUE);// 计算一个挡位升级的时间
@@ -1503,7 +1658,7 @@ void lineProgram_new(type_monitor_t *monitor, u8 line_no, u16 mPeroid)
                             }
                         }
                     }
-                    else if(LINE_BY_TIMER == line_set->mode.value)
+                    else if(LINE_BY_TIMER == line_set.mode.value)
                     {
 //                        temp_stage = (line_set->sunriseSunSet.value * 60 * 1000 / mPeroid )/
 //                                     (line_set->byPower.value - LINE_MIN_VALUE);// 计算一个挡位升级的时间
@@ -1544,14 +1699,14 @@ void lineProgram_new(type_monitor_t *monitor, u8 line_no, u16 mPeroid)
         }
 
         //过温保护
-        if(temperature >= line_set->tempOffDimming.value)
+        if(temperature >= line_set.tempOffDimming.value)
         {
             LOG_D("------in dimin off");
 //            stage[line_no] = LINE_MIN_VALUE;
 //            value = stage[line_no];
             state = OFF;
         }
-        else if(temperature >= line_set->tempStartDimming.value)
+        else if(temperature >= line_set.tempStartDimming.value)
         {
             LOG_D("------in dimin");
             stage[line_no] = LINE_DIMMING;
@@ -1581,7 +1736,7 @@ void lineProgram_new(type_monitor_t *monitor, u8 line_no, u16 mPeroid)
 //    {
 //        LOG_D("------------------sunriseFlg = %d",sunriseFlg);
 //        LOG_I("brightMode %d, byPower %d, state %d, value %d",
-//                line_set->brightMode.value,line_set->byPower.value,line->d_state,line->d_value);//Justin debug
+//                line_set->brightMode.value,line_set->byPower.value,line->d_state,line->d_value);
 //    }
 }
 
@@ -1592,8 +1747,10 @@ void humiProgram(type_monitor_t *monitor)
     u16             humiTarget          = 0;
     u16             dehumiTarget        = 0;
     sensor_t        *module             = RT_NULL;
-    static time_t   time_close_dehu     = 0;
+    proHumiSet_t    humiSet;
+    proTempSet_t    tempSet;
 
+    GetNowSysSet(&tempSet, RT_NULL, &humiSet, RT_NULL, RT_NULL, RT_NULL);
     module = GetSensorByType(monitor, BHS_TYPE);
 
     if(RT_NULL != module)
@@ -1614,20 +1771,20 @@ void humiProgram(type_monitor_t *monitor)
         }
     }
 
-//    if(sys_set.humiSet.dayDehumiTarget.value < sys_set.humiSet.dayHumiTarget.value + sys_set.humiSet.humidDeadband.value * 2)
+//    if(humiSet.dayDehumiTarget.value < humiSet.dayHumiTarget.value + humiSet.humidDeadband.value * 2)
 //    {
 //        return;
-//    }//Justin debug 后续增加
+//    }
 
     if(DAY_TIME == GetSysSet()->dayOrNight)
     {
-        humiTarget = GetSysSet()->humiSet.dayHumiTarget.value;
-        dehumiTarget = GetSysSet()->humiSet.dayDehumiTarget.value;
+        humiTarget = humiSet.dayHumiTarget.value;
+        dehumiTarget = humiSet.dayDehumiTarget.value;
     }
     else if(NIGHT_TIME == GetSysSet()->dayOrNight)
     {
-        humiTarget = GetSysSet()->humiSet.nightHumiTarget.value;
-        dehumiTarget = GetSysSet()->humiSet.nightDehumiTarget.value;
+        humiTarget = humiSet.nightHumiTarget.value;
+        dehumiTarget = humiSet.nightDehumiTarget.value;
     }
 
 
@@ -1636,7 +1793,7 @@ void humiProgram(type_monitor_t *monitor)
     {
         GetDeviceByType(monitor, DEHUMI_TYPE)->_storage[0]._port.d_state = ON;
     }
-    else if(humiNow <= dehumiTarget - GetSysSet()->humiSet.humidDeadband.value)
+    else if(humiNow <= dehumiTarget - humiSet.humidDeadband.value)
     {
         GetDeviceByType(monitor, DEHUMI_TYPE)->_storage[0]._port.d_state = OFF;
     }
@@ -1645,13 +1802,13 @@ void humiProgram(type_monitor_t *monitor)
     {
         GetDeviceByType(monitor, HUMI_TYPE)->_storage[0]._port.d_state = ON;
     }
-    else if(humiNow >= humiTarget + GetSysSet()->humiSet.humidDeadband.value)
+    else if(humiNow >= humiTarget + humiSet.humidDeadband.value)
     {
         GetDeviceByType(monitor, HUMI_TYPE)->_storage[0]._port.d_state = OFF;
     }
 
     //当前有一个逻辑是降温和除湿联动选择
-    if(ON == sys_set.tempSet.coolingDehumidifyLock.value)
+    if(ON == tempSet.coolingDehumidifyLock.value)
     {
         GetDeviceByType(monitor, COOL_TYPE)->_storage[0]._port.d_state = GetDeviceByType(monitor, DEHUMI_TYPE)->_storage[0]._port.d_state;
     }
@@ -1667,6 +1824,11 @@ void co2Program(type_monitor_t *monitor, u16 mPeriod)
     static u16      stopTime    = 0;
     u8              switchFlg   = 0;
     sensor_t        *module     = RT_NULL;
+    proCo2Set_t     co2Set;
+
+    GetNowSysSet(RT_NULL, &co2Set, RT_NULL, RT_NULL, RT_NULL, RT_NULL);
+
+//    LOG_I("--------------- co2 day target = %d, night target = %d",co2Set.dayCo2Target.value,co2Set.nightCo2Target.value);
 
     module = GetSensorByType(monitor, BHS_TYPE);
 
@@ -1691,11 +1853,11 @@ void co2Program(type_monitor_t *monitor, u16 mPeriod)
 
     if(DAY_TIME == GetSysSet()->dayOrNight)
     {
-        co2Target = GetSysSet()->co2Set.dayCo2Target.value;
+        co2Target = co2Set.dayCo2Target.value;
     }
     else if(NIGHT_TIME == GetSysSet()->dayOrNight)
     {
-        co2Target = GetSysSet()->co2Set.nightCo2Target.value;
+        co2Target = co2Set.nightCo2Target.value;
     }
 
     if(ON == sys_set.co2Set.isFuzzyLogic.value)
@@ -1723,8 +1885,8 @@ void co2Program(type_monitor_t *monitor, u16 mPeriod)
 
         if(1 == switchFlg)
         {
-            if(!((ON == sys_set.co2Set.dehumidifyLock.value && ON == GetDeviceByType(monitor, DEHUMI_TYPE)->_storage[0]._port.d_state) ||
-                 (ON == sys_set.co2Set.coolingLock.value && (ON == GetDeviceByType(monitor, COOL_TYPE)->_storage[0]._port.d_state
+            if(!((ON == co2Set.dehumidifyLock.value && ON == GetDeviceByType(monitor, DEHUMI_TYPE)->_storage[0]._port.d_state) ||
+                 (ON == co2Set.coolingLock.value && (ON == GetDeviceByType(monitor, COOL_TYPE)->_storage[0]._port.d_state
                   || GetDeviceByType(monitor, HVAC_6_TYPE)->_storage[0]._port.d_value & 0x08))))
             {
                 GetDeviceByType(monitor, CO2_TYPE)->_storage[0]._port.d_state = ON;
@@ -1745,8 +1907,8 @@ void co2Program(type_monitor_t *monitor, u16 mPeriod)
         {
             //如果和制冷联动 则制冷的时候不增加co2
             //如果和除湿联动 则除湿的时候不增加co2
-            if(!((ON == sys_set.co2Set.dehumidifyLock.value && ON == GetDeviceByType(monitor, DEHUMI_TYPE)->_storage[0]._port.d_state) ||
-                 (ON == sys_set.co2Set.coolingLock.value && (ON == GetDeviceByType(monitor, COOL_TYPE)->_storage[0]._port.d_state
+            if(!((ON == co2Set.dehumidifyLock.value && ON == GetDeviceByType(monitor, DEHUMI_TYPE)->_storage[0]._port.d_state) ||
+                 (ON == co2Set.coolingLock.value && (ON == GetDeviceByType(monitor, COOL_TYPE)->_storage[0]._port.d_state
                   || GetDeviceByType(monitor, HVAC_6_TYPE)->_storage[0]._port.d_value & 0x08))))
             {
                 GetDeviceByType(monitor, CO2_TYPE)->_storage[0]._port.d_state = ON;
@@ -1756,7 +1918,7 @@ void co2Program(type_monitor_t *monitor, u16 mPeriod)
                 GetDeviceByType(monitor, CO2_TYPE)->_storage[0]._port.d_state = OFF;
             }
         }
-        else if(co2Now >= co2Target + sys_set.co2Set.co2Deadband.value)
+        else if(co2Now >= co2Target + co2Set.co2Deadband.value)
         {
             GetDeviceByType(monitor, CO2_TYPE)->_storage[0]._port.d_state = OFF;
         }
@@ -1828,81 +1990,6 @@ u16 getVpd(void)
     res = (1 * 0.6107 * pow(10, 7.5 * temp /(237.3 + temp)) * (1 - humi)) * 100;
 
     return res;
-}
-
-void GetRealCal(sys_set_t *set, sys_recipe_t *recipe)//Justin debug
-{
-    struct tm tm_test;
-    char temp[4];
-    time_t starts;
-
-    rt_memset(temp, '0', 4);
-    rt_memcpy(temp, &set->stageSet.starts[0], 4);
-    tm_test.tm_year = atoi(temp) - 1900;
-    rt_memset(temp, '0', 4);
-    rt_memcpy(&temp[2], &set->stageSet.starts[4], 2);
-    tm_test.tm_mon = atoi(temp) - 1;
-    rt_memset(temp, '0', 4);
-    rt_memcpy(&temp[2], &set->stageSet.starts[6], 2);
-    tm_test.tm_mday = atoi(temp);
-    rt_memset(temp, '0', 4);
-    rt_memcpy(&temp[2], &set->stageSet.starts[8], 2);
-    tm_test.tm_hour = atoi(temp);
-    rt_memset(temp, '0', 4);
-    rt_memcpy(&temp[2], &set->stageSet.starts[10], 2);
-    tm_test.tm_min = atoi(temp);
-    rt_memset(temp, '0', 4);
-    rt_memcpy(&temp[2], &set->stageSet.starts[12], 2);
-    tm_test.tm_sec = atoi(temp);
-
-    starts = changeTmTotimet(&tm_test);
-
-    for(u8 index = 0; index < STAGE_LIST_MAX; index++)
-    {
-        if((getTimeStamp() >= starts) && (getTimeStamp() < starts + set->stageSet._list[index].duration_day * 24 * 60 * 60))
-        {
-            for(u8 item = 0; item < RECIPE_LIST_MAX; item++)
-            {
-                if(recipe->recipe[item].id == set->stageSet._list[index].recipeId)
-                {
-                    if(0 != recipe->recipe[item].id)
-                    {
-                        set->tempSet.dayCoolingTarget.value = recipe->recipe[item].dayCoolingTarget;
-                        set->tempSet.dayHeatingTarget.value = recipe->recipe[item].dayHeatingTarget;
-                        set->tempSet.nightCoolingTarget.value = recipe->recipe[item].nightCoolingTarget;
-                        set->tempSet.nightHeatingTarget.value = recipe->recipe[item].nightHeatingTarget;
-                        set->humiSet.dayHumiTarget.value = recipe->recipe[item].dayHumidifyTarget;
-                        set->humiSet.dayDehumiTarget.value = recipe->recipe[item].dayDehumidifyTarget;
-                        set->humiSet.nightHumiTarget.value = recipe->recipe[item].nightHumidifyTarget;
-                        set->humiSet.nightDehumiTarget.value = recipe->recipe[item].nightDehumidifyTarget;
-                        set->co2Set.dayCo2Target.value = recipe->recipe[item].dayCo2Target;
-                        set->co2Set.nightCo2Target.value = recipe->recipe[item].nightCo2Target;
-                        set->line1Set.brightMode.value = recipe->recipe[item].line_list[0].brightMode;
-                        set->line1Set.byPower.value = recipe->recipe[item].line_list[0].byPower;
-                        set->line1Set.byAutoDimming.value = recipe->recipe[item].line_list[0].byAutoDimming;
-                        set->line1Set.mode.value = recipe->recipe[item].line_list[0].mode;
-                        set->line1Set.lightOn.value = recipe->recipe[item].line_list[0].lightOn;
-                        set->line1Set.lightOff.value = recipe->recipe[item].line_list[0].lightOff;
-                        set->line1Set.firstCycleTime.value = recipe->recipe[item].line_list[0].firstCycleTime;
-                        set->line1Set.duration.value = recipe->recipe[item].line_list[0].duration;
-                        set->line1Set.pauseTime.value = recipe->recipe[item].line_list[0].pauseTime;
-
-                        set->line2Set.brightMode.value = recipe->recipe[item].line_list[1].brightMode;
-                        set->line2Set.byPower.value = recipe->recipe[item].line_list[1].byPower;
-                        set->line2Set.byAutoDimming.value = recipe->recipe[item].line_list[1].byAutoDimming;
-                        set->line2Set.mode.value = recipe->recipe[item].line_list[1].mode;
-                        set->line2Set.lightOn.value = recipe->recipe[item].line_list[1].lightOn;
-                        set->line2Set.lightOff.value = recipe->recipe[item].line_list[1].lightOff;
-                        set->line2Set.firstCycleTime.value = recipe->recipe[item].line_list[1].firstCycleTime;
-                        set->line2Set.duration.value = recipe->recipe[item].line_list[1].duration;
-                        set->line2Set.pauseTime.value = recipe->recipe[item].line_list[1].pauseTime;
-                    }
-                }
-            }
-        }
-
-        starts += set->stageSet._list[index].duration_day * 24 * 60 * 60;
-    }
 }
 
 void warnProgram(type_monitor_t *monitor, sys_set_t *set)
@@ -2358,7 +2445,7 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
         {
             if((ON == monitor->line[0].d_state) || (ON == monitor->line[1].d_state))//灯开关为开
             {
-                if(GetSensorByType(monitor, PAR_TYPE)->__stora[0].value < 30)//检测到灯光没开//Justin debug 30为暂时测试的值 需要修改
+                if(GetSensorByType(monitor, PAR_TYPE)->__stora[0].value < 30)//检测到灯光没开
                 {
                     if(WARN_LINE_STATE <= WARN_MAX)
                     {
@@ -2370,7 +2457,7 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
             }
             else if((OFF == monitor->line[0].d_state) && (OFF == monitor->line[1].d_state))
             {
-                if(GetSensorByType(monitor, PAR_TYPE)->__stora[0].value > 30)//检测到灯光没开//Justin debug 30为暂时测试的值 需要修改
+                if(GetSensorByType(monitor, PAR_TYPE)->__stora[0].value > 30)//检测到灯光没开
                 {
                     if(WARN_LINE_STATE <= WARN_MAX)
                     {
@@ -2394,6 +2481,110 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
                 }
             }
         }
+
+        //灯光过温保护 过温关灯 告警
+        if(RT_NULL != GetSensorByType(monitor, BHS_TYPE))
+        {
+            for(u8 port = 0; port < GetSensorByType(monitor, BHS_TYPE)->storage_size; port++)
+            {
+                if(F_S_TEMP == GetSensorByType(monitor, BHS_TYPE)->__stora[port].func)
+                {
+                    if(GetSensorByType(monitor, BHS_TYPE)->__stora[port].value > set->line1Set.tempStartDimming.value ||
+                       GetSensorByType(monitor, BHS_TYPE)->__stora[port].value > set->line2Set.tempStartDimming.value)
+                    {
+                        set->warn[WARN_LINE_AUTO_T - 1] = ON;
+                        set->warn_value[WARN_LINE_AUTO_T - 1] = GetSensorByType(monitor, BHS_TYPE)->__stora[port].value;
+                    }
+                    else if(GetSensorByType(monitor, BHS_TYPE)->__stora[port].value > set->line1Set.tempOffDimming.value ||
+                            GetSensorByType(monitor, BHS_TYPE)->__stora[port].value > set->line2Set.tempOffDimming.value)
+                    {
+                        set->warn[WARN_LINE_AUTO_OFF - 1] = ON;
+                        set->warn_value[WARN_LINE_AUTO_OFF - 1] = GetSensorByType(monitor, BHS_TYPE)->__stora[port].value;
+                    }
+                }
+            }
+        }
+    }
+
+    //离线告警
+    if(ON == set->sysWarn.offlineEn)
+    {
+        for(u8 index = 0; index < monitor->device_size; index++)
+        {
+            if(CON_FAIL == monitor->device[index].conn_state)
+            {
+                set->warn[WARN_OFFLINE - 1] = ON;
+                break;
+            }
+        }
+    }
+
+    //ph ec
+    sensor = GetSensorByType(monitor, PHEC_TYPE);
+
+    for(u8 index = 0; index < sensor->storage_size; index++)
+    {
+        if(F_S_PH == sensor->__stora[index].func)
+        {
+            if(ON == set->sysWarn.phEn)
+            {
+                for(u8 tank = 0; tank < GetSysTank()->tank_size; tank++)
+                {
+                    if(sensor->__stora[index].value > GetSysTank()->tank[tank].highPhProtection)
+                    {
+                        set->warn[WARN_PH_HIGHT - 1] = ON;
+                        set->warn_value[WARN_PH_HIGHT - 1] = sensor->__stora[index].value;
+                        break;
+                    }
+                    else if(sensor->__stora[index].value < GetSysTank()->tank[tank].lowPhProtection)
+                    {
+                        set->warn[WARN_PH_LOW - 1] = ON;
+                        set->warn_value[WARN_PH_LOW - 1] = sensor->__stora[index].value;
+                        break;
+                    }
+                }
+            }
+            else if(ON == set->sysWarn.ecEn)
+            {
+                for(u8 tank = 0; tank < GetSysTank()->tank_size; tank++)
+                {
+                    if(sensor->__stora[index].value > GetSysTank()->tank[tank].highEcProtection)
+                    {
+                        set->warn[WARN_EC_HIGHT - 1] = ON;
+                        set->warn_value[WARN_EC_HIGHT - 1] = sensor->__stora[index].value;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    //水位
+    sensor = GetSensorByType(monitor, WATERlEVEL_TYPE);//Justin debug 查询该类型是漏水传感器还是水位传感器
+
+    for(u8 index = 0; index < sensor->storage_size; index++)
+    {
+       if(F_S_WL == sensor->__stora[index].func)
+       {
+           if(ON == set->sysWarn.wlEn)
+           {
+               for(u8 tank = 0; tank < GetSysTank()->tank_size; tank++)
+               {
+                   if(sensor->__stora[index].value > GetSysTank()->tank[tank].autoFillFulfilHeight)
+                   {
+                       set->warn[WARN_WL_HIGHT - 1] = ON;
+                       set->warn_value[WARN_WL_HIGHT - 1] = sensor->__stora[index].value;
+                       break;
+                   }
+                   else if(sensor->__stora[index].value < GetSysTank()->tank[tank].autoFillHeight)
+                   {
+                       set->warn[WARN_WL_LOW - 1] = ON;
+                       set->warn_value[WARN_WL_LOW - 1] = sensor->__stora[index].value;
+                       break;
+                   }
+               }
+           }
+       }
     }
 
     rt_memcpy(sys_warn, set->warn, WARN_MAX);
@@ -2402,10 +2593,151 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
 #define     ADD_WATER       1
 #define     NO_ADD_WATER    0
 
-void pumpProgram(type_monitor_t *monitor, sys_tank_t *tank_list)//Justin debug 未完成
+//port 是AC_4 AC_12 才需要
+void pumpDoing(device_time4_t *device, u8 port)
 {
+    u8                  item            = 0;
+    type_sys_time       sys_time;
+
+
+    getRealTimeForMat(&sys_time);
+
+    if(PUMP_TYPE == device->type || VALVE_TYPE == device->type)
+    {
+        if(BY_SCHEDULE == device->mode[0])
+        {
+            //定时器模式
+            if(BY_RECYCLE == device->mode[0])
+            {
+                //达到循环的条件
+                if(sys_time.hour * 60 * 60 + sys_time.minute * 60 + sys_time.second > device->_recycle[0].startAt * 60)
+                {
+                    //当前时间是否满足循环次数
+                    if((sys_time.hour * 60 * 60 + sys_time.minute * 60 + sys_time.second - device->_recycle[0].startAt * 60) /
+                       (device->_recycle[0].duration + device->_recycle[0].pauseTime) <= device->_recycle[0].times)
+                    {
+                        //当前时间 - 开始时间
+                        if((sys_time.hour * 60 * 60 + sys_time.minute * 60 + sys_time.second - device->_recycle[0].startAt * 60) %
+                            (device->_recycle[0].duration + device->_recycle[0].pauseTime) <= device->_recycle[0].duration)
+                        {
+                            device->_storage[0]._time4_ctl.d_state = ON;
+                        }
+                        else
+                        {
+                            device->_storage[0]._time4_ctl.d_state = OFF;
+                        }
+                    }
+                    else
+                    {
+                        device->_storage[0]._time4_ctl.d_state = OFF;
+                    }
+
+                }
+                else
+                {
+                    device->_storage[0]._time4_ctl.d_state = OFF;
+                }
+            }
+            else if(BY_SCHEDULE == device->mode[0])//定时器模式
+            {
+                for(item = 0; item < TIMER_GROUP; item++)//该功能待测试
+                {
+                    //选择处于第几组定时器
+                    if(sys_time.hour * 60 * 60 + sys_time.minute * 60 + sys_time.second > device->_storage[0]._time4_ctl._timer[item].on_at * 60)
+                    {
+                        //小于持续时间
+                        if(sys_time.hour * 60 * 60 + sys_time.minute * 60 + sys_time.second <= (device->_storage[0]._time4_ctl._timer[item].on_at *60
+                                + device->_storage[0]._time4_ctl._timer[item].duration) )
+                        {
+                            device->_storage[0]._time4_ctl.d_state = device->_storage[0]._time4_ctl._timer[item].en;
+                            break;
+                        }
+                    }
+                }
+
+                if(item == TIMER_GROUP)
+                {
+                    device->_storage[0]._time4_ctl.d_state = 0;
+                    device->_storage[0]._time4_ctl.d_value = 0;
+                }
+            }
+        }
+    }
+    else if(AC_4_TYPE == device->type)
+    {
+        if(port > DEVICE_PORT_SZ - 1)
+        {
+            return;
+        }
+
+        if(PUMP_TYPE == device->device_timer_type[port] || VALVE_TYPE == device->device_timer_type[port])
+        {
+            if(BY_RECYCLE == device->mode[port])
+            {
+                //达到循环的条件
+                if(sys_time.hour * 60 * 60 + sys_time.minute * 60 + sys_time.second > device->_recycle[port].startAt * 60)
+                {
+                    //当前时间是否满足循环次数
+                    if((sys_time.hour * 60 * 60 + sys_time.minute * 60 + sys_time.second - device->_recycle[port].startAt * 60) /
+                       (device->_recycle[port].duration + device->_recycle[port].pauseTime) <= device->_recycle[port].times)
+                    {
+                        //当前时间 - 开始时间
+                        if((sys_time.hour * 60 * 60 + sys_time.minute * 60 + sys_time.second - device->_recycle[port].startAt * 60) %
+                            (device->_recycle[port].duration + device->_recycle[port].pauseTime) <= device->_recycle[port].duration)
+                        {
+                            device->_storage[port]._time4_ctl.d_state = ON;
+                        }
+                        else
+                        {
+                            device->_storage[port]._time4_ctl.d_state = OFF;
+                        }
+                    }
+                    else
+                    {
+                        device->_storage[port]._time4_ctl.d_state = OFF;
+                    }
+
+                }
+                else
+                {
+                    device->_storage[port]._time4_ctl.d_state = OFF;
+                }
+            }
+            else if(BY_SCHEDULE == device->mode[port])//定时器模式
+            {
+                for(item = 0; item < TIMER_GROUP; item++)//该功能待测试
+                {
+                    //选择处于第几组定时器
+                    if(sys_time.hour * 60 * 60 + sys_time.minute * 60 + sys_time.second > device->_storage[port]._time4_ctl._timer[item].on_at * 60)
+                    {
+                        //小于持续时间
+                        if(sys_time.hour * 60 * 60 + sys_time.minute * 60 + sys_time.second <= (device->_storage[port]._time4_ctl._timer[item].on_at *60
+                                + device->_storage[port]._time4_ctl._timer[item].duration) )
+                        {
+                            device->_storage[port]._time4_ctl.d_state = device->_storage[port]._time4_ctl._timer[item].en;
+                            break;
+                        }
+                    }
+                }
+
+                if(item == TIMER_GROUP)
+                {
+                    device->_storage[port]._time4_ctl.d_state = 0;
+                    device->_storage[port]._time4_ctl.d_value = 0;
+                }
+            }
+        }
+    }
+}
+
+void pumpProgram(type_monitor_t *monitor, sys_tank_t *tank_list)
+{
+    u8          addr                    = 0;
+    u8          port                    = 0;
     u8          sensor_index            = 0;
     u8          device_index            = 0;
+    u8          valve_index             = 0;
+    u8          valve_index1            = 0;
     u8          tank                    = 0;
     u16         ph                      = 0;
     u16         ec                      = 0;
@@ -2455,39 +2787,130 @@ void pumpProgram(type_monitor_t *monitor, sys_tank_t *tank_list)//Justin debug �
             }
         }
 
-        for(device_index = 0; device_index < monitor->device_size; device_index++)
+        if(tank_list->tank[tank].autoFillValveId > 0xFF)
         {
-            //1.1如果需要补水
-            if(tank_list->tank[tank].autoFillValveId == monitor->device[device_index].addr)
+            addr = tank_list->tank[tank].autoFillValveId >> 8;
+            port = tank_list->tank[tank].autoFillValveId;
+        }
+        else
+        {
+            addr = tank_list->tank[tank].autoFillValveId;
+            port = 0;
+        }
+
+        if(ADD_WATER == waterState[tank])
+        {
+            GetDeviceByAddr(GetMonitor(), addr)->_storage[port]._port.d_state = ON;
+        }
+        else if(NO_ADD_WATER == waterState[tank])
+        {
+            GetDeviceByAddr(GetMonitor(), addr)->_storage[port]._port.d_state = OFF;
+        }
+
+        //2.阀门开的条件为: 定时器满足 ph ec 水位满足
+        for(valve_index = 0; valve_index < VALVE_MAX; valve_index++)
+        {
+            if(0 != tank_list->tank[tank].valve[valve_index])
             {
-                if(ADD_WATER == waterState[tank])
+                if(tank_list->tank[tank].valve[valve_index] > 0xFF)
                 {
-                    monitor->device[device_index]._storage[0]._port.d_state = ON;
+                    addr = tank_list->tank[tank].valve[valve_index] >> 8;
+                    port = tank_list->tank[tank].valve[valve_index];
                 }
-                else if(NO_ADD_WATER == waterState[tank])
+                else
                 {
-                    monitor->device[device_index]._storage[0]._port.d_state = OFF;
+                    addr = tank_list->tank[tank].valve[valve_index];
+                    port = 0;
                 }
-            }
 
+                pumpDoing(GetDeviceByAddr(GetMonitor(), addr), port);
 
-            //2.灌溉的逻辑是
-            //PH太高和太低 EC太高都 停止灌溉 ，低水位停止灌溉
-            if(tank_list->tank[tank].pumpId == monitor->device[device_index].addr)
-            {
-                //如果桶没有关联的阀门,则按照水泵的定时器工作；
-                //如果桶有关联的阀门,则按照阀门的定时器工作
-
-                if(PUMP_TYPE == monitor->device[device_index].type)
+                if(wl < tank_list->tank[tank].autoFillHeight ||
+                   ph < tank_list->tank[tank].lowPhProtection ||
+                   ph > tank_list->tank[tank].highPhProtection ||
+                   ec > tank_list->tank[tank].highEcProtection)
                 {
-                    //如果处于需要开启的时间段
-//                    if()
-//                    {
-//
-//                    }
+                    GetDeviceByAddr(GetMonitor(), addr)->_storage[port]._time4_ctl.d_state = OFF;
                 }
             }
         }
 
+        //3.如果水泵没有关联的阀的话 以水泵的定时器为主
+        for(valve_index = 0; valve_index < VALVE_MAX; valve_index++)
+        {
+            if(0 != tank_list->tank[tank].valve[valve_index])
+            {
+                break;
+            }
+        }
+
+        if(valve_index == VALVE_MAX)
+        {
+            if(tank_list->tank[tank].pumpId > 0xFF)
+            {
+                addr = tank_list->tank[tank].pumpId >> 8;
+                port = tank_list->tank[tank].pumpId;
+            }
+            else
+            {
+                addr = tank_list->tank[tank].pumpId;
+                port = 0;
+            }
+
+            pumpDoing(GetDeviceByAddr(GetMonitor(), addr), port);
+
+            if(wl < tank_list->tank[tank].autoFillHeight ||
+               ph < tank_list->tank[tank].lowPhProtection ||
+               ph > tank_list->tank[tank].highPhProtection ||
+               ec > tank_list->tank[tank].highEcProtection)
+            {
+                GetDeviceByAddr(GetMonitor(), addr)->_storage[port]._time4_ctl.d_state = OFF;
+            }
+        }
+        else
+        {
+            //如果有关联阀的
+            //需要添加如果有关联的阀门开则开 所关联的阀门全关则关
+            for(valve_index1 = 0; valve_index1 < VALVE_MAX; valve_index1++)
+            {
+                if(tank_list->tank[tank].valve[valve_index1] > 0xFF)
+                {
+                    addr = tank_list->tank[tank].valve[valve_index1] >> 8;
+                    port = tank_list->tank[tank].valve[valve_index1];
+                }
+                else
+                {
+                    addr = tank_list->tank[tank].valve[valve_index1];
+                    port = 0;
+                }
+
+                if(ON == GetDeviceByAddr(GetMonitor(), addr)->_storage[port]._time4_ctl.d_state)
+                {
+                    break;
+                }
+            }
+
+            if(tank_list->tank[tank].pumpId > 0xFF)
+            {
+                addr = tank_list->tank[tank].pumpId >> 8;
+                port = tank_list->tank[tank].pumpId;
+            }
+            else
+            {
+                addr = tank_list->tank[tank].pumpId;
+                port = 0;
+            }
+
+            if(VALVE_MAX == valve_index1)
+            {
+                //所关联的阀门状态为全关,则关闭水泵
+                GetDeviceByAddr(GetMonitor(), addr)->_storage[port]._time4_ctl.d_state = OFF;
+            }
+            else
+            {
+                //所关联的阀门状态有开着的，打开水泵
+                GetDeviceByAddr(GetMonitor(), addr)->_storage[port]._time4_ctl.d_state = ON;
+            }
+        }
     }
 }

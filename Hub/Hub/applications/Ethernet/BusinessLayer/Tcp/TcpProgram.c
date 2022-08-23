@@ -8,9 +8,10 @@
  * 2022-04-15     Administrator       the first version
  */
 #include "TcpProgram.h"
-
+#include "Udp.h"
 /**
  * 连接tcp
+ * flg 是否是阻塞
  * @return RT_ROK 成功 RT_ERROR 失败
  */
 rt_err_t ConnectToSever(int *sock, char *ip, uint32_t port)
@@ -25,6 +26,12 @@ rt_err_t ConnectToSever(int *sock, char *ip, uint32_t port)
     {
         ret = RT_ERROR;
     }
+
+//    if(NO == flg)
+//    {
+//        setnonblocking(*sock);    //设置成非阻塞
+//    }
+
     /* 初始化预连接的服务端地址 */
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(port);

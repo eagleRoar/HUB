@@ -18,7 +18,8 @@
 struct ethDeviceStruct *eth = RT_NULL;          //申请ethernet实例化对象
 
 u8                  tcp_recv_flag           = NO;
-static int                 tcp_sock                = 0;
+static int          tcp_sock                = 0;
+//static int          tcp_sock_send           = 0;
 char                *tcpRecvBuffer          = RT_NULL;
 char                *tcpSendBuffer          = RT_NULL;
 u8                  udpSendBuffer[30];
@@ -143,6 +144,8 @@ void UdpTaskEntry(void* parameter)
 
         rt_mutex_take(dynamic_mutex, RT_WAITING_FOREVER);//加锁保护
 
+//        LOG_D("UdpTaskEntry...");
+
         /* 网络掉线 */
         if(LINKDOWN == eth->GetethLinkStatus())
         {
@@ -187,6 +190,7 @@ void UdpTaskEntry(void* parameter)
                 eth->tcp.SetConnectTry(OFF);
                 LOG_D("tcp try to reconnrct......");
             }
+
         }
         else
         {
@@ -232,7 +236,7 @@ void UdpTaskEntry(void* parameter)
                         }
                         else
                         {
-                            LOG_E("apply tcpSendBuffer fail");//Justin debug
+                            LOG_E("apply tcpSendBuffer fail");
                         }
                     }
                 }
@@ -317,7 +321,7 @@ void UdpTaskEntry(void* parameter)
 }
 rt_err_t UdpTaskInit(void)
 {
-    rt_thread_t thread = rt_thread_create(UDP_TASK, UdpTaskEntry, RT_NULL, 1024 * 3, UDP_PRIORITY, 10);//Justin debug 仅仅测试
+    rt_thread_t thread = rt_thread_create(UDP_TASK, UdpTaskEntry, RT_NULL, 1024 * 3, UDP_PRIORITY, 10);
     rt_thread_startup(thread);
 
     return RT_EOK;
