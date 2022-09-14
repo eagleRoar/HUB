@@ -16,7 +16,6 @@
 
 #pragma pack(4)//因为cjson 不能使用1字节对齐
 
-//sys_set_t *GetSysSet(void);//为什么识别不了sys_set_t
 void initCloudProtocol(void);
 char *GetSnName(char *,u8);
 void tempProgram(type_monitor_t *);
@@ -27,17 +26,20 @@ void humiProgram(type_monitor_t *);
 void analyzeCloudData(char *,u8 );
 rt_err_t ReplyDataToCloud(mqtt_client *, u8 *, u16 *, u8);
 hub_t *GetHub(void);
-rt_err_t SendDataToCloud(mqtt_client *, char *, u8 , u16 , u8 *, u16 *, u8);
+rt_err_t SendDataToCloud(mqtt_client *, char *, u8 , u16 , u8 *, u16 *, u8, u8);
 void lineProgram(type_monitor_t *, u8, u16);
 void lineProgram_new(type_monitor_t *, u8 , u16);
 time_t ReplyTimeStamp(void);
 u16 getVpd(void);
-void ctrDevice(type_monitor_t *, u8, u16);
 void initSysTank(void);
 time_t changeTmTotimet(struct tm *);
 struct tm* getTimeStampByDate(time_t *);
 //void pumpProgram(type_monitor_t *, sys_tank_t *);
-void pumpDoing(device_time4_t *, u8);
+void pumpDoing(u8, u8);
 //void GetNowSysSet(proTempSet_t *, proCo2Set_t *, proHumiSet_t *, proLine_t *, proLine_t *);
-//sys_tank_t *GetSysTank(void);
+struct sys_tank *GetSysTank(void);
+void initOfflineFlag(void);
+void initHubinfo(void);
+struct sysSet *GetSysSet(void);
+void autoBindPumpTotank(type_monitor_t *, struct sys_tank *);
 #endif /* APPLICATIONS_CLOUDPROTOCOL_CLOUDPROTOCOL_H_ */

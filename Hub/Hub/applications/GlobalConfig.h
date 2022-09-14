@@ -13,18 +13,20 @@
 #define HUB_ENVIRENMENT                 1
 #define HUB_IRRIGSTION                  2
 
-#define HUB_SELECT                      HUB_ENVIRENMENT
+#define HUB_SELECT                      HUB_ENVIRENMENT//HUB_IRRIGSTION//
 
 #define UDP_TASK                        "udp_task"
 #define TCP_SEND_TASK                   "tcp_send"
 #define TCP_RECV_TASK                   "tcp_recv"
 #define TCP_CLIENT_TASK                 "tcpc"
 #define SD_CARD_TASK                    "sdcard_task"
+#define OLED_TASK                       "oled task"
+#define UART_TASK                       "usart_task"
+#define BUTTON_TASK                     "button_task"
 
 /* 线程优先级管理 */
 #define SDCARD_PRIORITY                 16
-#define UART6_PRIORITY                  20
-#define UART2_PRIORITY                  21
+#define UART_PRIORITY                   21
 #define BUTTON_PRIORITY                 22
 #define OLED_PRIORITY                   23
 #define TCP_PRIORITY                    24
@@ -69,6 +71,11 @@
 
 /*日历*/
 #define PKG_USING_CAL
+
+/* QRCODE */
+#define PKG_USING_QRCODE
+#define PKG_QRCODE_SAMPLE
+#define PKG_USING_QRCODE_LATEST_VERSION
 
 #if (HUB_SELECT == HUB_ENVIRENMENT)
 #define     HUB_NAME    "BHE"

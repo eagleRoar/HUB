@@ -25,7 +25,7 @@ struct pageSelect
 };
 
 #define     LINE_HIGHT              8
-#define     COLUMN_HIGHT            13//实际是13为了留间距
+#define     COLUMN_HIGHT            13          //实际是13为了留间距
 
 //一级界面
 #define     HOME_PAGE               0x00//主页面
@@ -33,6 +33,8 @@ struct pageSelect
 //二级界面
 #define     SENSOR_STATE_PAGE       0x02//主页面
 #define     DEVICE_STATE_PAGE       0x03//主页面
+#define     QRCODE_PAGE             0x04//主页面
+#define     APP_UPDATE_PAGE         0x05//主页面
 
 //二级界面
 //#define     HOME_PAGE       0x01//主页面
@@ -49,5 +51,7 @@ void OledTaskEntry(void*);
 void OledTaskInit(void);
 void MenuBtnCallBack(u8);
 void EnterBtnCallBack(u8);
-
+void UpBtnCallBack(u8);
+void DowmBtnCallBack(u8);
+void clear_screen(void);
 #endif /* APPLICATIONS_OLED1309_H_ */

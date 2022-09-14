@@ -22,6 +22,7 @@
 #define     CMD_NAME                "cmd"
 #define     CMD_NAME_SIZE           25
 #define     REC_ALLOT_ADDR          100
+#define     TANK_WARN_NAMESZ        8
 
 #define     STAGE_LIST_MAX                  5//10//最多10个阶段
 #define     RECIPE_LIST_MAX                 10//最多10个配方
@@ -44,6 +45,7 @@ typedef     struct recipe                   recipe_t;
 typedef     struct sys_recipe               sys_recipe_t;
 typedef     struct tank                     tank_t;
 typedef     struct sys_tank                 sys_tank_t;
+typedef     struct tankWarn                 tankWarn_t;
 
 struct keyAndVauleU8{
     char    name[KEYVALUE_NAME_SIZE];
@@ -84,65 +86,63 @@ struct cloudCmd{
     u8              pump_sensor_type;           //设置泵传感器type
     u8              pump_sensor_id;             //设置泵传感器id
     u8              del_recipe_id;              //删除配方id
+    u8              add_pool_no;                //增加设置报警的no
+    u8              add_pool_func;              //增加设置报警的类型
+    u8              chg_dev_id;                 //修改设备类型
 };
 
 //cmd : getTempSetting
 struct proTempSet{
-    type_kv_c16     msgid;
-    type_kv_c16     sn;
-    type_kv_u16     dayCoolingTarget;           //白天制冷目标值
-    type_kv_u16     dayHeatingTarget;           //白天制热目标值
-    type_kv_u16     nightCoolingTarget;         //晚上制冷目标值
-    type_kv_u16     nightHeatingTarget;         //晚上制热目标值
-    type_kv_u8      coolingDehumidifyLock;      // 0-off 1-on 降温设备和除湿设备联动
-    type_kv_u16     tempDeadband;
-    type_kv_u32     timestamp;
+    u16         dayCoolingTarget;           //白天制冷目标值
+    u16         dayHeatingTarget;           //白天制热目标值
+    u16         nightCoolingTarget;         //晚上制冷目标值
+    u16         nightHeatingTarget;         //晚上制热目标值
+    u8          coolingDehumidifyLock;      // 0-off 1-on 降温设备和除湿设备联动
+    u16         tempDeadband;
 };
 
 struct proCo2Set{
-    type_kv_c16     msgid;
-    type_kv_c16     sn;
-    type_kv_u16     dayCo2Target;               //白天Co2目标值
-    type_kv_u16     nightCo2Target;             //晚上Co2目标值
-    type_kv_u8      isFuzzyLogic;               //是不是fuzzylogic 如果是的话 就使用pid算法
-    type_kv_u8      coolingLock;                //制冷联动状态
-    type_kv_u8      dehumidifyLock;             //除湿联动状态
-    type_kv_u16     co2Deadband;
-    int             co2Corrected;               //Co2 修正值
-    type_kv_u32     timestamp;
+    u16         dayCo2Target;               //白天Co2目标值
+    u16         nightCo2Target;             //晚上Co2目标值
+    u8          isFuzzyLogic;               //是不是fuzzylogic 如果是的话 就使用pid算法
+    u8          coolingLock;                //制冷联动状态
+    u8          dehumidifyLock;             //除湿联动状态
+    u16         co2Deadband;
+    int         co2Corrected;               //Co2 修正值
 };
 
 struct proHumiSet{
-    type_kv_c16     msgid;
-    type_kv_c16     sn;
-    type_kv_u16     dayHumiTarget;              //白天增湿目标值
-    type_kv_u16     dayDehumiTarget;            //白天除湿目标值
-    type_kv_u16     nightHumiTarget;            //晚上增湿目标值
-    type_kv_u16     nightDehumiTarget;          //晚上除湿目标值
-    type_kv_u16     humidDeadband;
-    type_kv_u32     timestamp;
+    u16         dayHumiTarget;              //白天增湿目标值
+    u16         dayDehumiTarget;            //白天除湿目标值
+    u16         nightHumiTarget;            //晚上增湿目标值
+    u16         nightDehumiTarget;          //晚上除湿目标值
+    u16         humidDeadband;
 };
 
 struct proLine{
-    type_kv_c16     msgid;
-    type_kv_c16     sn;
-    type_kv_u8      lightsType;                 //灯光类型 0x00:LED 0x01:HID
-    type_kv_u8      brightMode;                 // 1-power 2-auto dimming
-    type_kv_u8      byPower;                    // 设置亮度值 10%-115%
-    type_kv_u16     byAutoDimming;              // PPFD
-    type_kv_u8      mode;                       //模式 1-by timer 2-cycle
-    type_kv_u16     lightOn;                    // 开启时间点 8:00 8*60=480
-    type_kv_u16     lightOff;                   // 关闭时间点 9:00 9*60=540
-    type_kv_u16     firstCycleTime;             //第一次循环开始时间 8*60=480
-    type_kv_u16     duration;                   //循环持续时间 s
-    type_kv_u16     pauseTime;                  //循环停止时间 s
-    type_kv_u8      hidDelay;                   // HID 延时时间 3-180min HID 模式才有
-    type_kv_u16     tempStartDimming;           // 灯光自动调光温度点 0℃-60.0℃/32℉-140℉
-    type_kv_u16     tempOffDimming;             // 灯光自动关闭温度点 0℃-60.0℃/32℉-140℉
-    type_kv_u8      sunriseSunSet;              // 0-30min /0 表示关闭状态
-    type_kv_u32     timestamp;                  //时间戳
-    u8              isRunFirstCycle;            //是否已经执行第一次循环
-    time_t          firstRuncycleTime;          //记录第一次开始执行的时间 方便回溯
+    u8          lightsType;                 //灯光类型 0x00:LED 0x01:HID
+    u8          brightMode;                 // 1-power 2-auto dimming
+    u8          byPower;                    // 设置亮度值 10%-115%
+    u16         byAutoDimming;              // PPFD
+    u8          mode;                       //模式 1-by timer 2-cycle
+    u16         lightOn;                    // 开启时间点 8:00 8*60=480
+    u16         lightOff;                   // 关闭时间点 9:00 9*60=540
+    u16         firstCycleTime;             //第一次循环开始时间 8*60=480
+    u16         duration;                   //循环持续时间 s
+    u16         pauseTime;                  //循环停止时间 s
+    u8          hidDelay;                   // HID 延时时间 3-180min HID 模式才有
+    u16         tempStartDimming;           // 灯光自动调光温度点 0℃-60.0℃/32℉-140℉
+    u16         tempOffDimming;             // 灯光自动关闭温度点 0℃-60.0℃/32℉-140℉
+    u8          sunriseSunSet;              // 0-30min /0 表示关闭状态
+    u32         timestamp;                  //时间戳
+    u8          isRunFirstCycle;            //是否已经执行第一次循环
+    time_t      firstRuncycleTime;          //记录第一次开始执行的时间 方便回溯
+};
+
+struct tankWarn{
+    u8          func;
+    u16         min;
+    u16         max;
 };
 
 struct sysPara
@@ -265,7 +265,7 @@ struct tank{
     u16     highPhProtection;               //PH 高停止值
     u16     pumpId;                         //水泵Id
     u16     valve[VALVE_MAX];               //关联的阀的ID
-    u8      sensor[2][TANK_SENSOR_MAX];     //桶内存在两个sensor 一个是测试桶内的 一个测试管道的
+    u8      sensorId[2][TANK_SENSOR_MAX];   //桶内存在两个sensor 一个是测试桶内的 一个测试管道的
     u8      color;                          //颜色
 };
 
@@ -291,12 +291,14 @@ struct sysSet{
     proHumiSet_t    humiSet;
     proLine_t       line1Set;
     proLine_t       line2Set;
+    tankWarn_t      tankWarnSet[TANK_LIST_MAX][4];
     cloudcmd_t      cloudCmd;
     stage_t         stageSet;   //阶段(日历)
     sys_para_t      sysPara;
     sys_warn_t      sysWarn;
     u8              dayOrNight;//白天黑夜 白天0 黑夜1
     u8              warn[WARN_MAX];
+    u8              offline[DEVICE_TIME4_MAX];
     u16             warn_value[WARN_MAX];//该值主要为了显示使用 数据
     u8              saveFlag;
 };
@@ -330,6 +332,7 @@ enum{
 #define         CMD_GET_PORT_SET        "getDeviceSetting"      //获取设备端口设置
 #define         CMD_SET_PORT_SET        "setDeviceSetting"      //设置设备端口设置
 #define         CMD_SET_PORTNAME        "setDeviceName"         //设置设备端口名称
+#define         CMD_SET_DEVICETYPE      "setDeviceType"
 #define         CMD_FIND_LOCATION       "findLocation"          //设备定位
 #define         CMD_DELETE_DEV          "deleteDevice"          //删除设备
 #define         CMD_GET_SYS_SET         "getSysSetting"         //获取系统设置
@@ -349,20 +352,21 @@ enum{
 #define         CMD_SET_TANK_INFO       "setTankInfo"           //设置桶设置
 #define         CMD_GET_SENSOR_LIST     "getSensorList"         //获取 Sensor 列表
 #define         CMD_SET_TANK_SENSOR     "setTankSensor"         //设置桶sensor
+#define         CMD_DEL_TANK_SENSOR     "delTankSensor"         //删除桶sensor
 #define         CMD_SET_PUMP_COLOR      "setPumpColor"          //设置泵颜色
 #define         CMD_ADD_PUMP_VALUE      "addPumpValve"          //增加泵子阀
 #define         CMD_DEL_PUMP_VALUE      "delPumpValve"          //删除泵子阀
 
 
-void CmdSetTempValue(char *);
-void CmdGetTempValue(char *);
-void CmdSetCo2(char *);
-void CmdGetCo2(char *);
-void CmdSetHumi(char *);
-void CmdGetHumi(char *);
+void CmdSetTempValue(char *,cloudcmd_t *);
+void CmdGetTempValue(char *,cloudcmd_t *);
+void CmdSetCo2(char *,cloudcmd_t *);
+void CmdGetCo2(char *,cloudcmd_t *);
+void CmdSetHumi(char *,cloudcmd_t *);
+void CmdGetHumi(char *,cloudcmd_t *);
 void CmdGetDeviceList(char *, cloudcmd_t *);
-void CmdGetLine(char *, proLine_t *);
-void CmdSetLine(char *, proLine_t *);
+void CmdGetLine(char *, proLine_t *,cloudcmd_t *);
+void CmdSetLine(char *, proLine_t *,cloudcmd_t *);
 void CmdFindLocation(char *, cloudcmd_t *);
 void CmdGetPortSet(char *data, cloudcmd_t *);
 void CmdSetSysTime(char *, cloudcmd_t *);
@@ -391,18 +395,18 @@ void CmdDelPumpValue(char *, cloudcmd_t *);
 void CmdSetTankSensor(char *, cloudcmd_t *);
 void CmdDelRecipe(char *, cloudcmd_t *);
 void CmdGetRecipe(char *, cloudcmd_t *);
+void CmdGetSensor(char *, cloudcmd_t *);
+void CmdSetPoolAlarm(char *, cloudcmd_t *);
+void CmdGetPoolAlarm(char *, cloudcmd_t *);
+void CmdSetDeviceType(char *, cloudcmd_t *);
 char *SendHubReport(char *, sys_set_t *);
-char *SendHubReportWarn(char *, sys_set_t *, u8, u16);
+char *SendHubReportWarn(char *, sys_set_t *, u8, u16, u8);
 char *ReplySetSchedule(char *, cloudcmd_t);
-//char *ReplySetTempValue(char *);
-char *ReplyGetTempValue(char *);
-//char *ReplySetCo2(char *);
-char *ReplyGetCo2(char *);
-//char *ReplySetHumi(char *);
-char *ReplyGetHumi(char *);
+char *ReplyGetTempValue(char *,cloudcmd_t);
+char *ReplyGetCo2(char *,cloudcmd_t);
+char *ReplyGetHumi(char *,cloudcmd_t);
 char *ReplyGetDeviceList(char *, type_kv_c16);
-//char *ReplySetLine(char *, type_kv_c16, proLine_t);
-char *ReplyGetLine(char *, type_kv_c16, proLine_t);
+char *ReplyGetLine(char *, type_kv_c16, proLine_t,cloudcmd_t);
 char *ReplyFindLocation(char *, cloudcmd_t);
 char *ReplyGetPortSet(char *, cloudcmd_t);
 char *ReplySetSysTime(char *, cloudcmd_t );
@@ -427,4 +431,10 @@ char *ReplyAddPumpValue(char *, cloudcmd_t , sys_tank_t *);
 char *ReplySetPumpColor(char *, cloudcmd_t , sys_tank_t *);
 char *ReplySetPumpSensor(char *, cloudcmd_t);
 char *ReplyDelRecipe(char *, cloudcmd_t);
+char *ReplyGetTank(char *, cloudcmd_t);
+char *ReplyGetPumpSensorList(char *, cloudcmd_t);
+char *ReplySetPoolAlarm(char *, cloudcmd_t);
+char *ReplyGetPoolAlarm(char *, cloudcmd_t);
+char *ReplySetDeviceType(char *, cloudcmd_t);
+
 #endif /* APPLICATIONS_CLOUDPROTOCOL_CLOUDPROTOCOLBUSINESS_H_ */

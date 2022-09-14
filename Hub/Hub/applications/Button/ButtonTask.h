@@ -15,7 +15,12 @@
 #include "Gpio.h"
 
 
-#define     BUTTON_MAX              2
+#if (NEW_OLED == 0)
+    #define     BUTTON_MAX              2
+#else
+    #define     BUTTON_MAX              3
+#endif
+
 #define     KEY_ON                  0
 
 //定义按键持续时间

@@ -35,19 +35,29 @@ typedef     struct timer_timer              type_timmer_timmer;
 typedef     struct recycle                  type_timmer_recycle;
 typedef     struct manual                   type_manual_t;
 typedef     struct buttonInfo               type_button_t;
+typedef     struct mqtt_client              mqtt_client;
 
-#define     SENSOR_MAX                      8//16
-#define     TIME12_MAX                      2//4
+#define     SENSOR_MAX                      20//16
+#define     TIME12_MAX                      4
 #define     LINE_MAX                        2
 #define     DEVICE_PORT_SZ                  4
 #define     DEVICE_TIME4_MAX                16
 #define     VALVE_MAX                       16
-#define     TANK_SENSOR_MAX                 2
+#define     TANK_SENSOR_MAX                 4
 #define     LINE_MAX                        2
 #define     SENSOR_VALUE_MAX                4
 #define     TIMER_GROUP                     12
 #define     TIMER12_PORT_MAX                12
 #define     WARN_MAX                        28
+#define     NEW_OLED                        1           //启用新的屏幕
+//默认值
+#define     COOLING_TARGET                  320
+#define     HEAT_TARGET                     170
+#define     CO2_TARGET                      1000
+#define     HUMI_TARGET                     600
+#define     DEHUMI_TARGET                   800
+#define     POWER_VALUE                     80
+#define     AUTO_DIMMING                    1200
 
 struct hub{
     u16 crc;
@@ -93,6 +103,7 @@ struct sensor
 };//占35字节
 
 struct timer_timer{
+    char    name[STORAGE_NAMESZ];
     struct timer
     {
         u16     on_at;                                      //开始的时间
@@ -136,9 +147,10 @@ struct device_Timer4
     u8              reg_state;                              //注册状态
     u8              save_state;                             //是否已经存储
     u8              storage_size;                           //寄存器数量
-    u8              mode[DEVICE_PORT_SZ];                                   // 模式 1-By Schedule 2-By Recycle
+    u8              mode[DEVICE_PORT_SZ];                   // 模式 1-By Schedule 2-By Recycle
     u8              hotStartDelay;                          //对于制冷 制热 除湿设备需要有该保护
     u8              device_timer_type[DEVICE_PORT_SZ];      //device 或者  timer 类型
+    type_manual_t   main_manual;
     //device和ac_4一样有最多4个port
     union device_port{
         struct device{
@@ -177,8 +189,9 @@ struct timer12
     u8              reg_state;                              //注册状态
     u8              save_state;                             //是否已经存储
     u8              storage_size;                           //寄存器数量
-    u8              mode;                                   // 模式 1-By Schedule 2-By Recycle
-
+    type_manual_t   main_manual;
+    u8              mode[TIMER12_PORT_MAX];                 // 模式 1-By Schedule 2-By Recycle
+    u8                      port_type[TIMER12_PORT_MAX];
     type_timmer_timmer      _time12_ctl[TIMER12_PORT_MAX];
     type_timmer_recycle     _recycle[TIMER12_PORT_MAX];
     type_manual_t           _manual[TIMER12_PORT_MAX];
@@ -370,7 +383,7 @@ struct monitor
 #define     TIMER_TYPE      0x4f
 #define     HVAC_6_TYPE     0x61
 #define     AC_4_TYPE       0x50
-#define     AC_12_TYPE      0x80
+#define     IO_12_TYPE      0x80
 
 /**************************************从机 End*******************************************/
 
@@ -384,7 +397,8 @@ enum{
 };
 
 /******************************************* 类型定义 ********************************/
-
+/*主类,最外层的大类 1-co2 2-temp 3-humid 4-light 5-timer
+6-ac4(环控或灌溉) 7-pump 8-阀 9-output12*/
 enum{
     S_UNDEFINE          = 0,
     S_CO2               = 1,
@@ -393,7 +407,9 @@ enum{
     S_LIGHT             = 4,
     S_TIMER             = 5,
     S_AC_4              = 6,
-    S_AC_12             = 7
+    S_PUMP,
+    S_VALVE,
+    S_IO_12
 };
 
 enum{
@@ -407,6 +423,7 @@ enum{
     F_COOL_HEAT,
     F_FAN,
     F_TIMER,
+    F_PUMP,
     /****************************sensor类型功能*/
     F_S_CO2,
     F_S_HUMI,
@@ -414,7 +431,9 @@ enum{
     F_S_LIGHT,
     F_S_PH,
     F_S_EC,
-    F_S_WL
+    F_S_WT,
+    F_S_WL,
+    F_S_PAR
 };
 
 /*设备工作状态 0-Off 1-On 2-PPM UP 3-FUZZY LOGIC

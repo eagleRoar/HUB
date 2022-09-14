@@ -44,50 +44,6 @@ typedef struct {
 }fw_info_t;
 
 /**
- * @brief  SD处理初始化
- * @return RT_ERROR 初始化失败
- *         RT_EOK   初始化成功
- */
-//rt_err_t SDInit(void)
-//{
-//    rt_device_t dev;
-//    rt_err_t ret;
-//
-//    //SD卡结构初始化
-//    if (sd_card_is_vaild()) //检查SD卡是否有插
-//    {
-//        dev = rt_device_find("sd0");
-//        if (dev != RT_NULL)
-//        {
-//            if (dfs_mount("sd0", "/", "elm", 0, 0) == 0)
-//            {
-//                LOG_E("sd card mount to / success!");
-//                CheckDirectory(DOWNLOAD_DIR);
-//
-//                ret = RT_EOK;
-//            }
-//            else
-//            {
-//                LOG_E("sd card mount to / failed!");
-//                ret = RT_ERROR;
-//            }
-//        }
-//        else
-//        {
-//            LOG_E("find sd0 failed!");
-//            ret =  RT_ERROR;
-//        }
-//    }
-//    else
-//    {
-//        LOG_E("find sd card failed!");
-//        ret =  RT_ERROR;
-//    }
-//
-//    return ret;
-//}
-
-/**
  * @brief 将数据写入相应文件
  *
  * @param name 写入的文件名称
@@ -195,7 +151,7 @@ void GetUpdataFileFromWeb(void)
     rt_uint8_t *buffer = RT_NULL;
     int resp_status;
     struct webclient_session *session = RT_NULL;
-    char *weather_url = "http://pic.pro-leaf.com/down/beleaf_hub.bin"/*"http://192.168.0.195:8080/test.txt"*/;
+    char *weather_url = /*"http://pic.pro-leaf.com/down/beleaf_hub.bin"*/"http://192.168.0.54:8080/test.txt";//Justin debug Ip 地址要改
     int content_length = -1, bytes_read = 0;
     u32 content_pos = 0;
     fw_info_t dest, src;

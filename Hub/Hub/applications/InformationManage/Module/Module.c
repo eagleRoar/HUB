@@ -15,15 +15,39 @@
 #include "UartBussiness.h"
 #include "CloudProtocolBusiness.h"
 
+extern void printLine(line_t);
+
 void deleteModule(type_monitor_t *monitor, u8 addr)
 {
     u8      index       = 0;
+    u8      item        = 0;
+    u8      id          = 0;
 
     for(index = 0; index < monitor->device_size; index++)
     {
         if(addr == monitor->device[index].addr)
         {
             monitor->allocateStr.address[index] = 0x00;
+            //如果是pump 或者 valve 的话需要删除桶设置相关联的id
+            for(item = 0; item < GetSysTank()->tank_size; item++)
+            {
+                if(addr == GetSysTank()->tank[item].pumpId)
+                {
+                    GetSysTank()->tank[item].pumpId = 0;
+                    GetSysTank()->saveFlag = YES;
+                }
+                else
+                {
+                    for(id = 0; id < VALVE_MAX; id++)
+                    {
+                        if(addr == (GetSysTank()->tank[item].valve[id] >> 8))
+                        {
+                            GetSysTank()->tank[item].valve[id] = 0;
+                            GetSysTank()->saveFlag = YES;
+                        }
+                    }
+                }
+            }
             break;
         }
     }
@@ -38,6 +62,27 @@ void deleteModule(type_monitor_t *monitor, u8 addr)
             }
         }
         monitor->device_size -= 1;
+    }
+}
+
+void changeDeviceType(type_monitor_t *monitor, u8 addr, u8 port, u8 type)
+{
+    u8      index       = 0;
+
+    for(index = 0; index < monitor->device_size; index++)
+    {
+        if(addr == monitor->device[index].addr)
+        {
+            //只有AC_4 和 IO_12 才允许修改类型
+            if(AC_4_TYPE == monitor->device[index].type ||
+               IO_12_TYPE == monitor->device[index].type)
+            {
+                if(port < monitor->device[index].storage_size)
+                {
+                    monitor->device[index].device_timer_type[port] = type;
+                }
+            }
+        }
     }
 }
 
@@ -238,6 +283,36 @@ device_time4_t *GetDeviceByType(type_monitor_t *monitor, u8 type)
     }
 
     return RT_NULL;
+}
+
+/**
+ * To all device like ac ac_4 ac_12
+ * value : 针对line
+ */
+void CtrlAllDeviceByType(type_monitor_t *monitor, u8 type, u8 en, u8 value)
+{
+    u8      index       = 0;
+
+    for(index = 0;index < monitor->device_size; index++)
+    {
+        if(type == monitor->device[index].type)
+        {
+            monitor->device[index]._storage[0]._port.d_state = en;
+            monitor->device[index]._storage[0]._port.d_value = value;
+        }
+        else if(monitor->device[index].type == AC_4_TYPE ||
+                monitor->device[index].type == IO_12_TYPE)
+        {
+            for(u8 stora = 0; stora < monitor->device[index].storage_size; stora++)
+            {
+                if(type == monitor->device[index].device_timer_type[stora])
+                {
+                    monitor->device[index]._storage[stora]._port.d_state = en;
+                    monitor->device[index]._storage[stora]._port.d_value = value;
+                }
+            }
+        }
+    }
 }
 
 sensor_t *GetSensorByAddr(type_monitor_t *monitor, u8 addr)

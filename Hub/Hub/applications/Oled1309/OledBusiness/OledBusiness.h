@@ -15,5 +15,9 @@
 void HomePage(u8g2_t *, type_page_t);
 void SensorStatePage(u8g2_t *, type_page_t);
 void DeviceStatePage(u8g2_t *, type_page_t);
-
+void SensorStatePage_new(type_monitor_t *);
+void DeviceStatePage_new(type_monitor_t *);
+void qrcode(void);
+void HomePage_new(type_page_t, u8);
+void UpdateAppProgram(type_page_t *,u32 *);
 #endif /* APPLICATIONS_OLED1309_OLEDBUSINESS_OLEDBUSINESS_H_ */

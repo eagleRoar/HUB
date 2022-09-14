@@ -58,8 +58,9 @@ void GpioInit(void)
 //    rt_pin_write(BLE_NRST_PIN, PIN_HIGH);
 
     //Button 设置
-    rt_pin_mode(BUTTON_MENU, PIN_MODE_INPUT);
+    rt_pin_mode(BUTTON_DOWN, PIN_MODE_INPUT);
     rt_pin_mode(BUTTON_ENTER, PIN_MODE_INPUT);
+    rt_pin_mode(BUTTON_UP, PIN_MODE_INPUT);
 }
 
 int sd_card_is_vaild(void)
@@ -124,7 +125,7 @@ void LedTaskEntry(void* parameter)
 void LedProgram(void)
 {
     static u8 ledState = 0;
-//        Ctrl_LED(LED_SENSOR,0);
+        Ctrl_LED(LED_SENSOR,1);
 //        Ctrl_LED(LED_DEVICE,0);
         Ctrl_LED(LED_LIGHT,ledState++ % 2);
 //        Ctrl_LED(LED_COMMS,0);

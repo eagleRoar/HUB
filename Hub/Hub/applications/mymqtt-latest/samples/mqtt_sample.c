@@ -138,7 +138,7 @@ int mqtt_start(void)
         client.condata.will.message.cstring = MQTT_WILLMSG;
 
         /* malloc buffer. */
-        client.buf_size = client.readbuf_size = 1024;
+        client.buf_size = client.readbuf_size = /*1024*/1024*3;//Justin debug 仅仅测试
         client.buf = rt_calloc(1, client.buf_size);
         client.readbuf = rt_calloc(1, client.readbuf_size);
         if (!(client.buf && client.readbuf))
@@ -274,12 +274,4 @@ int mqtt_start(void)
 //
 //    return paho_mqtt_unsubscribe(&client, argv[1]);
 //}
-
-#ifdef FINSH_USING_MSH
-MSH_CMD_EXPORT(mqtt_start, startup mqtt client);
-MSH_CMD_EXPORT(mqtt_stop, stop mqtt client);
-MSH_CMD_EXPORT(mqtt_publish, mqtt publish message to specified topic);
-MSH_CMD_EXPORT(mqtt_subscribe,  mqtt subscribe topic);
-MSH_CMD_EXPORT(mqtt_unsubscribe, mqtt unsubscribe topic);
-#endif /* FINSH_USING_MSH */
 

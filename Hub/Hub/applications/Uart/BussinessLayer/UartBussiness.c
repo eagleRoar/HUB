@@ -19,11 +19,12 @@ type_connect_t      devConnectState[DEVICE_TIME4_MAX];
 type_connect_t      timeConnectState[TIME12_MAX];
 type_connect_t      lineConnectState[LINE_MAX];
 u8                  ask_device          = 0;
+u8                  ask_time12          = 0;
 u8                  ask_sensor          = 0;
 u8                  ask_line            = 0;
+u8                  special[DEVICE_TIME4_MAX]           ={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};//特色操作
 
 extern u8 saveModuleFlag;
-extern sys_set_t *GetSysSet(void);
 
 void initConnectState(void)
 {
@@ -95,12 +96,6 @@ u8 askLineHeart(type_monitor_t *monitor, rt_device_t serial)
 
     if(0 < monitor->line_size)
     {
-//        if(0 == ask_line)
-//        {
-//            LOG_D("askLineHeart d_state = %d, d_value = %d",
-//                    monitor->line[ask_line].d_state,monitor->line[ask_line].d_value);
-//        }
-
         buffer[0] = monitor->line[ask_line].addr;
         buffer[1] = WRITE_SINGLE;
         buffer[2] = (monitor->line[ask_line].ctrl_addr >> 8) & 0x00FF;
@@ -131,10 +126,6 @@ u8 askLineHeart(type_monitor_t *monitor, rt_device_t serial)
                 monitor->line[ask_line].d_value = value_pre[ask_line];
                 saveModuleFlag = YES;
             }
-//            if(0 == ask_line)
-//            {
-//                LOG_W("hand on line state = %d, value = %d",monitor->line[ask_line].d_state,monitor->line[ask_line].d_value);
-//            }
         }
         else if(MANUAL_HAND_OFF == monitor->line[ask_line]._manual.manual)
         {
@@ -152,11 +143,11 @@ u8 askLineHeart(type_monitor_t *monitor, rt_device_t serial)
                 line_set = GetSysSet()->line2Set;
             }
 
-            if(LINE_HID == line_set.lightsType.value)
+            if(LINE_HID == line_set.lightsType)
             {
                 if(ON == monitor->line[ask_line].d_state)
                 {
-                    if(getTimeStamp() <= protectTime[ask_line] + line_set.hidDelay.value * 60)
+                    if(getTimeStamp() <= protectTime[ask_line] + line_set.hidDelay * 60)
                     {
                         monitor->line[ask_line].d_state = OFF;
                         LOG_W("name %s is in hot start delay",monitor->line[ask_line].name);
@@ -201,331 +192,447 @@ u8 askDeviceHeart(type_monitor_t *monitor, rt_device_t serial)
     u8              buffer[8];
     u16             crc16Result                         = 0x0000;
     u16             temp                                = 0x0000;
+    static u8       askTime12Flag                       = 0;
     static u8       manual_state[DEVICE_TIME4_MAX]      ={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+    static u8       time12_manual_state[TIME12_MAX][TIMER12_PORT_MAX]      ={0};
     static u8       state_pre[DEVICE_TIME4_MAX]         ={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
     static time_t   protectTime[DEVICE_TIME4_MAX][TIMER_GROUP]     ={0};
-    static u8       special[DEVICE_TIME4_MAX]           ={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};//特色操作
 
-    if(ask_device >= monitor->device_size)
+    if(0 == askTime12Flag)
     {
-       //一个循环结束
-       ask_device = 0;
+        if(ask_device >= monitor->device_size)
+        {
+           //一个循环结束
+            askTime12Flag = 1;
+        }
+    }
+    else if(1 == askTime12Flag)
+    {
+        if(ask_time12 >= monitor->timer12_size)
+        {
+           //一个循环结束
+            askTime12Flag = 0;
+            ask_time12 = 0;
+            ask_device = 0;
+        }
     }
 
-    if(0 < monitor->device_size)
+    //询问device
+    if(0 == askTime12Flag)
     {
-        buffer[0] = monitor->device[ask_device].addr;
-
-        if(manual_state[ask_device] != monitor->device[ask_device]._manual[0].manual)
+        if(0 < monitor->device_size)
         {
-            manual_state[ask_device] = monitor->device[ask_device]._manual[0].manual;
+            buffer[0] = monitor->device[ask_device].addr;
 
-            //如果是手动开启的话 记录开启时的时间
-            if(MANUAL_HAND_ON == manual_state[ask_device])
+            if(manual_state[ask_device] != monitor->device[ask_device]._manual[0].manual)
             {
-                monitor->device[ask_device]._manual[0].manual_on_time_save = getTimeStamp();
-            }
-        }
+                manual_state[ask_device] = monitor->device[ask_device]._manual[0].manual;
 
-        if(TIMER_TYPE == monitor->device[ask_device].type)
-        {
-            if(MANUAL_HAND_ON == monitor->device[ask_device]._manual[0].manual)
-            {
-                monitor->device[ask_device]._storage[0]._time4_ctl.d_state = ON;
-
-                if(getTimeStamp() >=
-                        (monitor->device[ask_device]._manual[0].manual_on_time_save +
-                         monitor->device[ask_device]._manual[0].manual_on_time))
+                //如果是手动开启的话 记录开启时的时间
+                if(MANUAL_HAND_ON == manual_state[ask_device])
                 {
-                    monitor->device[ask_device]._manual[0].manual = MANUAL_NO_HAND;
-                    monitor->device[ask_device]._storage[0]._time4_ctl.d_state = OFF;
-                    saveModuleFlag = YES;
+                    monitor->device[ask_device]._manual[0].manual_on_time_save = getTimeStamp();
                 }
             }
-            else if(MANUAL_HAND_OFF == monitor->device[ask_device]._manual[0].manual)
-            {
-                monitor->device[ask_device]._storage[0]._time4_ctl.d_state = OFF;
-            }
 
-            //如果是在检修状态则不输出
-            if(ON == GetSysSet()->sysPara.maintain)
+            if((TIMER_TYPE == monitor->device[ask_device].type) || (PUMP_TYPE == monitor->device[ask_device].type))
             {
-                monitor->device[ask_device]._storage[0]._time4_ctl.d_state = OFF;
-                LOG_D("in maintain, all device off");
-            }
-            buffer[1] = WRITE_SINGLE;
-            buffer[2] = (monitor->device[ask_device].ctrl_addr >> 8) & 0x00FF;
-            buffer[3] = monitor->device[ask_device].ctrl_addr & 0x00FF;
-            buffer[4] = monitor->device[ask_device]._storage[0]._time4_ctl.d_state;
-            buffer[5] = monitor->device[ask_device]._storage[0]._time4_ctl.d_value;
-        }
-        else
-        {
-            //如果是AC_4 或者是AC_12 的话就需要先询问是什么类型
-            if((AC_4_TYPE == monitor->device[ask_device].type)&&
-                (0 == special[ask_device]))
-            {
-                //如果还没有询问各个端口的类型就需要先询问
-                buffer[1] = READ_MUTI;
-                buffer[2] = (0x0440 >> 8) & 0x00FF;
-                buffer[3] = 0x0440 & 0x00FF;
-                buffer[4] = (monitor->device[ask_device].storage_size >> 8) & 0x00FF;
-                buffer[5] = monitor->device[ask_device].storage_size & 0x00FF;
-
-                special[ask_device] = 1;
-            }
-            else
-            {
-                //如果是手动开启的话需要对比开启时间 时间到达后需要返回非手动状态
                 if(MANUAL_HAND_ON == monitor->device[ask_device]._manual[0].manual)
                 {
-                    if(HVAC_6_TYPE == monitor->device[ask_device].type)
+                    monitor->device[ask_device]._storage[0]._time4_ctl.d_state = ON;
+
+                    if(getTimeStamp() >=
+                            (monitor->device[ask_device]._manual[0].manual_on_time_save +
+                             monitor->device[ask_device]._manual[0].manual_on_time))
                     {
-                        LOG_D("hvacMode = %d,manualOnMode %d",monitor->device[ask_device]._hvac.hvacMode,
-                                monitor->device[ask_device]._hvac.manualOnMode);
-                        if(HVAC_CONVENTIONAL == monitor->device[ask_device]._hvac.hvacMode)
-                        {
-                            if(HVAC_COOL == monitor->device[ask_device]._hvac.manualOnMode)
-                            {
-                                monitor->device[ask_device]._storage[0]._port.d_value = 0x08;//0x0C;
-                            }
-                            else if(HVAC_HEAT == monitor->device[ask_device]._hvac.manualOnMode)
-                            {
-                                monitor->device[ask_device]._storage[0]._port.d_value = 0x10;//0x14;
-                            }
-
-                        }
-                        else if(HVAC_PUM_O == monitor->device[ask_device]._hvac.hvacMode)
-                        {
-                            if(HVAC_COOL == monitor->device[ask_device]._hvac.manualOnMode)
-                            {
-                                monitor->device[ask_device]._storage[0]._port.d_value = 0x08;//0x0C;
-                            }
-                            else if(HVAC_HEAT == monitor->device[ask_device]._hvac.manualOnMode)
-                            {
-                                monitor->device[ask_device]._storage[0]._port.d_value = 0x18;//0x1C;
-                            }
-                        }
-                        else if(HVAC_PUM_B == monitor->device[ask_device]._hvac.hvacMode)
-                        {
-                            if(HVAC_COOL == monitor->device[ask_device]._hvac.manualOnMode)
-                            {
-                                monitor->device[ask_device]._storage[0]._port.d_value = 0x18;//0x1C;
-                            }
-                            else if(HVAC_HEAT == monitor->device[ask_device]._hvac.manualOnMode)
-                            {
-                                monitor->device[ask_device]._storage[0]._port.d_value = 0x08;//0x0C;
-                            }
-                        }
-                    }
-                    else
-                    {
-                        for(u8 item = 0; item < monitor->device[ask_device].storage_size; item++)
-                        {
-                            if(TIMER_TYPE == monitor->device[ask_device].device_timer_type[item])
-                            {
-                                monitor->device[ask_device]._storage[item]._time4_ctl.d_state = ON;
-                            }
-                            else
-                            {
-                                monitor->device[ask_device]._storage[item]._port.d_state = ON;
-                            }
-                        }
-                    }
-
-                    for(u8 item = 0; item < monitor->device[ask_device].storage_size; item++)
-                    {
-                        if(getTimeStamp() >=
-                                (monitor->device[ask_device]._manual[item].manual_on_time_save +
-                                 monitor->device[ask_device]._manual[item].manual_on_time))
-                        {
-                            monitor->device[ask_device]._manual[item].manual = MANUAL_NO_HAND;
-
-                            if(HVAC_6_TYPE == monitor->device[ask_device].type)
-                            {
-                                if(HVAC_CONVENTIONAL == monitor->device[ask_device]._hvac.hvacMode)
-                                {
-                                    if(HVAC_COOL == monitor->device[ask_device]._hvac.manualOnMode)
-                                    {
-                                        monitor->device[ask_device]._storage[0]._port.d_value &= 0xF7;//0xF3;
-                                    }
-                                    else if(HVAC_HEAT == monitor->device[ask_device]._hvac.manualOnMode)
-                                    {
-                                        monitor->device[ask_device]._storage[0]._port.d_value &= 0xEF;//0xEB;
-                                    }
-
-                                }
-                                else if(HVAC_PUM_O == monitor->device[ask_device]._hvac.hvacMode)
-                                {
-                                    if(HVAC_COOL == monitor->device[ask_device]._hvac.manualOnMode)
-                                    {
-                                        monitor->device[ask_device]._storage[0]._port.d_value &= 0xF7;//0xF3;
-                                    }
-                                    else if(HVAC_HEAT == monitor->device[ask_device]._hvac.manualOnMode)
-                                    {
-                                        monitor->device[ask_device]._storage[0]._port.d_value &= 0xE7;//0xE3;
-                                    }
-                                }
-                                else if(HVAC_PUM_B == monitor->device[ask_device]._hvac.hvacMode)
-                                {
-                                    if(HVAC_COOL == monitor->device[ask_device]._hvac.manualOnMode)
-                                    {
-                                        monitor->device[ask_device]._storage[0]._port.d_value &= 0xE7;//0xE3;
-                                    }
-                                    else if(HVAC_HEAT == monitor->device[ask_device]._hvac.manualOnMode)
-                                    {
-                                        monitor->device[ask_device]._storage[0]._port.d_value &= 0xF7;//0xF3;
-                                    }
-                                }
-                            }
-                            else
-                            {
-                                if(TIMER_TYPE == monitor->device[ask_device].device_timer_type[item])
-                                {
-                                    monitor->device[ask_device]._storage[item]._time4_ctl.d_state = OFF;
-                                }
-                                else
-                                {
-                                    monitor->device[ask_device]._storage[item]._port.d_state = OFF;
-                                }
-                            }
-
-                            saveModuleFlag = YES;
-                        }
+                        monitor->device[ask_device]._manual[0].manual = MANUAL_NO_HAND;
+                        monitor->device[ask_device]._storage[0]._time4_ctl.d_state = OFF;
+                        saveModuleFlag = YES;
                     }
                 }
                 else if(MANUAL_HAND_OFF == monitor->device[ask_device]._manual[0].manual)
                 {
-                    for(u8 item = 0; item < monitor->device[ask_device].storage_size; item++)
-                    {
-                        if(TIMER_TYPE == monitor->device[ask_device].device_timer_type[item])
-                        {
-                            monitor->device[ask_device]._storage[item]._time4_ctl.d_state = OFF;
-                        }
-                        else
-                        {
-                            monitor->device[ask_device]._storage[item]._port.d_state = OFF;
-                        }
-                    }
-                }
-                else if(MANUAL_NO_HAND == monitor->device[ask_device]._manual[0].manual)
-                {
-                    //制冷 制热 除湿
-                    if((COOL_TYPE == monitor->device[ask_device].type) || (HEAT_TYPE == monitor->device[ask_device].type) ||
-                       (DEHUMI_TYPE == monitor->device[ask_device].type))
-                    {
-                        if(ON == monitor->device[ask_device]._storage[0]._port.d_state)
-                        {
-                            if(ON == monitor->device[ask_device].hotStartDelay)
-                            {
-                                if(getTimeStamp() <= protectTime[ask_device][0] + 5 * 60)//保护时间为5分钟
-                                {
-                                    monitor->device[ask_device]._storage[0]._port.d_state = OFF;//压缩机保护
-                                    LOG_W("name %s is in hot start delay",monitor->device[ask_device].name);
-                                }
-                            }
-                        }
-                    }
-                    else if(TIMER_TYPE == monitor->device[ask_device].type)
-                    {
-                        for(u8 item = 0; item < monitor->device[ask_device].storage_size; item++)
-                        {
-                            if((COOL_TYPE == monitor->device[ask_device].device_timer_type[item]) ||
-                               (HEAT_TYPE == monitor->device[ask_device].device_timer_type[item]) ||
-                               (DEHUMI_TYPE == monitor->device[ask_device].device_timer_type[item]))
-                            {
-                                if(getTimeStamp() <= protectTime[ask_device][item] + 5 * 60)//保护时间为5分钟
-                                {
-                                    monitor->device[ask_device]._storage[item]._time4_ctl.d_state = OFF;//压缩机保护
-                                    LOG_W("name %s is in hot start delay",monitor->device[ask_device].name);
-                                }
-                            }
-                        }
-                    }
+                    monitor->device[ask_device]._storage[0]._time4_ctl.d_state = OFF;
                 }
 
-                if(state_pre[ask_device] != monitor->device[ask_device]._storage[0]._port.d_state)
-                {
-                    state_pre[ask_device] = monitor->device[ask_device]._storage[0]._port.d_state;
-
-                    //制冷 制热 除湿
-                    if((COOL_TYPE == monitor->device[ask_device].type) || (HEAT_TYPE == monitor->device[ask_device].type) ||
-                       (DEHUMI_TYPE == monitor->device[ask_device].type))
-                    {
-                        if(OFF == state_pre[ask_device])
-                        {
-                            protectTime[ask_device][0] = getTimeStamp();
-                        }
-                    }
-                    else if(TIMER_TYPE == monitor->device[ask_device].type)
-                    {
-                        for(u8 item = 0; item < monitor->device[ask_device].storage_size; item++)
-                        {
-                            if((COOL_TYPE == monitor->device[ask_device].device_timer_type[item]) ||
-                               (HEAT_TYPE == monitor->device[ask_device].device_timer_type[item]) ||
-                               (DEHUMI_TYPE == monitor->device[ask_device].device_timer_type[item]))
-                            {
-                                protectTime[ask_device][item] = getTimeStamp();
-                            }
-                        }
-                    }
-                }
-
-                //设置HVAC 风扇常开
-                if(HVAC_6_TYPE == monitor->device[ask_device].type)
-                {
-                    if(ON == monitor->device[ask_device]._hvac.fanNormallyOpen)
-                    {
-                        monitor->device[ask_device]._storage[0]._port.d_value |= 0x04;
-                    }
-                }
-
-                //维修中关闭输出
+                //如果是在检修状态则不输出
                 if(ON == GetSysSet()->sysPara.maintain)
                 {
-                    monitor->device[ask_device]._storage[0]._port.d_state = OFF;
+                    monitor->device[ask_device]._storage[0]._time4_ctl.d_state = OFF;
                     LOG_D("in maintain, all device off");
                 }
-
-                if(1 == monitor->device[ask_device].storage_size)
+                buffer[1] = WRITE_SINGLE;
+                buffer[2] = (monitor->device[ask_device].ctrl_addr >> 8) & 0x00FF;
+                buffer[3] = monitor->device[ask_device].ctrl_addr & 0x00FF;
+                buffer[4] = monitor->device[ask_device]._storage[0]._time4_ctl.d_state;
+                buffer[5] = monitor->device[ask_device]._storage[0]._time4_ctl.d_value;
+            }
+            else
+            {
+                //如果是AC_4 或者是AC_12 的话就需要先询问是什么类型
+                if((AC_4_TYPE == monitor->device[ask_device].type)&&
+                    (YES != special[ask_device]))
                 {
-                    buffer[1] = WRITE_SINGLE;
-                    buffer[2] = (monitor->device[ask_device].ctrl_addr >> 8) & 0x00FF;
-                    buffer[3] = monitor->device[ask_device].ctrl_addr & 0x00FF;
-                    buffer[4] = monitor->device[ask_device]._storage[0]._port.d_state;
-                    buffer[5] = monitor->device[ask_device]._storage[0]._port.d_value;
+                    //如果还没有询问各个端口的类型就需要先询问
+                    buffer[1] = READ_MUTI;
+                    buffer[2] = (0x0440 >> 8) & 0x00FF;
+                    buffer[3] = 0x0440 & 0x00FF;
+                    buffer[4] = (monitor->device[ask_device].storage_size >> 8) & 0x00FF;
+                    buffer[5] = monitor->device[ask_device].storage_size & 0x00FF;
+
                 }
                 else
                 {
-                    buffer[1] = WRITE_SINGLE;
-                    buffer[2] = (monitor->device[ask_device].ctrl_addr >> 8) & 0x00FF;
-                    buffer[3] = monitor->device[ask_device].ctrl_addr & 0x00FF;
-                    for(u8 item = 0; item < monitor->device[ask_device].storage_size; item++)
+                    //如果是手动开启的话需要对比开启时间 时间到达后需要返回非手动状态
+                    if(MANUAL_HAND_ON == monitor->device[ask_device]._manual[0].manual)
                     {
-                        if(ON == monitor->device[ask_device]._storage[item]._port.d_state)
+                        if(HVAC_6_TYPE == monitor->device[ask_device].type)
                         {
-                            temp |= 1 << item;
+                            if(HVAC_CONVENTIONAL == monitor->device[ask_device]._hvac.hvacMode)
+                            {
+                                if(HVAC_COOL == monitor->device[ask_device]._hvac.manualOnMode)
+                                {
+                                    monitor->device[ask_device]._storage[0]._port.d_value = 0x08;
+                                }
+                                else if(HVAC_HEAT == monitor->device[ask_device]._hvac.manualOnMode)
+                                {
+                                    monitor->device[ask_device]._storage[0]._port.d_value = 0x10;
+                                }
+
+                            }
+                            else if(HVAC_PUM_O == monitor->device[ask_device]._hvac.hvacMode)
+                            {
+                                if(HVAC_COOL == monitor->device[ask_device]._hvac.manualOnMode)
+                                {
+                                    monitor->device[ask_device]._storage[0]._port.d_value = 0x08;
+                                }
+                                else if(HVAC_HEAT == monitor->device[ask_device]._hvac.manualOnMode)
+                                {
+                                    monitor->device[ask_device]._storage[0]._port.d_value = 0x18;
+                                }
+                            }
+                            else if(HVAC_PUM_B == monitor->device[ask_device]._hvac.hvacMode)
+                            {
+                                if(HVAC_COOL == monitor->device[ask_device]._hvac.manualOnMode)
+                                {
+                                    monitor->device[ask_device]._storage[0]._port.d_value = 0x18;
+                                }
+                                else if(HVAC_HEAT == monitor->device[ask_device]._hvac.manualOnMode)
+                                {
+                                    monitor->device[ask_device]._storage[0]._port.d_value = 0x08;
+                                }
+                            }
+                        }
+                        else//除了hvac_6
+                        {
+                            for(u8 item = 0; item < monitor->device[ask_device].storage_size; item++)
+                            {
+                                if((TIMER_TYPE == monitor->device[ask_device].device_timer_type[item]) ||
+                                   (VALVE_TYPE == monitor->device[ask_device].device_timer_type[item]) ||
+                                   (PUMP_TYPE == monitor->device[ask_device].device_timer_type[item]))
+                                {
+                                    monitor->device[ask_device]._storage[item]._time4_ctl.d_state = ON;
+                                }
+                                else
+                                {
+                                    monitor->device[ask_device]._storage[item]._port.d_state = ON;
+                                }
+                            }
+                        }
+
+                        //如果达到手动开启的时间之后将状态置为非手动
+                        for(u8 item = 0; item < monitor->device[ask_device].storage_size; item++)
+                        {
+                            if(getTimeStamp() >=
+                                    (monitor->device[ask_device]._manual[item].manual_on_time_save +
+                                     monitor->device[ask_device]._manual[item].manual_on_time))
+                            {
+                                monitor->device[ask_device]._manual[item].manual = MANUAL_NO_HAND;
+
+                                if(HVAC_6_TYPE == monitor->device[ask_device].type)
+                                {
+                                    if(HVAC_CONVENTIONAL == monitor->device[ask_device]._hvac.hvacMode)
+                                    {
+                                        if(HVAC_COOL == monitor->device[ask_device]._hvac.manualOnMode)
+                                        {
+                                            monitor->device[ask_device]._storage[0]._port.d_value &= 0xF7;
+                                        }
+                                        else if(HVAC_HEAT == monitor->device[ask_device]._hvac.manualOnMode)
+                                        {
+                                            monitor->device[ask_device]._storage[0]._port.d_value &= 0xEF;
+                                        }
+
+                                    }
+                                    else if(HVAC_PUM_O == monitor->device[ask_device]._hvac.hvacMode)
+                                    {
+                                        if(HVAC_COOL == monitor->device[ask_device]._hvac.manualOnMode)
+                                        {
+                                            monitor->device[ask_device]._storage[0]._port.d_value &= 0xF7;
+                                        }
+                                        else if(HVAC_HEAT == monitor->device[ask_device]._hvac.manualOnMode)
+                                        {
+                                            monitor->device[ask_device]._storage[0]._port.d_value &= 0xE7;
+                                        }
+                                    }
+                                    else if(HVAC_PUM_B == monitor->device[ask_device]._hvac.hvacMode)
+                                    {
+                                        if(HVAC_COOL == monitor->device[ask_device]._hvac.manualOnMode)
+                                        {
+                                            monitor->device[ask_device]._storage[0]._port.d_value &= 0xE7;
+                                        }
+                                        else if(HVAC_HEAT == monitor->device[ask_device]._hvac.manualOnMode)
+                                        {
+                                            monitor->device[ask_device]._storage[0]._port.d_value &= 0xF7;
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    if((TIMER_TYPE == monitor->device[ask_device].device_timer_type[item]) ||
+                                       (VALVE_TYPE == monitor->device[ask_device].device_timer_type[item]) ||
+                                       (PUMP_TYPE == monitor->device[ask_device].device_timer_type[item]))
+                                    {
+                                        monitor->device[ask_device]._storage[item]._time4_ctl.d_state = OFF;
+                                    }
+                                    else
+                                    {
+                                        monitor->device[ask_device]._storage[item]._port.d_state = OFF;
+                                    }
+                                }
+
+                                saveModuleFlag = YES;
+                            }
                         }
                     }
-                    buffer[4] = temp >> 8;
-                    buffer[5] = temp;
+                    else if(MANUAL_HAND_OFF == monitor->device[ask_device]._manual[0].manual)
+                    {
+                        for(u8 item = 0; item < monitor->device[ask_device].storage_size; item++)
+                        {
+                            if((TIMER_TYPE == monitor->device[ask_device].device_timer_type[item]) ||
+                               (VALVE_TYPE == monitor->device[ask_device].device_timer_type[item]) ||
+                               (PUMP_TYPE == monitor->device[ask_device].device_timer_type[item]))
+                            {
+                                monitor->device[ask_device]._storage[item]._time4_ctl.d_state = OFF;
+                            }
+                            else
+                            {
+                                monitor->device[ask_device]._storage[item]._port.d_state = OFF;
+                            }
+                        }
+                    }
+                    else if(MANUAL_NO_HAND == monitor->device[ask_device]._manual[0].manual)
+                    {
+                        //制冷 制热 除湿
+                        if((COOL_TYPE == monitor->device[ask_device].type) || (HEAT_TYPE == monitor->device[ask_device].type) ||
+                           (DEHUMI_TYPE == monitor->device[ask_device].type))
+                        {
+                            if(ON == monitor->device[ask_device]._storage[0]._port.d_state)
+                            {
+                                if(ON == monitor->device[ask_device].hotStartDelay)
+                                {
+                                    if(getTimeStamp() <= protectTime[ask_device][0] + 5 * 60)//保护时间为5分钟
+                                    {
+                                        monitor->device[ask_device]._storage[0]._port.d_state = OFF;//压缩机保护
+                                        LOG_W("name %s is in hot start delay",monitor->device[ask_device].name);
+                                    }
+                                }
+                            }
+                        }
+                        else if(TIMER_TYPE == monitor->device[ask_device].type)
+                        {
+                            for(u8 item = 0; item < monitor->device[ask_device].storage_size; item++)
+                            {
+                                if((COOL_TYPE == monitor->device[ask_device].device_timer_type[item]) ||
+                                   (HEAT_TYPE == monitor->device[ask_device].device_timer_type[item]) ||
+                                   (DEHUMI_TYPE == monitor->device[ask_device].device_timer_type[item]))
+                                {
+                                    if(getTimeStamp() <= protectTime[ask_device][item] + 5 * 60)//保护时间为5分钟
+                                    {
+                                        monitor->device[ask_device]._storage[item]._time4_ctl.d_state = OFF;//压缩机保护
+                                        LOG_W("name %s is in hot start delay",monitor->device[ask_device].name);
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if(state_pre[ask_device] != monitor->device[ask_device]._storage[0]._port.d_state)
+                    {
+                        state_pre[ask_device] = monitor->device[ask_device]._storage[0]._port.d_state;
+
+                        //制冷 制热 除湿
+                        if((COOL_TYPE == monitor->device[ask_device].type) || (HEAT_TYPE == monitor->device[ask_device].type) ||
+                           (DEHUMI_TYPE == monitor->device[ask_device].type))
+                        {
+                            if(OFF == state_pre[ask_device])
+                            {
+                                protectTime[ask_device][0] = getTimeStamp();
+                            }
+                        }
+                        else if(TIMER_TYPE == monitor->device[ask_device].type)
+                        {
+                            for(u8 item = 0; item < monitor->device[ask_device].storage_size; item++)
+                            {
+                                if((COOL_TYPE == monitor->device[ask_device].device_timer_type[item]) ||
+                                   (HEAT_TYPE == monitor->device[ask_device].device_timer_type[item]) ||
+                                   (DEHUMI_TYPE == monitor->device[ask_device].device_timer_type[item]))
+                                {
+                                    protectTime[ask_device][item] = getTimeStamp();
+                                }
+                            }
+                        }
+                    }
+
+                    //设置HVAC 风扇常开
+                    if(HVAC_6_TYPE == monitor->device[ask_device].type)
+                    {
+                        if(ON == monitor->device[ask_device]._hvac.fanNormallyOpen)
+                        {
+                            monitor->device[ask_device]._storage[0]._port.d_value |= 0x04;
+                        }
+                    }
+
+                    //维修中关闭输出
+                    if(ON == GetSysSet()->sysPara.maintain)
+                    {
+                        monitor->device[ask_device]._storage[0]._port.d_state = OFF;
+                        LOG_D("in maintain, all device off");
+                    }
+
+                    if(1 == monitor->device[ask_device].storage_size)
+                    {
+                        buffer[1] = WRITE_SINGLE;
+                        buffer[2] = (monitor->device[ask_device].ctrl_addr >> 8) & 0x00FF;
+                        buffer[3] = monitor->device[ask_device].ctrl_addr & 0x00FF;
+                        buffer[4] = monitor->device[ask_device]._storage[0]._port.d_state;
+                        buffer[5] = monitor->device[ask_device]._storage[0]._port.d_value;
+                    }
+                    else
+                    {
+                        buffer[1] = WRITE_SINGLE;
+                        buffer[2] = (monitor->device[ask_device].ctrl_addr >> 8) & 0x00FF;
+                        buffer[3] = monitor->device[ask_device].ctrl_addr & 0x00FF;
+                        for(u8 item = 0; item < monitor->device[ask_device].storage_size; item++)
+                        {
+                            if(AC_4_TYPE == monitor->device[ask_device].type)
+                            {
+                                if((VALVE_TYPE == monitor->device[ask_device].device_timer_type[item]) ||
+                                   (PUMP_TYPE == monitor->device[ask_device].device_timer_type[item]) ||
+                                   (TIMER_TYPE == monitor->device[ask_device].device_timer_type[item]))
+                                {
+                                    if(ON == monitor->device[ask_device]._storage[item]._time4_ctl.d_state)
+                                    {
+                                        temp |= 1 << item;
+                                    }
+                                }
+                                else
+                                {
+                                    if(ON == monitor->device[ask_device]._storage[item]._port.d_state)
+                                    {
+                                        temp |= 1 << item;
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                if(ON == monitor->device[ask_device]._storage[item]._port.d_state)
+                                {
+                                    temp |= 1 << item;
+                                }
+                            }
+                        }
+
+                        buffer[4] = temp >> 8;
+                        buffer[5] = temp;
+                    }
                 }
             }
+
+            crc16Result = usModbusRTU_CRC(buffer, 6);
+            buffer[6] = crc16Result;                             //CRC16低位
+            buffer[7] = (crc16Result>>8);                        //CRC16高位
+
+            rt_device_write(serial, 0, buffer, 8);
+            devConnectState[ask_device].send_count ++;
+            if(devConnectState[ask_device].send_count >= CONNRCT_MISS_MAX)
+            {
+                ask_device ++;
+            }
+            devConnectState[ask_device].send_state = ON;
         }
-
-        crc16Result = usModbusRTU_CRC(buffer, 6);
-        buffer[6] = crc16Result;                             //CRC16低位
-        buffer[7] = (crc16Result>>8);                        //CRC16高位
-
-//        LOG_D("-------------------ask name = %s",monitor->device[ask_device].name);
-
-        rt_device_write(serial, 0, buffer, 8);
-        devConnectState[ask_device].send_count ++;
-        if(devConnectState[ask_device].send_count >= CONNRCT_MISS_MAX)
+    }
+    //询问io_12
+    else
+    {
+        if(0 < monitor->timer12_size)
         {
-            ask_device ++;
+            buffer[0] = monitor->time12[ask_time12].addr;
+
+            for(u8 port = 0; port < monitor->time12[ask_time12].storage_size; port++)
+            {
+                //记录手动开启的时间
+                if(time12_manual_state[ask_time12][port] != monitor->time12[ask_time12]._manual[port].manual)
+                {
+                    time12_manual_state[ask_time12][port] = monitor->time12[ask_time12]._manual[port].manual;
+
+                    //如果是手动开启的话 记录开启时的时间
+                    if(MANUAL_HAND_ON == time12_manual_state[ask_time12][port])
+                    {
+                        monitor->time12[ask_time12]._manual[port].manual_on_time_save = getTimeStamp();
+                    }
+                }
+
+                //如果是手动开启
+                if(MANUAL_HAND_ON == monitor->time12[ask_time12]._manual[port].manual)
+                {
+                    monitor->time12[ask_time12]._time12_ctl[port].d_state = ON;
+
+                    if(getTimeStamp() >=
+                            (monitor->time12[ask_time12]._manual[port].manual_on_time_save +
+                             monitor->time12[ask_time12]._manual[port].manual_on_time))
+                    {
+                        monitor->time12[ask_time12]._manual[port].manual = MANUAL_NO_HAND;
+                        monitor->time12[ask_time12]._time12_ctl[port].d_state = OFF;
+                        saveModuleFlag = YES;
+                    }
+                }
+                else if(MANUAL_HAND_OFF == monitor->time12[ask_time12]._manual[port].manual)
+                {
+                    monitor->time12[ask_time12]._time12_ctl[port].d_state = OFF;
+                }
+
+                //如果是在检修状态则不输出
+                if(ON == GetSysSet()->sysPara.maintain)
+                {
+                    monitor->time12[ask_time12]._time12_ctl[port].d_state = OFF;
+                }
+            }
+
+            buffer[1] = WRITE_SINGLE;
+            buffer[2] = (monitor->time12[ask_time12].ctrl_addr >> 8) & 0x00FF;
+            buffer[3] = monitor->time12[ask_time12].ctrl_addr & 0x00FF;
+            for(u8 item = 0; item < monitor->time12[ask_time12].storage_size; item++)
+            {
+                if(ON == monitor->time12[ask_time12]._time12_ctl[item].d_state)
+                {
+                    temp |= 1 << item;
+                }
+            }
+            buffer[4] = temp >> 8;
+            buffer[5] = temp;
+
+            crc16Result = usModbusRTU_CRC(buffer, 6);
+            buffer[6] = crc16Result;                             //CRC16低位
+            buffer[7] = (crc16Result>>8);                        //CRC16高位
+
+            rt_device_write(serial, 0, buffer, 8);
+            timeConnectState[ask_time12].send_count ++;
+            if(timeConnectState[ask_time12].send_count >= CONNRCT_MISS_MAX)
+            {
+                ask_time12 ++;
+            }
+            timeConnectState[ask_time12].send_state = ON;
         }
-        devConnectState[ask_device].send_state = ON;
     }
 
     ret = YES;
@@ -536,8 +643,9 @@ void replyStrorageType(type_monitor_t *monitor, u8 addr, u8 *data, u8 dataLen)
 {
     if(addr == monitor->device[ask_device].addr)
     {
-        if(TIMER_TYPE == monitor->device[ask_device].type)
+        if(AC_4_TYPE == monitor->device[ask_device].type)
         {
+            special[ask_device] = YES;      //标志已经收到端口数据
             if(dataLen/2 > TIMER_GROUP)
             {
                 dataLen = TIMER_GROUP * 2;
@@ -690,8 +798,11 @@ void AnlyzeModuleInfo(type_monitor_t *monitor, u8 *data, u8 dataLen)
     if(YES == FindModuleByAddr(monitor, data[0]))
     {
         AnlyzeStorage(monitor, data[0], data[1],&data[3], data[2]);
+        if(READ_MUTI == data[1])
+        {
+            replyStrorageType(monitor, data[0], &data[3], data[2]);
+        }
         UpdateModuleConnect(monitor, data[0]);
-        replyStrorageType(monitor, data[0], &data[3], data[2]);
     }
 }
 
@@ -735,6 +846,26 @@ void findDeviceLocation(type_monitor_t *monitor, cloudcmd_t *cmd,rt_device_t ser
             }
         }
 
+        for(i = 0; i < monitor->timer12_size; i++)
+        {
+            if(addr == monitor->time12[i].addr)
+            {
+                buffer[0] = monitor->time12[i].addr;
+                buffer[1] = READ_MUTI;
+                buffer[2] = 0x00;
+                buffer[3] = 0x00;
+                buffer[4] = 0x00;
+                buffer[5] = 0x01;
+
+                crc16Result = usModbusRTU_CRC(buffer, 6);
+                buffer[6] = crc16Result;                         //CRC16低位
+                buffer[7] = (crc16Result>>8);                    //CRC16高位
+
+                rt_device_write(serial, 0, buffer, 8);
+
+                cmd->get_id.value = 0;
+            }
+        }
     }
 }
 

@@ -17,14 +17,12 @@
 #define DBG_TAG "u.sd"
 #define DBG_LVL DBG_INFO
 
-static char sd_thread_stack[1024*3];
-static struct rt_thread sd_thread;
-
+__attribute__((section(".ccmbss"))) char sd_thread_stack[1024*3];
+__attribute__((section(".ccmbss"))) struct rt_thread sd_thread;
 struct sdCardState      sdCard;
 
 extern u8 saveModuleFlag;
-extern sys_set_t *GetSysSet(void);
-extern sys_tank_t *GetSysTank(void);
+extern int rt_hw_sdio_init(void);
 
 /**
  * @brief SD处理线程初始化
@@ -61,7 +59,7 @@ void sd_dfs_event_entry(void* parameter)
         /* 还没有初始化 */
         if(NO == sdCard.init)
         {
-            /* 检查SD卡是否存在 */
+            /* 检查SD卡是否存在  */
             if(sd_card_is_vaild())
             {
                 /* 寻找SD设备 */
@@ -79,11 +77,7 @@ void sd_dfs_event_entry(void* parameter)
 
                             InitSDCard();
 
-                            if(RT_EOK == TakeMonitorFromSD(GetMonitor()))
-                            {
-                                LOG_I("TakeMonitorFromSD OK");
-                            }
-                            else
+                            if(RT_EOK != TakeMonitorFromSD(GetMonitor()))
                             {
                                 LOG_E("TakeMonitorFromSD fail");
                             }
@@ -92,27 +86,15 @@ void sd_dfs_event_entry(void* parameter)
                             {
                                 LOG_E("TackSysSetFromSD err");
                             }
-                            else
-                            {
-                                LOG_I("TackSysSetFromSD OK");
-                            }
 
                             if(RT_EOK != TackRecipeFromSD(GetSysRecipt()))
                             {
                                 LOG_E("TackRecipeFromSD err");
                             }
-                            else
-                            {
-                                LOG_I("TackRecipeFromSD OK");
-                            }
 
                             if(RT_EOK != TackSysTankFromSD(GetSysTank()))
                             {
                                 LOG_E("TackSysTankFromSD err");
-                            }
-                            else
-                            {
-                                LOG_I("TackSysTankFromSD OK");
                             }
 
                             initHubinfo();
@@ -120,6 +102,7 @@ void sd_dfs_event_entry(void* parameter)
                         }
                         else //挂载失败
                         {
+                            //dfs_unmount("/sd0");//卸载
                             LOG_E("sd card mount to / failed!\r\n");
                         }
                     }
@@ -127,6 +110,8 @@ void sd_dfs_event_entry(void* parameter)
                 else
                 {
                     LOG_E("sd card find failed!\r\n");
+                    rt_hw_sdio_init();
+                    rt_thread_mdelay(5000);
                 }
             }
             else

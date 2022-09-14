@@ -46,7 +46,6 @@ rt_err_t GetRecipeByid(u8 id, sys_recipe_t *sys_rec, recipe_t *rec)
     {
         if(id == sys_rec->recipe[index].id)
         {
-//            rec = &sys_rec->recipe[index];
             rt_memcpy((u8 *)rec, (u8 *)&sys_rec->recipe[index], sizeof(recipe_t));
             ret = RT_EOK;
         }
@@ -86,8 +85,6 @@ void AddRecipe(recipe_t *rec, sys_recipe_t *sys_rec)
 rt_err_t deleteRecipe(u8 id, sys_recipe_t *list, sys_set_t *sys_set)
 {
     rt_err_t ret = RT_ERROR;
-
-//    LOG_D("list->recipe_size = %d",list->recipe_size);
 
     //1.删除配方列表当前的配方项
     for(u8 index = 0; index < list->recipe_size; index++)

@@ -36,6 +36,7 @@ extern "C" {
 #include <stdint.h>
 #include <rtthread.h>
 #include "MQTTPacket.h"
+#include "gpio.h"
 
 #ifdef MQTT_USING_TLS
 #include <tls_client.h>
@@ -121,7 +122,7 @@ typedef struct mqtt_meaasge_ack {
 /*********************************************************************************************************
 **  MQTT�ͻ��˽ṹ����
 *********************************************************************************************************/
-typedef struct mqtt_client mqtt_client;
+
 struct mqtt_client
 {
   // ���²�����Ҫ��ʼ�����������mqtt�ͻ���Ӧ��
@@ -180,7 +181,11 @@ extern int paho_mqtt_unsubscribe(mqtt_client *client, const char *topic);
 extern int paho_mqtt_publish(mqtt_client *client, enum QoS qos, const char *topic, void *payload, size_t length);
 extern int paho_mqtt_is_connected(mqtt_client *client);
 extern int paho_mqtt_control(mqtt_client *client, int cmd, void *arg);
-
+mqtt_client *GetMqttClient(void);
+int mqtt_start(void);
+void SetRecvMqttFlg(u8);
+int GetMqttStartFlg(void);
+u8 GetRecvMqttFlg(void);
 #ifdef __cplusplus
     }           // __cplusplus
 #endif

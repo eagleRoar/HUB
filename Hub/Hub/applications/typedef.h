@@ -123,7 +123,6 @@ typedef void (*setkitEvent)(u16 id);
 
 typedef u16 (*getEvent)(void);
 u16 usModbusRTU_CRC(const u8* pucData, u32 ulLen);
-u16 CRC16(u16 *pdata, u16 len,  u16 random_num);
 void ReadUniqueId(u32 *id);
 int cal(void);
 #endif /* APPLICATIONS_TYPEDEF_H_ */

@@ -10,7 +10,6 @@
 
 #include <rtthread.h>
 #include "Gpio.h"
-#include "Ble.h"
 #include "Ethernet.h"
 #include "Oled1309.h"
 #include "SDCard.h"
@@ -21,59 +20,48 @@
 #include "mqtt_client.h"
 #include "CloudProtocol.h"
 #include "module.h"
+#include "TcpProgram.h"
 
 #define DBG_TAG "main"
 #define DBG_LVL DBG_LOG
 #include <rtdbg.h>
 
 extern struct ethDeviceStruct *eth;
+extern int          tcp_sock;
 
 extern rt_uint8_t GetEthDriverLinkStatus(void);            //获取网口连接状态
-extern void GetUpdataFileFromWeb(void);
-extern int mqtt_start(void);
-extern mqtt_client *GetMqttClient(void);
-extern void SetRecvMqttFlg(u8);
-extern sys_set_t *GetSysSet(void);
-extern int GetMqttStartFlg(void);
-extern u8 GetRecvMqttFlg(void);
-static uint16_t g_Key = 97;
-rt_mutex_t dynamic_mutex = RT_NULL;//互斥量
 
 int main(void)
 {
-//    u8              index           = 0;
-    rt_uint8_t      ethStatus       = LINKDOWN;
+    rt_uint8_t      ethStatus           = LINKDOWN;
+    u16             length              = 0;
+    char            *tcpSendBuffer      = RT_NULL;
     static u8       warn[WARN_MAX];
-    static u8       sensor_size     = 0;
-    static u8       device_size     = 0;
-    static u8       timer12_size    = 0;
-    static u8       Timer100msTouch    = OFF;
-    static u8       Timer1sTouch    = OFF;
-    static u8       Timer60sTouch   = OFF;
-    static u8       TimerInitTouch    = OFF;
-    static u16      time100mS          = 0;
-    static u16      time1S          = 0;
-    static u16      time60S         = 0;
-    static u16      timeInit        = 0;
-    static u8       cnt             = 0;
+    static u8       warn1[WARN_MAX];
+    static u8       sensor_size         = 0;
+    static u8       device_size         = 0;
+    static u8       timer12_size        = 0;
+    static u8       Timer100msTouch     = OFF;
+    static u8       Timer1sTouch        = OFF;
+    static u8       Timer10sTouch       = OFF;
+    static u8       Timer60sTouch       = OFF;
+    static u8       TimerInitTouch      = OFF;
+    static u16      time100mS           = 0;
+    static u16      time1S              = 0;
+    static u16      time10S             = 0;
+    static u16      time60S             = 0;
+    static u16      timeInit            = 0;
+    static u8       cnt                 = 0;
+    static u8       warnEnFlag          = 0;
     type_sys_time   time;
 
-    dynamic_mutex = rt_mutex_create("dmutex", RT_IPC_FLAG_FIFO);
-    if(RT_NULL == dynamic_mutex)
-    {
-        LOG_E("create mutex fail");
-    }
-
     rt_memset(warn, 0, WARN_MAX);
-
-    //初始化静态变量
-    initMonitor();
+    rt_memset(warn1, 0, WARN_MAX);
 
     //初始化GPIO口
     GpioInit();
 
-    //初始化灯光线程,仅作为呼吸灯
-//    LedTaskInit();
+    initMonitor();
 
     //oled1309屏线程初始化
     OledTaskInit();
@@ -107,24 +95,14 @@ int main(void)
     //初始化串口接收传感器类线程
     SensorUart2TaskInit();
 
-    //spi flash程序初始化 //SQL需要占用比较多的资源，250kb+的ram，310kb+的rom
-//    SpiTaskInit();
-
     //MQTT线程
     mqtt_start();
-
-    //初始化蓝牙Ble线程,蓝牙是通过uart发送数据控制
-    //BleUart6TaskInit();   //该功能暂时删除
-
-    //从网络上获取新的app包
-    //GetUpdataFileFromWeb();
-
-//    LOG_D("----------------monitor size = %d",sizeof(type_monitor_t));
     while(1)
     {
-        time100mS = TimerTask(&time100mS, 5, &Timer100msTouch);            //1秒任务定时器
-        time1S = TimerTask(&time1S, 50, &Timer1sTouch);            //1秒任务定时器
-        time60S = TimerTask(&time60S, 3000, &Timer60sTouch);         //60秒任务定时器
+        time100mS = TimerTask(&time100mS, 5, &Timer100msTouch);             //100毫秒任务定时器
+        time1S = TimerTask(&time1S, 50, &Timer1sTouch);                     //1秒任务定时器
+        time10S = TimerTask(&time10S, 500, &Timer10sTouch);                 //1秒任务定时器
+        time60S = TimerTask(&time60S, 3000, &Timer60sTouch);                //60秒任务定时器
 
 
         /* 监视网络模块是否上线 */
@@ -162,24 +140,101 @@ int main(void)
             }
         }
 
-        if(YES == GetMqttStartFlg())
+        //60s 主动发送给云服务
+        if(ON == Timer60sTouch)
         {
-            //60s 主动发送给云服务
-            if(ON == Timer60sTouch)
+            warnEnFlag = YES;
+
+            if(YES == GetMqttStartFlg())
             {
-                SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT, 0 , 0, RT_NULL, RT_NULL, YES);
+                SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT, 0 , 0, RT_NULL, RT_NULL, YES, 0);
             }
+        }
 
-            //主动发送告警
-            for(u8 item = 0; item < WARN_MAX; item++)
+        //主动发送告警
+        for(u8 item = 0; item < WARN_MAX; item++)
+        {
+            if((warn[item] != GetSysSet()->warn[item]) && (YES == warnEnFlag))
             {
-                if(warn[item] != GetSysSet()->warn[item])
-                {
-                    warn[item] = GetSysSet()->warn[item];
+                warn[item] = GetSysSet()->warn[item];
 
-                    if(ON == GetSysSet()->warn[item])
+                if(ON == GetSysSet()->warn[item])
+                {
+                    //发送给云平台
+                    if(YES == GetMqttStartFlg())
                     {
-                        SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT_WARN, item, GetSysSet()->warn_value[item], RT_NULL, RT_NULL, YES);
+                        //1.如果是离线的话 ,要发送全部的离线名称, 重置标记要在以下云服务端重置
+                        if(WARN_OFFLINE == item + 1)
+                        {
+                            for(u8 index = 0; index < DEVICE_TIME4_MAX; index++)
+                            {
+                                SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT_WARN, item, GetSysSet()->warn_value[item], RT_NULL, RT_NULL, YES, index);
+                            }
+                        }
+                        else
+                        {
+                            SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT_WARN, item, GetSysSet()->warn_value[item], RT_NULL, RT_NULL, YES, 0);
+                        }
+                    }
+
+                    //发送给app
+                    if((OFF == eth->tcp.GetConnectTry()) &&
+                       (ON == eth->tcp.GetConnectStatus()))
+                    {
+                        //申请内存
+                        tcpSendBuffer = rt_malloc(SEND_ETH_BUFFSZ);
+                        if(RT_NULL != tcpSendBuffer)
+                        {
+                            //1.如果是离线的话 ,要发送全部的离线名称
+                            if(WARN_OFFLINE == item + 1)
+                            {
+                                for(u8 index = 0; index < DEVICE_TIME4_MAX; index++)
+                                {
+                                    if(YES == GetSysSet()->offline[index])
+                                    {
+                                        rt_memset(tcpSendBuffer, ' ', SEND_ETH_BUFFSZ);
+                                        if(RT_EOK == SendDataToCloud(RT_NULL, CMD_HUB_REPORT_WARN, item,
+                                                GetSysSet()->warn_value[item], (u8 *)tcpSendBuffer, &length, NO, index))
+                                        {
+                                            if(length > 0)
+                                            {
+                                                if (RT_EOK != TcpSendMsg(&tcp_sock, (u8 *)tcpSendBuffer, length))
+                                                {
+                                                    LOG_E("send tcp err 2");
+                                                    eth->tcp.SetConnectStatus(OFF);
+                                                    eth->tcp.SetConnectTry(ON);
+                                                }
+                                            }
+                                        }
+                                        GetSysSet()->offline[index] = NO;
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                rt_memset(tcpSendBuffer, ' ', SEND_ETH_BUFFSZ);
+                                if(RT_EOK == SendDataToCloud(RT_NULL, CMD_HUB_REPORT_WARN, item,
+                                        GetSysSet()->warn_value[item], (u8 *)tcpSendBuffer, &length, NO, 0))
+                                {
+                                    if(length > 0)
+                                    {
+                                        if (RT_EOK != TcpSendMsg(&tcp_sock, (u8 *)tcpSendBuffer, length))
+                                        {
+                                            LOG_E("send tcp err 2");
+                                            eth->tcp.SetConnectStatus(OFF);
+                                            eth->tcp.SetConnectTry(ON);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        //释放内存
+                        if(RT_NULL != tcpSendBuffer)
+                        {
+                            rt_free(tcpSendBuffer);
+                            tcpSendBuffer = RT_NULL;
+                        }
                     }
                 }
             }
@@ -194,8 +249,7 @@ int main(void)
             if(DAY_BY_TIME == GetSysSet()->sysPara.dayNightMode)//按时间分辨
             {
                 getRealTimeForMat(&time);
-//                LOG_D("date : %d %d %d , %d %d %d",
-//                        time.year,time.month,time.day,time.hour,time.minute,time.second);
+
                 if(((time.hour * 60 + time.minute) > GetSysSet()->sysPara.dayTime) &&
                    ((time.hour * 60 + time.minute) <= GetSysSet()->sysPara.nightTime))
                 {
@@ -225,7 +279,6 @@ int main(void)
                 }
             }
 
-//            LOG_D("sensor_size = %d, GetMonitor()->sensor_size = %d",sensor_size,GetMonitor()->sensor_size);
             if(sensor_size != GetMonitor()->sensor_size)
             {
                 sensor_size = GetMonitor()->sensor_size;
@@ -254,6 +307,48 @@ int main(void)
                 }
             }
 
+//            //Justin debug 仅仅测试
+//            LOG_D("------------------------------------------------------");
+//            for(u8 item = 0; item < 12; item++)
+//            {
+//                LOG_D("%d,%x %x %x",item,GetDeviceByType(GetMonitor(), PUMP_TYPE)->_storage[0]._time4_ctl._timer[item].on_at,
+//                        GetDeviceByType(GetMonitor(), PUMP_TYPE)->_storage[0]._time4_ctl._timer[item].duration,
+//                        GetDeviceByType(GetMonitor(), PUMP_TYPE)->_storage[0]._time4_ctl._timer[item].en);
+//            }
+        }
+
+        //10s
+        if(ON == Timer10sTouch)
+        {
+            if((OFF == eth->tcp.GetConnectTry()) &&
+               (ON == eth->tcp.GetConnectStatus()))
+            {
+                //申请内存
+                tcpSendBuffer = rt_malloc(SEND_ETH_BUFFSZ);
+                if(RT_NULL != tcpSendBuffer)
+                {
+                    rt_memset(tcpSendBuffer, ' ', SEND_ETH_BUFFSZ);
+                    if(RT_EOK == SendDataToCloud(RT_NULL, CMD_HUB_REPORT, 0 , 0, (u8 *)tcpSendBuffer, &length, NO, 0))
+                    {
+                        if(length > 0)
+                        {
+                            if (RT_EOK != TcpSendMsg(&tcp_sock, (u8 *)tcpSendBuffer, length))
+                            {
+                                LOG_E("send tcp err 3");
+                                eth->tcp.SetConnectStatus(OFF);
+                                eth->tcp.SetConnectTry(ON);
+                            }
+                        }
+                    }
+                }
+
+                //释放内存
+                if(RT_NULL != tcpSendBuffer)
+                {
+                    rt_free(tcpSendBuffer);
+                    tcpSendBuffer = RT_NULL;
+                }
+            }
         }
 
         rt_thread_mdelay(20);
@@ -266,8 +361,6 @@ int main(void)
 void ReadUniqueId(u32 *id)
 {
     *id = *(__IO u32*)(ID_ADDR1);
-//    *(id+1) = *(__IO u32*)(ID_ADDR1+4);
-//    *(id+2) = *(__IO u32*)(ID_ADDR1+8);
 }
 
 /**
@@ -327,31 +420,4 @@ u16 usModbusRTU_CRC(const u8* pucData, u32 ulLen)
     return usCRC;
 }
 
-u16 CRC16(u16 *pdata, u16 len,  u16 random_num)
-{
-    u16 crc = 0xFFFF;
-    u16 i,j=0;
-
-    random_num = (random_num*g_Key + 0xA001)&0xffff;
-
-    while(j < len)
-    {
-        crc ^= *pdata;
-        for(i = 0; i < 8; i++)
-        {
-            if(crc & 0x01)
-            {
-                crc >>= 1;
-                crc ^= random_num;
-                if(random_num != 0xA001) random_num +=g_Key;
-            }
-            else
-                crc >>= 1;
-        }
-        j++;
-        pdata++;
-    }
-
-    return crc;
-}
 

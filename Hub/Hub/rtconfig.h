@@ -102,7 +102,7 @@
 #define RT_SYSTEM_WORKQUEUE_PRIORITY 23
 #define RT_USING_SERIAL
 #define RT_SERIAL_USING_DMA
-#define RT_SERIAL_RB_BUFSZ 128
+#define RT_SERIAL_RB_BUFSZ 256
 #define RT_USING_PHY
 #define RT_USING_PIN
 #define RT_USING_RTC
@@ -316,6 +316,26 @@
 
 /* end of entertainment: terminal games and other interesting software packages */
 /* end of miscellaneous packages */
+
+/* Arduino libraries */
+
+
+/* Sensors */
+
+/* end of Sensors */
+
+/* Display */
+
+/* end of Display */
+
+/* Timing */
+
+/* end of Timing */
+
+/* Projects */
+
+/* end of Projects */
+/* end of Arduino libraries */
 /* end of RT-Thread online packages */
 
 /* samples: kernel and components samples */

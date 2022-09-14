@@ -97,6 +97,9 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/applications/Oled1309/U8g2_C_Last/port}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/applications/Oled1309/U8g2_C_Last/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/applications/Oled1309/OledBusiness}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/applications/qrcode-latest/examples}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/applications/qrcode-latest}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/applications/qrcode-latest/examples/QRCode}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/applications/st7567}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/applications/SDCard}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/applications/SDCard/BusinessLayer}&quot;"/>

@@ -13,8 +13,6 @@
 #include "InformationMonitor.h"
 #include "Module.h"
 
-extern sys_set_t *GetSysSet(void);
-
 void setTimer12DefaultPara(timer12_t *module, char *name, u16 ctrl_addr, u8 main_type, u8 storage_size)
 {
     u8 port = 0;
@@ -53,7 +51,8 @@ void setTimer12DefaultPara(timer12_t *module, char *name, u16 ctrl_addr, u8 main
 
 void setDeviceDefaultPara(device_time4_t *module, char *name, u16 ctrl_addr, u8 main_type, u8 type, u8 storage_size)
 {
-    rt_memcpy(module->name, name, MODULE_NAMESZ);                   //产品名称
+    rt_memcpy(module->name, name, MODULE_NAMESZ - 1);                   //产品名称
+    module->name[MODULE_NAMESZ - 1] = '\0';
     module->ctrl_addr = ctrl_addr;                                  //终端控制的寄存器地址
     module->main_type = main_type;                                  //主类型 如co2 温度 湿度 line timer
     module->conn_state = CON_SUCCESS;                               //连接状态
@@ -104,7 +103,7 @@ void setDeviceDefaultStora(device_time4_t *dev, u8 index, char *name, u8 func, u
         return;
     }
 
-    if(TIMER_TYPE == type)
+    if((TIMER_TYPE == type) || (PUMP_TYPE == type))
     {
         for(u8 item = 0; item < TIMER_GROUP; item++)
         {
@@ -163,7 +162,16 @@ char *GetModelByType(u8 type, char *name, u8 len)
             rt_memcpy(name, "BDS-Ti", len);
             break;
         case LINE_TYPE:
-            rt_memcpy(name, "BDS-lin1", len);
+            rt_memcpy(name, "BDS-Lin1", len);
+            break;
+        case PUMP_TYPE:
+            rt_memcpy(name, "BDS-Pump", len);
+            break;
+        case AC_4_TYPE:
+            rt_memcpy(name, "BDS-Ac4", len);
+            break;
+        case IO_12_TYPE:
+            rt_memcpy(name, "BDS-Io12", len);
             break;
         default:
             break;
@@ -194,6 +202,15 @@ char *GetFunNameByType(u8 type, char *name, u8 len)
         case HVAC_6_TYPE:
             rt_memcpy(name, "HVAC_6", len);
             break;
+        case PUMP_TYPE:
+            rt_memcpy(name, "Pump", len);
+            break;
+        case VALVE_TYPE:
+            rt_memcpy(name, "Valve", len);
+            break;
+        case TIMER_TYPE:
+            rt_memcpy(name, "timer", len);
+            break;
         default:
             break;
     }
@@ -205,7 +222,8 @@ rt_err_t setSensorDefault(sensor_t *module)
 {
     rt_err_t ret = RT_EOK;
     sen_stora_t sen_stora[4];
-    switch (module->type) {
+    switch (module->type)
+    {
         case BHS_TYPE:
             setSensorDefaultPara(module, "Bhs", 0x0010, module->type, 4);
             rt_memcpy(sen_stora[0].name, "Co2", STORAGE_NAMESZ);
@@ -221,7 +239,13 @@ rt_err_t setSensorDefault(sensor_t *module)
             sen_stora[2].func = F_S_TEMP;
             sen_stora[3].func = F_S_LIGHT;
             setSensorDefuleStora(module, sen_stora[0], sen_stora[1], sen_stora[2], sen_stora[3]);
-        break;
+            break;
+        case PAR_TYPE:
+            setSensorDefaultPara(module, "Par", 0x0000, module->type, 1);
+            rt_memcpy(module->__stora[0].name, "Par", STORAGE_NAMESZ);
+            module->__stora[0].value = 0;;
+            module->__stora[0].func = F_S_PAR;
+            break;
         default:
             ret = RT_ERROR;
             break;
@@ -273,10 +297,15 @@ rt_err_t setDeviceDefault(device_time4_t *module)
             break;
         case AC_4_TYPE:
             setDeviceDefaultPara(module, "AC_4", 0x0401, S_AC_4, module->type, 4);
-
+            for(u8 item = 0; item < module->storage_size; item++)
+            {
+                sprintf(module->_storage[item]._time4_ctl.name,"%s%d","port",item+1);
+            }
             break;
-        case AC_12_TYPE:
-            //Justin debug需要再次询问一下终端具体端口的用途
+        case PUMP_TYPE:
+            setDeviceDefaultPara(module, "Pump", 0x0040, S_PUMP, module->type, 1);
+            addr = module->addr;
+            setDeviceDefaultStora(module, 0 , "Pump", F_PUMP, module->type, addr , MANUAL_NO_HAND, 0);
             break;
         default:
             ret = RT_ERROR;
@@ -298,10 +327,19 @@ rt_err_t setLineDefault(line_t *line)
 
 rt_err_t setTimer12Default(timer12_t *module)
 {
-    rt_err_t ret = RT_EOK;
+    rt_err_t    ret         = RT_EOK;
+    u8          index       = 0;
+    char        name[STORAGE_NAMESZ];
+
     switch (module->type) {
-        case AC_12_TYPE:
-//            setTimer12DefaultPara(module, "Timer", 0x0040, MANUAL_NO_HAND, 0, S_TIMER, 12);
+        case IO_12_TYPE:
+            setTimer12DefaultPara(module, "IO_12", 0x0401, S_IO_12, 12);
+            for(index = 0; index < module->storage_size; index++)
+            {
+                module->port_type[index] = VALVE_TYPE;//目前暂定都是阀
+                sprintf(name,"%s%d","Valve",index+1);
+                rt_memcpy(module->_time12_ctl[index].name, name, STORAGE_NAMESZ);
+            }
             break;
 
         default:
@@ -315,20 +353,27 @@ rt_err_t setTimer12Default(timer12_t *module)
 /* 获取分配的地址 */
 
 //0x10~0x1F预留
-u8 getAllocateAddress(type_monitor_t *monitor)
+u8 getAllocateAddress(type_monitor_t *monitor, u8 type)
 {
     u16 i = 0;
 
-    for(i = 2; i < ALLOCATE_ADDRESS_SIZE; i++)
+    if(PAR_TYPE == type)
     {
-        if((monitor->allocateStr.address[i] != i) &&
-            (i != 0xFA) && (i != 0xFE) && ((i < 0x10) || (i > 0x1F)))//0xFA 是注册的代码 0xFE是PHEC通用
-        {
-            monitor->allocateStr.address[i] = i;
-            return i;
-        }
+        return 0xEE;
     }
-    LOG_E("the address full");
+    else
+    {
+        for(i = 2; i < ALLOCATE_ADDRESS_SIZE; i++)
+        {
+            if((monitor->allocateStr.address[i] != i) &&
+                (i != 0xFA) && (i != 0xFE) && ((i < 0x10) || (i > 0x1F)))//0xFA 是注册的代码 0xFE是PHEC通用
+            {
+                monitor->allocateStr.address[i] = i;
+                return i;
+            }
+        }
+        LOG_E("the address full");
+    }
     return 0;
 }
 
@@ -337,6 +382,7 @@ u8 getSOrD(u8 type)
     u8 ret = 0;
     switch (type) {
         case BHS_TYPE:
+        case PAR_TYPE:
             ret = SENSOR_TYPE;
             break;
         case CO2_TYPE:
@@ -347,12 +393,18 @@ u8 getSOrD(u8 type)
         case HVAC_6_TYPE:
         case TIMER_TYPE:
         case AC_4_TYPE:
+        case PUMP_TYPE:
+        case VALVE_TYPE:
             ret = DEVICE_TYPE;
             break;
         case LINE_TYPE:
             ret = LINE1OR2_TYPE;
             break;
+        case IO_12_TYPE:
+            ret = TIMER12_TYPE;
+            break;
         default:
+            LOG_E("type %x is not support",type);
             break;
     }
 
@@ -389,7 +441,7 @@ void AnlyzeDeviceRegister(type_monitor_t *monitor, rt_device_t serial, u8 *data,
     {
         if(NO == FindSensor(monitor, sensor, &no))
         {
-            sensor.addr = getAllocateAddress(monitor);
+            sensor.addr = getAllocateAddress(monitor, sensor.type);
             if(RT_EOK == setSensorDefault(&sensor))
             {
                 InsertSensorToTable(monitor, sensor, no);
@@ -401,16 +453,20 @@ void AnlyzeDeviceRegister(type_monitor_t *monitor, rt_device_t serial, u8 *data,
         }
         else
         {
-            LOG_D("sensor have exist");
+            LOG_D("sensor name %s have exist",GetSensorByType(monitor, sensor.type)->name);
         }
         /* 发送注册回复 */
-        senRegisterAnswer(monitor, serial, sensor.uuid);
+        //特殊处理 如果是PAR 不用回复
+        if(PAR_TYPE != sensor.type)
+        {
+            senRegisterAnswer(monitor, serial, sensor.uuid);
+        }
     }
     else if(DEVICE_TYPE == s_or_d)
     {
         if(NO == FindDevice(monitor, device, &no))
         {
-            device.addr = getAllocateAddress(monitor);
+            device.addr = getAllocateAddress(monitor, device.type);
             if(RT_EOK == setDeviceDefault(&device))
             {
                 InsertDeviceToTable(monitor, device, no);
@@ -429,9 +485,9 @@ void AnlyzeDeviceRegister(type_monitor_t *monitor, rt_device_t serial, u8 *data,
     }
     else if(TIMER12_TYPE == s_or_d)
     {
-        if(NO == FindLine(monitor, timer, &no))
+        if(NO == FindTimer(monitor, timer, &no))
         {
-            timer.addr = getAllocateAddress(monitor);
+            timer.addr = getAllocateAddress(monitor, timer.type);
             if(RT_EOK == setTimer12Default(&timer))
             {
                 InsertTimer12ToTable(monitor, timer, no);
@@ -452,7 +508,7 @@ void AnlyzeDeviceRegister(type_monitor_t *monitor, rt_device_t serial, u8 *data,
     {
         if(NO == FindLine(monitor, line, &no))
         {
-            line.addr = getAllocateAddress(monitor);
+            line.addr = getAllocateAddress(monitor, line.type);
             setLineDefault(&line);
             InsertLineToTable(monitor, line, no);
         }
@@ -635,5 +691,6 @@ void AnlyzeStorage(type_monitor_t *monitor, u8 addr, u8 read, u8 *data, u8 lengt
                 }
             }
         }
+
     }
 }

@@ -12,6 +12,8 @@
 #include "Oled1309.h"
 
 type_button_t buttonList[BUTTON_MAX];
+__attribute__((section(".ccmbss"))) u8 button_task[1024];
+__attribute__((section(".ccmbss"))) struct rt_thread button_thread;
 
 static void Buttonprogram(u8 period)
 {
@@ -90,8 +92,14 @@ static void ButtonAdd(rt_base_t pin, u8 on_set, Call_Back call_back)
 
 static void ButtonRegister(void)
 {
+#if (NEW_OLED == 0)
     ButtonAdd(BUTTON_MENU, KEY_ON, MenuBtnCallBack);
     ButtonAdd(BUTTON_ENTER, KEY_ON, EnterBtnCallBack);
+#else
+    ButtonAdd(BUTTON_ENTER, KEY_ON, EnterBtnCallBack);
+    ButtonAdd(BUTTON_UP, KEY_ON, UpBtnCallBack);
+    ButtonAdd(BUTTON_DOWN, KEY_ON, DowmBtnCallBack);
+#endif
 }
 
 static void ButtonTaskEntry(void* parameter)
@@ -116,18 +124,26 @@ static void ButtonTaskEntry(void* parameter)
  */
 void ButtonTaskInit(void)
 {
-    rt_err_t threadStart = RT_NULL;
-
-    /* 创建串口 线程 */
-    rt_thread_t thread = rt_thread_create("button task", ButtonTaskEntry, RT_NULL, 1024, BUTTON_PRIORITY, 10);
-
-    /* 如果线程创建成功则开始启动线程，否则提示线程创建失败 */
-    if (RT_NULL != thread) {
-        threadStart = rt_thread_startup(thread);
-        if (RT_EOK != threadStart) {
-            LOG_E("button task start failed");
-        }
-    } else {
-        LOG_E("button task create failed");
+//    rt_err_t threadStart = RT_NULL;
+//
+//    /* 创建串口 线程 */
+//    rt_thread_t thread = rt_thread_create("button task", ButtonTaskEntry, RT_NULL, 1024, BUTTON_PRIORITY, 10);
+//
+//    /* 如果线程创建成功则开始启动线程，否则提示线程创建失败 */
+//    if (RT_NULL != thread) {
+//        threadStart = rt_thread_startup(thread);
+//        if (RT_EOK != threadStart) {
+//            LOG_E("button task start failed");
+//        }
+//    } else {
+//        LOG_E("button task create failed");
+//    }
+    if(RT_EOK != rt_thread_init(&button_thread, BUTTON_TASK, ButtonTaskEntry, RT_NULL, button_task, sizeof(button_task), BUTTON_PRIORITY, 10))
+    {
+        LOG_E("uart thread fail");
+    }
+    else
+    {
+        rt_thread_startup(&button_thread);
     }
 }

@@ -22,16 +22,22 @@
 #include "Recipe.h"
 
 __attribute__((section(".ccmbss"))) type_monitor_t monitor;
+__attribute__((section(".ccmbss"))) u8 uart_task[1024 * 5];
+__attribute__((section(".ccmbss"))) struct rt_thread uart_thread;
+
 struct rx_msg uart1_msg;                      //接收串口数据以及相关消息
 struct rx_msg uart2_msg;                      //接收串口数据以及相关消息
 struct rx_msg uart3_msg;                      //接收串口数据以及相关消息
+
+rt_device_t     uart2_serial;
 
 extern  struct sdCardState      sdCard;
 extern  type_sys_time           sys_time;
 extern  sys_set_t               sys_set;
 
-extern sys_set_t *GetSysSet(void);
-extern void warnProgram(type_monitor_t *monitor, sys_set_t *set);
+
+extern void warnProgram(type_monitor_t *, sys_set_t *);
+extern void pumpProgram(type_monitor_t *, sys_tank_t *);
 
 /**
  * @brief  : 接收回调函数
@@ -43,6 +49,8 @@ extern void warnProgram(type_monitor_t *monitor, sys_set_t *set);
 static rt_err_t Uart1_input(rt_device_t dev, rt_size_t size)
 {
     u16 crc16 = 0x0000;
+
+//    LOG_D("recv data");//Justin debug 仅仅测试
 
     /* 必须要等待从sd卡读取到的monitor 才能执行以下功能 */
     if (NO == sdCard.readInfo)
@@ -138,17 +146,21 @@ static rt_err_t Uart3_input(rt_device_t dev, rt_size_t size)
  */
 void SensorUart2TaskEntry(void* parameter)
 {
+//#if (HUB_SELECT == HUB_ENVIRENMENT)
+    u8                          data[13];
+//#endif
     static      u8              Timer1sTouch    = OFF;
     static      u8              Timer5sTouch    = OFF;
     static      u16             time1S = 0;
     static      u16             time5S = 0;
     static      rt_device_t     uart1_serial;
-    static      rt_device_t     uart2_serial;
+//    static      rt_device_t     uart2_serial;
     static      rt_device_t     uart3_serial;
     static      u8              device_start    = 0;
     static      u8              sensor_start    = 0;
     static      u8              line_start      = 0;
     static      type_sys_time   sys_time_pre;
+    static      u8              specailFlag     = 0;
 
     rt_memset((u8 *)&sys_time_pre, 0, sizeof(type_sys_time));
     initConnectState();
@@ -165,6 +177,9 @@ void SensorUart2TaskEntry(void* parameter)
     uart3_serial = rt_device_find(DEVICE_UART3);
     rt_device_open(uart3_serial, RT_DEVICE_FLAG_DMA_RX);
     rt_device_set_rx_indicate(uart3_serial, Uart3_input);
+
+    initOfflineFlag();      //初始化离线报警flag
+
     while (1)
     {
         time1S = TimerTask(&time1S, 1000/UART_PERIOD, &Timer1sTouch);                       //1s定时任务
@@ -172,6 +187,28 @@ void SensorUart2TaskEntry(void* parameter)
 
         if(YES == sdCard.readInfo)                                  //必须要等待从sd卡读取到的monitor 才能执行以下功能
         {
+            if(0 == specailFlag)
+            {
+//#if (HUB_SELECT == HUB_ENVIRENMENT)
+                //特殊设备处理
+                data[0] = 0xFA;
+                data[1] = 0x00;
+                data[2] = 0x00;
+                data[3] = 0x00;
+                data[4] = 0x00;
+                data[5] = 0x00;
+                data[6] = 6;
+                data[7] = 0x01;
+                data[8] = PAR_TYPE;
+                data[9] = 0x00;
+                data[10] = 0x00;
+                data[11] = 0x00;
+                data[12] = 0x00;
+                AnlyzeDeviceRegister(&monitor, uart1_serial ,data, 13);//注册par
+//#endif
+                specailFlag = 1;
+            }
+
             /* 50ms 事件 */
             {
                 if(ON == uart1_msg.messageFlag)
@@ -239,24 +276,26 @@ void SensorUart2TaskEntry(void* parameter)
                 line_start = 1;
 
                 MonitorModuleConnect(GetMonitor());
+#if(HUB_SELECT == HUB_ENVIRENMENT)      //环控版才有以下功能
                 tempProgram(GetMonitor());
                 co2Program(GetMonitor(), 1000);
                 humiProgram(GetMonitor());
+                lineProgram_new(GetMonitor(), 0, 1000);
+                lineProgram_new(GetMonitor(), 1, 1000);             //line2
+#endif
                 timmerProgram(GetMonitor());
                 findDeviceLocation(GetMonitor(), &sys_set.cloudCmd, uart2_serial);
                 findLineLocation(GetMonitor(), &sys_set.cloudCmd, uart3_serial);
-                lineProgram_new(GetMonitor(), 0, 1000);
-                lineProgram_new(GetMonitor(), 1, 1000);             //line2
                 warnProgram(GetMonitor(), GetSysSet());             //监听告警信息
                 pumpProgram(GetMonitor(), GetSysTank());            //水泵的工作
+                autoBindPumpTotank(GetMonitor(), GetSysTank());
 
+                //检测到删除设备功能
                 if(0 != sys_set.cloudCmd.delete_id.value)
                 {
                     deleteModule(GetMonitor(), sys_set.cloudCmd.delete_id.value);
                     sys_set.cloudCmd.delete_id.value = 0;
                 }
-
-//                cal();
             }
 
             /* 5s 事件 */
@@ -276,19 +315,13 @@ void SensorUart2TaskEntry(void* parameter)
  */
 void SensorUart2TaskInit(void)
 {
-    rt_err_t threadStart = RT_NULL;
-
-    /* 创建串口 线程 */
-    rt_thread_t thread = rt_thread_create("sensor task", SensorUart2TaskEntry, RT_NULL, 1024*4, UART2_PRIORITY, 10);
-
-    /* 如果线程创建成功则开始启动线程，否则提示线程创建失败 */
-    if (RT_NULL != thread) {
-        threadStart = rt_thread_startup(thread);
-        if (RT_EOK != threadStart) {
-            LOG_E("sensor task start failed");
-        }
-    } else {
-        LOG_E("sensor task create failed");
+    if(RT_EOK != rt_thread_init(&uart_thread, UART_TASK, SensorUart2TaskEntry, RT_NULL, uart_task, sizeof(uart_task), UART_PRIORITY, 10))
+    {
+        LOG_E("uart thread fail");
+    }
+    else
+    {
+        rt_thread_startup(&uart_thread);
     }
 }
 
