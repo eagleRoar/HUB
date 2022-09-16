@@ -344,8 +344,7 @@ void CmdSetPortSet(char *data, cloudcmd_t *cmd)
     cJSON           *temp       = RT_NULL;
     cJSON           *list       = RT_NULL;
     cJSON           *list_item  = RT_NULL;
-    device_time4_t  *device     = RT_NULL;
-    timer12_t       *timer12    = RT_NULL;
+    device_t        *device     = RT_NULL;
     line_t          *line       = RT_NULL;
     u8              fatherFlg   = 0;            //判断是否是父模块 区别端口
 
@@ -364,33 +363,36 @@ void CmdSetPortSet(char *data, cloudcmd_t *cmd)
         {
             addr = cmd->get_port_id.value;
             port = 0;
-            fatherFlg = 1;
+            //fatherFlg = 1;
         }
 
         device = GetDeviceByAddr(GetMonitor(), addr);
-        timer12 = GetTimerByAddr(GetMonitor(), addr);
         line = GetLineByAddr(GetMonitor(), addr);
 
         if(device != RT_NULL)
         {
             LOG_I("find device name %s",device->name);
-            GetValueByU8(temp, "manual", &device->_manual[port].manual);
-            GetValueByU16(temp, "manualOnTime", &device->_manual[port].manual_on_time);
-            if((COOL_TYPE == device->type) || (HEAT_TYPE == device->type) || (DEHUMI_TYPE == device->type))
+            GetValueByU8(temp, "manual", &device->port[port].manual.manual);
+            GetValueByU16(temp, "manualOnTime", &device->port[port].manual.manual_on_time);
+            if((COOL_TYPE == device->port[port].type) ||
+               (HEAT_TYPE == device->port[port].type) ||
+               (DEHUMI_TYPE == device->port[port].type))
             {
-                GetValueByU8(temp, "hotStartDelay", &device->hotStartDelay);
+                GetValueByU8(temp, "hotStartDelay", &device->port[port].hotStartDelay);
             }
-            if(HVAC_6_TYPE == device->type)
+            if(HVAC_6_TYPE == device->port[port].type)
             {
                 GetValueByU8(temp, "manualOnMode", &device->_hvac.manualOnMode);
                 GetValueByU8(temp, "fanNormallyOpen", &device->_hvac.fanNormallyOpen);
                 GetValueByU8(temp, "hvacMode", &device->_hvac.hvacMode);
             }
 
-            if((TIMER_TYPE == device->type) || (PUMP_TYPE == device->type) || ((VALVE_TYPE == device->type)))
+            if((TIMER_TYPE == device->port[port].type) ||
+               (PUMP_TYPE == device->port[port].type) ||
+               ((VALVE_TYPE == device->port[port].type)))
             {
-                GetValueByU8(temp, "mode", &device->mode[0]);
-                if(BY_SCHEDULE == device->mode[0])
+                GetValueByU8(temp, "mode", &device->port[port].mode);
+                if(BY_SCHEDULE == device->port[port].mode)
                 {
                     list = cJSON_GetObjectItem(temp, "list");
 
@@ -402,7 +404,7 @@ void CmdSetPortSet(char *data, cloudcmd_t *cmd)
                             list_num = TIMER_GROUP;
                         }
 
-                        rt_memset((u8 *)&device->_storage[0]._time4_ctl, 0, sizeof(type_timmer_timmer));
+                        rt_memset((u8 *)&device->port[port].timer, 0, sizeof(type_timmer_t));
 
                         for(int index = 0; index < list_num; index++)
                         {
@@ -410,9 +412,9 @@ void CmdSetPortSet(char *data, cloudcmd_t *cmd)
 
                             if(RT_NULL != list_item)
                             {
-                                GetValueByU16(list_item, "onAt", &device->_storage[0]._time4_ctl._timer[index].on_at);
-                                GetValueByU16(list_item, "duration", &device->_storage[0]._time4_ctl._timer[index].duration);
-                                GetValueByU8(list_item, "en", &device->_storage[0]._time4_ctl._timer[index].en);
+                                GetValueByU16(list_item, "onAt", &device->port[port].timer[index].on_at);
+                                GetValueByU16(list_item, "duration", &device->port[port].timer[index].duration);
+                                GetValueByU8(list_item, "en", &device->port[port].timer[index].en);
                             }
                         }
                     }
@@ -421,95 +423,14 @@ void CmdSetPortSet(char *data, cloudcmd_t *cmd)
                         LOG_E("CmdSetPortSet apply memory for list fail");
                     }
                 }
-                else if(BY_RECYCLE == device->mode[0])
+                else if(BY_RECYCLE == device->port[port].mode)
                 {
-                    GetValueByU16(temp, "startAt", &device->_recycle[port].startAt);
-                    GetValueByU16(temp, "duration", &device->_recycle[port].duration);
-                    GetValueByU16(temp, "pauseTime", &device->_recycle[port].pauseTime);
-                    GetValueByU8(temp, "times", &device->_recycle[port].times);
+                    GetValueByU16(temp, "startAt", &device->port[port].cycle.startAt);
+                    GetValueByU16(temp, "duration", &device->port[port].cycle.duration);
+                    GetValueByU16(temp, "pauseTime", &device->port[port].cycle.pauseTime);
+                    GetValueByU8(temp, "times", &device->port[port].cycle.times);
                 }
             }
-            else if(AC_4_TYPE == device->type)
-            {
-                for(u8 stor = 0; stor < device->storage_size; stor++)
-                {
-                    if((PUMP_TYPE == device->device_timer_type[stor]) ||
-                       (VALVE_TYPE == device->device_timer_type[stor]) ||
-                       (TIMER_TYPE == device->device_timer_type[stor]))
-                    {
-                        GetValueByU8(temp, "mode", &device->mode[stor]);
-                        if(BY_SCHEDULE == device->mode[stor])
-                        {
-                            list = cJSON_GetObjectItem(temp, "list");
-
-                            if(RT_NULL != list)
-                            {
-                                list_num = cJSON_GetArraySize(list);
-                                if(list_num > TIMER_GROUP)
-                                {
-                                    list_num = TIMER_GROUP;
-                                }
-
-                                rt_memset((u8 *)&device->_storage[stor]._time4_ctl, 0, sizeof(type_timmer_timmer));
-
-                                for(int index = 0; index < list_num; index++)
-                                {
-                                    list_item = cJSON_GetArrayItem(list, index);
-
-                                    if(RT_NULL != list_item)
-                                    {
-                                        GetValueByU16(list_item, "onAt", &device->_storage[stor]._time4_ctl._timer[index].on_at);
-                                        GetValueByU16(list_item, "duration", &device->_storage[stor]._time4_ctl._timer[index].duration);
-                                        GetValueByU8(list_item, "en", &device->_storage[stor]._time4_ctl._timer[index].en);
-                                    }
-                                }
-                            }
-                            else
-                            {
-                                LOG_E("CmdSetPortSet apply memory for list fail");
-                            }
-                        }
-                        else if(BY_RECYCLE == device->mode[stor])
-                        {
-                            GetValueByU16(temp, "startAt", &device->_recycle[port].startAt);
-                            GetValueByU16(temp, "duration", &device->_recycle[port].duration);
-                            GetValueByU16(temp, "pauseTime", &device->_recycle[port].pauseTime);
-                            GetValueByU8(temp, "times", &device->_recycle[port].times);
-                        }
-                    }
-                }
-
-            }
-        }
-        else if(timer12 != RT_NULL)
-        {
-            //LOG_I("find timer12 name %s",timer12->name);
-            GetValueByU8(temp, "manual", &timer12->_manual[port].manual);
-            GetValueByU16(temp, "manualOnTime", &timer12->_manual[port].manual_on_time);
-            GetValueByU8(temp, "mode", &timer12->mode[port]);
-
-            list = cJSON_GetObjectItem(temp, "list");
-
-            if(RT_NULL != list)
-            {
-                list_num = cJSON_GetArraySize(list);
-
-                for(int index = 0; index < list_num; index++)
-                {
-                    list_item = cJSON_GetArrayItem(list, index);
-
-                    if(RT_NULL != list_item)
-                    {
-                        GetValueByU16(temp, "onAt", &timer12->_time12_ctl[port]._timer[index].on_at);
-                        GetValueByU16(temp, "duration", &timer12->_time12_ctl[port]._timer[index].duration);
-                        GetValueByU8(temp, "en", &timer12->_time12_ctl[port]._timer[index].en);
-                    }
-                }
-            }
-            GetValueByU16(temp, "startAt", &timer12->_recycle[port].startAt);
-            GetValueByU16(temp, "duration", &timer12->_recycle[port].duration);
-            GetValueByU16(temp, "pauseTime", &timer12->_recycle[port].pauseTime);
-            GetValueByU8(temp, "times", &timer12->_recycle[port].times);
         }
         else if(line != RT_NULL)
         {
@@ -1435,9 +1356,8 @@ void CmdSetPortName(char *data, cloudcmd_t *cmd)
     u8              port                = 0;
     char            name[MODULE_NAMESZ] = "";
     cJSON           *temp               = RT_NULL;
-    device_time4_t  *device             = RT_NULL;
+    device_t        *device             = RT_NULL;
     line_t          *line               = RT_NULL;
-    timer12_t       *timer12            = RT_NULL;
     u8              fatherFlg           = 0;
 
     temp = cJSON_Parse(data);
@@ -1462,81 +1382,22 @@ void CmdSetPortName(char *data, cloudcmd_t *cmd)
 
         device = GetDeviceByAddr(GetMonitor(), addr);
         line = GetLineByAddr(GetMonitor(), addr);
-        timer12 = GetTimerByAddr(GetMonitor(), addr);
 
-        if(0 == port)
+        if(RT_NULL != device)
         {
-            if(RT_NULL != device)
+            //如果是父模块
+            if(1 == fatherFlg)
             {
-                if(0 == fatherFlg)
-                {
-                    if(AC_4_TYPE == device->type)
-                    {
-                        if((PUMP_TYPE == device->device_timer_type[port]) ||
-                           (VALVE_TYPE == device->device_timer_type[port]))
-                        {
-                            rt_memcpy(device->_storage[port]._time4_ctl.name, name, STORAGE_NAMESZ);
-                        }
-                        else
-                        {
-                            rt_memcpy(device->_storage[port]._port.name, name, STORAGE_NAMESZ);
-                        }
-                    }
-                    else
-                    {
-                        rt_memcpy(device->_storage[port]._port.name, name, STORAGE_NAMESZ);
-                    }
-                }
-                else
-                {
-                    rt_memcpy(device->name, name, MODULE_NAMESZ);
-                }
+                rt_memcpy(device->name, name, MODULE_NAMESZ);
             }
-            else if(RT_NULL != line)
+            else
             {
-                rt_memcpy(line->name, name, MODULE_NAMESZ);
-            }
-            else if(RT_NULL != timer12)
-            {
-                if(0 == fatherFlg)
-                {
-                    rt_memcpy(timer12->_time12_ctl[port].name, name, STORAGE_NAMESZ);
-                }
-                else
-                {
-                    rt_memcpy(timer12->name, name, MODULE_NAMESZ);
-                }
+                rt_memcpy(device->port[port].name, name, STORAGE_NAMESZ);
             }
         }
-        else
+        else if(RT_NULL != line)
         {
-            if(RT_NULL != device)
-            {
-                if(AC_4_TYPE == device->type)
-                {
-                    if((PUMP_TYPE == device->device_timer_type[port]) ||
-                       (VALVE_TYPE == device->device_timer_type[port]))
-                    {
-                        rt_memcpy(device->_storage[port]._time4_ctl.name, name, STORAGE_NAMESZ);
-                    }
-                    else
-                    {
-                        rt_memcpy(device->_storage[port]._port.name, name, STORAGE_NAMESZ);
-                    }
-                }
-                else
-                {
-                    rt_memcpy(device->_storage[port]._port.name, name, STORAGE_NAMESZ);
-                }
-            }
-            else if(RT_NULL != line)
-            {
-                rt_memcpy(line->name, name, STORAGE_NAMESZ);
-            }
-            else if(RT_NULL != timer12)
-            {
-                rt_memcpy(timer12->_time12_ctl[port].name, name, STORAGE_NAMESZ);
-            }
+            rt_memcpy(line->name, name, STORAGE_NAMESZ);
         }
 
         cJSON_Delete(temp);
@@ -1768,7 +1629,7 @@ char *SendHubReportWarn(char *cmd, sys_set_t *set, u8 warn_no, u16 value, u8 off
         cJSON_AddNumberToObject(json, "warning", warn);
         if(WARN_OFFLINE == warn)
         {
-            if(offline_no < DEVICE_TIME4_MAX)
+            if(offline_no < DEVICE_MAX)
             {
                 cJSON_AddStringToObject(json, "name", GetMonitor()->device[offline_no].name);
             }
@@ -3116,6 +2977,7 @@ char *ReplySetDeviceType(char *cmd, cloudcmd_t cloud)
     cJSON           *json       = cJSON_CreateObject();
     u8              addr        = 0;
     u8              port        = 0;
+    u8              fatherFlg           = 0;
 
     if(RT_NULL != json)
     {
@@ -3132,9 +2994,18 @@ char *ReplySetDeviceType(char *cmd, cloudcmd_t cloud)
         {
             addr = cloud.chg_dev_id;
             port = 0;
+            fatherFlg = 1;
         }
 
-        cJSON_AddNumberToObject(json, "type", GetDeviceByAddr(GetMonitor(), addr)->device_timer_type[port]);
+        //如果是父模块
+        if(1 == fatherFlg)
+        {
+            cJSON_AddNumberToObject(json, "type", GetDeviceByAddr(GetMonitor(), addr)->type);
+        }
+        else
+        {
+            cJSON_AddNumberToObject(json, "type", GetDeviceByAddr(GetMonitor(), addr)->port[port].type);
+        }
 
         cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
         str = cJSON_PrintUnformatted(json);
@@ -3269,9 +3140,8 @@ char *ReplySetPortName(char *cmd, cloudcmd_t cloud)
     u8              port        = 0;
     char            *str        = RT_NULL;
     cJSON           *json       = cJSON_CreateObject();
-    device_time4_t  *device     = RT_NULL;
+    device_t        *device     = RT_NULL;
     line_t          *line       = RT_NULL;
-    timer12_t       *timer12    = RT_NULL;
     u8              fatherFlg   = 0;
     if(RT_NULL != json)
     {
@@ -3293,67 +3163,22 @@ char *ReplySetPortName(char *cmd, cloudcmd_t cloud)
 
         device = GetDeviceByAddr(GetMonitor(), addr);
         line = GetLineByAddr(GetMonitor(), addr);
-        timer12 = GetTimerByAddr(GetMonitor(), addr);
 
-        if(0 == port)
+        if(RT_NULL != device)
         {
-            if(RT_NULL != device)
+            //父模块
+            if(1 == fatherFlg)
             {
-                if(1 == fatherFlg)//父模块
-                {
-                    cJSON_AddStringToObject(json, "name", device->name);
-                }
-                else
-                {
-                    if(AC_4_TYPE == device->device_timer_type[port] ||
-                       IO_12_TYPE == device->device_timer_type[port])
-                    {
-                        cJSON_AddStringToObject(json, "name", device->_storage[port]._time4_ctl.name);
-                    }
-                    else
-                    {
-                        cJSON_AddStringToObject(json, "name", device->_storage[port]._port.name);
-                    }
-                }
+                cJSON_AddStringToObject(json, "name", device->name);
             }
-            else if(RT_NULL != line)
+            else
             {
-                cJSON_AddStringToObject(json, "name", line->name);
-            }
-            else if(RT_NULL != timer12)
-            {
-                if(1 == fatherFlg)//父模块
-                {
-                    cJSON_AddStringToObject(json, "name", timer12->name);
-                }
-                else
-                {
-                    cJSON_AddStringToObject(json, "name", timer12->_time12_ctl[port].name);
-                }
+                cJSON_AddStringToObject(json, "name", device->port[port].name);
             }
         }
-        else if(port < 4)
+        else if(RT_NULL != line)
         {
-            if(RT_NULL != device)
-            {
-                if(AC_4_TYPE == device->device_timer_type[port] ||
-                   IO_12_TYPE == device->device_timer_type[port])
-                {
-                    cJSON_AddStringToObject(json, "name", device->_storage[port]._time4_ctl.name);
-                }
-                else
-                {
-                    cJSON_AddStringToObject(json, "name", device->_storage[port]._port.name);
-                }
-            }
-            else if(RT_NULL != line)
-            {
-                cJSON_AddStringToObject(json, "name", line->name);
-            }
-            else if(RT_NULL != timer12)
-            {
-                cJSON_AddStringToObject(json, "name", timer12->_time12_ctl[port].name);
-            }
+            cJSON_AddStringToObject(json, "name", line->name);
         }
 
         cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
@@ -3841,16 +3666,15 @@ char *ReplyGetSchedule(char *cmd, cloudcmd_t cloud)
 
 char *ReplySetPortSet(char *cmd, cloudcmd_t cloud)
 {
-    u8      addr        = 0;
-    u8      port        = 0;
-    u8      group       = 0;
-    u8      valid_gro   = 0xFF;
-    char    *str        = RT_NULL;
-    cJSON   *json       = cJSON_CreateObject();
-    cJSON   *list       = RT_NULL;
-    cJSON   *item       = RT_NULL;
-    device_time4_t  *device     = RT_NULL;
-    timer12_t       *timer12    = RT_NULL;
+    u8              addr        = 0;
+    u8              port        = 0;
+    u8              group       = 0;
+    u8              valid_gro   = 0xFF;
+    char            *str        = RT_NULL;
+    cJSON           *json       = cJSON_CreateObject();
+    cJSON           *list       = RT_NULL;
+    cJSON           *item       = RT_NULL;
+    device_t       *device     = RT_NULL;
 
     if(RT_NULL != json)
     {
@@ -3870,50 +3694,51 @@ char *ReplySetPortSet(char *cmd, cloudcmd_t cloud)
         }
 
         device = GetDeviceByAddr(GetMonitor(), addr);
-        timer12 = GetTimerByAddr(GetMonitor(), addr);
 
         if(RT_NULL != device)
         {
-            cJSON_AddNumberToObject(json, "manual", device->_manual[port].manual);
-            cJSON_AddNumberToObject(json, "manualOnTime", device->_manual[port].manual_on_time);
+            cJSON_AddNumberToObject(json, "manual", device->port[port].manual.manual);
+            cJSON_AddNumberToObject(json, "manualOnTime", device->port[port].manual.manual_on_time);
 
-            if((COOL_TYPE == device->type) || (HEAT_TYPE == device->type) || (DEHUMI_TYPE == device->type))
+            if((COOL_TYPE == device->port[port].type) ||
+               (HEAT_TYPE == device->port[port].type) ||
+               (DEHUMI_TYPE == device->port[port].type))
             {
-                cJSON_AddNumberToObject(json, "hotStartDelay", device->hotStartDelay);
+                cJSON_AddNumberToObject(json, "hotStartDelay", device->port[port].hotStartDelay);
             }
 
-            if(HVAC_6_TYPE == device->type)
+            if(HVAC_6_TYPE == device->port[port].type)
             {
                 cJSON_AddNumberToObject(json, "manualOnMode", device->_hvac.manualOnMode);
                 cJSON_AddNumberToObject(json, "fanNormallyOpen", device->_hvac.fanNormallyOpen);
                 cJSON_AddNumberToObject(json, "hvacMode", device->_hvac.hvacMode);
             }
 
-            if(TIMER_TYPE == device->type)
+            if(TIMER_TYPE == device->port[port].type)
             {
                 list = cJSON_CreateArray();
 
                 if(RT_NULL != list)
                 {
-                    for(group = 0; group < TIMER12_PORT_MAX; group++)
+                    for(group = 0; group < TIMER_GROUP; group++)
                     {
-                        if(!((0 == device->_storage[port]._time4_ctl._timer[group].on_at) &&
-                            (0 == device->_storage[port]._time4_ctl._timer[group].duration)))
+                        if(!((0 == device->port[port].timer[group].on_at) &&
+                            (0 == device->port[port].timer[group].duration)))
                         {
                             valid_gro = group;
                         }
                     }
 
-                    if(valid_gro <= TIMER12_PORT_MAX)
+                    if(valid_gro <= TIMER_GROUP)
                     {
                         for(group = 0; group <= valid_gro; group++)
                         {
                             item = cJSON_CreateObject();
                             if(RT_NULL != item)
                             {
-                                cJSON_AddNumberToObject(item, "onAt", device->_storage[port]._time4_ctl._timer[group].on_at);
-                                cJSON_AddNumberToObject(item, "duration", device->_storage[port]._time4_ctl._timer[group].duration);
-                                cJSON_AddNumberToObject(item, "en", device->_storage[port]._time4_ctl._timer[group].en);
+                                cJSON_AddNumberToObject(item, "onAt", device->port[port].timer[group].on_at);
+                                cJSON_AddNumberToObject(item, "duration", device->port[port].timer[group].duration);
+                                cJSON_AddNumberToObject(item, "en", device->port[port].timer[group].en);
 
                                 cJSON_AddItemToArray(list, item);
                             }
@@ -3927,44 +3752,10 @@ char *ReplySetPortSet(char *cmd, cloudcmd_t cloud)
                     LOG_E("ReplySetPortSet apply list err");
                 }
 
-                cJSON_AddNumberToObject(json, "startAt", device->_recycle[port].startAt);
-                cJSON_AddNumberToObject(json, "duration", device->_recycle[port].duration);
-                cJSON_AddNumberToObject(json, "pauseTime", device->_recycle[port].pauseTime);
+                cJSON_AddNumberToObject(json, "startAt", device->port[port].cycle.startAt);
+                cJSON_AddNumberToObject(json, "duration", device->port[port].cycle.duration);
+                cJSON_AddNumberToObject(json, "pauseTime", device->port[port].cycle.pauseTime);
             }
-        }
-        else if(RT_NULL != timer12)
-        {
-            cJSON_AddNumberToObject(json, "manual", timer12->_manual[port].manual);
-            cJSON_AddNumberToObject(json, "manualOnTime", timer12->_manual[port].manual_on_time);
-
-            cJSON_AddNumberToObject(json, "mode", timer12->mode[port]);
-
-            list = cJSON_CreateArray();
-            if(RT_NULL != list)
-            {
-                for(int group = 0; group < TIMER_GROUP; group++)
-                {
-                    if(!((timer12->_time12_ctl[port]._timer[group].on_at == 0) &&
-                       (timer12->_time12_ctl[port]._timer[group].duration == 0)))
-                    {
-                        item = cJSON_CreateObject();
-                        if(RT_NULL != item)
-                        {
-                            cJSON_AddNumberToObject(item, "onAt", timer12->_time12_ctl[port]._timer[group].on_at);
-                            cJSON_AddNumberToObject(item, "duration", timer12->_time12_ctl[port]._timer[group].duration);
-                            cJSON_AddNumberToObject(item, "en", timer12->_time12_ctl[port]._timer[group].en);
-
-                            cJSON_AddItemToArray(list, item);
-                        }
-                    }
-                }
-                cJSON_AddItemToObject(json, "list", list);
-            }
-
-            cJSON_AddNumberToObject(json, "startAt", timer12->_recycle[port].startAt);
-            cJSON_AddNumberToObject(json, "duration", timer12->_recycle[port].duration);
-            cJSON_AddNumberToObject(json, "pauseTime", timer12->_recycle[port].pauseTime);
-            cJSON_AddNumberToObject(json, "times", timer12->_recycle[port].times);
         }
 
         cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
@@ -3978,20 +3769,19 @@ char *ReplySetPortSet(char *cmd, cloudcmd_t cloud)
 
 char *ReplyGetPortSet(char *cmd, cloudcmd_t cloud)
 {
-    char    name[16];
-    char    model[15];
-    char    fun_name[15];
-    char    *str        = RT_NULL;
-    u8      port        = 0;
-    u8      group       = 0;
-    u8      valid_gro   = 0xFF;
-    u8      addr        = 0;
-    cJSON   *timerList  = RT_NULL;
-    cJSON   *timer      = RT_NULL;
-    cJSON   *json       = cJSON_CreateObject();
-    cJSON   *valveList  = RT_NULL;
-    device_time4_t  *module     = RT_NULL;
-    timer12_t       *timer12    = RT_NULL;
+    char            name[16];
+    char            model[15];
+    char            fun_name[15];
+    char            *str        = RT_NULL;
+    u8              port        = 0;
+    u8              group       = 0;
+    u8              valid_gro   = 0xFF;
+    u8              addr        = 0;
+    cJSON           *timerList  = RT_NULL;
+    cJSON           *timer      = RT_NULL;
+    cJSON           *json       = cJSON_CreateObject();
+    cJSON           *valveList  = RT_NULL;
+    device_t        *module     = RT_NULL;
     line_t          *line       = RT_NULL;
     u8              fatherFlg   = 0;            //判断是否是父模块 区别端口
 
@@ -4003,7 +3793,7 @@ char *ReplyGetPortSet(char *cmd, cloudcmd_t cloud)
         {
             addr = cloud.get_port_id.value >> 8;
             port = cloud.get_port_id.value;
-            if(port >= DEVICE_PORT_SZ)
+            if(port >= DEVICE_PORT_MAX)
             {
                 LOG_E("port err");
                 port = 0;
@@ -4019,7 +3809,6 @@ char *ReplyGetPortSet(char *cmd, cloudcmd_t cloud)
         LOG_D("ReplyGetPortSet addr = %x, port = %x",addr,port);//Justin print
 
         module = GetDeviceByAddr(GetMonitor(), addr);
-        timer12 = GetTimerByAddr(GetMonitor(), addr);
         line = GetLineByAddr(GetMonitor(), addr);
 
         if(RT_NULL != module)
@@ -4031,25 +3820,9 @@ char *ReplyGetPortSet(char *cmd, cloudcmd_t cloud)
             cJSON_AddNumberToObject(json, "id", module->addr);
             if(0 == fatherFlg)//端口
             {
-                if(AC_4_TYPE == module->type)
-                {
-                    if((TIMER_TYPE == module->device_timer_type[port]) ||
-                       (PUMP_TYPE == module->device_timer_type[port]) ||
-                       (VALVE_TYPE == module->device_timer_type[port]))
-                    {
-                        cJSON_AddStringToObject(json, "name", module->_storage[port]._time4_ctl.name);
-                    }
-                    else
-                    {
-                        cJSON_AddStringToObject(json, "name", module->_storage[port]._port.name);
-                    }
-                }
-                else
-                {
-                    cJSON_AddStringToObject(json, "name", module->_storage[port]._port.name);
-                }
-                cJSON_AddStringToObject(json, "funcName", GetFunNameByType(module->device_timer_type[port], fun_name, 15));
-                cJSON_AddNumberToObject(json, "type", module->device_timer_type[port]);
+                cJSON_AddStringToObject(json, "name", module->port[port].name);
+                cJSON_AddStringToObject(json, "funcName", GetFunNameByType(module->port[port].type, fun_name, 15));
+                cJSON_AddNumberToObject(json, "type", module->port[port].type);
             }
             else
             {
@@ -4059,12 +3832,14 @@ char *ReplyGetPortSet(char *cmd, cloudcmd_t cloud)
             }
             cJSON_AddNumberToObject(json, "mainType", module->main_type);
 
-            cJSON_AddNumberToObject(json, "manual", module->_manual[port].manual);
-            cJSON_AddNumberToObject(json, "manualOnTime", module->_manual[port].manual_on_time);
+            cJSON_AddNumberToObject(json, "manual", module->port[port].manual.manual);
+            cJSON_AddNumberToObject(json, "manualOnTime", module->port[port].manual.manual_on_time);
 
-            if((COOL_TYPE == module->type) || (HEAT_TYPE == module->type) || (DEHUMI_TYPE == module->type))
+            if((COOL_TYPE == module->port[port].type) ||
+               (HEAT_TYPE == module->port[port].type) ||
+               (DEHUMI_TYPE == module->port[port].type))
             {
-                cJSON_AddNumberToObject(json, "hotStartDelay", module->hotStartDelay);
+                cJSON_AddNumberToObject(json, "hotStartDelay", module->port[port].hotStartDelay);
             }
 
             if(HVAC_6_TYPE == module->type)
@@ -4074,34 +3849,34 @@ char *ReplyGetPortSet(char *cmd, cloudcmd_t cloud)
                 cJSON_AddNumberToObject(json, "hvacMode", module->_hvac.hvacMode);
             }
 
-            if((TIMER_TYPE == module->type) || (PUMP_TYPE == module->type) || (PUMP_TYPE == module->type) ||
-               (TIMER_TYPE == module->device_timer_type[port]) || (PUMP_TYPE == module->device_timer_type[port])
-               || (VALVE_TYPE == module->device_timer_type[port]))
+            if((TIMER_TYPE == module->port[port].type) ||
+               (PUMP_TYPE == module->port[port].type) ||
+               (VALVE_TYPE == module->port[port].type))
             {
-                cJSON_AddNumberToObject(json, "mode", module->mode[port]);
+                cJSON_AddNumberToObject(json, "mode", module->port[port].mode);
 
                 timerList = cJSON_CreateArray();
                 if(RT_NULL != timerList)
                 {
-                    for(group = 0; group < TIMER12_PORT_MAX; group++)
+                    for(group = 0; group < TIMER_GROUP; group++)
                     {
-                        if(!((0 == module->_storage[port]._time4_ctl._timer[group].on_at) &&
-                            (0 == module->_storage[port]._time4_ctl._timer[group].duration)))
+                        if(!((0 == module->port[port].timer[group].on_at) &&
+                            (0 == module->port[port].timer[group].duration)))
                         {
                             valid_gro = group;
                         }
                     }
 
-                    if(valid_gro <= TIMER12_PORT_MAX)
+                    if(valid_gro <= TIMER_GROUP)
                     {
                         for(group = 0; group <= valid_gro; group++)
                         {
                             timer = cJSON_CreateObject();
                             if(RT_NULL != timer)
                             {
-                                cJSON_AddNumberToObject(timer, "onAt", module->_storage[port]._time4_ctl._timer[group].on_at);
-                                cJSON_AddNumberToObject(timer, "duration", module->_storage[port]._time4_ctl._timer[group].duration);
-                                cJSON_AddNumberToObject(timer, "en", module->_storage[port]._time4_ctl._timer[group].en);
+                                cJSON_AddNumberToObject(timer, "onAt", module->port[port].timer[group].on_at);
+                                cJSON_AddNumberToObject(timer, "duration", module->port[port].timer[group].duration);
+                                cJSON_AddNumberToObject(timer, "en", module->port[port].timer[group].en);
 
                                 cJSON_AddItemToArray(timerList, timer);
                             }
@@ -4115,10 +3890,10 @@ char *ReplyGetPortSet(char *cmd, cloudcmd_t cloud)
                     LOG_E("ReplyGetPortSet err5");
                 }
 
-                cJSON_AddNumberToObject(json, "startAt", module->_recycle[port].startAt);
-                cJSON_AddNumberToObject(json, "duration", module->_recycle[port].duration);
-                cJSON_AddNumberToObject(json, "pauseTime", module->_recycle[port].pauseTime);
-                cJSON_AddNumberToObject(json, "times", module->_recycle[port].times);
+                cJSON_AddNumberToObject(json, "startAt", module->port[port].cycle.startAt);
+                cJSON_AddNumberToObject(json, "duration", module->port[port].cycle.duration);
+                cJSON_AddNumberToObject(json, "pauseTime", module->port[port].cycle.pauseTime);
+                cJSON_AddNumberToObject(json, "times", module->port[port].cycle.times);
             }
 
             for(u8 tank_no = 0; tank_no < GetSysTank()->tank_size; tank_no++)
@@ -4148,67 +3923,6 @@ char *ReplyGetPortSet(char *cmd, cloudcmd_t cloud)
             cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
 
             str = cJSON_PrintUnformatted(json);
-        }
-        else if(RT_NULL != timer12)
-        {
-            LOG_I("get time12 name %s",timer12->name);//Justin debug 仅仅测试
-            cJSON_AddStringToObject(json, "cmd", cmd);
-            cJSON_AddStringToObject(json, cloud.msgid.name, cloud.msgid.value);
-            cJSON_AddStringToObject(json, "sn", GetSnName(name, 12));
-            cJSON_AddStringToObject(json, "model", GetModelByType(timer12->type, model, 15));
-            cJSON_AddNumberToObject(json, "id", timer12->addr);
-            if(1 == fatherFlg)//父模块
-            {
-                cJSON_AddStringToObject(json, "name", timer12->name);
-                cJSON_AddStringToObject(json, "funcName", GetFunNameByType(timer12->type, fun_name, 15));
-            }
-            else
-            {
-                cJSON_AddStringToObject(json, "name", timer12->_time12_ctl[port].name);
-                cJSON_AddStringToObject(json, "funcName", GetFunNameByType(timer12->port_type[port], fun_name, 15));
-            }
-            cJSON_AddNumberToObject(json, "mainType", timer12->main_type);
-            cJSON_AddNumberToObject(json, "type", timer12->type);
-            cJSON_AddNumberToObject(json, "manual", timer12->_manual[port].manual);
-            cJSON_AddNumberToObject(json, "manualOnTime", timer12->_manual[port].manual_on_time);
-            cJSON_AddNumberToObject(json, "mode", timer12->mode[port]);
-
-            timerList = cJSON_CreateArray();
-
-            if(RT_NULL != timerList)
-            {
-                for(group = 0; group < TIMER12_PORT_MAX; group++)
-                {
-                    timer = cJSON_CreateObject();
-                    if(RT_NULL != timer)
-                    {
-                        cJSON_AddNumberToObject(timer, "onAt", timer12->_time12_ctl[port]._timer[group].on_at);
-                        cJSON_AddNumberToObject(timer, "duration", timer12->_time12_ctl[port]._timer[group].duration);
-                        cJSON_AddNumberToObject(timer, "en", timer12->_time12_ctl[port]._timer[group].en);
-
-                        cJSON_AddItemToArray(timerList, timer);
-                    }
-                }
-
-                cJSON_AddItemToObject(json, "list", timerList);
-            }
-            else
-            {
-                LOG_E("ReplyGetPortSet err3");
-            }
-
-            cJSON_AddNumberToObject(json, "startAt", timer12->_recycle[port].startAt);
-            cJSON_AddNumberToObject(json, "duration", timer12->_recycle[port].duration);
-            cJSON_AddNumberToObject(json, "pauseTime", timer12->_recycle[port].pauseTime);
-
-            cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
-
-            str = cJSON_PrintUnformatted(json);
-
-            if(str == RT_NULL)
-            {
-                LOG_E("ReplyGetPortSet err4");
-            }
         }
         else if(line != RT_NULL)
         {
@@ -4254,19 +3968,15 @@ char *ReplyGetDeviceList(char *cmd, type_kv_c16 msgid)
     u8              index       = 0;
     u8              line_no     = 0;
     u8              storage     = 0;
-    u8              port_no     = 0;
     char            *str        = RT_NULL;
     char            name[16];
-    device_time4_t  module;
+    device_t        *module;
     line_t          line;
-    timer12_t       *time12     = RT_NULL;
     cJSON           *list       = RT_NULL;
     cJSON           *item       = RT_NULL;
     cJSON           *line_i     = RT_NULL;
     cJSON           *portList   = RT_NULL;
-    cJSON           *portList1   = RT_NULL;
     cJSON           *port       = RT_NULL;
-    cJSON           *port1       = RT_NULL;
     cJSON           *json = cJSON_CreateObject();
 
     if(RT_NULL != json)
@@ -4280,38 +3990,17 @@ char *ReplyGetDeviceList(char *cmd, type_kv_c16 msgid)
         {
             for(index = 0; index < GetMonitor()->device_size; index++)
             {
-                module = GetMonitor()->device[index];
+                module = &GetMonitor()->device[index];
 
                 item = cJSON_CreateObject();
                 if(RT_NULL != item)
                 {
-                    cJSON_AddStringToObject(item, "name", module.name);
-                    cJSON_AddNumberToObject(item, "id", module.addr);
-                    cJSON_AddNumberToObject(item, "mainType", module.main_type);
-                    cJSON_AddNumberToObject(item, "type", module.type);
-                    if(AC_4_TYPE == module.type)
-                    {
-//                        for(port_no = 0; port_no < module.storage_size; port_no++)
-//                        {
-//                            if(MANUAL_HAND_ON == module._manual[port_no].manual)
-//                            {
-//                                cJSON_AddNumberToObject(item, "manual", MANUAL_HAND_ON);
-//                                break;
-//                            }
-//                            else if(MANUAL_HAND_OFF == module._manual[port_no].manual)
-//                            {
-//                                cJSON_AddNumberToObject(item, "manual", MANUAL_HAND_OFF);
-//                                break;
-//                            }
-//                        }
-//                        if(module.storage_size == port_no)
-//                        {
-//                            cJSON_AddNumberToObject(item, "manual", MANUAL_NO_HAND);
-//                        }
-                        cJSON_AddNumberToObject(item, "manual", 0);//Justin debug 暂时给0，版本迭代后需要增加关闭全部的功能
-                    }
+                    cJSON_AddStringToObject(item, "name", module->name);
+                    cJSON_AddNumberToObject(item, "id", module->addr);
+                    cJSON_AddNumberToObject(item, "mainType", module->main_type);
+                    cJSON_AddNumberToObject(item, "type", module->type);
 
-                    if (CON_FAIL == module.conn_state)
+                    if (CON_FAIL == module->conn_state)
                     {
                         cJSON_AddNumberToObject(item, "online", 0);
                     }
@@ -4319,134 +4008,91 @@ char *ReplyGetDeviceList(char *cmd, type_kv_c16 msgid)
                     {
                         cJSON_AddNumberToObject(item, "online", 1);
                     }
-
-                    if(1 == module.storage_size)
+                    //1.单个口的 如 AC_Co2 AC_Humi
+                    if(module->storage_size <= 1)
                     {
-                        cJSON_AddNumberToObject(item, "manual", module._manual[0].manual);
-                        if((TIMER_TYPE == module.type) || (PUMP_TYPE == module.type))
+                        cJSON_AddNumberToObject(item, "manual", module->port[0].manual.manual);
+
+                        if(HVAC_6_TYPE == module->port[0].type)
                         {
-                            cJSON_AddNumberToObject(item, "workingStatus", module._storage[0]._time4_ctl.d_state);
+//                            LOG_W("hvac work = %d",(module->port[0].ctrl.d_state << 8) + module->port[0].ctrl.d_value);//Justin print
+                            if(((module->port[0].ctrl.d_state << 8) + module->port[0].ctrl.d_value) > 0)
+                            {
+                                cJSON_AddNumberToObject(item, "workingStatus", ON);
+                            }
+                            else
+                            {
+                                cJSON_AddNumberToObject(item, "workingStatus", OFF);
+                            }
                         }
                         else
                         {
-                            cJSON_AddNumberToObject(item, "workingStatus", module._storage[0]._port.d_state);
+                            cJSON_AddNumberToObject(item, "workingStatus", module->port[0].ctrl.d_state);
                         }
-                        cJSON_AddNumberToObject(item, "color", module.color);
-
-                        //如果是泵类型还要上报关联的补水阀,目前只认为只有一个口的pump
-                        if(PUMP_TYPE == module.type)
+                        cJSON_AddNumberToObject(port, "color", module->color);
+                        if(PUMP_TYPE == module->port[0].type)
                         {
                             for(u8 tank_no = 0; tank_no < TANK_LIST_MAX; tank_no++)
                             {
-                                if(module.addr == GetSysTank()->tank[tank_no].pumpId)
+                                if(module->addr == GetSysTank()->tank[tank_no].pumpId)
                                 {
-                                    cJSON_AddNumberToObject(port, "autoFillValveId",
+                                    cJSON_AddNumberToObject(item, "autoFillValveId",
                                             GetSysTank()->tank[tank_no].autoFillValveId);
                                 }
                             }
                         }
                     }
-                    else if(module.storage_size > 1 && module.storage_size <= DEVICE_PORT_SZ)
+                    //2.多个口的如  AC_4 IO_12
+                    else
                     {
                         portList = cJSON_CreateArray();
-
                         if(RT_NULL != portList)
                         {
-                            for(storage = 0; storage < module.storage_size; storage++)
+                            for(storage = 0; storage < module->storage_size; storage++)
                             {
                                 port = cJSON_CreateObject();
                                 if(RT_NULL != port)
                                 {
-                                    module._storage[storage]._port.addr = module.addr << 8 | storage;
-                                    cJSON_AddNumberToObject(port, "type", module.device_timer_type[storage]);
-                                    cJSON_AddStringToObject(port, "name", module._storage[storage]._port.name);
-                                    cJSON_AddNumberToObject(port, "id", module._storage[storage]._port.addr);
-                                    cJSON_AddNumberToObject(port, "manual", module._manual[storage].manual);
-//                                    cJSON_AddNumberToObject(port, "manual_on_time", module._storage[storage]._port.manual_on_time);
-                                    //Justin debug 注意 这个工作状态要遵循//设备工作状态 0-Off 1-On 2-PPM UP 3-FUZZY LOGIC 4-
-                                    //联动制冷关闭 5-联动除湿关闭 6-过高报警关闭 7-夜晚关闭 8-输出超时关闭
-                                    //9-HUMI 10-DEHUMI 11-Heating 12-Cooling 13-Lighting14:灯光过温自动调光 15:灯光过温自动关闭
-                                    if((TIMER_TYPE ==  module.device_timer_type[storage]) ||
-                                       (PUMP_TYPE ==  module.device_timer_type[storage]) ||
-                                       (VALVE_TYPE ==  module.device_timer_type[storage]))
+                                    module->port[storage].addr = module->addr << 8 | storage;
+                                    cJSON_AddNumberToObject(port, "type", module->port[storage].type);
+                                    cJSON_AddStringToObject(port, "name", module->port[storage].name);
+                                    cJSON_AddNumberToObject(port, "id", module->port[storage].addr);
+                                    cJSON_AddNumberToObject(port, "manual", module->port[storage].manual.manual);
+
+                                    if(HVAC_6_TYPE == module->port[storage].type)
                                     {
-                                        cJSON_AddNumberToObject(port, "workingStatus", module._storage[storage]._time4_ctl.d_state);
+                                        if(((module->port[storage].ctrl.d_state << 8) + module->port[storage].ctrl.d_value) > 0)
+                                        {
+                                            cJSON_AddNumberToObject(port, "workingStatus", ON);
+                                        }
+                                        else
+                                        {
+                                            cJSON_AddNumberToObject(port, "workingStatus", OFF);
+                                        }
                                     }
                                     else
                                     {
-                                        cJSON_AddNumberToObject(port, "workingStatus", module._storage[storage]._port.d_state);
+                                        cJSON_AddNumberToObject(port, "workingStatus", module->port[storage].ctrl.d_state);
                                     }
-//                                    cJSON_AddNumberToObject(port, "color", module._storage[storage]._port.color);
+
+                                    cJSON_AddNumberToObject(port, "color", module->color);
+                                    if(PUMP_TYPE == module->port[storage].type)
+                                    {
+                                        for(u8 tank_no = 0; tank_no < TANK_LIST_MAX; tank_no++)
+                                        {
+                                            if(module->addr == GetSysTank()->tank[tank_no].pumpId)
+                                            {
+                                                cJSON_AddNumberToObject(port, "autoFillValveId",
+                                                        GetSysTank()->tank[tank_no].autoFillValveId);
+                                            }
+                                        }
+                                    }
 
                                     cJSON_AddItemToArray(portList, port);
                                 }
                             }
                             cJSON_AddItemToObject(item, "port", portList);
                         }
-                    }
-
-                    cJSON_AddItemToArray(list, item);
-                }
-            }
-
-            for(index = 0; index < GetMonitor()->timer12_size; index++)
-            {
-                time12 = &GetMonitor()->time12[index];
-
-                item = cJSON_CreateObject();
-                if(RT_NULL != item)
-                {
-                    cJSON_AddStringToObject(item, "name", time12->name);
-                    cJSON_AddNumberToObject(item, "id", time12->addr);
-                    cJSON_AddNumberToObject(item, "mainType", time12->main_type);
-                    cJSON_AddNumberToObject(item, "type", time12->type);
-//                    for(port_no = 0; port_no < time12->storage_size; port_no++)
-//                    {
-//                        if(MANUAL_HAND_ON == time12->_manual[port_no].manual)
-//                        {
-//                            cJSON_AddNumberToObject(item, "manual", MANUAL_HAND_ON);
-//                            break;
-//                        }
-//                        else if(MANUAL_HAND_OFF == time12->_manual[port_no].manual)
-//                        {
-//                            cJSON_AddNumberToObject(item, "manual", MANUAL_HAND_OFF);
-//                            break;
-//                        }
-//                    }
-//                    if(time12->storage_size == port_no)
-//                    {
-//                        cJSON_AddNumberToObject(item, "manual", MANUAL_NO_HAND);
-//                    }
-                    cJSON_AddNumberToObject(item, "manual", 0);//Justin debug 暂时给0，版本迭代后需要增加关闭全部的功能
-                    if (CON_FAIL == time12->conn_state)
-                    {
-                        cJSON_AddNumberToObject(item, "online", 0);
-                    }
-                    else
-                    {
-                        cJSON_AddNumberToObject(item, "online", 1);
-                    }
-
-                    portList1 = cJSON_CreateArray();
-                    if(RT_NULL != portList1)
-                    {
-                        for(storage = 0; storage < time12->storage_size; storage++)
-                        {
-                            port1 = cJSON_CreateObject();
-                            if(RT_NULL != port1)
-                            {
-                                cJSON_AddNumberToObject(port1, "type", time12->port_type[storage]);
-                                cJSON_AddStringToObject(port1, "name", time12->_time12_ctl[storage].name);
-                                cJSON_AddNumberToObject(port1, "id", time12->addr << 8 | storage);
-                                cJSON_AddNumberToObject(port1, "manual", time12->_manual[storage].manual);
-                                cJSON_AddNumberToObject(port1, "workingStatus", time12->_time12_ctl[storage].d_state);
-                                cJSON_AddNumberToObject(port1, "color", time12->color);
-
-                                cJSON_AddItemToArray(portList1, port1);
-                            }
-                        }
-
-                        cJSON_AddItemToObject(item, "port", portList1);
                     }
 
                     cJSON_AddItemToArray(list, item);

@@ -166,7 +166,7 @@ int main(void)
                         //1.如果是离线的话 ,要发送全部的离线名称, 重置标记要在以下云服务端重置
                         if(WARN_OFFLINE == item + 1)
                         {
-                            for(u8 index = 0; index < DEVICE_TIME4_MAX; index++)
+                            for(u8 index = 0; index < DEVICE_MAX; index++)
                             {
                                 SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT_WARN, item, GetSysSet()->warn_value[item], RT_NULL, RT_NULL, YES, index);
                             }
@@ -188,7 +188,7 @@ int main(void)
                             //1.如果是离线的话 ,要发送全部的离线名称
                             if(WARN_OFFLINE == item + 1)
                             {
-                                for(u8 index = 0; index < DEVICE_TIME4_MAX; index++)
+                                for(u8 index = 0; index < DEVICE_MAX; index++)
                                 {
                                     if(YES == GetSysSet()->offline[index])
                                     {
@@ -295,15 +295,6 @@ int main(void)
                 for(int index = 0; index < device_size; index++)
                 {
                     printDevice(GetMonitor()->device[index]);
-                }
-            }
-            if(timer12_size != GetMonitor()->timer12_size)
-            {
-                timer12_size = GetMonitor()->timer12_size;
-
-                for(int index = 0; index < timer12_size; index++)
-                {
-                    printTimer12(GetMonitor()->time12[index]);
                 }
             }
 

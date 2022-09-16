@@ -150,8 +150,10 @@ void SensorUart2TaskEntry(void* parameter)
     u8                          data[13];
 //#endif
     static      u8              Timer1sTouch    = OFF;
+    static      u8              Timer3sTouch    = OFF;
     static      u8              Timer5sTouch    = OFF;
     static      u16             time1S = 0;
+    static      u16             time3S = 0;
     static      u16             time5S = 0;
     static      rt_device_t     uart1_serial;
 //    static      rt_device_t     uart2_serial;
@@ -183,6 +185,7 @@ void SensorUart2TaskEntry(void* parameter)
     while (1)
     {
         time1S = TimerTask(&time1S, 1000/UART_PERIOD, &Timer1sTouch);                       //1s定时任务
+        time3S = TimerTask(&time3S, 3000/UART_PERIOD, &Timer3sTouch);                       //1s定时任务
         time5S = TimerTask(&time5S, 5000/UART_PERIOD, &Timer5sTouch);                       //1s定时任务
 
         if(YES == sdCard.readInfo)                                  //必须要等待从sd卡读取到的monitor 才能执行以下功能
@@ -236,7 +239,7 @@ void SensorUart2TaskEntry(void* parameter)
                 {
                     if(1 == device_start)
                     {
-                        if(YES == askDeviceHeart(&monitor, uart2_serial))
+                        if(YES == askDeviceHeart_new(&monitor, uart2_serial, 1))//Justin debug 仅仅测试
                         {
                             device_start = 0;
                         }
@@ -271,7 +274,6 @@ void SensorUart2TaskEntry(void* parameter)
             /* 1s 事件 */
             if(ON == Timer1sTouch)
             {
-                device_start = 1;
                 sensor_start = 1;
                 line_start = 1;
 
@@ -296,6 +298,12 @@ void SensorUart2TaskEntry(void* parameter)
                     deleteModule(GetMonitor(), sys_set.cloudCmd.delete_id.value);
                     sys_set.cloudCmd.delete_id.value = 0;
                 }
+            }
+
+            /* 3s 事件*/
+            if(ON == Timer3sTouch)
+            {
+                device_start = 1;
             }
 
             /* 5s 事件 */

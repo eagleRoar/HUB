@@ -168,7 +168,7 @@ void DeviceStatePage(u8g2_t *uiShow, type_page_t page)
     u8              line                = LINE_HIGHT;
     u8              column              = COLUMN_HIGHT;
     static u8       index               = 0;
-    u8              list[DEVICE_TIME4_MAX];
+    u8              list[DEVICE_MAX];
     u8              list_index          = 0;
     u8              device_sum          = 0;
 

@@ -93,12 +93,12 @@ int sd_card_is_vaild(void);
 
 //void printModule(type_module_t);
 void printSensor(sensor_t);
-void printDevice(device_time4_t);
+void printDevice(device_t);
 //void printMuduleConnect(type_monitor_t *);
 void rtcTest(type_sys_time);
 char *getRealTime(void);
 time_t getTimeStamp(void);
-void printTimer12(timer12_t);
+//void printTimer12(timer12_t);
 void LedProgram(void);
 void getRealTimeForMat(type_sys_time *);
 //void PrintHumiSet(proHumiSet_t set);

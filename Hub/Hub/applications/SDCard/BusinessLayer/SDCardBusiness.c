@@ -152,8 +152,7 @@ rt_err_t SaveModule(type_monitor_t *monitor)
 {
     u8      index           = 0;
     u16     sensorSize      = sizeof(sensor_t);//为module结构体大小
-    u16     deviceSize      = sizeof(device_time4_t);//为module结构体大小
-    u16     Timer12Size     = sizeof(timer12_t);
+    u16     deviceSize      = sizeof(device_t);//为module结构体大小
     u16     LineSize        = sizeof(line_t);
     u16     monitorSize     = sizeof(type_monitor_t);
     rt_err_t ret = RT_EOK;
@@ -173,15 +172,6 @@ rt_err_t SaveModule(type_monitor_t *monitor)
         {
             monitor->device[index].save_state = YES;
             monitor->device[index].crc = usModbusRTU_CRC((u8 *)&(monitor->device[index]) + 2, deviceSize - 2);//前两位是crc
-        }
-    }
-
-    for(index = 0; index < monitor->timer12_size; index++)
-    {
-        if(NO == monitor->time12[index].save_state)
-        {
-            monitor->time12[index].save_state = YES;
-            monitor->time12[index].crc = usModbusRTU_CRC((u8 *)&(monitor->time12[index]) + 2, Timer12Size - 2);//前两位是crc
         }
     }
 
@@ -227,7 +217,7 @@ rt_err_t TakeMonitorFromSD(type_monitor_t *monitor)
         {
             for(u8 index = 0; index < monitor->device_size; index++)
             {
-                deviceCrc = usModbusRTU_CRC((u8 *)&monitor->device[index] + 2, sizeof(device_time4_t) - 2);
+                deviceCrc = usModbusRTU_CRC((u8 *)&monitor->device[index] + 2, sizeof(device_t) - 2);
                 if(deviceCrc != monitor->device[index].crc)
                 {
                     LOG_E("device name %s crc err",monitor->device[index].name);
@@ -240,15 +230,6 @@ rt_err_t TakeMonitorFromSD(type_monitor_t *monitor)
                 if(deviceCrc != monitor->sensor[index].crc)
                 {
                     LOG_E("sensor name %s crc err",monitor->sensor[index].name);
-                }
-            }
-
-            for(u8 index = 0; index < monitor->timer12_size; index++)
-            {
-                deviceCrc = usModbusRTU_CRC((u8 *)&monitor->time12[index] + 2, sizeof(timer12_t) - 2);
-                if(deviceCrc != monitor->time12[index].crc)
-                {
-                    LOG_E("time12 name %s crc err",monitor->time12[index].name);
                 }
             }
 

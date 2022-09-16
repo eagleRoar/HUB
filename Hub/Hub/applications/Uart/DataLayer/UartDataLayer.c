@@ -13,43 +13,7 @@
 #include "InformationMonitor.h"
 #include "Module.h"
 
-void setTimer12DefaultPara(timer12_t *module, char *name, u16 ctrl_addr, u8 main_type, u8 storage_size)
-{
-    u8 port = 0;
-    u8 index = 0;
-
-    rt_memcpy(module->name, name, MODULE_NAMESZ);                   //产品名称
-    module->ctrl_addr = ctrl_addr;                                  //终端控制的寄存器地址
-    module->main_type = main_type;                                  //主类型 如co2 温度 湿度 line timer
-    module->conn_state = CON_SUCCESS;                               //连接状态
-    module->reg_state = SEND_NULL;                                  //注册状态
-    module->save_state = NO;                                        //是否已经存储
-    module->storage_size = storage_size;                            //寄存器数量
-
-    for(index = 0;index < TIMER12_PORT_MAX; index++)
-    {
-        for(port = 0; port < TIMER_GROUP; port++)
-        {
-            module->_time12_ctl[index]._timer[port].on_at = 0;
-            module->_time12_ctl[index]._timer[port].duration = 0;
-            module->_time12_ctl[index]._timer[port].en = 0;
-        }
-        module->_time12_ctl[index].d_state = 0;
-        module->_time12_ctl[index].d_value = 0;
-
-        module->_recycle[index].duration = 0;
-        module->_recycle[index].pauseTime = 0;
-        module->_recycle[index].startAt = 0;
-
-        module->_manual[index].manual = MANUAL_NO_HAND;
-        module->_manual[index].manual_on_time = 0;
-        module->_manual[index].manual_on_time_save = 0;
-    }
-
-}
-
-
-void setDeviceDefaultPara(device_time4_t *module, char *name, u16 ctrl_addr, u8 main_type, u8 type, u8 storage_size)
+void setDeviceDefaultPara(device_t *module, char *name, u16 ctrl_addr, u8 main_type, u8 type, u8 storage_size)
 {
     rt_memcpy(module->name, name, MODULE_NAMESZ - 1);                   //产品名称
     module->name[MODULE_NAMESZ - 1] = '\0';
@@ -59,7 +23,6 @@ void setDeviceDefaultPara(device_time4_t *module, char *name, u16 ctrl_addr, u8 
     module->reg_state = SEND_NULL;                                  //注册状态
     module->save_state = NO;                                        //是否已经存储
     module->storage_size = storage_size;                            //寄存器数量
-    module->hotStartDelay = 0;
 
     if(HVAC_6_TYPE == type)
     {
@@ -96,38 +59,27 @@ void setSensorDefuleStora(sensor_t *module, sen_stora_t sen0, sen_stora_t sen1, 
     rt_memcpy(module->__stora[3].name, sen3.name, STORAGE_NAMESZ);
 }
 
-void setDeviceDefaultStora(device_time4_t *dev, u8 index, char *name, u8 func, u8 type, u8 addr,u8 manual,u16 manual_on_time)
+void setDeviceDefaultStora(device_t *dev, u8 index, char *name, u8 func, u8 type, u16 addr, u8 manual,u16 manual_on_time)
 {
-    if(index > (DEVICE_PORT_SZ - 1))
+    if(index > (DEVICE_PORT_MAX - 1))
     {
         return;
     }
 
-    if((TIMER_TYPE == type) || (PUMP_TYPE == type))
-    {
-        for(u8 item = 0; item < TIMER_GROUP; item++)
-        {
-            dev->_storage[index]._time4_ctl._timer[item].on_at = 0;
-            dev->_storage[index]._time4_ctl._timer[item].duration = 0;
-            dev->_storage[index]._time4_ctl._timer[item].en = 0;
-        }
-    }
-    else
-    {
-        rt_memcpy(dev->_storage[index]._port.name, name, STORAGE_NAMESZ);
-        dev->_storage[index]._port.func = func;                                       //功能，如co2
-        dev->_storage[index]._port.addr = addr;                                       //module id+ port号
-        dev->_storage[index]._port.d_state = 0;
-        dev->_storage[index]._port.d_value = 0;
-    }
+    rt_memcpy(dev->port[index].name, name, STORAGE_NAMESZ);
+    dev->port[index].func = func;                                       //功能，如co2
+    dev->port[index].type = type;
+    //dev->port[index].addr = addr;                                       //module id+ port号
+    dev->port[index].ctrl.d_state = 0;
+    dev->port[index].ctrl.d_value = 0;
 
-    dev->_recycle[index].startAt = 0;
-    dev->_recycle[index].pauseTime = 0;
-    dev->_recycle[index].duration = 0;
+    dev->port[index].cycle.startAt = 0;
+    dev->port[index].cycle.pauseTime = 0;
+    dev->port[index].cycle.duration = 0;
 
-    dev->_manual[index].manual = 0;
-    dev->_manual[index].manual_on_time = 0;
-    dev->_manual[index].manual_on_time_save = 0;
+    dev->port[index].manual.manual = 0;
+    dev->port[index].manual.manual_on_time = 0;
+    dev->port[index].manual.manual_on_time_save = 0;
 }
 
 char *GetModelByType(u8 type, char *name, u8 len)
@@ -254,10 +206,11 @@ rt_err_t setSensorDefault(sensor_t *module)
     return ret;
 }
 
-rt_err_t setDeviceDefault(device_time4_t *module)
+rt_err_t setDeviceDefault(device_t *module)
 {
-    rt_err_t ret = RT_EOK;
-    u16 addr;
+    rt_err_t    ret = RT_EOK;
+    u16         addr;
+    char        name[STORAGE_NAMESZ] = " ";
     switch (module->type) {
 
         case CO2_TYPE:
@@ -288,7 +241,7 @@ rt_err_t setDeviceDefault(device_time4_t *module)
         case HVAC_6_TYPE:
             setDeviceDefaultPara(module, "Hvac_6", 0x0401, S_TEMP, module->type, 1);
             addr = module->addr;
-            setDeviceDefaultStora(module, 0 , "Hvac_6", F_COOL_HEAT, module->type, addr , MANUAL_NO_HAND, 0);
+            setDeviceDefaultStora(module, 0 , "Hvac", F_COOL, module->type, addr, MANUAL_NO_HAND, 0);
             break;
         case TIMER_TYPE:
             setDeviceDefaultPara(module, "Timer", 0x0040, S_TIMER, module->type, 1);
@@ -297,15 +250,21 @@ rt_err_t setDeviceDefault(device_time4_t *module)
             break;
         case AC_4_TYPE:
             setDeviceDefaultPara(module, "AC_4", 0x0401, S_AC_4, module->type, 4);
-            for(u8 item = 0; item < module->storage_size; item++)
-            {
-                sprintf(module->_storage[item]._time4_ctl.name,"%s%d","port",item+1);
-            }
             break;
         case PUMP_TYPE:
             setDeviceDefaultPara(module, "Pump", 0x0040, S_PUMP, module->type, 1);
             addr = module->addr;
             setDeviceDefaultStora(module, 0 , "Pump", F_PUMP, module->type, addr , MANUAL_NO_HAND, 0);
+            break;
+        case IO_12_TYPE:
+            setDeviceDefaultPara(module, "IO_12", 0x0401, S_IO_12, module->type, 12);
+            for(u8 index = 0; index < module->storage_size; index++)
+            {
+                module->port[index].type = VALVE_TYPE;//目前暂定都是阀
+                module->port[index].func = F_VALVE;
+                sprintf(name,"%s%d","Valve",index+1);
+                rt_memcpy(module->port[index].name, name, STORAGE_NAMESZ);
+            }
             break;
         default:
             ret = RT_ERROR;
@@ -323,31 +282,6 @@ rt_err_t setLineDefault(line_t *line)
     line->d_value = 0;
 
     return RT_EOK;
-}
-
-rt_err_t setTimer12Default(timer12_t *module)
-{
-    rt_err_t    ret         = RT_EOK;
-    u8          index       = 0;
-    char        name[STORAGE_NAMESZ];
-
-    switch (module->type) {
-        case IO_12_TYPE:
-            setTimer12DefaultPara(module, "IO_12", 0x0401, S_IO_12, 12);
-            for(index = 0; index < module->storage_size; index++)
-            {
-                module->port_type[index] = VALVE_TYPE;//目前暂定都是阀
-                sprintf(name,"%s%d","Valve",index+1);
-                rt_memcpy(module->_time12_ctl[index].name, name, STORAGE_NAMESZ);
-            }
-            break;
-
-        default:
-            ret = RT_ERROR;
-            break;
-    }
-
-    return ret;
 }
 
 /* 获取分配的地址 */
@@ -395,13 +329,11 @@ u8 getSOrD(u8 type)
         case AC_4_TYPE:
         case PUMP_TYPE:
         case VALVE_TYPE:
+        case IO_12_TYPE:
             ret = DEVICE_TYPE;
             break;
         case LINE_TYPE:
             ret = LINE1OR2_TYPE;
-            break;
-        case IO_12_TYPE:
-            ret = TIMER12_TYPE;
             break;
         default:
             LOG_E("type %x is not support",type);
@@ -417,21 +349,17 @@ void AnlyzeDeviceRegister(type_monitor_t *monitor, rt_device_t serial, u8 *data,
     u8                  no          = 0;
     u8                  s_or_d      = 0;
     sensor_t            sensor;
-    device_time4_t      device;
-    timer12_t           timer;
+    device_t            device;
     line_t              line;
 
     rt_memset(&sensor, 0, sizeof(sensor_t));
-    rt_memset(&device, 0, sizeof(device_time4_t));
-    rt_memset(&timer, 0, sizeof(timer12_t));
+    rt_memset(&device, 0, sizeof(device_t));
     rt_memset(&line, 0, sizeof(line_t));
 
     sensor.type = data[8];
     sensor.uuid = (data[9] << 24) | (data[10] << 16) | (data[11] << 8) | data[12];
     device.type = data[8];
     device.uuid = (data[9] << 24) | (data[10] << 16) | (data[11] << 8) | data[12];
-    timer.type = data[8];
-    timer.uuid = (data[9] << 24) | (data[10] << 16) | (data[11] << 8) | data[12];
     line.type = data[8];
     line.uuid = (data[9] << 24) | (data[10] << 16) | (data[11] << 8) | data[12];
 
@@ -482,27 +410,6 @@ void AnlyzeDeviceRegister(type_monitor_t *monitor, rt_device_t serial, u8 *data,
         }
         /* 发送注册回复 */
         devRegisterAnswer(monitor, serial, device.uuid);
-    }
-    else if(TIMER12_TYPE == s_or_d)
-    {
-        if(NO == FindTimer(monitor, timer, &no))
-        {
-            timer.addr = getAllocateAddress(monitor, timer.type);
-            if(RT_EOK == setTimer12Default(&timer))
-            {
-                InsertTimer12ToTable(monitor, timer, no);
-            }
-            else
-            {
-                LOG_E("The timer is not supported");
-            }
-        }
-        else
-        {
-            LOG_D("timer have exist");
-        }
-
-        timer12Answer(monitor, serial, timer.uuid);
     }
     else if(LINE1OR2_TYPE == s_or_d)
     {
@@ -578,42 +485,6 @@ void devRegisterAnswer(type_monitor_t *monitor, rt_device_t serial, u32 uuid)
             buffer[6] = 0x06;
             buffer[7] = monitor->device[i].addr;
             buffer[8] = monitor->device[i].type;
-        }
-    }
-
-    ReadUniqueId(&id);
-    buffer[9] = id >> 24;
-    buffer[10] = id >> 16;
-    buffer[11] = id >> 8;
-    buffer[12] = id;
-
-    crc16Result = usModbusRTU_CRC(buffer, 13);
-    buffer[13] = crc16Result;                         //CRC16低位
-    buffer[14] = (crc16Result>>8);                    //CRC16高位
-
-    rt_device_write(serial, 0, buffer, 15);
-}
-
-void timer12Answer(type_monitor_t *monitor, rt_device_t serial, u32 uuid)
-{
-    u16 i = 0;
-    u8 buffer[15];
-    u16 crc16Result = 0x0000;
-    u32 id;
-
-    buffer[0] = REGISTER_CODE;
-    buffer[1] = 0x80;
-    for(i = 0; i < monitor->timer12_size; i++)
-    {
-        if(uuid == monitor->time12[i].uuid)
-        {
-            buffer[2] = monitor->time12[i].uuid >> 24;
-            buffer[3] = monitor->time12[i].uuid >> 16;
-            buffer[4] = monitor->time12[i].uuid >> 8;
-            buffer[5] = monitor->time12[i].uuid;
-            buffer[6] = 0x06;
-            buffer[7] = monitor->time12[i].addr;
-            buffer[8] = monitor->time12[i].type;
         }
     }
 

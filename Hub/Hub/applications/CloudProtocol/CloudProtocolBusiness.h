@@ -298,7 +298,7 @@ struct sysSet{
     sys_warn_t      sysWarn;
     u8              dayOrNight;//白天黑夜 白天0 黑夜1
     u8              warn[WARN_MAX];
-    u8              offline[DEVICE_TIME4_MAX];
+    u8              offline[DEVICE_MAX];
     u16             warn_value[WARN_MAX];//该值主要为了显示使用 数据
     u8              saveFlag;
 };

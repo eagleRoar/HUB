@@ -17,6 +17,7 @@
 
 extern void printLine(line_t);
 
+//删除设备
 void deleteModule(type_monitor_t *monitor, u8 addr)
 {
     u8      index       = 0;
@@ -58,7 +59,7 @@ void deleteModule(type_monitor_t *monitor, u8 addr)
         {
             for(; index < monitor->device_size - 1; index++)
             {
-                rt_memcpy((u8 *)&monitor->device[index], (u8 *)&monitor->device[index + 1], sizeof(device_time4_t));
+                rt_memcpy((u8 *)&monitor->device[index], (u8 *)&monitor->device[index + 1], sizeof(device_t));
             }
         }
         monitor->device_size -= 1;
@@ -79,7 +80,7 @@ void changeDeviceType(type_monitor_t *monitor, u8 addr, u8 port, u8 type)
             {
                 if(port < monitor->device[index].storage_size)
                 {
-                    monitor->device[index].device_timer_type[port] = type;
+                    monitor->device[index].port[port].type = type;
                 }
             }
         }
@@ -99,29 +100,16 @@ void InsertSensorToTable(type_monitor_t *monitor, sensor_t module, u8 no)
     }
 }
 
-void InsertDeviceToTable(type_monitor_t *monitor, device_time4_t module, u8 no)
+void InsertDeviceToTable(type_monitor_t *monitor, device_t module, u8 no)
 {
-    if(no < DEVICE_TIME4_MAX)
+    if(no < DEVICE_MAX)
     {
         if(no >= monitor->device_size)
         {
             monitor->device_size++;
         }
-        rt_memcpy((u8 *)&monitor->device[no], (u8 *)&module, sizeof(device_time4_t));
+        rt_memcpy((u8 *)&monitor->device[no], (u8 *)&module, sizeof(device_t));
         printDevice(module);
-    }
-}
-
-void InsertTimer12ToTable(type_monitor_t *monitor, timer12_t module, u8 no)
-{
-    if(no < TIME12_MAX)
-    {
-        if(no >= monitor->timer12_size)
-        {
-            monitor->timer12_size++;
-        }
-        rt_memcpy((u8 *)&monitor->time12[no], (u8 *)&module, sizeof(timer12_t));
-        printTimer12(module);
     }
 }
 
@@ -156,7 +144,7 @@ u8 FindSensor(type_monitor_t *monitor, sensor_t module, u8 *no)
     return ret;
 }
 
-u8 FindDevice(type_monitor_t *monitor, device_time4_t module, u8 *no)
+u8 FindDevice(type_monitor_t *monitor, device_t module, u8 *no)
 {
     u8          index       = 0;
     u8          ret         = NO;
@@ -166,24 +154,6 @@ u8 FindDevice(type_monitor_t *monitor, device_time4_t module, u8 *no)
     {
         if ((monitor->device[index].uuid == module.uuid) &&
             (monitor->device[index].type == module.type))
-        {
-            *no = index;
-            ret = YES;
-        }
-    }
-    return ret;
-}
-
-u8 FindTimer(type_monitor_t *monitor, timer12_t module, u8 *no)
-{
-    u8          index       = 0;
-    u8          ret         = NO;
-
-    *no = monitor->timer12_size;
-    for (index = 0; index < monitor->timer12_size; index++)
-    {
-        if ((monitor->time12[index].uuid == module.uuid) &&
-            (monitor->time12[index].type == module.type))
         {
             *no = index;
             ret = YES;
@@ -253,6 +223,11 @@ void initModuleConState(type_monitor_t *monitor)
     {
         monitor->sensor[index].conn_state = CON_FAIL;
     }
+
+    for(index = 0; index < monitor->line_size; index++)
+    {
+        monitor->line[index].conn_state = CON_FAIL;
+    }
 }
 
 sensor_t *GetSensorByType(type_monitor_t *monitor, u8 type)
@@ -270,7 +245,7 @@ sensor_t *GetSensorByType(type_monitor_t *monitor, u8 type)
     return RT_NULL;
 }
 
-device_time4_t *GetDeviceByType(type_monitor_t *monitor, u8 type)
+device_t *GetDeviceByType(type_monitor_t *monitor, u8 type)
 {
     u8      index       = 0;
 
@@ -291,24 +266,54 @@ device_time4_t *GetDeviceByType(type_monitor_t *monitor, u8 type)
  */
 void CtrlAllDeviceByType(type_monitor_t *monitor, u8 type, u8 en, u8 value)
 {
-    u8      index       = 0;
+    u8          index       = 0;
+    u8          port        = 0;
+    device_t    *device     = RT_NULL;
 
     for(index = 0;index < monitor->device_size; index++)
     {
-        if(type == monitor->device[index].type)
+        device = &monitor->device[index];
+        if(type == device->type)
         {
-            monitor->device[index]._storage[0]._port.d_state = en;
-            monitor->device[index]._storage[0]._port.d_value = value;
+            device->port[0].ctrl.d_state = en;
+            device->port[0].ctrl.d_value = value;
         }
-        else if(monitor->device[index].type == AC_4_TYPE ||
-                monitor->device[index].type == IO_12_TYPE)
+        else
         {
-            for(u8 stora = 0; stora < monitor->device[index].storage_size; stora++)
+            for(port = 0; port < device->storage_size; port++)
             {
-                if(type == monitor->device[index].device_timer_type[stora])
+                if(type == device->port[port].type)
                 {
-                    monitor->device[index]._storage[stora]._port.d_state = en;
-                    monitor->device[index]._storage[stora]._port.d_value = value;
+                    device->port[port].ctrl.d_state = en;
+                    device->port[port].ctrl.d_value = value;
+                }
+            }
+        }
+    }
+}
+
+void CtrlAllDeviceByFunc(type_monitor_t *monitor, u8 func, u8 en, u8 value)
+{
+    u8          index       = 0;
+    u8          port        = 0;
+    device_t    *device     = RT_NULL;
+
+    for(index = 0;index < monitor->device_size; index++)
+    {
+        device = &monitor->device[index];
+        if(func == device->port[0].func)
+        {
+            device->port[0].ctrl.d_state = en;
+            device->port[0].ctrl.d_value = value;
+        }
+        else
+        {
+            for(port = 0; port < device->storage_size; port++)
+            {
+                if(func == device->port[port].func)
+                {
+                    device->port[port].ctrl.d_state = en;
+                    device->port[port].ctrl.d_value = value;
                 }
             }
         }
@@ -330,7 +335,7 @@ sensor_t *GetSensorByAddr(type_monitor_t *monitor, u8 addr)
     return RT_NULL;
 }
 
-device_time4_t *GetDeviceByAddr(type_monitor_t *monitor, u8 addr)
+device_t *GetDeviceByAddr(type_monitor_t *monitor, u8 addr)
 {
     u8      index       = 0;
 
@@ -338,32 +343,7 @@ device_time4_t *GetDeviceByAddr(type_monitor_t *monitor, u8 addr)
     {
         if(addr == monitor->device[index].addr)
         {
-//            LOG_I("find device add = %d",addr);
             return &(monitor->device[index]);
-        }
-        else
-        {
-//            LOG_E("can not find device addr = %d",addr);
-        }
-    }
-
-    return RT_NULL;
-}
-
-timer12_t *GetTimerByAddr(type_monitor_t *monitor, u8 addr)
-{
-    u8      index       = 0;
-
-    for(index = 0; index < monitor->timer12_size; index++)
-    {
-        if(addr == monitor->time12[index].addr)
-        {
-//            LOG_I("find timer add = %d",addr);
-            return &(monitor->time12[index]);
-        }
-        else
-        {
-//            LOG_E("can not find timer addr = %d",addr);
         }
     }
 
@@ -422,6 +402,48 @@ tank_t *GetTankByNo(sys_tank_t *sys_tank, u8 no)
     }
 
     return RT_NULL;
+}
+
+u16 GetValueAboutHACV(device_t *device, u8 cool, u8 heat)
+{
+    u16         value       = 0x0000;
+
+    //只允许AC的不允许端口中为hvac型的
+    if(HVAC_6_TYPE == device->type)
+    {
+        if(ON == heat)
+        {
+            if(HVAC_CONVENTIONAL == device->_hvac.hvacMode)
+            {
+                value = 0x14;
+            }
+            else if(HVAC_PUM_O == device->_hvac.hvacMode)
+            {
+                value = 0x1C;
+            }
+            else if(HVAC_PUM_B == device->_hvac.hvacMode)
+            {
+                value = 0x0C;
+            }
+        }
+        else if(ON == cool)
+        {
+            if(HVAC_CONVENTIONAL == device->_hvac.hvacMode)
+            {
+                value = 0x0C;
+            }
+            else if(HVAC_PUM_O == device->_hvac.hvacMode)
+            {
+                value = 0x0C;
+            }
+            else if(HVAC_PUM_B == device->_hvac.hvacMode)
+            {
+                value = 0x1C;
+            }
+        }
+    }
+
+    return value;
 }
 
 #endif /* APPLICATIONS_INFORMATIONMANAGE_MODULE_MODULE_C_ */

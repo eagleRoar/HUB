@@ -158,7 +158,7 @@ void printSensor(sensor_t module)
     }
 }
 
-void printDevice(device_time4_t module)
+void printDevice(device_t module)
 {
     int         index       = 0;
 
@@ -180,8 +180,8 @@ void printDevice(device_time4_t module)
     LOG_D("storage_size     : %d",module.storage_size);
     for(index = 0; index < module.storage_size; index++)
     {
-        LOG_D("stora %d name    : %s, value = %d, addr = %x",
-               index, module._storage[index]._port.name, module._storage[index]._port.d_state,module._storage[index]._port.addr);
+        LOG_D("stora %d name    : %s, value = %d",
+               index, module.port[index].name, module.port[index].ctrl.d_state);
     }
 }
 
@@ -192,38 +192,6 @@ void printLine(line_t line)
     LOG_D("uuid = %x",line.uuid);
     LOG_D("name = %s",line.name);
     LOG_D("ctr addr = %x",line.ctrl_addr);
-}
-
-void printTimer12(timer12_t module)
-{
-    int         index       = 0;
-//    int         port        = 0;
-
-    LOG_D("----------------------print new io_12-----------");
-    LOG_D("type             : %x",module.type);
-    LOG_D("uuid             : %x",module.uuid);
-    LOG_D("name             : %s",module.name);
-    LOG_D("addr             : %x",module.addr);
-    LOG_D("save_state       : %x",module.save_state);
-    LOG_D("conn_state       : %x",module.conn_state);
-    LOG_D("s_or_d : Timer12");
-    LOG_D("storage_size     : %d",module.storage_size);
-    for(index = 0; index < TIMER12_PORT_MAX; index++)
-    {
-//        for(port = 0; port < TIMER_GROUP; port++)
-//        {
-//            LOG_D("stora %d : on_at = %d, duration = %d, en = %d",
-//                   index, module._time12_ctl[index]._timer[port].on_at, module._time12_ctl[index]._timer[port].duration,
-//                   module._time12_ctl[index]._timer[port].en);
-//        }
-        LOG_D("d_state = %d",module._time12_ctl[index].d_state);
-//        LOG_D("d_value = %d",module._time12_ctl[index].d_value);
-
-//        LOG_D("_recycle.duration = %d",module._recycle[index].duration);
-//        LOG_D("_recycle.pauseTime = %d",module._recycle[index].pauseTime);
-//        LOG_D("_recycle.startAt = %d",module._recycle[index].startAt);
-    }
-
 }
 
 void rtcTest(type_sys_time time)

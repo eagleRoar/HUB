@@ -129,13 +129,11 @@ void sd_dfs_event_entry(void* parameter)
                 {
                     if((sensor_size != GetMonitor()->sensor_size) ||
                        (device_size != GetMonitor()->device_size) ||
-                       (timer12_size != GetMonitor()->timer12_size) ||
                        (line_size != GetMonitor()->line_size) ||
                        (YES == saveModuleFlag))
                     {
                         sensor_size = GetMonitor()->sensor_size;
                         device_size = GetMonitor()->device_size;
-                        timer12_size = GetMonitor()->timer12_size;
                         line_size = GetMonitor()->line_size;
                         saveModuleFlag = NO;
 
