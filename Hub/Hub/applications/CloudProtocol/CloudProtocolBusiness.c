@@ -3042,12 +3042,20 @@ char *ReplyGetSysPara(char *cmd, cloudcmd_t cloud, sys_para_t para)
         cJSON_AddNumberToObject(json, "timeFormat", para.timeFormat);
         cJSON_AddNumberToObject(json, "dayNightMode", para.dayNightMode);
         cJSON_AddNumberToObject(json, "photocellSensitivity", para.photocellSensitivity);
-        for(u8 index = 0; index < sensor->storage_size; index++)
+        LOG_D("---------------------- sensor size = %d",sensor->storage_size);
+        if(RT_NULL != sensor)
         {
-            if(F_S_LIGHT == sensor->__stora[index].func)
+            for(u8 index = 0; index < sensor->storage_size; index++)
             {
-                cJSON_AddNumberToObject(json, "lightIntensity", sensor->__stora[index].value);
+                if(F_S_LIGHT == sensor->__stora[index].func)
+                {
+                    cJSON_AddNumberToObject(json, "lightIntensity", sensor->__stora[index].value);
+                }
             }
+        }
+        else
+        {
+            cJSON_AddNumberToObject(json, "lightIntensity", VALUE_NULL);
         }
         cJSON_AddNumberToObject(json, "dayTime", para.dayTime);
         cJSON_AddNumberToObject(json, "nightTime", para.nightTime);
@@ -4045,6 +4053,10 @@ char *ReplyGetDeviceList(char *cmd, type_kv_c16 msgid)
                     //2.多个口的如  AC_4 IO_12
                     else
                     {
+                        if(IO_12_TYPE == module->type)
+                        {
+                            cJSON_AddNumberToObject(item, "manual", 0);
+                        }
                         portList = cJSON_CreateArray();
                         if(RT_NULL != portList)
                         {

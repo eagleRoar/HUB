@@ -16,13 +16,12 @@
 
 type_connect_t      senConnectState[SENSOR_MAX];
 type_connect_t      devConnectState[DEVICE_MAX];
-//type_connect_t      timeConnectState[TIME12_MAX];
 type_connect_t      lineConnectState[LINE_MAX];
 u8                  ask_device          = 0;
-u8                  ask_time12          = 0;
 u8                  ask_sensor          = 0;
 u8                  ask_line            = 0;
 u8                  special[DEVICE_MAX]           ={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};//特色操作
+u8                  deviceEvent         = 0;
 
 extern u8 saveModuleFlag;
 
@@ -30,7 +29,6 @@ void initConnectState(void)
 {
     rt_memset(senConnectState, 0, sizeof(type_connect_t) * SENSOR_MAX);
     rt_memset(devConnectState, 0, sizeof(type_connect_t) * DEVICE_MAX);
-//    rt_memset(timeConnectState, 0, sizeof(type_connect_t) * TIME12_MAX);
     rt_memset(lineConnectState, 0, sizeof(type_connect_t) * LINE_MAX);
 }
 
@@ -333,45 +331,59 @@ u8 askDeviceHeart_new(type_monitor_t *monitor, rt_device_t serial, u8 event)
 
     }
 
-    //5.整合数据发送给相应的设备
-    buffer[0] = device->addr;
-    if(1 == monitor->device[ask_device].storage_size)
+    if(monitor->device_size > 0)
     {
-        buffer[1] = WRITE_SINGLE;
-        buffer[2] = (device->ctrl_addr >> 8) & 0x00FF;
-        buffer[3] = device->ctrl_addr & 0x00FF;
-        buffer[4] = device->port[0].ctrl.d_state;
-        buffer[5] = device->port[0].ctrl.d_value;
-    }
-    else
-    {
-
-        buffer[1] = WRITE_SINGLE;
-        buffer[2] = (device->ctrl_addr >> 8) & 0x00FF;
-        buffer[3] = device->ctrl_addr & 0x00FF;
-        for(u8 item = 0; item < device->storage_size; item++)
+        //5.整合数据发送给相应的设备
+        buffer[0] = device->addr;
+        if(1 == monitor->device[ask_device].storage_size)
         {
-            if(ON == device->port[item].ctrl.d_state)
+            buffer[1] = WRITE_SINGLE;
+            buffer[2] = (device->ctrl_addr >> 8) & 0x00FF;
+            buffer[3] = device->ctrl_addr & 0x00FF;
+            buffer[4] = device->port[0].ctrl.d_state;
+            buffer[5] = device->port[0].ctrl.d_value;
+        }
+        else
+        {
+            //5.1特殊处理,如果是AC_4则要先问类型
+            if((AC_4_TYPE == device->type) && (YES != special[ask_device]))
             {
-                temp |= 1 << item;
+                //LOG_W("ask ac_4 port");//Justin print
+                buffer[1] = READ_MUTI;
+                buffer[2] = (0x0440 >> 8) & 0x00FF;
+                buffer[3] = 0x0440 & 0x00FF;
+                buffer[4] = (device->storage_size >> 8) & 0x00FF;
+                buffer[5] = device->storage_size & 0x00FF;
+            }
+            else
+            {
+                buffer[1] = WRITE_SINGLE;
+                buffer[2] = (device->ctrl_addr >> 8) & 0x00FF;
+                buffer[3] = device->ctrl_addr & 0x00FF;
+                for(u8 item = 0; item < device->storage_size; item++)
+                {
+                    if(ON == device->port[item].ctrl.d_state)
+                    {
+                        temp |= 1 << item;
+                    }
+                }
+                buffer[4] = temp >> 8;
+                buffer[5] = temp;
             }
         }
+        crc16Result = usModbusRTU_CRC(buffer, 6);
+        buffer[6] = crc16Result;                             //CRC16低位
+        buffer[7] = (crc16Result>>8);                        //CRC16高位
 
-        buffer[4] = temp >> 8;
-        buffer[5] = temp;
+        rt_device_write(serial, 0, buffer, 8);
+        //LOG_I("ask device name %s, addr %x",device->name,device->addr);
+        devConnectState[ask_device].send_count ++;
+        if(devConnectState[ask_device].send_count >= CONNRCT_MISS_MAX)
+        {
+            ask_device ++;
+        }
+        devConnectState[ask_device].send_state = ON;
     }
-    crc16Result = usModbusRTU_CRC(buffer, 6);
-    buffer[6] = crc16Result;                             //CRC16低位
-    buffer[7] = (crc16Result>>8);                        //CRC16高位
-
-    rt_device_write(serial, 0, buffer, 8);
-    //LOG_I("ask device name %s, addr %x",device->name,device->addr);
-    devConnectState[ask_device].send_count ++;
-    if(devConnectState[ask_device].send_count >= CONNRCT_MISS_MAX)
-    {
-        ask_device ++;
-    }
-    devConnectState[ask_device].send_state = ON;
 
     return ret;
 }
@@ -392,7 +404,12 @@ void replyStrorageType(type_monitor_t *monitor, u8 addr, u8 *data, u8 dataLen)
             {
                 monitor->device[ask_device].port[storage].type =
                         (data[2 * storage] << 8) | data[2 * storage + 1];
+                monitor->device[ask_device].port[storage].func =
+                        GetFuncByType(monitor->device[ask_device].port[storage].type);
             }
+            /*LOG_I("recv ac_4 port %x %x %x %x",monitor->device[ask_device].port[0].type,
+                    monitor->device[ask_device].port[1].type,monitor->device[ask_device].port[2].type,
+                    monitor->device[ask_device].port[3].type);*/
         }
     }
 }
@@ -638,4 +655,14 @@ void findLineLocation(type_monitor_t *monitor, cloudcmd_t *cmd,rt_device_t seria
         }
 
     }
+}
+
+void setDeviceEvent(u8 event)
+{
+    deviceEvent = event;
+}
+
+u8 getDeviceEvent(void)
+{
+    return deviceEvent;
 }

@@ -37,19 +37,15 @@ typedef     struct system_time              type_sys_time;
 typedef     struct buttonInfo               type_button_t;
 typedef     struct mqtt_client              mqtt_client;
 
-#define     SENSOR_MAX                      20//16
-//#define     TIME12_MAX                      4
+#define     SENSOR_MAX                      20
 #define     DEVICE_MAX                      16
 #define     DEVICE_PORT_MAX                 12
 #define     LINE_MAX                        2
-//#define     DEVICE_PORT_SZ                  4
-//#define     DEVICE_MAX                16
 #define     VALVE_MAX                       16
 #define     TANK_SENSOR_MAX                 4
 #define     LINE_MAX                        2
 #define     SENSOR_VALUE_MAX                4
 #define     TIMER_GROUP                     12
-//#define     TIMER12_PORT_MAX                12
 #define     WARN_MAX                        28
 #define     NEW_OLED                        1           //启用新的屏幕
 //默认值
@@ -60,7 +56,7 @@ typedef     struct mqtt_client              mqtt_client;
 #define     DEHUMI_TARGET                   800
 #define     POWER_VALUE                     80
 #define     AUTO_DIMMING                    1200
-
+#define     MANUAL_TIME_DEFAULT             10
 struct hub{
     u16 crc;
     char name[MODULE_NAMESZ];
@@ -104,30 +100,6 @@ struct sensor
     sen_stora_t     __stora[SENSOR_VALUE_MAX];
 };//占35字节
 
-//struct timer_timer{
-//    char    name[STORAGE_NAMESZ];
-//    struct timer
-//    {
-//        u16     on_at;                                      //开始的时间
-//        u16     duration;                                   //持续时间 //该时间以秒为单位的
-//        u8      en;                                         //使能 1-on/0-off                                    //device 的控制数值
-//    }_timer[TIMER_GROUP];
-//    u8      d_state;                                        //device 的状态位
-//    u8      d_value;                                        //device 的控制数值
-//};
-//
-//struct recycle
-//{
-//    u16     startAt;                                // 开启时间点 8:00 8*60=480
-//    u16     duration;                               //持续时间 秒
-//    u16     pauseTime;                              //停止时间 秒
-//    u8              isRunFirstCycle;            //是否已经执行第一次循环
-//    time_t          firstRuncycleTime;          //记录第一次开始执行的时间 方便回溯
-////#if (HUB_SELECT == HUB_IRRIGSTION)//环控版本的recycle times, 为跨天无限循环
-//    u8      times;                                  //次数 timer 时 startAt 为第一次开始时间，次数为 0
-////#endif
-//};
-//
 struct cycle
 {
     u16     startAt;                                // 开启时间点 8:00 8*60=480
@@ -152,70 +124,6 @@ struct control
     u8      d_state;                                //device 的状态位
     u8      d_value;                                //device 的控制数值
 };
-//
-//struct device_Timer4
-//{
-//    u16             crc;
-//    u32             uuid;
-//    char            name[MODULE_NAMESZ];                    //产品名称
-//    u8              addr;                                   //hub管控的地址
-//    u16             ctrl_addr;                              //终端控制的寄存器地址
-//    u8              main_type;                              //主类型 如co2 温度 湿度 line timer
-//    u8              type;                                   //产品类型号
-//    u8              color;                                  //颜色
-//    u8              conn_state;                             //连接状态
-//    u8              reg_state;                              //注册状态
-//    u8              save_state;                             //是否已经存储
-//    u8              storage_size;                           //寄存器数量
-//    u8              mode[DEVICE_PORT_SZ];                   // 模式 1-By Schedule 2-By Recycle
-//    u8              hotStartDelay;                          //对于制冷 制热 除湿设备需要有该保护
-//    u8              device_timer_type[DEVICE_PORT_SZ];      //device 或者  timer 类型
-//    type_manual_t   main_manual;
-//    //device和ac_4一样有最多4个port
-//    union device_port{
-//        struct device{
-//            char    name[STORAGE_NAMESZ];
-//            u8      func;                                       //功能，如co2
-//            u16     addr;                                       //module id+ port号
-//            u8      d_state;                                    //device 的状态位
-//            u8      d_value;                                    //device 的控制数值
-//        }_port;//16位
-//
-//        type_timmer_timmer _time4_ctl;
-//    }_storage[DEVICE_PORT_SZ];
-//
-//    type_timmer_recycle _recycle[DEVICE_PORT_SZ];
-//    type_manual_t       _manual[DEVICE_PORT_SZ];
-//
-//    struct hvac
-//    {
-//        u8      manualOnMode;        //1-cooling 2-heating //手动开关的时候 该选项才有意义
-//        u8      fanNormallyOpen;     //风扇常开 1-常开 0-自动
-//        u8      hvacMode;            //1-conventional 模式 2-HEAT PUM 模式 O 模式 3-HEAT PUM 模式 B 模式
-//    }_hvac;
-//};
-//
-//struct timer12
-//{
-//    u16             crc;
-//    u32             uuid;
-//    char            name[MODULE_NAMESZ];                    //产品名称
-//    u8              addr;                                   //hub管控的地址
-//    u16             ctrl_addr;                              //终端控制的寄存器地址
-//    u8              main_type;                              //主类型 如co2 温度 湿度 line timer
-//    u8              type;                                   //产品类型号
-//    u8              color;                                  //颜色
-//    u8              conn_state;                             //连接状态
-//    u8              reg_state;                              //注册状态
-//    u8              save_state;                             //是否已经存储
-//    u8              storage_size;                           //寄存器数量
-//    type_manual_t   main_manual;
-//    u8              mode[TIMER12_PORT_MAX];                 // 模式 1-By Schedule 2-By Recycle
-//    u8                      port_type[TIMER12_PORT_MAX];
-//    type_timmer_timmer      _time12_ctl[TIMER12_PORT_MAX];
-//    type_timmer_recycle     _recycle[TIMER12_PORT_MAX];
-//    type_manual_t           _manual[TIMER12_PORT_MAX];
-//};
 
 struct line{
     u16             crc;
@@ -231,7 +139,6 @@ struct line{
     type_manual_t   _manual;
 };
 
-//Justin debug 仅仅测试2022.09.14
 struct device{
     u16             crc;
     u32             uuid;
@@ -387,8 +294,8 @@ enum
 //询问uart 事件
 enum
 {
-    EV_CTRL_PORT = 1,
-    EV_ASK_PORT_TYPE,
+    EV_ASK_PORT_TYPE = 1,
+    EV_CTRL_PORT,
     EV_CHG_PORT_TYPE
 };
 

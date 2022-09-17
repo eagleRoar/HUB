@@ -40,7 +40,6 @@ void initConnectState(void);
 void UpdateModuleConnect(type_monitor_t *, u8);
 void MonitorModuleConnect(type_monitor_t *);
 u8 askSensorStorage(type_monitor_t *, rt_device_t);
-//u8 askDeviceHeart(type_monitor_t *, rt_device_t);
 u8 askDeviceHeart_new(type_monitor_t *, rt_device_t, u8);
 u8 askLineHeart(type_monitor_t *, rt_device_t);
 void AnalyzeData(rt_device_t , type_monitor_t *, u8 *, u8);
@@ -48,5 +47,6 @@ void AnlyzeModuleInfo(type_monitor_t *, u8 *, u8);
 void findDeviceLocation(type_monitor_t *, cloudcmd_t *,rt_device_t);
 void findLineLocation(type_monitor_t *, cloudcmd_t *,rt_device_t);
 void replyStrorageType(type_monitor_t *, u8, u8 *, u8);
-
+void setDeviceEvent(u8);
+u8 getDeviceEvent(void);
 #endif /* APPLICATIONS_UART_BUSSINESSLAYER_UARTBUSSINESS_H_ */

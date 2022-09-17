@@ -13,7 +13,7 @@
 #define HUB_ENVIRENMENT                 1
 #define HUB_IRRIGSTION                  2
 
-#define HUB_SELECT                      HUB_ENVIRENMENT//HUB_IRRIGSTION//
+#define HUB_SELECT                      HUB_IRRIGSTION//HUB_ENVIRENMENT//
 
 #define UDP_TASK                        "udp_task"
 #define TCP_SEND_TASK                   "tcp_send"

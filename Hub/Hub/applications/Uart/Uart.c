@@ -181,7 +181,7 @@ void SensorUart2TaskEntry(void* parameter)
     rt_device_set_rx_indicate(uart3_serial, Uart3_input);
 
     initOfflineFlag();      //初始化离线报警flag
-
+    setDeviceEvent(EV_ASK_PORT_TYPE);       //设置询问AC_4端口事件
     while (1)
     {
         time1S = TimerTask(&time1S, 1000/UART_PERIOD, &Timer1sTouch);                       //1s定时任务
@@ -239,7 +239,7 @@ void SensorUart2TaskEntry(void* parameter)
                 {
                     if(1 == device_start)
                     {
-                        if(YES == askDeviceHeart_new(&monitor, uart2_serial, 1))//Justin debug 仅仅测试
+                        if(YES == askDeviceHeart_new(&monitor, uart2_serial, getDeviceEvent()))//Justin debug 仅仅测试
                         {
                             device_start = 0;
                         }
@@ -284,14 +284,14 @@ void SensorUart2TaskEntry(void* parameter)
                 humiProgram(GetMonitor());
                 lineProgram_new(GetMonitor(), 0, 1000);
                 lineProgram_new(GetMonitor(), 1, 1000);             //line2
-#endif
+#elif(HUB_SELECT == HUB_IRRIGSTION)
                 timmerProgram(GetMonitor());
                 findDeviceLocation(GetMonitor(), &sys_set.cloudCmd, uart2_serial);
                 findLineLocation(GetMonitor(), &sys_set.cloudCmd, uart3_serial);
                 warnProgram(GetMonitor(), GetSysSet());             //监听告警信息
-                pumpProgram(GetMonitor(), GetSysTank());            //水泵的工作
+                pumpProgram(GetMonitor(), GetSysTank());            //水泵的工作//Justin debug
                 autoBindPumpTotank(GetMonitor(), GetSysTank());
-
+#endif
                 //检测到删除设备功能
                 if(0 != sys_set.cloudCmd.delete_id.value)
                 {

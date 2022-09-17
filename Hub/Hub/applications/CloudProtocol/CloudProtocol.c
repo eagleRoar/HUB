@@ -1159,13 +1159,6 @@ void tempProgram(type_monitor_t *monitor)
             }
         }
     }
-
-    //当前有一个逻辑是降温和除湿联动选择，只和ACSTATION联动
-    if(ON == tempSet.coolingDehumidifyLock)
-    {
-        //联动可能会导致降温和加热设备同时工作，除湿和加湿设备同时工作
-        CtrlAllDeviceByType(monitor, DEHUMI_TYPE, GetDeviceByType(monitor, COOL_TYPE)->port[0].ctrl.d_state, 0);
-    }
 }
 
 void timmerProgram(type_monitor_t *monitor)
@@ -1731,7 +1724,11 @@ void humiProgram(type_monitor_t *monitor)
     //当前有一个逻辑是降温和除湿联动选择
     if(ON == tempSet.coolingDehumidifyLock)
     {
-        CtrlAllDeviceByType(monitor, COOL_TYPE, GetDeviceByType(monitor, DEHUMI_TYPE)->port[0].ctrl.d_state, 0);
+        //如果除湿是开的话，AC_cool 不能关，因为可能AC_cool 上插着风扇
+        if(ON == GetDeviceByType(monitor, DEHUMI_TYPE)->port[0].ctrl.d_state)
+        {
+            CtrlAllDeviceByType(monitor, COOL_TYPE, ON, 0);
+        }
     }
 }
 
@@ -2514,144 +2511,6 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
 #define     ADD_WATER       1
 #define     NO_ADD_WATER    0
 
-//port 是AC_4 AC_12 才需要
-//void pumpDoing(device_time4_t *device, u8 port)
-//{
-//    u8                  item            = 0;
-//    type_sys_time       sys_time;
-//
-//
-//    getRealTimeForMat(&sys_time);
-//
-//    if(PUMP_TYPE == device->type || VALVE_TYPE == device->type)
-//    {
-//        if(BY_SCHEDULE == device->mode[0])
-//        {
-//            //定时器模式
-//            if(BY_RECYCLE == device->mode[0])
-//            {
-//                //达到循环的条件
-//                if(sys_time.hour * 60 * 60 + sys_time.minute * 60 + sys_time.second > device->_recycle[0].startAt * 60)
-//                {
-//                    //当前时间是否满足循环次数
-//                    if((sys_time.hour * 60 * 60 + sys_time.minute * 60 + sys_time.second - device->_recycle[0].startAt * 60) /
-//                       (device->_recycle[0].duration + device->_recycle[0].pauseTime) <= device->_recycle[0].times)
-//                    {
-//                        //当前时间 - 开始时间
-//                        if((sys_time.hour * 60 * 60 + sys_time.minute * 60 + sys_time.second - device->_recycle[0].startAt * 60) %
-//                            (device->_recycle[0].duration + device->_recycle[0].pauseTime) <= device->_recycle[0].duration)
-//                        {
-//                            device->_storage[0]._time4_ctl.d_state = ON;
-//                        }
-//                        else
-//                        {
-//                            device->_storage[0]._time4_ctl.d_state = OFF;
-//                        }
-//                    }
-//                    else
-//                    {
-//                        device->_storage[0]._time4_ctl.d_state = OFF;
-//                    }
-//
-//                }
-//                else
-//                {
-//                    device->_storage[0]._time4_ctl.d_state = OFF;
-//                }
-//            }
-//            else if(BY_SCHEDULE == device->mode[0])//定时器模式
-//            {
-//                for(item = 0; item < TIMER_GROUP; item++)//该功能待测试
-//                {
-//                    //选择处于第几组定时器
-//                    if(sys_time.hour * 60 * 60 + sys_time.minute * 60 + sys_time.second > device->_storage[0]._time4_ctl._timer[item].on_at * 60)
-//                    {
-//                        //小于持续时间
-//                        if(sys_time.hour * 60 * 60 + sys_time.minute * 60 + sys_time.second <= (device->_storage[0]._time4_ctl._timer[item].on_at *60
-//                                + device->_storage[0]._time4_ctl._timer[item].duration) )
-//                        {
-//                            device->_storage[0]._time4_ctl.d_state = device->_storage[0]._time4_ctl._timer[item].en;
-//                            break;
-//                        }
-//                    }
-//                }
-//
-//                if(item == TIMER_GROUP)
-//                {
-//                    device->_storage[0]._time4_ctl.d_state = 0;
-//                    device->_storage[0]._time4_ctl.d_value = 0;
-//                }
-//            }
-//        }
-//    }
-//    else if(AC_4_TYPE == device->type)
-//    {
-//        if(port > DEVICE_PORT_SZ - 1)
-//        {
-//            return;
-//        }
-//
-//        if(PUMP_TYPE == device->device_timer_type[port] || VALVE_TYPE == device->device_timer_type[port])
-//        {
-//            if(BY_RECYCLE == device->mode[port])
-//            {
-//                //达到循环的条件
-//                if(sys_time.hour * 60 * 60 + sys_time.minute * 60 + sys_time.second > device->_recycle[port].startAt * 60)
-//                {
-//                    //当前时间是否满足循环次数
-//                    if((sys_time.hour * 60 * 60 + sys_time.minute * 60 + sys_time.second - device->_recycle[port].startAt * 60) /
-//                       (device->_recycle[port].duration + device->_recycle[port].pauseTime) <= device->_recycle[port].times)
-//                    {
-//                        //当前时间 - 开始时间
-//                        if((sys_time.hour * 60 * 60 + sys_time.minute * 60 + sys_time.second - device->_recycle[port].startAt * 60) %
-//                            (device->_recycle[port].duration + device->_recycle[port].pauseTime) <= device->_recycle[port].duration)
-//                        {
-//                            device->_storage[port]._time4_ctl.d_state = ON;
-//                        }
-//                        else
-//                        {
-//                            device->_storage[port]._time4_ctl.d_state = OFF;
-//                        }
-//                    }
-//                    else
-//                    {
-//                        device->_storage[port]._time4_ctl.d_state = OFF;
-//                    }
-//
-//                }
-//                else
-//                {
-//                    device->_storage[port]._time4_ctl.d_state = OFF;
-//                }
-//            }
-//            else if(BY_SCHEDULE == device->mode[port])//定时器模式
-//            {
-//                for(item = 0; item < TIMER_GROUP; item++)//该功能待测试
-//                {
-//                    //选择处于第几组定时器
-//                    if(sys_time.hour * 60 * 60 + sys_time.minute * 60 + sys_time.second > device->_storage[port]._time4_ctl._timer[item].on_at * 60)
-//                    {
-//                        //小于持续时间
-//                        if(sys_time.hour * 60 * 60 + sys_time.minute * 60 + sys_time.second <= (device->_storage[port]._time4_ctl._timer[item].on_at *60
-//                                + device->_storage[port]._time4_ctl._timer[item].duration) )
-//                        {
-//                            LOG_W("name %s doing",device->name);//Justin print
-//                            device->_storage[port]._time4_ctl.d_state = device->_storage[port]._time4_ctl._timer[item].en;
-//                            break;
-//                        }
-//                    }
-//                }
-//
-//                if(item == TIMER_GROUP)
-//                {
-//                    device->_storage[port]._time4_ctl.d_state = 0;
-//                    device->_storage[port]._time4_ctl.d_value = 0;
-//                }
-//            }
-//        }
-//    }
-//}
-
 void pumpDoing(u8 addr, u8 port)
 {
     u8                  item            = 0;
@@ -2665,6 +2524,7 @@ void pumpDoing(u8 addr, u8 port)
         if((PUMP_TYPE == device->port[port].type) ||
            (VALVE_TYPE == device->port[port].type))
         {
+//            LOG_W("device->port[port].mode = %d",device->port[port].mode);//Justin print
             //定时器模式
             if(BY_RECYCLE == device->port[port].mode)
             {
@@ -2699,6 +2559,7 @@ void pumpDoing(u8 addr, u8 port)
             }
             else if(BY_SCHEDULE == device->port[port].mode)//定时器模式
             {
+                //LOG_W("now time %d, ontime %d",sys_time.hour * 60 * 60 + sys_time.minute * 60 + sys_time.second,device->port[port].timer[item].on_at * 60);
                 for(item = 0; item < TIMER_GROUP; item++)//该功能待测试
                 {
                     //选择处于第几组定时器
@@ -2709,6 +2570,7 @@ void pumpDoing(u8 addr, u8 port)
                                 + device->port[port].timer[item].duration) )
                         {
                             device->port[port].ctrl.d_state = device->port[port].timer[item].en;
+//                            LOG_W("open the timer");
                             break;
                         }
                     }
@@ -2716,6 +2578,7 @@ void pumpDoing(u8 addr, u8 port)
 
                 if(item == TIMER_GROUP)
                 {
+//                    LOG_I("close the timer");
                     device->port[port].ctrl.d_state = 0;
                     device->port[port].ctrl.d_value = 0;
                 }
@@ -2815,13 +2678,13 @@ void pumpProgram(type_monitor_t *monitor, sys_tank_t *tank_list)
                     port = 0;
                 }
                 pumpDoing(addr, port);
-                if(wl < tank_list->tank[tank].autoFillHeight ||
-                   ph < tank_list->tank[tank].lowPhProtection ||
-                   ph > tank_list->tank[tank].highPhProtection ||
-                   ec > tank_list->tank[tank].highEcProtection)
-                {
-                    GetDeviceByAddr(GetMonitor(), addr)->port[port].ctrl.d_state = OFF;
-                }
+//                if(wl < tank_list->tank[tank].autoFillHeight ||
+//                   ph < tank_list->tank[tank].lowPhProtection ||
+//                   ph > tank_list->tank[tank].highPhProtection ||
+//                   ec > tank_list->tank[tank].highEcProtection)//Justin debug 仅仅测试
+//                {
+//                    GetDeviceByAddr(GetMonitor(), addr)->port[port].ctrl.d_state = OFF;
+//                }
             }
         }
 
@@ -2849,13 +2712,13 @@ void pumpProgram(type_monitor_t *monitor, sys_tank_t *tank_list)
 
             pumpDoing(addr, port);
 
-            if(wl < tank_list->tank[tank].autoFillHeight ||
-               ph < tank_list->tank[tank].lowPhProtection ||
-               ph > tank_list->tank[tank].highPhProtection ||
-               ec > tank_list->tank[tank].highEcProtection)
-            {
-                GetDeviceByAddr(GetMonitor(), addr)->port[port].ctrl.d_state = OFF;
-            }
+//            if(wl < tank_list->tank[tank].autoFillHeight ||
+//               ph < tank_list->tank[tank].lowPhProtection ||
+//               ph > tank_list->tank[tank].highPhProtection ||
+//               ec > tank_list->tank[tank].highEcProtection)//Justin debug 仅仅测试
+//            {
+//                GetDeviceByAddr(GetMonitor(), addr)->port[port].ctrl.d_state = OFF;
+//            }
         }
         else
         {

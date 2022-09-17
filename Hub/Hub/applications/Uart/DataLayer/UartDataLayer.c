@@ -78,7 +78,7 @@ void setDeviceDefaultStora(device_t *dev, u8 index, char *name, u8 func, u8 type
     dev->port[index].cycle.duration = 0;
 
     dev->port[index].manual.manual = 0;
-    dev->port[index].manual.manual_on_time = 0;
+    dev->port[index].manual.manual_on_time = MANUAL_TIME_DEFAULT;
     dev->port[index].manual.manual_on_time_save = 0;
 }
 
@@ -130,6 +130,42 @@ char *GetModelByType(u8 type, char *name, u8 len)
     }
 
     return name;
+}
+
+u8 GetFuncByType(u8 type)
+{
+    u8      ret     = 0;
+
+    switch (type) {
+        case CO2_TYPE:
+            ret = F_Co2_UP;
+            break;
+        case HEAT_TYPE:
+            ret = F_HEAT;
+            break;
+        case HUMI_TYPE:
+            ret = F_HUMI;
+            break;
+        case DEHUMI_TYPE:
+            ret = F_DEHUMI;
+            break;
+        case COOL_TYPE:
+            ret = F_COOL;
+            break;
+        case VALVE_TYPE:
+            ret = F_VALVE;
+            break;
+        case PUMP_TYPE:
+            ret = F_PUMP;
+            break;
+        case TIMER_TYPE:
+            ret = F_TIMER;
+            break;
+        default:
+            break;
+    }
+
+    return ret;
 }
 
 char *GetFunNameByType(u8 type, char *name, u8 len)
@@ -250,6 +286,13 @@ rt_err_t setDeviceDefault(device_t *module)
             break;
         case AC_4_TYPE:
             setDeviceDefaultPara(module, "AC_4", 0x0401, S_AC_4, module->type, 4);
+            for(u8 index = 0; index < module->storage_size; index++)
+            {
+                strcpy(name," ");
+                sprintf(name,"%s%d","port",index+1);
+                rt_memcpy(module->port[index].name, name, STORAGE_NAMESZ);
+                module->port[index].manual.manual_on_time = MANUAL_TIME_DEFAULT;
+            }
             break;
         case PUMP_TYPE:
             setDeviceDefaultPara(module, "Pump", 0x0040, S_PUMP, module->type, 1);
@@ -262,8 +305,10 @@ rt_err_t setDeviceDefault(device_t *module)
             {
                 module->port[index].type = VALVE_TYPE;//目前暂定都是阀
                 module->port[index].func = F_VALVE;
+                strcpy(name," ");
                 sprintf(name,"%s%d","Valve",index+1);
                 rt_memcpy(module->port[index].name, name, STORAGE_NAMESZ);
+                module->port[index].manual.manual_on_time = MANUAL_TIME_DEFAULT;
             }
             break;
         default:
