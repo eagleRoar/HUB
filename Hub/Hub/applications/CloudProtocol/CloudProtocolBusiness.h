@@ -399,6 +399,7 @@ void CmdGetSensor(char *, cloudcmd_t *);
 void CmdSetPoolAlarm(char *, cloudcmd_t *);
 void CmdGetPoolAlarm(char *, cloudcmd_t *);
 void CmdSetDeviceType(char *, cloudcmd_t *);
+void CmdDelTankSensor(char *data, cloudcmd_t *cmd);
 char *SendHubReport(char *, sys_set_t *);
 char *SendHubReportWarn(char *, sys_set_t *, u8, u16, u8);
 char *ReplySetSchedule(char *, cloudcmd_t);
@@ -436,5 +437,6 @@ char *ReplyGetPumpSensorList(char *, cloudcmd_t);
 char *ReplySetPoolAlarm(char *, cloudcmd_t);
 char *ReplyGetPoolAlarm(char *, cloudcmd_t);
 char *ReplySetDeviceType(char *, cloudcmd_t);
-
+char *ReplyDelPumpSensor(char *, cloudcmd_t);
+u8 getColorFromTankList(u16, sys_tank_t *);
 #endif /* APPLICATIONS_CLOUDPROTOCOL_CLOUDPROTOCOLBUSINESS_H_ */

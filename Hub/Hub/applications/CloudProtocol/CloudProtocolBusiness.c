@@ -20,6 +20,7 @@ extern  type_sys_time   sys_time;
 extern  u8 sys_warn[WARN_MAX];
 extern  rt_device_t     uart2_serial;
 
+extern void getAppVersion(char *);
 extern void getRealTimeForMat(type_sys_time *);
 extern void GetNowSysSet(proTempSet_t *, proCo2Set_t *, proHumiSet_t *, proLine_t *, proLine_t *, struct recipeInfor *);
 
@@ -346,7 +347,7 @@ void CmdSetPortSet(char *data, cloudcmd_t *cmd)
     cJSON           *list_item  = RT_NULL;
     device_t        *device     = RT_NULL;
     line_t          *line       = RT_NULL;
-    u8              fatherFlg   = 0;            //判断是否是父模块 区别端口
+    //u8              fatherFlg   = 0;            //判断是否是父模块 区别端口
 
     temp = cJSON_Parse(data);
     if(RT_NULL != temp)
@@ -1211,6 +1212,40 @@ void CmdDelPumpValue(char *data, cloudcmd_t *cmd)
     }
 }
 
+void CmdDelTankSensor(char *data, cloudcmd_t *cmd)
+{
+    cJSON   *temp       = RT_NULL;
+
+    temp = cJSON_Parse(data);
+    if(RT_NULL != temp)
+    {
+        GetValueC16(temp, &cmd->msgid);
+        GetValueByU8(temp, "tankNo", &cmd->pump_no);
+        GetValueByU8(temp, "id", &cmd->pump_sensor_id);
+
+        for(u8 index = 0; index < GetSysTank()->tank_size; index++)
+        {
+            for(u8 item = 0; item < TANK_SENSOR_MAX; item++)
+            {
+                if(cmd->pump_sensor_id == GetSysTank()->tank[index].sensorId[0][item])
+                {
+                    GetSysTank()->tank[index].sensorId[0][item] = 0;
+                }
+                else if(cmd->pump_sensor_id == GetSysTank()->tank[index].sensorId[1][item])
+                {
+                    GetSysTank()->tank[index].sensorId[1][item] = 0;
+                }
+            }
+        }
+
+        cJSON_Delete(temp);
+    }
+    else
+    {
+        LOG_E("CmdDelTankSensor err");
+    }
+}
+
 void CmdSetTankSensor(char *data, cloudcmd_t *cmd)
 {
     cJSON   *temp       = RT_NULL;
@@ -1223,43 +1258,24 @@ void CmdSetTankSensor(char *data, cloudcmd_t *cmd)
         GetValueByU8(temp, "type", &cmd->pump_sensor_type);
         GetValueByU8(temp, "id", &cmd->pump_sensor_id);
 
-        //如果是删除泵传感器(协议规定)
-        if((0 == cmd->pump_no) && (0 == cmd->pump_sensor_type))
+        if((cmd->pump_no > 0) && (cmd->pump_no <= TANK_LIST_MAX))
         {
-            for(u8 index = 0; index < GetSysTank()->tank_size; index++)
+            for(u8 item = 0; item < TANK_SENSOR_MAX; item++)
             {
-                for(u8 item = 0; item < TANK_SENSOR_MAX; item++)
+                if(TANK_SENSOR_TANK == cmd->pump_sensor_type)
                 {
-                    if(cmd->pump_sensor_id == GetSysTank()->tank[index].sensorId[0][item])
+                    if(0 == GetSysTank()->tank[cmd->pump_no - 1].sensorId[0][item])
                     {
-                        GetSysTank()->tank[index].sensorId[0][item] = 0;
-                    }
-                    else if(cmd->pump_sensor_id == GetSysTank()->tank[index].sensorId[1][item])
-                    {
-                        GetSysTank()->tank[index].sensorId[1][item] = 0;
+                        GetSysTank()->tank[cmd->pump_no - 1].sensorId[0][item] = cmd->pump_sensor_id;
+                        break;
                     }
                 }
-            }
-        }
-        else    //添加泵传感器
-        {
-            if((cmd->pump_no > 0) && (cmd->pump_no <= TANK_LIST_MAX))
-            {
-                for(u8 item = 0; item < TANK_SENSOR_MAX; item++)
+                else if(TANK_SENSOR_INLINE == cmd->pump_sensor_type)
                 {
-                    if(TANK_SENSOR_TANK == cmd->pump_sensor_type)
+                    if(0 == GetSysTank()->tank[cmd->pump_no - 1].sensorId[1][item])
                     {
-                        if(0 == GetSysTank()->tank[cmd->pump_no - 1].sensorId[0][item])
-                        {
-                            GetSysTank()->tank[cmd->pump_no - 1].sensorId[0][item] = cmd->pump_sensor_id;
-                        }
-                    }
-                    else if(TANK_SENSOR_INLINE == cmd->pump_sensor_type)
-                    {
-                        if(0 == GetSysTank()->tank[cmd->pump_no - 1].sensorId[1][item])
-                        {
-                            GetSysTank()->tank[cmd->pump_no - 1].sensorId[1][item] = cmd->pump_sensor_id;
-                        }
+                        GetSysTank()->tank[cmd->pump_no - 1].sensorId[1][item] = cmd->pump_sensor_id;
+                        break;
                     }
                 }
             }
@@ -1282,13 +1298,16 @@ void CmdSetPumpColor(char *data, cloudcmd_t *cmd)
     if(RT_NULL != temp)
     {
         GetValueC16(temp, &cmd->msgid);
-        GetValueByU8(temp, "id", &cmd->pump_no);
+        GetValueByU16(temp, "id", &cmd->pump_id);
         GetValueByU8(temp, "color", &cmd->color);
 
-        //增加泵颜色 //泵Id 和 桶序号的对应为 泵Id = 桶序号 + 1
-        if((cmd->pump_no <= TANK_LIST_MAX) && (cmd->pump_no > 0))
+        for(u8 item = 0; item < GetSysTank()->tank_size; item++)
         {
-            GetSysTank()->tank[cmd->pump_no - 1].color = cmd->color;
+            if(cmd->pump_id == GetSysTank()->tank[item].pumpId)
+            {
+                GetSysTank()->tank[item].color = cmd->color;
+                break;
+            }
         }
 
         cJSON_Delete(temp);
@@ -2687,7 +2706,8 @@ char *ReplySetPumpColor(char *cmd, cloudcmd_t cloud, sys_tank_t *tank_list)
     {
         cJSON_AddStringToObject(json, "cmd", cmd);
         cJSON_AddStringToObject(json, cloud.msgid.name, cloud.msgid.value);
-
+        cJSON_AddNumberToObject(json, "id", cloud.pump_id);
+        cJSON_AddNumberToObject(json, "color", cloud.color);
         cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
         str = cJSON_PrintUnformatted(json);
         cJSON_Delete(json);
@@ -2721,6 +2741,31 @@ char *ReplySetPumpSensor(char *cmd, cloudcmd_t cloud)
     else
     {
         LOG_E("ReplySetPumpSensor err");
+    }
+
+    return str;
+}
+
+char *ReplyDelPumpSensor(char *cmd, cloudcmd_t cloud)
+{
+    char            *str        = RT_NULL;
+    cJSON           *json       = cJSON_CreateObject();
+
+    if(RT_NULL != json)
+    {
+        cJSON_AddStringToObject(json, "cmd", cmd);
+        cJSON_AddStringToObject(json, cloud.msgid.name, cloud.msgid.value);
+
+        cJSON_AddNumberToObject(json, "tankNo", cloud.pump_no);
+        cJSON_AddNumberToObject(json, "id", cloud.pump_sensor_id);
+
+        cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
+        str = cJSON_PrintUnformatted(json);
+        cJSON_Delete(json);
+    }
+    else
+    {
+        LOG_E("ReplyDelPumpSensor err");
     }
 
     return str;
@@ -3035,6 +3080,11 @@ char *ReplyGetSysPara(char *cmd, cloudcmd_t cloud, sys_para_t para)
         cJSON_AddStringToObject(json, "cmd", cmd);
         cJSON_AddStringToObject(json, cloud.msgid.name, cloud.msgid.value);
         cJSON_AddStringToObject(json, "sn", GetSnName(name, 12));
+
+        cJSON_AddStringToObject(json, "model", GetModelByType(HUB_TYPE, name, 8));
+        getAppVersion(name);
+        cJSON_AddStringToObject(json, "firmwareVer", name);
+        cJSON_AddStringToObject(json, "bootloadVer", BOOTLOADVISION);
 
         cJSON_AddStringToObject(json, "ntpzone", para.ntpzone);
         cJSON_AddNumberToObject(json, "tempUnit", para.tempUnit);
@@ -4037,7 +4087,7 @@ char *ReplyGetDeviceList(char *cmd, type_kv_c16 msgid)
                         {
                             cJSON_AddNumberToObject(item, "workingStatus", module->port[0].ctrl.d_state);
                         }
-                        cJSON_AddNumberToObject(port, "color", module->color);
+                        cJSON_AddNumberToObject(item, "color", getColorFromTankList(module->addr, GetSysTank()));
                         if(PUMP_TYPE == module->port[0].type)
                         {
                             for(u8 tank_no = 0; tank_no < TANK_LIST_MAX; tank_no++)
@@ -4087,7 +4137,8 @@ char *ReplyGetDeviceList(char *cmd, type_kv_c16 msgid)
                                         cJSON_AddNumberToObject(port, "workingStatus", module->port[storage].ctrl.d_state);
                                     }
 
-                                    cJSON_AddNumberToObject(port, "color", module->color);
+                                    cJSON_AddNumberToObject(port, "color",
+                                            getColorFromTankList((module->addr << 8) | storage, GetSysTank()));
                                     if(PUMP_TYPE == module->port[storage].type)
                                     {
                                         for(u8 tank_no = 0; tank_no < TANK_LIST_MAX; tank_no++)
@@ -4164,4 +4215,30 @@ char *ReplyGetDeviceList(char *cmd, type_kv_c16 msgid)
     }
 
     return str;
+}
+
+u8 getColorFromTankList(u16 address, sys_tank_t *list)
+{
+    u8      color       = 0;
+    u8      no          = 0;
+
+    for(no = 0; no < list->tank_size; no++)
+    {
+        if(address == list->tank[no].pumpId)
+        {
+            color = list->tank[no].color;
+        }
+        else
+        {
+            for(u8 item = 0; item < VALVE_MAX; item++)
+            {
+                if(address == list->tank[no].valve[item])
+                {
+                    color = list->tank[no].color;
+                }
+            }
+        }
+    }
+
+    return color;
 }

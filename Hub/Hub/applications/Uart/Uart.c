@@ -31,7 +31,7 @@ struct rx_msg uart3_msg;                      //接收串口数据以及相关�
 
 rt_device_t     uart2_serial;
 
-extern  struct sdCardState      sdCard;
+extern  __attribute__((section(".ccmbss"))) struct sdCardState      sdCard;
 extern  type_sys_time           sys_time;
 extern  sys_set_t               sys_set;
 
@@ -149,6 +149,7 @@ void SensorUart2TaskEntry(void* parameter)
 //#if (HUB_SELECT == HUB_ENVIRENMENT)
     u8                          data[13];
 //#endif
+                u16             crc16Result     = 0;
     static      u8              Timer1sTouch    = OFF;
     static      u8              Timer3sTouch    = OFF;
     static      u8              Timer5sTouch    = OFF;
@@ -156,7 +157,7 @@ void SensorUart2TaskEntry(void* parameter)
     static      u16             time3S = 0;
     static      u16             time5S = 0;
     static      rt_device_t     uart1_serial;
-//    static      rt_device_t     uart2_serial;
+    //static      rt_device_t     uart2_serial;
     static      rt_device_t     uart3_serial;
     static      u8              device_start    = 0;
     static      u8              sensor_start    = 0;
@@ -185,30 +186,38 @@ void SensorUart2TaskEntry(void* parameter)
     while (1)
     {
         time1S = TimerTask(&time1S, 1000/UART_PERIOD, &Timer1sTouch);                       //1s定时任务
-        time3S = TimerTask(&time3S, 3000/UART_PERIOD, &Timer3sTouch);                       //1s定时任务
-        time5S = TimerTask(&time5S, 5000/UART_PERIOD, &Timer5sTouch);                       //1s定时任务
+        time3S = TimerTask(&time3S, 3000/UART_PERIOD, &Timer3sTouch);                       //3s定时任务
+        time5S = TimerTask(&time5S, 5000/UART_PERIOD, &Timer5sTouch);                       //5s定时任务
 
         if(YES == sdCard.readInfo)                                  //必须要等待从sd卡读取到的monitor 才能执行以下功能
         {
             if(0 == specailFlag)
             {
-//#if (HUB_SELECT == HUB_ENVIRENMENT)
+#if (HUB_SELECT == HUB_ENVIRENMENT)
                 //特殊设备处理
-                data[0] = 0xFA;
-                data[1] = 0x00;
-                data[2] = 0x00;
-                data[3] = 0x00;
-                data[4] = 0x00;
-                data[5] = 0x00;
-                data[6] = 6;
-                data[7] = 0x01;
-                data[8] = PAR_TYPE;
-                data[9] = 0x00;
-                data[10] = 0x00;
-                data[11] = 0x00;
-                data[12] = 0x00;
-                AnlyzeDeviceRegister(&monitor, uart1_serial ,data, 13);//注册par
-//#endif
+                getRegisterData(data, 13, 0x00000000,PAR_TYPE);
+                AnlyzeDeviceRegister(&monitor, uart1_serial ,data, 13, 0);//注册par
+#elif (HUB_SELECT == HUB_IRRIGSTION)
+                //Justin debug
+                getRegisterData(data, 13, 0x00000001,PHEC_TYPE);
+                AnlyzeDeviceRegister(&monitor, uart1_serial ,data, 13, 0xE0);
+                getRegisterData(data, 13, 0x00000002,PHEC_TYPE);
+                AnlyzeDeviceRegister(&monitor, uart1_serial ,data, 13, 0xE1);
+                getRegisterData(data, 13, 0x00000003,PHEC_TYPE);
+                AnlyzeDeviceRegister(&monitor, uart1_serial ,data, 13, 0xE2);
+                getRegisterData(data, 13, 0x00000004,PHEC_TYPE);
+                AnlyzeDeviceRegister(&monitor, uart1_serial ,data, 13, 0xE3);
+
+                getRegisterData(data, 13, 0x00000005,WATERlEVEL_TYPE);
+                AnlyzeDeviceRegister(&monitor, uart1_serial ,data, 13, 0xE4);
+                getRegisterData(data, 13, 0x00000006,WATERlEVEL_TYPE);
+                AnlyzeDeviceRegister(&monitor, uart1_serial ,data, 13, 0xE5);
+                getRegisterData(data, 13, 0x00000007,WATERlEVEL_TYPE);
+                AnlyzeDeviceRegister(&monitor, uart1_serial ,data, 13, 0xE6);
+                getRegisterData(data, 13, 0x00000008,WATERlEVEL_TYPE);
+                AnlyzeDeviceRegister(&monitor, uart1_serial ,data, 13, 0xE7);
+
+#endif
                 specailFlag = 1;
             }
 
@@ -216,6 +225,15 @@ void SensorUart2TaskEntry(void* parameter)
             {
                 if(ON == uart1_msg.messageFlag)
                 {
+                    /*if(0xE4 == uart1_msg.data[0])
+                    {
+                        LOG_I("-----------------------------------sensor recv data ");
+                        for(int i = 0; i < uart1_msg.size; i++)
+                        {
+                            rt_kprintf("%x ",uart1_msg.data[i]);
+                        }
+                        rt_kprintf("\r\n");
+                    }*/
                     uart1_msg.messageFlag = OFF;
                     AnalyzeData(uart1_serial, &monitor, uart1_msg.data, uart1_msg.size);
                 }
@@ -289,7 +307,7 @@ void SensorUart2TaskEntry(void* parameter)
                 findDeviceLocation(GetMonitor(), &sys_set.cloudCmd, uart2_serial);
                 findLineLocation(GetMonitor(), &sys_set.cloudCmd, uart3_serial);
                 warnProgram(GetMonitor(), GetSysSet());             //监听告警信息
-                pumpProgram(GetMonitor(), GetSysTank());            //水泵的工作//Justin debug
+                pumpProgram(GetMonitor(), GetSysTank());            //水泵的工作
                 autoBindPumpTotank(GetMonitor(), GetSysTank());
 #endif
                 //检测到删除设备功能
@@ -298,6 +316,12 @@ void SensorUart2TaskEntry(void* parameter)
                     deleteModule(GetMonitor(), sys_set.cloudCmd.delete_id.value);
                     sys_set.cloudCmd.delete_id.value = 0;
                 }
+
+                //Justin debug 仅仅测试
+//                LOG_D("phec %d %d %d",GetSensorByAddr(GetMonitor(), 0xE0)->__stora[0].value,
+//                        GetSensorByAddr(GetMonitor(), 0xE0)->__stora[1].value,
+//                        GetSensorByAddr(GetMonitor(), 0xE0)->__stora[2].value);
+//                LOG_D("water lever %d",GetSensorByAddr(GetMonitor(), 0xE4)->__stora[0].value);
             }
 
             /* 3s 事件*/

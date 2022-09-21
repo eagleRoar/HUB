@@ -15,11 +15,7 @@
 #include "Gpio.h"
 
 
-#if (NEW_OLED == 0)
-    #define     BUTTON_MAX              2
-#else
-    #define     BUTTON_MAX              3
-#endif
+#define     BUTTON_MAX              3
 
 #define     KEY_ON                  0
 

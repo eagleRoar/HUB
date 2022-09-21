@@ -75,14 +75,9 @@
 #define BLE_NRST_PIN      GET_PIN(B, 8)
 
 //Button
-#if (NEW_OLED == 0)
-#define BUTTON_MENU       GET_PIN(B, 6)
-#define BUTTON_ENTER      GET_PIN(B, 7)
-#else
 #define BUTTON_DOWN       GET_PIN(B, 6)
 #define BUTTON_UP         GET_PIN(B, 7)
 #define BUTTON_ENTER      GET_PIN(D, 6)
-#endif
 
 void GpioInit(void);
 void Ctrl_LED(rt_base_t pin, rt_base_t state);

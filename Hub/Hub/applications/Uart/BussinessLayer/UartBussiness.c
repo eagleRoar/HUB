@@ -42,6 +42,7 @@ u8 askSensorStorage(type_monitor_t *monitor, rt_device_t serial)
     {
        //一个循环结束
         ask_sensor = 0;
+        ret = YES;
     }
 
     if(0 < monitor->sensor_size)
@@ -55,6 +56,9 @@ u8 askSensorStorage(type_monitor_t *monitor, rt_device_t serial)
         crc16Result = usModbusRTU_CRC(buffer, 6);
         buffer[6] = crc16Result;                             //CRC16低位
         buffer[7] = (crc16Result>>8);                        //CRC16高位
+
+        //Justin debug
+//        LOG_D("ask sensor name %s",monitor->sensor[ask_sensor].name);
 
         rt_device_write(serial, 0, buffer, 8);
 
@@ -71,7 +75,6 @@ u8 askSensorStorage(type_monitor_t *monitor, rt_device_t serial)
         senConnectState[ask_sensor].send_state = ON;
     }
 
-    ret = YES;
     return ret;
 }
 
@@ -541,7 +544,7 @@ void AnalyzeData(rt_device_t serial, type_monitor_t *monitor, u8 *data, u8 dataL
     {
         case REGISTER_CODE:
             /* device类注册 */
-            AnlyzeDeviceRegister(monitor, serial ,data, dataLen);
+            AnlyzeDeviceRegister(monitor, serial ,data, dataLen, 0);
             /* 后续需要修改成如果需要修改地址的再发送从新配置地址命令 */
             break;
         default:

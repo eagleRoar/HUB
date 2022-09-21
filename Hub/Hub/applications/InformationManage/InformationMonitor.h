@@ -47,7 +47,7 @@ typedef     struct mqtt_client              mqtt_client;
 #define     SENSOR_VALUE_MAX                4
 #define     TIMER_GROUP                     12
 #define     WARN_MAX                        28
-#define     NEW_OLED                        1           //启用新的屏幕
+
 //默认值
 #define     COOLING_TARGET                  320
 #define     HEAT_TARGET                     170
@@ -430,6 +430,13 @@ enum{
 enum{
     BY_SCHEDULE = 1,
     BY_RECYCLE = 2,
+};
+
+enum
+{
+    DOWNLOAD_FAIL,
+    DOWNLOAD_NONEED,
+    DOWNLOAD_OK
 };
 
 /******************************************* 类型定义 END*****************************/

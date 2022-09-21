@@ -27,7 +27,7 @@
 #include <rtdbg.h>
 
 extern struct ethDeviceStruct *eth;
-extern int          tcp_sock;
+extern int tcp_sock;
 
 extern rt_uint8_t GetEthDriverLinkStatus(void);            //获取网口连接状态
 
@@ -38,9 +38,8 @@ int main(void)
     char            *tcpSendBuffer      = RT_NULL;
     static u8       warn[WARN_MAX];
     static u8       warn1[WARN_MAX];
-    static u8       sensor_size         = 0;
-    static u8       device_size         = 0;
-    static u8       timer12_size        = 0;
+//    static u8       sensor_size         = 0;
+//    static u8       device_size         = 0;
     static u8       Timer100msTouch     = OFF;
     static u8       Timer1sTouch        = OFF;
     static u8       Timer10sTouch       = OFF;
@@ -143,97 +142,103 @@ int main(void)
         //60s 主动发送给云服务
         if(ON == Timer60sTouch)
         {
-            warnEnFlag = YES;
-
-            if(YES == GetMqttStartFlg())
+            if(LINKUP == ethStatus)
             {
-                SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT, 0 , 0, RT_NULL, RT_NULL, YES, 0);
+                warnEnFlag = YES;
+
+                if(YES == GetMqttStartFlg())
+                {
+                    SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT, 0 , 0, RT_NULL, RT_NULL, YES, 0);
+                }
             }
         }
 
         //主动发送告警
-        for(u8 item = 0; item < WARN_MAX; item++)
+        if(LINKUP == ethStatus)
         {
-            if((warn[item] != GetSysSet()->warn[item]) && (YES == warnEnFlag))
+            for(u8 item = 0; item < WARN_MAX; item++)
             {
-                warn[item] = GetSysSet()->warn[item];
-
-                if(ON == GetSysSet()->warn[item])
+                if((warn[item] != GetSysSet()->warn[item]) && (YES == warnEnFlag))
                 {
-                    //发送给云平台
-                    if(YES == GetMqttStartFlg())
-                    {
-                        //1.如果是离线的话 ,要发送全部的离线名称, 重置标记要在以下云服务端重置
-                        if(WARN_OFFLINE == item + 1)
-                        {
-                            for(u8 index = 0; index < DEVICE_MAX; index++)
-                            {
-                                SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT_WARN, item, GetSysSet()->warn_value[item], RT_NULL, RT_NULL, YES, index);
-                            }
-                        }
-                        else
-                        {
-                            SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT_WARN, item, GetSysSet()->warn_value[item], RT_NULL, RT_NULL, YES, 0);
-                        }
-                    }
+                    warn[item] = GetSysSet()->warn[item];
 
-                    //发送给app
-                    if((OFF == eth->tcp.GetConnectTry()) &&
-                       (ON == eth->tcp.GetConnectStatus()))
+                    if(ON == GetSysSet()->warn[item])
                     {
-                        //申请内存
-                        tcpSendBuffer = rt_malloc(SEND_ETH_BUFFSZ);
-                        if(RT_NULL != tcpSendBuffer)
+                        //发送给云平台
+                        if(YES == GetMqttStartFlg())
                         {
-                            //1.如果是离线的话 ,要发送全部的离线名称
+                            //1.如果是离线的话 ,要发送全部的离线名称, 重置标记要在以下云服务端重置
                             if(WARN_OFFLINE == item + 1)
                             {
                                 for(u8 index = 0; index < DEVICE_MAX; index++)
                                 {
-                                    if(YES == GetSysSet()->offline[index])
-                                    {
-                                        rt_memset(tcpSendBuffer, ' ', SEND_ETH_BUFFSZ);
-                                        if(RT_EOK == SendDataToCloud(RT_NULL, CMD_HUB_REPORT_WARN, item,
-                                                GetSysSet()->warn_value[item], (u8 *)tcpSendBuffer, &length, NO, index))
-                                        {
-                                            if(length > 0)
-                                            {
-                                                if (RT_EOK != TcpSendMsg(&tcp_sock, (u8 *)tcpSendBuffer, length))
-                                                {
-                                                    LOG_E("send tcp err 2");
-                                                    eth->tcp.SetConnectStatus(OFF);
-                                                    eth->tcp.SetConnectTry(ON);
-                                                }
-                                            }
-                                        }
-                                        GetSysSet()->offline[index] = NO;
-                                    }
+                                    SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT_WARN, item, GetSysSet()->warn_value[item], RT_NULL, RT_NULL, YES, index);
                                 }
                             }
                             else
                             {
-                                rt_memset(tcpSendBuffer, ' ', SEND_ETH_BUFFSZ);
-                                if(RT_EOK == SendDataToCloud(RT_NULL, CMD_HUB_REPORT_WARN, item,
-                                        GetSysSet()->warn_value[item], (u8 *)tcpSendBuffer, &length, NO, 0))
+                                SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT_WARN, item, GetSysSet()->warn_value[item], RT_NULL, RT_NULL, YES, 0);
+                            }
+                        }
+
+                        //发送给app
+                        if((OFF == eth->tcp.GetConnectTry()) &&
+                           (ON == eth->tcp.GetConnectStatus()))
+                        {
+                            //申请内存
+                            tcpSendBuffer = rt_malloc(SEND_ETH_BUFFSZ);
+                            if(RT_NULL != tcpSendBuffer)
+                            {
+                                //1.如果是离线的话 ,要发送全部的离线名称
+                                if(WARN_OFFLINE == item + 1)
                                 {
-                                    if(length > 0)
+                                    for(u8 index = 0; index < DEVICE_MAX; index++)
                                     {
-                                        if (RT_EOK != TcpSendMsg(&tcp_sock, (u8 *)tcpSendBuffer, length))
+                                        if(YES == GetSysSet()->offline[index])
                                         {
-                                            LOG_E("send tcp err 2");
-                                            eth->tcp.SetConnectStatus(OFF);
-                                            eth->tcp.SetConnectTry(ON);
+                                            rt_memset(tcpSendBuffer, ' ', SEND_ETH_BUFFSZ);
+                                            if(RT_EOK == SendDataToCloud(RT_NULL, CMD_HUB_REPORT_WARN, item,
+                                                    GetSysSet()->warn_value[item], (u8 *)tcpSendBuffer, &length, NO, index))
+                                            {
+                                                if(length > 0)
+                                                {
+                                                    if (RT_EOK != TcpSendMsg(&tcp_sock, (u8 *)tcpSendBuffer, length))
+                                                    {
+                                                        LOG_E("send tcp err 2");
+                                                        eth->tcp.SetConnectStatus(OFF);
+                                                        eth->tcp.SetConnectTry(ON);
+                                                    }
+                                                }
+                                            }
+                                            GetSysSet()->offline[index] = NO;
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    rt_memset(tcpSendBuffer, ' ', SEND_ETH_BUFFSZ);
+                                    if(RT_EOK == SendDataToCloud(RT_NULL, CMD_HUB_REPORT_WARN, item,
+                                            GetSysSet()->warn_value[item], (u8 *)tcpSendBuffer, &length, NO, 0))
+                                    {
+                                        if(length > 0)
+                                        {
+                                            if (RT_EOK != TcpSendMsg(&tcp_sock, (u8 *)tcpSendBuffer, length))
+                                            {
+                                                LOG_E("send tcp err 2");
+                                                eth->tcp.SetConnectStatus(OFF);
+                                                eth->tcp.SetConnectTry(ON);
+                                            }
                                         }
                                     }
                                 }
                             }
-                        }
 
-                        //释放内存
-                        if(RT_NULL != tcpSendBuffer)
-                        {
-                            rt_free(tcpSendBuffer);
-                            tcpSendBuffer = RT_NULL;
+                            //释放内存
+                            if(RT_NULL != tcpSendBuffer)
+                            {
+                                rt_free(tcpSendBuffer);
+                                tcpSendBuffer = RT_NULL;
+                            }
                         }
                     }
                 }
@@ -279,24 +284,24 @@ int main(void)
                 }
             }
 
-            if(sensor_size != GetMonitor()->sensor_size)
-            {
-                sensor_size = GetMonitor()->sensor_size;
-
-                for(int index = 0; index < sensor_size; index++)
-                {
-                    printSensor(GetMonitor()->sensor[index]);
-                }
-            }
-            if(device_size != GetMonitor()->device_size)
-            {
-                device_size = GetMonitor()->device_size;
-
-                for(int index = 0; index < device_size; index++)
-                {
-                    printDevice(GetMonitor()->device[index]);
-                }
-            }
+//            if(sensor_size != GetMonitor()->sensor_size)
+//            {
+//                sensor_size = GetMonitor()->sensor_size;
+//
+//                for(int index = 0; index < sensor_size; index++)
+//                {
+//                    printSensor(GetMonitor()->sensor[index]);
+//                }
+//            }
+//            if(device_size != GetMonitor()->device_size)
+//            {
+//                device_size = GetMonitor()->device_size;
+//
+//                for(int index = 0; index < device_size; index++)
+//                {
+//                    printDevice(GetMonitor()->device[index]);
+//                }
+//            }
 
 //            //Justin debug 仅仅测试
 //            LOG_D("------------------------------------------------------");
@@ -311,33 +316,36 @@ int main(void)
         //10s
         if(ON == Timer10sTouch)
         {
-            if((OFF == eth->tcp.GetConnectTry()) &&
-               (ON == eth->tcp.GetConnectStatus()))
+            if(LINKUP == ethStatus)
             {
-                //申请内存
-                tcpSendBuffer = rt_malloc(SEND_ETH_BUFFSZ);
-                if(RT_NULL != tcpSendBuffer)
+                if((OFF == eth->tcp.GetConnectTry()) &&
+                   (ON == eth->tcp.GetConnectStatus()))
                 {
-                    rt_memset(tcpSendBuffer, ' ', SEND_ETH_BUFFSZ);
-                    if(RT_EOK == SendDataToCloud(RT_NULL, CMD_HUB_REPORT, 0 , 0, (u8 *)tcpSendBuffer, &length, NO, 0))
+                    //申请内存
+                    tcpSendBuffer = rt_malloc(SEND_ETH_BUFFSZ);
+                    if(RT_NULL != tcpSendBuffer)
                     {
-                        if(length > 0)
+                        rt_memset(tcpSendBuffer, ' ', SEND_ETH_BUFFSZ);
+                        if(RT_EOK == SendDataToCloud(RT_NULL, CMD_HUB_REPORT, 0 , 0, (u8 *)tcpSendBuffer, &length, NO, 0))
                         {
-                            if (RT_EOK != TcpSendMsg(&tcp_sock, (u8 *)tcpSendBuffer, length))
+                            if(length > 0)
                             {
-                                LOG_E("send tcp err 3");
-                                eth->tcp.SetConnectStatus(OFF);
-                                eth->tcp.SetConnectTry(ON);
+                                if (RT_EOK != TcpSendMsg(&tcp_sock, (u8 *)tcpSendBuffer, length))
+                                {
+                                    LOG_E("send tcp err 3");
+                                    eth->tcp.SetConnectStatus(OFF);
+                                    eth->tcp.SetConnectTry(ON);
+                                }
                             }
                         }
                     }
-                }
 
-                //释放内存
-                if(RT_NULL != tcpSendBuffer)
-                {
-                    rt_free(tcpSendBuffer);
-                    tcpSendBuffer = RT_NULL;
+                    //释放内存
+                    if(RT_NULL != tcpSendBuffer)
+                    {
+                        rt_free(tcpSendBuffer);
+                        tcpSendBuffer = RT_NULL;
+                    }
                 }
             }
         }

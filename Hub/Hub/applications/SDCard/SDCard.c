@@ -19,7 +19,7 @@
 
 __attribute__((section(".ccmbss"))) char sd_thread_stack[1024*3];
 __attribute__((section(".ccmbss"))) struct rt_thread sd_thread;
-struct sdCardState      sdCard;
+__attribute__((section(".ccmbss"))) struct sdCardState      sdCard;
 
 extern u8 saveModuleFlag;
 extern int rt_hw_sdio_init(void);

@@ -493,9 +493,13 @@ rt_err_t ReplyDataToCloud(mqtt_client *client, u8 *res, u16 *len, u8 sendCloudFl
         {
             str = ReplySetPumpColor(CMD_SET_PUMP_COLOR, sys_set.cloudCmd, GetSysTank());
         }
-        else if(0 == rt_memcmp(CMD_SET_TANK_SENSOR, sys_set.cloudCmd.cmd, sizeof(CMD_SET_TANK_SENSOR)))//设置泵颜色
+        else if(0 == rt_memcmp(CMD_SET_TANK_SENSOR, sys_set.cloudCmd.cmd, sizeof(CMD_SET_TANK_SENSOR)))//设置泵sensor
         {
             str = ReplySetPumpSensor(CMD_SET_TANK_SENSOR, sys_set.cloudCmd);
+        }
+        else if(0 == rt_memcmp(CMD_DEL_TANK_SENSOR, sys_set.cloudCmd.cmd, sizeof(CMD_DEL_TANK_SENSOR)))//删除泵sensor
+        {
+            str = ReplyDelPumpSensor(CMD_DEL_TANK_SENSOR, sys_set.cloudCmd);
         }
         else if(0 == rt_memcmp(CMD_GET_SENSOR_LIST, sys_set.cloudCmd.cmd, sizeof(CMD_GET_SENSOR_LIST)))//获取sensorlist
         {
@@ -538,7 +542,7 @@ rt_err_t ReplyDataToCloud(mqtt_client *client, u8 *res, u16 *len, u8 sendCloudFl
                 {
                     *len = 0;
                 }
-                //LOG_D("len = %d, data : %s",*len,str);//Justin debug
+                //LOG_D("len = %d, data : %s",*len,str);
             }
 
             //获取数据完之后需要free否知数据泄露
@@ -827,7 +831,13 @@ void analyzeCloudData(char *data, u8 cloudFlg)
             }
             else if(0 == rt_memcmp(CMD_SET_TANK_SENSOR, cmd->valuestring, strlen(CMD_SET_TANK_SENSOR)))
             {
-                CmdSetTankSensor(data, &sys_set.cloudCmd); //Justin debug 未测试
+                CmdSetTankSensor(data, &sys_set.cloudCmd);
+                GetSysTank()->saveFlag = YES;
+                setCloudCmd(cmd->valuestring, ON);
+            }
+            else if(0 == rt_memcmp(CMD_DEL_TANK_SENSOR, cmd->valuestring, strlen(CMD_DEL_TANK_SENSOR)))
+            {
+                CmdDelTankSensor(data, &sys_set.cloudCmd);
                 GetSysTank()->saveFlag = YES;
                 setCloudCmd(cmd->valuestring, ON);
             }
@@ -2478,7 +2488,7 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
     }
 
     //水位
-    sensor = GetSensorByType(monitor, WATERlEVEL_TYPE);//Justin debug 查询该类型是漏水传感器还是水位传感器
+    sensor = GetSensorByType(monitor, WATERlEVEL_TYPE);
 
     for(u8 index = 0; index < sensor->storage_size; index++)
     {
@@ -2524,7 +2534,6 @@ void pumpDoing(u8 addr, u8 port)
         if((PUMP_TYPE == device->port[port].type) ||
            (VALVE_TYPE == device->port[port].type))
         {
-//            LOG_W("device->port[port].mode = %d",device->port[port].mode);//Justin print
             //定时器模式
             if(BY_RECYCLE == device->port[port].mode)
             {

@@ -87,7 +87,11 @@ char *GetModelByType(u8 type, char *name, u8 len)
     switch (type)
     {
         case HUB_TYPE:
+#if(HUB_IRRIGSTION == HUB_SELECT)
+            rt_memcpy(name, "BBH-I", len);
+#elif(HUB_ENVIRENMENT == HUB_SELECT)
             rt_memcpy(name, "BBH-E", len);
+#endif
             break;
         case BHS_TYPE:
             rt_memcpy(name, "BLS-4", len);
@@ -231,8 +235,26 @@ rt_err_t setSensorDefault(sensor_t *module)
         case PAR_TYPE:
             setSensorDefaultPara(module, "Par", 0x0000, module->type, 1);
             rt_memcpy(module->__stora[0].name, "Par", STORAGE_NAMESZ);
-            module->__stora[0].value = 0;;
+            module->__stora[0].value = 0;
             module->__stora[0].func = F_S_PAR;
+            break;
+        case PHEC_TYPE:
+            setSensorDefaultPara(module, "PhEc", 0x0000, module->type, 3);
+            rt_memcpy(module->__stora[0].name, "Ec", STORAGE_NAMESZ);
+            rt_memcpy(module->__stora[1].name, "Ph", STORAGE_NAMESZ);
+            rt_memcpy(module->__stora[2].name, "Wt", STORAGE_NAMESZ);
+            module->__stora[0].value = 0;
+            module->__stora[0].func = F_S_EC;
+            module->__stora[1].value = 0;
+            module->__stora[1].func = F_S_PH;
+            module->__stora[2].value = 0;
+            module->__stora[2].func = F_S_WT;
+            break;
+        case WATERlEVEL_TYPE:
+            setSensorDefaultPara(module, "Wl", 0x0004, module->type, 1);
+            rt_memcpy(module->__stora[0].name, "Wl", STORAGE_NAMESZ);
+            module->__stora[0].value = 0;
+            module->__stora[0].func = F_S_WL;
             break;
         default:
             ret = RT_ERROR;
@@ -331,7 +353,7 @@ rt_err_t setLineDefault(line_t *line)
 
 /* 获取分配的地址 */
 
-//0x10~0x1F预留
+//0xE0~0xEF预留
 u8 getAllocateAddress(type_monitor_t *monitor, u8 type)
 {
     u16 i = 0;
@@ -345,7 +367,7 @@ u8 getAllocateAddress(type_monitor_t *monitor, u8 type)
         for(i = 2; i < ALLOCATE_ADDRESS_SIZE; i++)
         {
             if((monitor->allocateStr.address[i] != i) &&
-                (i != 0xFA) && (i != 0xFE) && ((i < 0x10) || (i > 0x1F)))//0xFA 是注册的代码 0xFE是PHEC通用
+                (i != 0xFA) && (i != 0xFE))//0xFA 是注册的代码 0xFE是PHEC通用
             {
                 monitor->allocateStr.address[i] = i;
                 return i;
@@ -362,6 +384,8 @@ u8 getSOrD(u8 type)
     switch (type) {
         case BHS_TYPE:
         case PAR_TYPE:
+        case PHEC_TYPE:
+        case WATERlEVEL_TYPE:
             ret = SENSOR_TYPE;
             break;
         case CO2_TYPE:
@@ -389,7 +413,8 @@ u8 getSOrD(u8 type)
 }
 
 /* 注册新模块 */
-void AnlyzeDeviceRegister(type_monitor_t *monitor, rt_device_t serial, u8 *data, u8 dataLen)
+//specialAddr 仅仅适用于PHEC 水位
+void AnlyzeDeviceRegister(type_monitor_t *monitor, rt_device_t serial, u8 *data, u8 dataLen, u8 specialAddr)
 {
     u8                  no          = 0;
     u8                  s_or_d      = 0;
@@ -414,7 +439,15 @@ void AnlyzeDeviceRegister(type_monitor_t *monitor, rt_device_t serial, u8 *data,
     {
         if(NO == FindSensor(monitor, sensor, &no))
         {
-            sensor.addr = getAllocateAddress(monitor, sensor.type);
+            if((PHEC_TYPE != sensor.type) &&
+               (WATERlEVEL_TYPE != sensor.type))
+            {
+                sensor.addr = getAllocateAddress(monitor, sensor.type);
+            }
+            else
+            {
+                sensor.addr = specialAddr;
+            }
             if(RT_EOK == setSensorDefault(&sensor))
             {
                 InsertSensorToTable(monitor, sensor, no);
@@ -430,7 +463,9 @@ void AnlyzeDeviceRegister(type_monitor_t *monitor, rt_device_t serial, u8 *data,
         }
         /* 发送注册回复 */
         //特殊处理 如果是PAR 不用回复
-        if(PAR_TYPE != sensor.type)
+        if((PAR_TYPE != sensor.type) &&
+           (PHEC_TYPE != sensor.type) &&
+           (WATERlEVEL_TYPE != sensor.type))
         {
             senRegisterAnswer(monitor, serial, sensor.uuid);
         }
@@ -605,8 +640,34 @@ void AnlyzeStorage(type_monitor_t *monitor, u8 addr, u8 read, u8 *data, u8 lengt
                 {
                     monitor->sensor[index].__stora[storage].value += GetSysSet()->co2Set.co2Corrected;
                 }
+
+                //水位的原始数值是毫米单位，但是上报的是厘米单位的需要做调整
+                if(F_S_WL == monitor->sensor[index].__stora[storage].func)
+                {
+                    monitor->sensor[index].__stora[storage].value /= 10;
+                }
             }
         }
 
+    }
+}
+
+void getRegisterData(u8* data, u8 len, u32 uuid,u8 type)
+{
+    if(len >= 13)
+    {
+        data[0] = 0xFA;
+        data[1] = 0x00;
+        data[2] = 0x00;
+        data[3] = 0x00;
+        data[4] = 0x00;
+        data[5] = 0x00;
+        data[6] = 6;
+        data[7] = 0x01;
+        data[8] = type;
+        data[9] = uuid >> 24;
+        data[10] = uuid >> 16;
+        data[11] = uuid >> 8;
+        data[12] = uuid;
     }
 }

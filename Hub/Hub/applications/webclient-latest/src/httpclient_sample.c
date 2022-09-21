@@ -133,25 +133,26 @@ rt_err_t checkUpdataApp(fw_info_t *dest, fw_info_t *src)
     /* 对比版本号是否一样 */
     if(!rt_memcmp(dest->fw_ver, src->fw_ver, 24)) //相同
     {
-        LOG_D("app version is the last,is %d.%d.%d, no need to update"
-                   , dest->fw_ver[1] - 48, dest->fw_ver[3] - 48, dest->fw_ver[4] - 48);
+        LOG_D("current version is %d.%d.%d, the new update app version is %d.%d.%d,no need to update"
+                        , dest->fw_ver[1]- 48, dest->fw_ver[3]- 48 , dest->fw_ver[5]- 48
+                        , src->fw_ver[1]- 48, src->fw_ver[3]- 48,src->fw_ver[5]- 48);
         return RT_ERROR;
     }
     else
     {
         LOG_D("current version is %d.%d.%d, the new update app version is %d.%d.%d"
-                , dest->fw_ver[1]- 48, dest->fw_ver[3]- 48 , dest->fw_ver[4]- 48
-                , src->fw_ver[1]- 48, src->fw_ver[3]- 48,src->fw_ver[4]- 48);
+                , dest->fw_ver[1]- 48, dest->fw_ver[3]- 48 , dest->fw_ver[5]- 48
+                , src->fw_ver[1]- 48, src->fw_ver[3]- 48,src->fw_ver[5]- 48);
         return RT_EOK;
     }
 }
 
-void GetUpdataFileFromWeb(void)
+void GetUpdataFileFromWeb(u8 *ret)
 {
     rt_uint8_t *buffer = RT_NULL;
     int resp_status;
     struct webclient_session *session = RT_NULL;
-    char *weather_url = /*"http://pic.pro-leaf.com/down/beleaf_hub.bin"*/"http://192.168.0.54:8080/test.txt";//Justin debug Ip 地址要改
+    char *weather_url = /*"http://pic.pro-leaf.com/down/beleaf_hub.bin"*/"http://192.168.0.194:8080/downloadFile.bin";//Justin debug Ip 地址要改
     int content_length = -1, bytes_read = 0;
     u32 content_pos = 0;
     fw_info_t dest, src;
@@ -162,6 +163,7 @@ void GetUpdataFileFromWeb(void)
     if (session == RT_NULL)
     {
         LOG_E("No memory for get header!");
+        *ret = DOWNLOAD_FAIL;
         goto __exit;
     }
 
@@ -169,6 +171,7 @@ void GetUpdataFileFromWeb(void)
     if ((resp_status = webclient_get(session, weather_url)) != 200)
     {
         LOG_E("webclient GET request failed, response(%d) error.", resp_status);
+        *ret = DOWNLOAD_FAIL;
         goto __exit;
     }
 
@@ -177,6 +180,7 @@ void GetUpdataFileFromWeb(void)
     if (buffer == RT_NULL)
     {
         LOG_E("No memory for data receive buffer!");
+        *ret = DOWNLOAD_FAIL;
         goto __exit;
     }
 
@@ -220,6 +224,7 @@ void GetUpdataFileFromWeb(void)
 
                         /* 将数据存入SD卡 */
                     writeData(DOWNLOAD_FILE,buffer,content_pos,bytes_read);
+                    *ret = RT_EOK;
                 }while (1);
             }
             else
@@ -240,12 +245,14 @@ void GetUpdataFileFromWeb(void)
 
                     content_pos += bytes_read;
                     LOG_I("save file data %d",content_pos);
+                    *ret = DOWNLOAD_OK;;
                 }while (content_pos < content_length);
 			}
         }
         else
         {
             LOG_E("no need to update\r\n");
+            *ret = DOWNLOAD_NONEED;
         }
     }
     else
@@ -263,4 +270,11 @@ __exit:
         rt_free(buffer);
 }
 
+void getAppVersion(char *version)
+{
+    fw_info_t dest;
 
+    readData(DOWNLOAD_FILE, &dest,0,sizeof(fw_info_t));   //获取当前SD卡的app信息
+    sprintf(version,"%d.%d.%d",dest.fw_ver[1]-48,dest.fw_ver[3]-48,dest.fw_ver[5]-48);
+    LOG_D("version %s",version);
+}

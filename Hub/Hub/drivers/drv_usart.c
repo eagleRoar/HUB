@@ -1308,7 +1308,7 @@ int rt_hw_usart_init(void)
         uart_obj[i].serial.ops    = &stm32_uart_ops;
         if(!rt_memcmp(uart_config[i].name, "uart6", 5))
         {
-            config.baud_rate = BAUD_RATE_57600;
+            config.baud_rate = BAUD_RATE_115200;
         }
         else
         {

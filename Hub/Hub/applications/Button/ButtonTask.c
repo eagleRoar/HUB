@@ -11,7 +11,7 @@
 #include "Gpio.h"
 #include "Oled1309.h"
 
-type_button_t buttonList[BUTTON_MAX];
+__attribute__((section(".ccmbss"))) type_button_t buttonList[BUTTON_MAX];
 __attribute__((section(".ccmbss"))) u8 button_task[1024];
 __attribute__((section(".ccmbss"))) struct rt_thread button_thread;
 
@@ -24,6 +24,11 @@ static void Buttonprogram(u8 period)
     {
         if(rt_pin_read(buttonList[index].pin) == buttonList[index].on_set)
         {
+//            if(buttonList[index].pin == BUTTON_ENTER)
+//            {
+//                LOG_I("------enter key ,continue = %d",buttonList[index].continue_time);
+//            }
+
             buttonList[index].continue_time += period;
             buttonList[index].press_state = ON;
         }
@@ -92,23 +97,34 @@ static void ButtonAdd(rt_base_t pin, u8 on_set, Call_Back call_back)
 
 static void ButtonRegister(void)
 {
-#if (NEW_OLED == 0)
-    ButtonAdd(BUTTON_MENU, KEY_ON, MenuBtnCallBack);
-    ButtonAdd(BUTTON_ENTER, KEY_ON, EnterBtnCallBack);
-#else
     ButtonAdd(BUTTON_ENTER, KEY_ON, EnterBtnCallBack);
     ButtonAdd(BUTTON_UP, KEY_ON, UpBtnCallBack);
     ButtonAdd(BUTTON_DOWN, KEY_ON, DowmBtnCallBack);
-#endif
 }
 
 static void ButtonTaskEntry(void* parameter)
 {
+//    static u8       Timer1sTouch        = OFF;
+//    static u16      time1S              = 0;
     //注册按键信息，告诉我，按键的pin，按键0/1认为是已经点击
     ButtonRegister();
 
     while(1)
     {
+//        time1S = TimerTask(&time1S, 1000 / BUTTON_TASK_PERIOD, &Timer1sTouch);
+//
+//        if(YES == Timer1sTouch)
+//        {
+//            //LOG_I("-------------key enter is %d",rt_pin_read(BUTTON_ENTER));
+//
+////            for(int index = 0; index < BUTTON_MAX;index++)
+////            {
+////                if(buttonList[index].pin == BUTTON_ENTER)
+////                {
+////                    LOG_I("enter button is %d",index);
+////                }
+////            }
+//        }
 
         Buttonprogram(BUTTON_TASK_PERIOD);
 

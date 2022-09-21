@@ -14,6 +14,8 @@
 #define HUB_IRRIGSTION                  2
 
 #define HUB_SELECT                      HUB_IRRIGSTION//HUB_ENVIRENMENT//
+#define FIRMWAREVISION                  "0.0.2"
+#define BOOTLOADVISION                  "0.0.1"
 
 #define UDP_TASK                        "udp_task"
 #define TCP_SEND_TASK                   "tcp_send"
