@@ -1799,44 +1799,47 @@ char *SendHubReport(char *cmd, sys_set_t *set)
                     {
                         for(u8 id = 0; id < TANK_SENSOR_MAX; id++)
                         {
-                            for(u8 stora = 0; stora < GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->storage_size; stora++)
+                            if(GetSysTank()->tank[no].sensorId[tank_id][id] != 0)
                             {
-                                if(F_S_EC == GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].func)
+                                for(u8 stora = 0; stora < GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->storage_size; stora++)
                                 {
-                                    if(0 == tank_id)
+                                    if(F_S_EC == GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].func)
                                     {
-                                        valueTemp[0] = GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].value;
+                                        if(0 == tank_id)
+                                        {
+                                            valueTemp[0] = GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].value;
+                                        }
+                                        else
+                                        {
+                                            valueTemp[1] = GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].value;
+                                        }
                                     }
-                                    else
+                                    else if(F_S_PH == GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].func)
                                     {
-                                        valueTemp[1] = GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].value;
+                                        if(0 == tank_id)
+                                        {
+                                            valueTemp[2] = GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].value;
+                                        }
+                                        else
+                                        {
+                                            valueTemp[3] = GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].value;
+                                        }
                                     }
-                                }
-                                else if(F_S_PH == GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].func)
-                                {
-                                    if(0 == tank_id)
+                                    else if(F_S_WT == GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].func)
                                     {
-                                        valueTemp[2] = GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].value;
+                                        if(0 == tank_id)
+                                        {
+                                            valueTemp[4] = GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].value;
+                                        }
+                                        else
+                                        {
+                                            valueTemp[5] = GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].value;
+                                        }
                                     }
-                                    else
+                                    else if(F_S_WL == GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].func)
                                     {
-                                        valueTemp[3] = GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].value;
+                                        valueTemp[6] = GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].value;
                                     }
-                                }
-                                else if(F_S_WT == GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].func)
-                                {
-                                    if(0 == tank_id)
-                                    {
-                                        valueTemp[4] = GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].value;
-                                    }
-                                    else
-                                    {
-                                        valueTemp[5] = GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].value;
-                                    }
-                                }
-                                else if(F_S_WL == GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].func)
-                                {
-                                    valueTemp[6] = GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].value;
                                 }
                             }
                         }
@@ -3387,44 +3390,52 @@ char *ReplyGetHubState(char *cmd, cloudcmd_t cloud)
                     {
                         for(u8 id = 0; id < TANK_SENSOR_MAX; id++)
                         {
-                            for(u8 stora = 0; stora < GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->storage_size; stora++)
+                            if(GetSysTank()->tank[no].sensorId[tank_id][id] != 0)
                             {
-                                if(F_S_EC == GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].func)
+                                for(u8 stora = 0; stora < GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->storage_size; stora++)
                                 {
-                                    if(0 == tank_id)
+                                    if(F_S_EC == GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].func)
                                     {
-                                        valueTemp[0] = GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].value;
+                                        if(0 == tank_id)
+                                        {
+                                            valueTemp[0] = GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].value;
+                                        }
+                                        else
+                                        {
+                                            valueTemp[1] = GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].value;
+                                        }
                                     }
-                                    else
+                                    else if(F_S_PH == GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].func)
                                     {
-                                        valueTemp[1] = GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].value;
+                                        if(0 == tank_id)
+                                        {
+                                            valueTemp[2] = GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].value;
+                                            //LOG_I("tank ph = %d",GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].value);
+                                            LOG_I("ph addr = %x",GetSysTank()->tank[no].sensorId[tank_id][id]);
+                                        }
+                                        else
+                                        {
+                                            valueTemp[3] = GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].value;
+                                            //LOG_I("in ph = %d",GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].value);
+                                        }
                                     }
-                                }
-                                else if(F_S_PH == GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].func)
-                                {
-                                    if(0 == tank_id)
+                                    else if(F_S_WT == GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].func)
                                     {
-                                        valueTemp[2] = GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].value;
+                                        if(0 == tank_id)
+                                        {
+                                            valueTemp[4] = GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].value;
+                                        }
+                                        else
+                                        {
+                                            valueTemp[5] = GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].value;
+                                        }
                                     }
-                                    else
+                                    else if(F_S_WL == GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].func)
                                     {
-                                        valueTemp[3] = GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].value;
+                                        valueTemp[6] = GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].value;
+    //                                    LOG_I("wl = %d",GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].value);//Justin debug
+    //                                    LOG_I("wl addr = %x",GetSysTank()->tank[no].sensorId[tank_id][id]);
                                     }
-                                }
-                                else if(F_S_WT == GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].func)
-                                {
-                                    if(0 == tank_id)
-                                    {
-                                        valueTemp[4] = GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].value;
-                                    }
-                                    else
-                                    {
-                                        valueTemp[5] = GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].value;
-                                    }
-                                }
-                                else if(F_S_WL == GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].func)
-                                {
-                                    valueTemp[6] = GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].value;
                                 }
                             }
                         }

@@ -1296,6 +1296,7 @@ void lineProgram_new(type_monitor_t *monitor, u8 line_no, u16 mPeroid)
     line_t          *line           = RT_NULL;
     proLine_t       line_set;
     type_sys_time   time;
+    type_sys_time   time1;
     u16             temperature     = 0;
     static u8       stage[LINE_MAX] = {LINE_MIN_VALUE,LINE_MIN_VALUE};
     static u16      cnt[LINE_MAX]   = {0, 0};
@@ -1333,53 +1334,114 @@ void lineProgram_new(type_monitor_t *monitor, u8 line_no, u16 mPeroid)
     if(LINE_BY_TIMER == line_set.mode)
     {
         //3.1 如果是定时器模式 那就需要看看是否处于定时器范围内
-        if(((time.hour * 60 + time.minute) >= line_set.lightOn) &&
-           ((time.hour * 60 + time.minute) < line_set.lightOff))
+        //3.1.1 处于正常的一天内
+        if(line_set.lightOff > line_set.lightOn)
         {
-            state = ON;
+            if(((time.hour * 60 + time.minute) >= line_set.lightOn) &&
+               ((time.hour * 60 + time.minute) < line_set.lightOff))
+            {
+                state = ON;
 
-            // 3.1.1 lightOff - lightOn <= sunriseSunSet  该过程只有上升过程
-            now_time = time.hour * 60 * 60 + time.minute * 60 + time.second;
-            start_time = line_set.lightOn;
-            if(line_set.lightOff <= line_set.lightOn + line_set.sunriseSunSet)
-            {
-                sunriseFlg = LINE_UP;
-            }
-            // 3.1.2 sunriseSunSet <= lightOff - lightOn &&  2*sunriseSunSet >= lightOff - lightOn  该过程有上升过程 下降过程不完整
-            else if((line_set.lightOff >= line_set.lightOn + line_set.sunriseSunSet) &&
-                    (line_set.lightOff <= line_set.lightOn + 2 *line_set.sunriseSunSet))
-            {
-                if(now_time <= (line_set.sunriseSunSet + line_set.lightOn) * 60)
+                // 3.1.1 lightOff - lightOn <= sunriseSunSet  该过程只有上升过程
+                now_time = time.hour * 60 * 60 + time.minute * 60 + time.second;
+                start_time = line_set.lightOn;
+                if(line_set.lightOff <= line_set.lightOn + line_set.sunriseSunSet)
                 {
                     sunriseFlg = LINE_UP;
                 }
-                else
+                // 3.1.2 sunriseSunSet <= lightOff - lightOn &&  2*sunriseSunSet >= lightOff - lightOn  该过程有上升过程 下降过程不完整
+                else if((line_set.lightOff >= line_set.lightOn + line_set.sunriseSunSet) &&
+                        (line_set.lightOff <= line_set.lightOn + 2 *line_set.sunriseSunSet))
                 {
-                    sunriseFlg = LINE_DOWN;
+                    if(now_time <= (line_set.sunriseSunSet + line_set.lightOn) * 60)
+                    {
+                        sunriseFlg = LINE_UP;
+                    }
+                    else
+                    {
+                        sunriseFlg = LINE_DOWN;
+                    }
+                }
+                // 3.1.3 2*sunriseSunSet < lightOff - lightOn  该过程有上升过程 下降过程 恒定过程
+                else if(line_set.lightOff > line_set.lightOn + 2 *line_set.sunriseSunSet)
+                {
+                    if(now_time <= (line_set.sunriseSunSet + line_set.lightOn) * 60)
+                    {
+                        sunriseFlg = LINE_UP;
+                    }
+                    //now_time - lightOn < lightOff - lightOn - sunriseSunSet 恒定
+                    else if(now_time + line_set.sunriseSunSet * 60 < line_set.lightOff * 60)
+                    {
+                        sunriseFlg = LINE_STABLE;
+                    }
+                    else
+                    {
+                        sunriseFlg = LINE_DOWN;
+                    }
                 }
             }
-            // 3.1.3 2*sunriseSunSet < lightOff - lightOn  该过程有上升过程 下降过程 恒定过程
-            else if(line_set.lightOff > line_set.lightOn + 2 *line_set.sunriseSunSet)
+            else
             {
-                if(now_time <= (line_set.sunriseSunSet + line_set.lightOn) * 60)
-                {
-                    sunriseFlg = LINE_UP;
-                }
-                //now_time - lightOn < lightOff - lightOn - sunriseSunSet 恒定
-                else if(now_time + line_set.sunriseSunSet * 60 < line_set.lightOff * 60)
-                {
-                    sunriseFlg = LINE_STABLE;
-                }
-                else
-                {
-                    sunriseFlg = LINE_DOWN;
-                }
+                state = OFF;
             }
         }
-        else
-        {
-            state = OFF;
-        }
+//        else
+//        {
+//            //未完待续Justin debug
+//            //跨天
+//            time1 = time.hour * 60 + time.minute;
+//            if(((time1 >= line_set.lightOn) && (time1 <= 24 * 60)) ||
+//               ((time1 >= 0 * 60) && (time1 <= line_set.lightOff)))
+//            {
+//                state = ON;
+//
+//                now_time = time.hour * 60 * 60 + time.minute * 60 + time.second;
+//                start_time = line_set.lightOn;
+//                //3.1.1该过程只有上升过程
+//                if(line_set.lightOff + 24 * 60 <= line_set.lightOn + line_set.sunriseSunSet)
+//                {
+//                    sunriseFlg = LINE_UP;
+//                }
+//                // 3.1.2 sunriseSunSet <= lightOff - lightOn &&  2*sunriseSunSet >= lightOff - lightOn  该过程有上升过程 下降过程不完整
+//                else if((line_set.lightOff + 24 * 60 >= line_set.lightOn + line_set.sunriseSunSet) &&
+//                        (line_set.lightOff + 24 * 60 <= line_set.lightOn + 2 *line_set.sunriseSunSet))
+//                {
+//                    if()
+//
+//
+//                    if(now_time <= (line_set.sunriseSunSet + line_set.lightOn) * 60)
+//                    {
+//                        sunriseFlg = LINE_UP;
+//                    }
+//                    else
+//                    {
+//                        sunriseFlg = LINE_DOWN;
+//                    }
+//                }
+//                // 3.1.3 2*sunriseSunSet < lightOff - lightOn  该过程有上升过程 下降过程 恒定过程
+//                else if(line_set.lightOff > line_set.lightOn + 2 *line_set.sunriseSunSet)
+//                {
+//                    if(now_time <= (line_set.sunriseSunSet + line_set.lightOn) * 60)
+//                    {
+//                        sunriseFlg = LINE_UP;
+//                    }
+//                    //now_time - lightOn < lightOff - lightOn - sunriseSunSet 恒定
+//                    else if(now_time + line_set.sunriseSunSet * 60 < line_set.lightOff * 60)
+//                    {
+//                        sunriseFlg = LINE_STABLE;
+//                    }
+//                    else
+//                    {
+//                        sunriseFlg = LINE_DOWN;
+//                    }
+//                }
+//            }
+//            else
+//            {
+//                state = OFF;
+//            }
+//
+//        }
     }
     else if(LINE_BY_CYCLE == line_set.mode)
     {
@@ -2687,13 +2749,13 @@ void pumpProgram(type_monitor_t *monitor, sys_tank_t *tank_list)
                     port = 0;
                 }
                 pumpDoing(addr, port);
-//                if(wl < tank_list->tank[tank].autoFillHeight ||
-//                   ph < tank_list->tank[tank].lowPhProtection ||
-//                   ph > tank_list->tank[tank].highPhProtection ||
-//                   ec > tank_list->tank[tank].highEcProtection)//Justin debug 仅仅测试
-//                {
-//                    GetDeviceByAddr(GetMonitor(), addr)->port[port].ctrl.d_state = OFF;
-//                }
+                if(wl < tank_list->tank[tank].autoFillHeight ||
+                   ph < tank_list->tank[tank].lowPhProtection ||
+                   ph > tank_list->tank[tank].highPhProtection ||
+                   ec > tank_list->tank[tank].highEcProtection)//Justin debug 仅仅测试
+                {
+                    GetDeviceByAddr(GetMonitor(), addr)->port[port].ctrl.d_state = OFF;
+                }
             }
         }
 
@@ -2721,13 +2783,13 @@ void pumpProgram(type_monitor_t *monitor, sys_tank_t *tank_list)
 
             pumpDoing(addr, port);
 
-//            if(wl < tank_list->tank[tank].autoFillHeight ||
-//               ph < tank_list->tank[tank].lowPhProtection ||
-//               ph > tank_list->tank[tank].highPhProtection ||
-//               ec > tank_list->tank[tank].highEcProtection)//Justin debug 仅仅测试
-//            {
-//                GetDeviceByAddr(GetMonitor(), addr)->port[port].ctrl.d_state = OFF;
-//            }
+            if(wl < tank_list->tank[tank].autoFillHeight ||
+               ph < tank_list->tank[tank].lowPhProtection ||
+               ph > tank_list->tank[tank].highPhProtection ||
+               ec > tank_list->tank[tank].highEcProtection)//Justin debug 仅仅测试
+            {
+                GetDeviceByAddr(GetMonitor(), addr)->port[port].ctrl.d_state = OFF;
+            }
         }
         else
         {

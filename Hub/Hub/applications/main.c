@@ -177,7 +177,44 @@ int main(void)
                             }
                             else
                             {
-                                SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT_WARN, item, GetSysSet()->warn_value[item], RT_NULL, RT_NULL, YES, 0);
+#if(HUB_SELECT == HUB_ENVIRENMENT)
+                                if(((item + 1) == WARN_TEMP_HIGHT) ||
+                                    ((item + 1) == WARN_TEMP_LOW)||
+                                    ((item + 1) == WARN_HUMI_HIGHT)||
+                                    ((item + 1) == WARN_HUMI_LOW)||
+                                    ((item + 1) == WARN_CO2_HIGHT)||
+                                    ((item + 1) == WARN_CO2_LOW)||
+                                    ((item + 1) == WARN_VPD_HIGHT)||
+                                    ((item + 1) == WARN_VPD_LOW)||
+                                    ((item + 1) == WARN_PAR_HIGHT)||
+                                    ((item + 1) == WARN_PAR_LOW)||
+                                    ((item + 1) == WARN_LINE_STATE)||
+                                    ((item + 1) == WARN_LINE_AUTO_T)||
+                                    ((item + 1) == WARN_LINE_AUTO_OFF)||
+                                    ((item + 1) == WARN_OFFLINE)||
+                                    ((item + 1) == WARN_CO2_TIMEOUT)||
+                                    ((item + 1) == WARN_TEMP_TIMEOUT)||
+                                    ((item + 1) == WARN_HUMI_TIMEOUT)||
+                                    ((item + 1) == WARN_SMOKE))
+                                {
+                                    SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT_WARN, item, GetSysSet()->warn_value[item], RT_NULL, RT_NULL, YES, 0);
+                                }
+#elif (HUB_SELECT == HUB_IRRIGSTION)
+                                if(((item + 1) == WARN_PH_HIGHT) ||
+                                    ((item + 1) == WARN_PH_LOW)||
+                                    ((item + 1) == WARN_EC_HIGHT)||
+                                    ((item + 1) == WARN_EC_LOW)||
+                                    ((item + 1) == WARN_WT_HIGHT)||
+                                    ((item + 1) == WARN_WT_LOW)||
+                                    ((item + 1) == WARN_WL_HIGHT)||
+                                    ((item + 1) == WARN_WL_LOW)||
+                                    ((item + 1) == WARN_WATER)||
+                                    ((item + 1) == WARN_OFFLINE)||
+                                    ((item + 1) == WARN_AUTOFILL_TIMEOUT))
+                                {
+                                    SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT_WARN, item, GetSysSet()->warn_value[item], RT_NULL, RT_NULL, YES, 0);
+                                }
+#endif
                             }
                         }
 
@@ -216,20 +253,71 @@ int main(void)
                                 }
                                 else
                                 {
-                                    rt_memset(tcpSendBuffer, ' ', SEND_ETH_BUFFSZ);
-                                    if(RT_EOK == SendDataToCloud(RT_NULL, CMD_HUB_REPORT_WARN, item,
-                                            GetSysSet()->warn_value[item], (u8 *)tcpSendBuffer, &length, NO, 0))
+#if(HUB_SELECT == HUB_ENVIRENMENT)
+                                    if(((item + 1) == WARN_TEMP_HIGHT) ||
+                                        ((item + 1) == WARN_TEMP_LOW)||
+                                        ((item + 1) == WARN_HUMI_HIGHT)||
+                                        ((item + 1) == WARN_HUMI_LOW)||
+                                        ((item + 1) == WARN_CO2_HIGHT)||
+                                        ((item + 1) == WARN_CO2_LOW)||
+                                        ((item + 1) == WARN_VPD_HIGHT)||
+                                        ((item + 1) == WARN_VPD_LOW)||
+                                        ((item + 1) == WARN_PAR_HIGHT)||
+                                        ((item + 1) == WARN_PAR_LOW)||
+                                        ((item + 1) == WARN_LINE_STATE)||
+                                        ((item + 1) == WARN_LINE_AUTO_T)||
+                                        ((item + 1) == WARN_LINE_AUTO_OFF)||
+                                        ((item + 1) == WARN_OFFLINE)||
+                                        ((item + 1) == WARN_CO2_TIMEOUT)||
+                                        ((item + 1) == WARN_TEMP_TIMEOUT)||
+                                        ((item + 1) == WARN_HUMI_TIMEOUT)||
+                                        ((item + 1) == WARN_SMOKE))
                                     {
-                                        if(length > 0)
+                                        rt_memset(tcpSendBuffer, ' ', SEND_ETH_BUFFSZ);
+                                        if(RT_EOK == SendDataToCloud(RT_NULL, CMD_HUB_REPORT_WARN, item,
+                                                GetSysSet()->warn_value[item], (u8 *)tcpSendBuffer, &length, NO, 0))
                                         {
-                                            if (RT_EOK != TcpSendMsg(&tcp_sock, (u8 *)tcpSendBuffer, length))
+                                            if(length > 0)
                                             {
-                                                LOG_E("send tcp err 2");
-                                                eth->tcp.SetConnectStatus(OFF);
-                                                eth->tcp.SetConnectTry(ON);
+                                                if (RT_EOK != TcpSendMsg(&tcp_sock, (u8 *)tcpSendBuffer, length))
+                                                {
+                                                    LOG_E("send tcp err 2");
+                                                    eth->tcp.SetConnectStatus(OFF);
+                                                    eth->tcp.SetConnectTry(ON);
+                                                }
                                             }
                                         }
                                     }
+#elif (HUB_SELECT == HUB_IRRIGSTION)
+
+                                    if(((item + 1) == WARN_PH_HIGHT) ||
+                                        ((item + 1) == WARN_PH_LOW)||
+                                        ((item + 1) == WARN_EC_HIGHT)||
+                                        ((item + 1) == WARN_EC_LOW)||
+                                        ((item + 1) == WARN_WT_HIGHT)||
+                                        ((item + 1) == WARN_WT_LOW)||
+                                        ((item + 1) == WARN_WL_HIGHT)||
+                                        ((item + 1) == WARN_WL_LOW)||
+                                        ((item + 1) == WARN_WATER)||
+                                        ((item + 1) == WARN_OFFLINE)||
+                                        ((item + 1) == WARN_AUTOFILL_TIMEOUT))
+                                    {
+                                        rt_memset(tcpSendBuffer, ' ', SEND_ETH_BUFFSZ);
+                                        if(RT_EOK == SendDataToCloud(RT_NULL, CMD_HUB_REPORT_WARN, item,
+                                                GetSysSet()->warn_value[item], (u8 *)tcpSendBuffer, &length, NO, 0))
+                                        {
+                                            if(length > 0)
+                                            {
+                                                if (RT_EOK != TcpSendMsg(&tcp_sock, (u8 *)tcpSendBuffer, length))
+                                                {
+                                                    LOG_E("send tcp err 2");
+                                                    eth->tcp.SetConnectStatus(OFF);
+                                                    eth->tcp.SetConnectTry(ON);
+                                                }
+                                            }
+                                        }
+                                    }
+#endif
                                 }
                             }
 

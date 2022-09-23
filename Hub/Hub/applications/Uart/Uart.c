@@ -303,13 +303,13 @@ void SensorUart2TaskEntry(void* parameter)
                 lineProgram_new(GetMonitor(), 0, 1000);
                 lineProgram_new(GetMonitor(), 1, 1000);             //line2
 #elif(HUB_SELECT == HUB_IRRIGSTION)
+                pumpProgram(GetMonitor(), GetSysTank());            //水泵的工作
+                autoBindPumpTotank(GetMonitor(), GetSysTank());
+#endif
                 timmerProgram(GetMonitor());
                 findDeviceLocation(GetMonitor(), &sys_set.cloudCmd, uart2_serial);
                 findLineLocation(GetMonitor(), &sys_set.cloudCmd, uart3_serial);
                 warnProgram(GetMonitor(), GetSysSet());             //监听告警信息
-                pumpProgram(GetMonitor(), GetSysTank());            //水泵的工作
-                autoBindPumpTotank(GetMonitor(), GetSysTank());
-#endif
                 //检测到删除设备功能
                 if(0 != sys_set.cloudCmd.delete_id.value)
                 {
@@ -321,7 +321,7 @@ void SensorUart2TaskEntry(void* parameter)
 //                LOG_D("phec %d %d %d",GetSensorByAddr(GetMonitor(), 0xE0)->__stora[0].value,
 //                        GetSensorByAddr(GetMonitor(), 0xE0)->__stora[1].value,
 //                        GetSensorByAddr(GetMonitor(), 0xE0)->__stora[2].value);
-//                LOG_D("water lever %d",GetSensorByAddr(GetMonitor(), 0xE4)->__stora[0].value);
+                LOG_D("water lever %d",GetSensorByAddr(GetMonitor(), 0xE4)->__stora[0].value);
             }
 
             /* 3s 事件*/

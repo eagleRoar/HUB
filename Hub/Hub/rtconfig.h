@@ -172,12 +172,12 @@
 #define RT_LWIP_RAW
 #define RT_MEMP_NUM_NETCONN 8
 #define RT_LWIP_PBUF_NUM 16
-#define RT_LWIP_RAW_PCB_NUM 2
-#define RT_LWIP_UDP_PCB_NUM 2
-#define RT_LWIP_TCP_PCB_NUM 3
+#define RT_LWIP_RAW_PCB_NUM 4
+#define RT_LWIP_UDP_PCB_NUM 4
+#define RT_LWIP_TCP_PCB_NUM 4
 #define RT_LWIP_TCP_SEG_NUM 40
-#define RT_LWIP_TCP_SND_BUF 3072
-#define RT_LWIP_TCP_WND 2048
+#define RT_LWIP_TCP_SND_BUF 4096
+#define RT_LWIP_TCP_WND 4096
 #define RT_LWIP_TCPTHREAD_PRIORITY 10
 #define RT_LWIP_TCPTHREAD_MBOX_SIZE 32
 #define RT_LWIP_TCPTHREAD_STACKSIZE 1024
@@ -320,6 +320,10 @@
 /* Arduino libraries */
 
 
+/* Projects */
+
+/* end of Projects */
+
 /* Sensors */
 
 /* end of Sensors */
@@ -332,9 +336,24 @@
 
 /* end of Timing */
 
-/* Projects */
+/* Data Processing */
 
-/* end of Projects */
+/* end of Data Processing */
+
+/* Data Storage */
+
+/* Communication */
+
+/* Device Control */
+
+/* Other */
+
+/* Signal IO */
+
+/* end of Signal IO */
+
+/* Uncategorized */
+
 /* end of Arduino libraries */
 /* end of RT-Thread online packages */
 

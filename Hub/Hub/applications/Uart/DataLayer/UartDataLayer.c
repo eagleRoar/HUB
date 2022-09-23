@@ -307,7 +307,7 @@ rt_err_t setDeviceDefault(device_t *module)
             setDeviceDefaultStora(module, 0 , "Timer", F_TIMER, module->type, addr , MANUAL_NO_HAND, 0);
             break;
         case AC_4_TYPE:
-            setDeviceDefaultPara(module, "AC_4", 0x0401, S_AC_4, module->type, 4);
+            setDeviceDefaultPara(module, "AC4", 0x0401, S_AC_4, module->type, 4);
             for(u8 index = 0; index < module->storage_size; index++)
             {
                 strcpy(name," ");
@@ -322,13 +322,13 @@ rt_err_t setDeviceDefault(device_t *module)
             setDeviceDefaultStora(module, 0 , "Pump", F_PUMP, module->type, addr , MANUAL_NO_HAND, 0);
             break;
         case IO_12_TYPE:
-            setDeviceDefaultPara(module, "IO_12", 0x0401, S_IO_12, module->type, 12);
+            setDeviceDefaultPara(module, "IO12", 0x0401, S_IO_12, module->type, 12);
             for(u8 index = 0; index < module->storage_size; index++)
             {
                 module->port[index].type = VALVE_TYPE;//目前暂定都是阀
                 module->port[index].func = F_VALVE;
                 strcpy(name," ");
-                sprintf(name,"%s%d","Valve",index+1);
+                sprintf(name,"%s%d","Val",index+1);
                 rt_memcpy(module->port[index].name, name, STORAGE_NAMESZ);
                 module->port[index].manual.manual_on_time = MANUAL_TIME_DEFAULT;
             }

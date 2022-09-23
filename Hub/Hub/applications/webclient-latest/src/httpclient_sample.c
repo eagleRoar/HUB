@@ -152,7 +152,11 @@ void GetUpdataFileFromWeb(u8 *ret)
     rt_uint8_t *buffer = RT_NULL;
     int resp_status;
     struct webclient_session *session = RT_NULL;
-    char *weather_url = /*"http://pic.pro-leaf.com/down/beleaf_hub.bin"*/"http://192.168.0.194:8080/downloadFile.bin";//Justin debug Ip 地址要改
+#if(HUB_SELECT == HUB_IRRIGSTION)
+    char *weather_url = "http://pic.pro-leaf.com/down/beleaf_hub_irri.bin";
+#elif(HUB_SELECT == HUB_ENVIRENMENT)
+    char *weather_url = "http://pic.pro-leaf.com/down/beleaf_hub_env.bin";
+#endif
     int content_length = -1, bytes_read = 0;
     u32 content_pos = 0;
     fw_info_t dest, src;
