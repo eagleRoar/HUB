@@ -2004,6 +2004,10 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
     u8              co2State    = OFF;
     u8              tempState   = OFF;
     u8              humiState   = OFF;
+    u16             ec          = 0;
+    u16             ph          = 0;
+    u16             wt          = 0;
+    u16             wl          = 0;
     static u8       co2State_pre    = OFF;
     static u8       tempState_pre   = OFF;
     static u8       humiState_pre   = OFF;
@@ -2528,71 +2532,107 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
     }
 
     //ph ec
-    sensor = GetSensorByType(monitor, PHEC_TYPE);
-
-    for(u8 index = 0; index < sensor->storage_size; index++)
+    for(u8 tank = 0; tank < GetSysTank()->tank_size; tank++)
     {
-        if(F_S_PH == sensor->__stora[index].func)
+        for(u8 item1 = 0; item1 < 2;item1++)
         {
-            if(ON == set->sysWarn.phEn)
+            for(u8 item2 = 0; item2 < TANK_SENSOR_MAX; item2++)
             {
-                for(u8 tank = 0; tank < GetSysTank()->tank_size; tank++)
+                if(GetSysTank()->tank[tank].sensorId[item1][item2] != 0)
                 {
-                    if(sensor->__stora[index].value > GetSysTank()->tank[tank].highPhProtection)
+                    sensor = GetSensorByAddr(monitor, GetSysTank()->tank[tank].sensorId[item1][item2]);
+
+                    for(u8 sto = 0; sto < sensor->storage_size; sto++)
                     {
-                        set->warn[WARN_PH_HIGHT - 1] = ON;
-                        set->warn_value[WARN_PH_HIGHT - 1] = sensor->__stora[index].value;
-                        break;
-                    }
-                    else if(sensor->__stora[index].value < GetSysTank()->tank[tank].lowPhProtection)
-                    {
-                        set->warn[WARN_PH_LOW - 1] = ON;
-                        set->warn_value[WARN_PH_LOW - 1] = sensor->__stora[index].value;
-                        break;
-                    }
-                }
-            }
-            else if(ON == set->sysWarn.ecEn)
-            {
-                for(u8 tank = 0; tank < GetSysTank()->tank_size; tank++)
-                {
-                    if(sensor->__stora[index].value > GetSysTank()->tank[tank].highEcProtection)
-                    {
-                        set->warn[WARN_EC_HIGHT - 1] = ON;
-                        set->warn_value[WARN_EC_HIGHT - 1] = sensor->__stora[index].value;
-                        break;
+                        if(F_S_PH == sensor->__stora[sto].func)
+                        {
+                            ph = sensor->__stora[sto].value;
+                        }
+                        else if(F_S_EC == sensor->__stora[sto].func)
+                        {
+                            ec = sensor->__stora[sto].value;
+                        }
+                        else if(F_S_WT == sensor->__stora[sto].func)
+                        {
+                            wt = sensor->__stora[sto].value;
+                        }
+                        else if(F_S_WL == sensor->__stora[sto].func)
+                        {
+                            wl = sensor->__stora[sto].value;
+                        }
                     }
                 }
             }
         }
-    }
 
-    //水位
-    sensor = GetSensorByType(monitor, WATERlEVEL_TYPE);
-
-    for(u8 index = 0; index < sensor->storage_size; index++)
-    {
-       if(F_S_WL == sensor->__stora[index].func)
-       {
-           if(ON == set->sysWarn.wlEn)
-           {
-               for(u8 tank = 0; tank < GetSysTank()->tank_size; tank++)
-               {
-                   if(sensor->__stora[index].value > GetSysTank()->tank[tank].autoFillFulfilHeight)
-                   {
-                       set->warn[WARN_WL_HIGHT - 1] = ON;
-                       set->warn_value[WARN_WL_HIGHT - 1] = sensor->__stora[index].value;
-                       break;
-                   }
-                   else if(sensor->__stora[index].value < GetSysTank()->tank[tank].autoFillHeight)
-                   {
-                       set->warn[WARN_WL_LOW - 1] = ON;
-                       set->warn_value[WARN_WL_LOW - 1] = sensor->__stora[index].value;
-                       break;
-                   }
-               }
-           }
-       }
+        //
+        for(u8 item1 = 0; item1 < TANK_WARN_ITEM_MAX; item1++)
+        {
+            if(F_S_PH == set->tankWarnSet[tank][item1].func)
+            {
+                if(ON == set->sysWarn.phEn)
+                {
+                    if(ph < set->tankWarnSet[tank][item1].min)
+                    {
+                        set->warn[WARN_PH_LOW - 1] = ON;
+                        set->warn_value[WARN_PH_LOW - 1] = ph;
+                    }
+                    else if(ph > set->tankWarnSet[tank][item1].max)
+                    {
+                        set->warn[WARN_PH_HIGHT - 1] = ON;
+                        set->warn_value[WARN_PH_HIGHT - 1] = ph;
+                    }
+                }
+            }
+            else if(F_S_EC == set->tankWarnSet[tank][item1].func)
+            {
+                if(ON == set->sysWarn.ecEn)
+                {
+                    if(ec < set->tankWarnSet[tank][item1].min)
+                    {
+                        set->warn[WARN_EC_LOW - 1] = ON;
+                        set->warn_value[WARN_EC_LOW - 1] = ec;
+                    }
+                    else if(ec > set->tankWarnSet[tank][item1].max)
+                    {
+                        set->warn[WARN_EC_HIGHT - 1] = ON;
+                        set->warn_value[WARN_EC_HIGHT - 1] = ec;
+                    }
+                }
+            }
+            else if(F_S_WT == set->tankWarnSet[tank][item1].func)
+            {
+                if(ON == set->sysWarn.wtEn)
+                {
+                    if(wt < set->tankWarnSet[tank][item1].min)
+                    {
+                        set->warn[WARN_WT_LOW - 1] = ON;
+                        set->warn_value[WARN_WT_LOW - 1] = wt;
+                    }
+                    else if(wt > set->tankWarnSet[tank][item1].max)
+                    {
+                        set->warn[WARN_WT_HIGHT - 1] = ON;
+                        set->warn_value[WARN_WT_HIGHT - 1] = wt;
+                    }
+                }
+            }
+            else if(F_S_WL == set->tankWarnSet[tank][item1].func)
+            {
+                if(ON == set->sysWarn.wlEn)
+                {
+                    if(wl < set->tankWarnSet[tank][item1].min)
+                    {
+                        set->warn[WARN_WL_LOW - 1] = ON;
+                        set->warn_value[WARN_WL_LOW - 1] = wl;
+                    }
+                    else if(wl > set->tankWarnSet[tank][item1].max)
+                    {
+                        set->warn[WARN_WL_HIGHT - 1] = ON;
+                        set->warn_value[WARN_WL_HIGHT - 1] = wl;
+                    }
+                }
+            }
+        }
     }
 
     rt_memcpy(sys_warn, set->warn, WARN_MAX);
