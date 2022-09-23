@@ -61,7 +61,7 @@ extern "C" {
 // TLS���ܴ���ʱʹ�ã����ڽ��ճ�ʱ
 #define MQTT_SOCKET_TIMEO       5000
 
-#define MQTT_URI                "tcp://192.168.0.222:1883"//"tcp://192.168.0.29:61613"//
+#define MQTT_URI                "tcp://192.168.0.222:1883"//"mqtt.pro-leaf.com"
 #define MQTT_USERNAME           "hydro"//"admin"//
 #define MQTT_PASSWORD           "hydro"//"password"
 //#define MQTT_SUBTOPIC           "SN/ctr"

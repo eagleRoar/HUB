@@ -27,6 +27,7 @@
 #define     STAGE_LIST_MAX                  5//10//最多10个阶段
 #define     RECIPE_LIST_MAX                 10//最多10个配方
 #define     TANK_LIST_MAX                   4
+#define     TANK_WARN_ITEM_MAX              4
 
 typedef     struct proTempSet               proTempSet_t;
 typedef     struct proCo2Set                proCo2Set_t;
@@ -291,7 +292,7 @@ struct sysSet{
     proHumiSet_t    humiSet;
     proLine_t       line1Set;
     proLine_t       line2Set;
-    tankWarn_t      tankWarnSet[TANK_LIST_MAX][4];
+    tankWarn_t      tankWarnSet[TANK_LIST_MAX][TANK_WARN_ITEM_MAX];
     cloudcmd_t      cloudCmd;
     stage_t         stageSet;   //阶段(日历)
     sys_para_t      sysPara;

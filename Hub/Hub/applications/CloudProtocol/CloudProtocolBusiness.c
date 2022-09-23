@@ -581,10 +581,12 @@ void CmdSetPoolAlarm(char *data, cloudcmd_t *cmd)
 {
     cJSON   *temp       = RT_NULL;
     cJSON   *list       = RT_NULL;
+    cJSON   *item       = RT_NULL;
     char    name[4]     = " ";
     u8      func        = 0;
     u8      tankNo      = 0;
-    u8      warnIndex   = 0;
+    u8      list_size   = 0;
+    u8      item_no     = 0;
 
     temp = cJSON_Parse(data);
     if(RT_NULL != temp)
@@ -595,36 +597,48 @@ void CmdSetPoolAlarm(char *data, cloudcmd_t *cmd)
         if(0 == rt_memcmp(name, "ec", 2))
         {
             func = F_S_EC;
-            warnIndex = 0;
         }
         else if(0 == rt_memcmp(name, "ph", 2))
         {
             func = F_S_PH;
-            warnIndex = 1;
         }
         else if(0 == rt_memcmp(name, "wt", 2))
         {
             func = F_S_WT;
-            warnIndex = 2;
         }
         else if(0 == rt_memcmp(name, "wl", 2))
         {
             func = F_S_WL;
-            warnIndex = 3;
         }
 
         list = cJSON_GetObjectItem(temp, "pool");
         if(RT_NULL != list)
         {
-            GetValueByU8(list, "no", &tankNo);
-            cmd->add_pool_no = tankNo;
-            cmd->add_pool_func = func;
-            if(tankNo > 1 && tankNo <= TANK_LIST_MAX)
+            list_size = cJSON_GetArraySize(list);
+
+            for(item_no = 0; item_no < list_size; item_no++)
             {
-                GetSysSet()->tankWarnSet[tankNo - 1][warnIndex].func = func;
-                GetValueByU16(list, "min", &GetSysSet()->tankWarnSet[tankNo - 1][warnIndex].min);
-                GetValueByU16(list, "max", &GetSysSet()->tankWarnSet[tankNo - 1][warnIndex].max);
+                item = cJSON_GetArrayItem(list, item_no);
+
+                if(RT_NULL != item)
+                {
+                    GetValueByU8(item, "no", &tankNo);
+                    cmd->add_pool_no = tankNo;
+                    cmd->add_pool_func = func;
+                    if(tankNo >= 1 && tankNo <= TANK_LIST_MAX)
+                    {
+                        for(u8 i = 0; i < TANK_WARN_ITEM_MAX; i++)
+                        {
+                            if(cmd->add_pool_func == GetSysSet()->tankWarnSet[tankNo - 1][i].func)
+                            {
+                                GetValueByU16(item, "min", &GetSysSet()->tankWarnSet[tankNo - 1][i].min);
+                                GetValueByU16(item, "max", &GetSysSet()->tankWarnSet[tankNo - 1][i].max);
+                            }
+                        }
+                    }
+                }
             }
+
         }
 
         cJSON_Delete(temp);
@@ -2913,7 +2927,7 @@ char *ReplySetPoolAlarm(char *cmd, cloudcmd_t cloud)
         cJSON_AddStringToObject(json, cloud.msgid.name, cloud.msgid.value);
 
         //1.判断是否存在
-        if(cloud.add_pool_no > 1 && cloud.add_pool_no <= TANK_LIST_MAX)
+        if(cloud.add_pool_no >= 1 && cloud.add_pool_no <= TANK_LIST_MAX)
         {
             if(F_S_EC == cloud.add_pool_func)
             {
@@ -2943,7 +2957,7 @@ char *ReplySetPoolAlarm(char *cmd, cloudcmd_t cloud)
             {
                 cJSON_AddNumberToObject(list, "no", cloud.add_pool_no);
 
-                for(u8 item = 0; item < 4; item++)
+                for(u8 item = 0; item < TANK_WARN_ITEM_MAX; item++)
                 {
                     if(cloud.add_pool_func == GetSysSet()->tankWarnSet[cloud.add_pool_no - 1][item].func)
                     {
@@ -2987,16 +3001,16 @@ char *ReplyGetPoolAlarm(char *cmd, cloudcmd_t cloud)
         list = cJSON_CreateArray();
         if(RT_NULL != list)
         {
-            for(u8 tank_no = 0; tank_no < TANK_LIST_MAX; tank_no++)
+            for(u8 tank_no = 0; tank_no < GetSysTank()->tank_size; tank_no++)
             {
-                for(u8 item = 0; item < 4; item++)
+                for(u8 item = 0; item < TANK_WARN_ITEM_MAX; item++)
                 {
                     if(cloud.add_pool_func == GetSysSet()->tankWarnSet[tank_no][item].func)
                     {
                         tank = cJSON_CreateObject();
                         if(RT_NULL != tank)
                         {
-                            cJSON_AddNumberToObject(tank, "no", item + 1);
+                            cJSON_AddNumberToObject(tank, "no", tank_no + 1);
                             cJSON_AddNumberToObject(tank, "min", GetSysSet()->tankWarnSet[tank_no][item].min);
                             cJSON_AddNumberToObject(tank, "max", GetSysSet()->tankWarnSet[tank_no][item].max);
                             cJSON_AddItemToArray(list, tank);

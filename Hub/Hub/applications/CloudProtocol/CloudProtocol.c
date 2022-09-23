@@ -315,6 +315,23 @@ void initCloudProtocol(void)
     sys_set.sysWarn.humidTimeoutEn = ON;
     sys_set.sysWarn.humidTimeoutseconds = 600;
 
+    for(u8 index = 0; index < TANK_LIST_MAX; index++)
+    {
+        sys_set.tankWarnSet[index][0].func = F_S_EC;
+        sys_set.tankWarnSet[index][0].max  = 100;
+        sys_set.tankWarnSet[index][0].min  = 8;
+        sys_set.tankWarnSet[index][1].func = F_S_PH;
+        sys_set.tankWarnSet[index][1].max  = 1000;
+        sys_set.tankWarnSet[index][1].min  = 100;
+        sys_set.tankWarnSet[index][2].func = F_S_WT;
+        sys_set.tankWarnSet[index][2].max  = 300;
+        sys_set.tankWarnSet[index][2].min  = 100;
+        sys_set.tankWarnSet[index][3].func = F_S_WL;
+        sys_set.tankWarnSet[index][3].max  = 100;
+        sys_set.tankWarnSet[index][3].min  = 10;
+
+    }
+
     rt_memcpy(&sys_set.line2Set, &sys_set.line1Set, sizeof(proLine_t));
 }
 
@@ -507,7 +524,8 @@ rt_err_t ReplyDataToCloud(mqtt_client *client, u8 *res, u16 *len, u8 sendCloudFl
         }
         else if(0 == rt_memcmp(CMD_SET_POOL_ALARM, sys_set.cloudCmd.cmd, sizeof(CMD_SET_POOL_ALARM)))//设置水桶报警
         {
-            str = ReplySetPoolAlarm(CMD_SET_POOL_ALARM, sys_set.cloudCmd);
+            //str = ReplySetPoolAlarm(CMD_SET_POOL_ALARM, sys_set.cloudCmd);
+            str = ReplyGetPoolAlarm(CMD_SET_POOL_ALARM, sys_set.cloudCmd);
         }
         else if(0 == rt_memcmp(CMD_GET_POOL_ALARM, sys_set.cloudCmd.cmd, sizeof(CMD_GET_POOL_ALARM)))//获取水桶报警
         {

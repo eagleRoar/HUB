@@ -138,7 +138,7 @@ int mqtt_start(void)
         client.condata.will.message.cstring = MQTT_WILLMSG;
 
         /* malloc buffer. */
-        client.buf_size = client.readbuf_size = /*1024*/1024*3;//Justin debug 仅仅测试
+        client.buf_size = client.readbuf_size = /*1024*/1024*3;
         client.buf = rt_calloc(1, client.buf_size);
         client.readbuf = rt_calloc(1, client.readbuf_size);
         if (!(client.buf && client.readbuf))
