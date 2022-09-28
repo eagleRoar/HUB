@@ -321,7 +321,13 @@ void SensorUart2TaskEntry(void* parameter)
 //                LOG_D("phec %d %d %d",GetSensorByAddr(GetMonitor(), 0xE0)->__stora[0].value,
 //                        GetSensorByAddr(GetMonitor(), 0xE0)->__stora[1].value,
 //                        GetSensorByAddr(GetMonitor(), 0xE0)->__stora[2].value);
-                LOG_D("water lever %d",GetSensorByAddr(GetMonitor(), 0xE4)->__stora[0].value);
+//                LOG_D("water lever %d",GetSensorByAddr(GetMonitor(), 0xE4)->__stora[0].value);
+//                rt_kprintf("valve = ");
+//                for(u8 val = 0; val < VALVE_MAX; val++)
+//                {
+//                    rt_kprintf(" %x",GetSysTank()->tank[0].valve[val]);
+//                }
+//                rt_kprintf("\r\n");
             }
 
             /* 3s 事件*/

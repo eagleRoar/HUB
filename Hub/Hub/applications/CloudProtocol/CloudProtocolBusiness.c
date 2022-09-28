@@ -405,7 +405,7 @@ void CmdSetPortSet(char *data, cloudcmd_t *cmd)
                             list_num = TIMER_GROUP;
                         }
 
-                        rt_memset((u8 *)&device->port[port].timer, 0, sizeof(type_timmer_t));
+                        rt_memset((u8 *)&device->port[port].timer, 0, sizeof(type_timmer_t) * TIMER_GROUP);
 
                         for(int index = 0; index < list_num; index++)
                         {
@@ -930,28 +930,30 @@ void CmdSetTank(char *data, cloudcmd_t *cmd)
     cJSON   *temp       = RT_NULL;
     tank_t  *tank       = RT_NULL;
 
+    LOG_W("CmdSetTank");
     temp = cJSON_Parse(data);
     if(RT_NULL != temp)
     {
         GetValueC16(temp, &cmd->msgid);
-        tank = rt_malloc(sizeof(tank_t));
-        if(RT_NULL != tank)
+
+        GetValueByU8(temp, "tankNo", &cmd->tank_no);
+        //提取tank
+//        LOG_D("-----------------------------------------cmd->tank_no = %d",cmd->tank_no);
+        if((cmd->tank_no < TANK_LIST_MAX) && (cmd->tank_no > 0))
         {
-            rt_memset((u8 *)tank, 0, sizeof(tank_t));
-            GetValueByU8(temp, "tankNo", &tank->tankNo);
-            cmd->tank_no = tank->tankNo;
-            GetValueByU8(temp, "autoFillValveId", &tank->autoFillValveId);
+            LOG_D("set tank info");
+
+            tank = &GetSysTank()->tank[cmd->tank_no - 1];
+            tank->tankNo = cmd->tank_no;
+
+            GetValueByU16(temp, "autoFillValveId", &tank->autoFillValveId);
             GetValueByU8(temp, "autoFillHeight", &tank->autoFillHeight);
             GetValueByU8(temp, "autoFillFulfilHeight", &tank->autoFillFulfilHeight);
             GetValueByU16(temp, "highEcProtection", &tank->highEcProtection);
             GetValueByU16(temp, "lowPhProtection", &tank->lowPhProtection);
             GetValueByU16(temp, "highPhProtection", &tank->highPhProtection);
-
-            InsertTankToTable(GetSysTank(), *tank);
-
-            rt_free(tank);
-            tank = RT_NULL;
         }
+//            InsertTankToTable(GetSysTank(), *tank);
         cJSON_Delete(temp);
     }
     else
@@ -1016,7 +1018,12 @@ void CmdSetHubName(char *data, cloudcmd_t *cmd)
 
 void CmdSetWarn(char *data, cloudcmd_t *cmd, sys_set_t *set)
 {
+    u8      no          = 0;
+    u16     timeout     = 0;
+    u8      poolNum     = 0;
     cJSON   *temp       = RT_NULL;
+    cJSON   *pool       = RT_NULL;
+    cJSON   *item       = RT_NULL;
 
     temp = cJSON_Parse(data);
     if(RT_NULL != temp)
@@ -1066,6 +1073,29 @@ void CmdSetWarn(char *data, cloudcmd_t *cmd, sys_set_t *set)
         GetValueByU16(temp, "tempTimeoutseconds", &set->sysWarn.tempTimeoutseconds);
         GetValueByU8(temp, "humidTimeoutEn", &set->sysWarn.humidTimeoutEn);
         GetValueByU16(temp, "humidTimeoutseconds", &set->sysWarn.humidTimeoutseconds);
+//        GetValueByU16(temp, "poolTimeout", &set->sysWarn.autoFillTimeout);
+        pool = cJSON_GetObjectItem(temp, "poolTimeout");
+
+        if(RT_NULL != pool)
+        {
+            poolNum = cJSON_GetArraySize(pool);
+            rt_memset(set->sysWarn.poolTimeout, 0, TANK_LIST_MAX * sizeof(u16));
+            for(u8 index = 0; index < poolNum; index++)
+            {
+                item = cJSON_GetArrayItem(pool, index);
+
+                if(RT_NULL != item)
+                {
+                    GetValueByU8(item, "no", &no);
+                    GetValueByU16(item, "timeout", &timeout);
+
+                    if((no > 0) && (no <= TANK_LIST_MAX))
+                    {
+                        set->sysWarn.poolTimeout[no - 1] = timeout;
+                    }
+                }
+            }
+        }
 
         cJSON_Delete(temp);
     }
@@ -1600,7 +1630,8 @@ char *SendHubReportWarn(char *cmd, sys_set_t *set, u8 warn_no, u16 value, u8 off
         if((warn == WARN_CO2_TIMEOUT) ||
            (warn == WARN_TEMP_TIMEOUT) ||
            (warn == WARN_HUMI_TIMEOUT) ||
-           (warn == WARN_AUTOFILL_TIMEOUT))
+           (warn == WARN_AUTOFILL_TIMEOUT) ||
+           (warn == WARN_OFFLINE))
         {
             type = 1;
         }
@@ -2246,7 +2277,13 @@ char *ReplySetTank(char *cmd, cloudcmd_t cloud)//Justin debug 未验证
         cJSON_AddStringToObject(json, "cmd", cmd);
         cJSON_AddStringToObject(json, cloud.msgid.name, cloud.msgid.value);
 
-        tank = GetTankByNo(GetSysTank(), cloud.tank_no);
+//        tank = GetTankByNo(GetSysTank(), cloud.tank_no);
+        LOG_D("ReplySetTank cloud.tank_no = %d",cloud.tank_no);
+        if((cloud.tank_no > 0) && (cloud.tank_no <= TANK_LIST_MAX))
+        {
+            tank = &GetSysTank()->tank[cloud.tank_no - 1];
+            LOG_D("enter ReplySetTank OK");
+        }
 
         if(RT_NULL != tank)
         {
@@ -2254,6 +2291,7 @@ char *ReplySetTank(char *cmd, cloudcmd_t cloud)//Justin debug 未验证
             cJSON_AddNumberToObject(json, "autoFillValveId", tank->autoFillValveId);
             cJSON_AddNumberToObject(json, "autoFillHeight", tank->autoFillHeight);
             cJSON_AddNumberToObject(json, "autoFillFulfilHeight", tank->autoFillFulfilHeight);
+            LOG_D("------------ReplySetTank autoFillValveId = %x",tank->autoFillValveId);
             cJSON_AddNumberToObject(json, "highEcProtection", tank->highEcProtection);
             cJSON_AddNumberToObject(json, "lowPhProtection", tank->lowPhProtection);
             cJSON_AddNumberToObject(json, "highPhProtection", tank->highPhProtection);
@@ -2286,12 +2324,18 @@ char *ReplyGetTank(char *cmd, cloudcmd_t cloud)//Justin debug 未验证
         cJSON_AddStringToObject(json, "cmd", cmd);
         cJSON_AddStringToObject(json, cloud.msgid.name, cloud.msgid.value);
 
-        tank = GetTankByNo(GetSysTank(), cloud.tank_no);
+//        tank = GetTankByNo(GetSysTank(), cloud.tank_no);
+        LOG_D("-----------------------------cloud.tank_no = %d",cloud.tank_no);
+        if((cloud.tank_no > 0) && (cloud.tank_no <= TANK_LIST_MAX))
+        {
+            tank = &GetSysTank()->tank[cloud.tank_no - 1];
+        }
 
         if(RT_NULL != tank)
         {
             cJSON_AddNumberToObject(json, "tankNo", tank->tankNo);
             cJSON_AddNumberToObject(json, "autoFillValveId", tank->autoFillValveId);
+            LOG_D("------------ReplyGetTank autoFillValveId = %x",tank->autoFillValveId);
             cJSON_AddNumberToObject(json, "autoFillHeight", tank->autoFillHeight);
             cJSON_AddNumberToObject(json, "autoFillFulfilHeight", tank->autoFillFulfilHeight);
             cJSON_AddNumberToObject(json, "highEcProtection", tank->highEcProtection);
@@ -2470,9 +2514,12 @@ char *ReplyGetTank(char *cmd, cloudcmd_t cloud)//Justin debug 未验证
 
 char *ReplySetWarn(char *cmd, cloudcmd_t cloud, sys_warn_t warn)
 {
+    u8              index       = 0;
     char            name[12];
     char            *str        = RT_NULL;
     cJSON           *json       = cJSON_CreateObject();
+    cJSON           *pool       = RT_NULL;
+    cJSON           *item       = RT_NULL;
 
     if(RT_NULL != json)
     {
@@ -2524,6 +2571,27 @@ char *ReplySetWarn(char *cmd, cloudcmd_t cloud, sys_warn_t warn)
         cJSON_AddNumberToObject(json, "tempTimeoutseconds",warn.tempTimeoutseconds);
         cJSON_AddNumberToObject(json, "humidTimeoutEn",warn.humidTimeoutEn);
         cJSON_AddNumberToObject(json, "humidTimeoutseconds",warn.humidTimeoutseconds);
+
+        pool = cJSON_CreateArray();
+        if(RT_NULL != pool)
+        {
+            for(index = 0; index < TANK_LIST_MAX; index++)
+            {
+                if(0 != warn.poolTimeout[index])
+                {
+                    item = cJSON_CreateObject();
+                    if(RT_NULL != item)
+                    {
+                        cJSON_AddNumberToObject(item, "no", index + 1);
+                        cJSON_AddNumberToObject(item, "timeout", warn.poolTimeout[index]);
+
+                        cJSON_AddItemToArray(pool, item);
+                    }
+                }
+            }
+
+            cJSON_AddItemToObject(json, "poolTimeout", pool);
+        }
 
         cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
         str = cJSON_PrintUnformatted(json);

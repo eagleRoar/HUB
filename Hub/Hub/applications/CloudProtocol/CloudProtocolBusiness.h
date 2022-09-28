@@ -205,6 +205,7 @@ struct sysWarn
     u16 tempTimeoutseconds; //600, // temp 超时秒数
     u8 humidTimeoutEn;      //1,   //humid 超时报警 1-on 2-off
     u16 humidTimeoutseconds;// 600, // humid 超时秒数
+    u16 poolTimeout[TANK_LIST_MAX];
 };
 
 /****************************以下是灌溉部分的内容*****/
@@ -258,7 +259,7 @@ struct sys_recipe{
 
 struct tank{
     u8      tankNo;                         //桶编号 1-9
-    u8      autoFillValveId;                //自动补水阀 ID ,0 为未指定
+    u16     autoFillValveId;                //自动补水阀 ID ,0 为未指定
     u8      autoFillHeight;                 //低水位补水高度,单位 cm
     u8      autoFillFulfilHeight;           //补满高度,单位 cm
     u16     highEcProtection;               //EC 高停止值

@@ -172,7 +172,10 @@ int main(void)
                             {
                                 for(u8 index = 0; index < DEVICE_MAX; index++)
                                 {
-                                    SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT_WARN, item, GetSysSet()->warn_value[item], RT_NULL, RT_NULL, YES, index);
+                                    if(YES == GetSysSet()->offline[index])
+                                    {
+                                        SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT_WARN, item, GetSysSet()->warn_value[item], RT_NULL, RT_NULL, YES, index);
+                                    }
                                 }
                             }
                             else

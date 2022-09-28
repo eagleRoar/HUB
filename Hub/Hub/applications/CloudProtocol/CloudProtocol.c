@@ -47,77 +47,39 @@ sys_tank_t *GetSysTank(void)
 void insertPumpToTank(type_monitor_t *monitor, sys_tank_t *tank_list, u16 id)
 {
     u8      index       = 0;
-    u8      addr        = 0;
-    u8      port        = 0;
 
-    if(id > 0xFF)
+    if(tank_list->tank_size < TANK_LIST_MAX - 1)
     {
-        addr = id >> 8;
-        port = id;
-    }
-    else
-    {
-        addr = id;
-        port = 0;
-
-    }
-
-    //1.遍历全部tank,如果没有和新的addr一样的话就插入
-    if((PUMP_TYPE == GetDeviceByAddr(monitor, addr)->type) ||
-       (PUMP_TYPE == GetDeviceByAddr(monitor, addr)->port[port].type))
-    {
-        if((0 == tank_list->tank_size) && (TANK_LIST_MAX > 0))
+        for(index = 0; index < tank_list->tank_size; index++)
         {
-            //1.1 判断当前是否有tank, 没有的话直接关联
-            tank_list->tank[0].tankNo = 1;
-            tank_list->tank[0].autoFillValveId = 0;
-            tank_list->tank[0].autoFillHeight = 10;
-            tank_list->tank[0].autoFillFulfilHeight = 100;
-            tank_list->tank[0].highEcProtection = 500;                  //EC 高停止值
-            tank_list->tank[0].lowPhProtection = 0;                     //PH 低停止值
-            tank_list->tank[0].highPhProtection = 1200;                 //PH 高停止值
-            tank_list->tank[0].color = 1;
-            tank_list->tank[0].pumpId = id;                    //id 为准确的指定add+port
-            tank_list->tank_size = 1;
-
-            //保存到SD卡
-            tank_list->saveFlag = YES;
-        }
-        else
-        {
-            if(tank_list->tank_size < TANK_LIST_MAX - 1)
+            //1.2 判断当前要加入的id是否存在，不存在就加入
+            if(id == tank_list->tank[index].pumpId)
             {
-                for(index = 0; index < tank_list->tank_size; index++)
-                {
-                    //1.2 判断当前要加入的id是否存在，不存在就加入
-                    if(id == tank_list->tank[index].pumpId)
-                    {
-                        break;
-                    }
-                }
+                break;
+            }
+        }
 
-                if(index == tank_list->tank_size)
+        if(index == tank_list->tank_size)
+        {
+            //1.2.1 id 在 tank 中不存在
+            for(u8 item = 0; item < TANK_LIST_MAX; item++)
+            {
+                if(0 == tank_list->tank[item].pumpId)
                 {
-                    //1.2.1 id 在 tank 中不存在
-                    for(u8 item = 0; item < TANK_LIST_MAX; item++)
-                    {
-                        if(0 == tank_list->tank[item].pumpId)
-                        {
-                            tank_list->tank[item].tankNo = item + 1;
-                            tank_list->tank[item].autoFillValveId = 0;
-                            tank_list->tank[item].autoFillHeight = 10;
-                            tank_list->tank[item].autoFillFulfilHeight = 100;
-                            tank_list->tank[item].highEcProtection = 500;                  //EC 高停止值
-                            tank_list->tank[item].lowPhProtection = 0;                     //PH 低停止值
-                            tank_list->tank[item].highPhProtection = 1200;                 //PH 高停止值
-                            tank_list->tank[item].color = 1;
-                            tank_list->tank[item].pumpId = id;
-                            tank_list->tank_size++;
-                            //保存到SD卡
-                            tank_list->saveFlag = YES;
-                            break;
-                        }
-                    }
+//                    LOG_W("insertPumpToTank ......................");//Justin print
+                    tank_list->tank[item].tankNo = item + 1;
+                    tank_list->tank[item].autoFillValveId = 0;
+                    tank_list->tank[item].autoFillHeight = 10;
+                    tank_list->tank[item].autoFillFulfilHeight = 100;
+                    tank_list->tank[item].highEcProtection = 500;                  //EC 高停止值
+                    tank_list->tank[item].lowPhProtection = 0;                     //PH 低停止值
+                    tank_list->tank[item].highPhProtection = 1200;                 //PH 高停止值
+                    tank_list->tank[item].color = 1;
+                    tank_list->tank[item].pumpId = id;
+                    tank_list->tank_size++;
+                    //保存到SD卡
+                    tank_list->saveFlag = YES;
+                    break;
                 }
             }
         }
@@ -317,6 +279,11 @@ void initCloudProtocol(void)
 
     for(u8 index = 0; index < TANK_LIST_MAX; index++)
     {
+        sys_set.sysWarn.poolTimeout[index] = 100;
+    }
+
+    for(u8 index = 0; index < TANK_LIST_MAX; index++)
+    {
         sys_set.tankWarnSet[index][0].func = F_S_EC;
         sys_set.tankWarnSet[index][0].max  = 100;
         sys_set.tankWarnSet[index][0].min  = 8;
@@ -448,7 +415,7 @@ rt_err_t ReplyDataToCloud(mqtt_client *client, u8 *res, u16 *len, u8 sendCloudFl
         {
             str = ReplySetTank(CMD_SET_TANK_INFO, sys_set.cloudCmd);
         }
-        else if(0 == rt_memcmp(CMD_GET_TANK_INFO, sys_set.cloudCmd.cmd, sizeof(CMD_GET_TANK_INFO)))//获取桶设置 Justin debug 仅仅测试 需要返回更多信息
+        else if(0 == rt_memcmp(CMD_GET_TANK_INFO, sys_set.cloudCmd.cmd, sizeof(CMD_GET_TANK_INFO)))//获取桶设置
         {
             str = ReplyGetTank(CMD_GET_TANK_INFO, sys_set.cloudCmd);
         }
@@ -769,6 +736,7 @@ void analyzeCloudData(char *data, u8 cloudFlg)
             else if(0 == rt_memcmp(CMD_SET_TANK_INFO, cmd->valuestring, strlen(CMD_SET_TANK_INFO)))
             {
                 CmdSetTank(data, &sys_set.cloudCmd);
+                LOG_D("id = %d",GetSysTank()->tank[0].autoFillValveId);//Justin debug
                 GetSysTank()->saveFlag = YES;
                 setCloudCmd(cmd->valuestring, ON);
             }
@@ -1223,6 +1191,7 @@ void timmerProgram(type_monitor_t *monitor)
                                (device->port[port].cycle.duration + device->port[port].cycle.pauseTime) <= device->port[port].cycle.duration)
                            {
                                device->port[port].ctrl.d_state = ON;
+                               //LOG_D("timmerProgram recycle on");//Justin debug
                            }
                            else
                            {
@@ -1253,6 +1222,7 @@ void timmerProgram(type_monitor_t *monitor)
                                    + device->port[port].timer[item].duration) )
                            {
                                device->port[port].ctrl.d_state = device->port[port].timer[item].en;
+                               LOG_D("timmerProgram schedule on");//Justin debug
                                break;
                            }
                        }
@@ -1264,7 +1234,13 @@ void timmerProgram(type_monitor_t *monitor)
                        device->port[port].ctrl.d_value = 0;
                    }
                 }
+
+//                LOG_D("timer port %d in %d type, stro size = %d",
+//                        port,device->port[port].mode,device->storage_size);
+
             }
+//            LOG_D("------------------------------------------");
+//            LOG_I("timer port %d = %d",port,device->port[port].ctrl.d_state);
         }
     }
 
@@ -1314,7 +1290,6 @@ void lineProgram_new(type_monitor_t *monitor, u8 line_no, u16 mPeroid)
     line_t          *line           = RT_NULL;
     proLine_t       line_set;
     type_sys_time   time;
-    type_sys_time   time1;
     u16             temperature     = 0;
     static u8       stage[LINE_MAX] = {LINE_MIN_VALUE,LINE_MIN_VALUE};
     static u16      cnt[LINE_MAX]   = {0, 0};
@@ -2899,25 +2874,31 @@ void pumpProgram(type_monitor_t *monitor, sys_tank_t *tank_list)
 
 void autoBindPumpTotank(type_monitor_t *monitor, sys_tank_t *tank_list)
 {
-    u8      index       = 0;
-    u8      stora       = 0;
-    u16     id          = 0;
+    device_t    *device     = RT_NULL;
+    u8          index       = 0;
+    u8          stora       = 0;
+    u16         id          = 0;
 
     //1.遍历整个system tank，如果没有达到tank上限的话，又有新的pump 那么就自动关联
     for(index = 0; index < monitor->device_size; index++)
     {
-        if(PUMP_TYPE == monitor->device[index].type)
+        device = &monitor->device[index];
+
+        if(1 == device->storage_size)
         {
-            id = monitor->device[index].addr;
-            insertPumpToTank(monitor, tank_list, id);
+              if(PUMP_TYPE == device->type)
+              {
+                    id = monitor->device[index].addr;
+                    insertPumpToTank(monitor, tank_list, id);
+              }
         }
         else
         {
-            for(stora = 0; stora < monitor->device[index].storage_size; stora++)
+            for(stora = 0; stora < device->storage_size; stora++)
             {
-                if(PUMP_TYPE == monitor->device[index].port[stora].type)
+                if(PUMP_TYPE == device->port[stora].type)
                 {
-                    id = monitor->device[index].addr << 8 | stora;
+                    id = device->addr << 8 | stora;
                     insertPumpToTank(monitor, tank_list, id);
                 }
             }
