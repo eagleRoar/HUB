@@ -1192,7 +1192,7 @@ void CmdAddPumpValue(char *data, cloudcmd_t *cmd)
                         if(0 == tank_list->tank[index].valve[item1])
                         {
                             tank_list->tank[index].valve[item1] = cmd->valve_id;
-                            LOG_D("valve no = %d, value = %d",item1,tank_list->tank[index].valve[item1]);//Justin print
+                            //LOG_D("valve no = %d, value = %d",item1,tank_list->tank[index].valve[item1]);
                             break;
                         }
                     }
@@ -2266,7 +2266,7 @@ char *ReplyAddRecipe(char *cmd, cloudcmd_t cloud)
     return str;
 }
 
-char *ReplySetTank(char *cmd, cloudcmd_t cloud)//Justin debug 未验证
+char *ReplySetTank(char *cmd, cloudcmd_t cloud)
 {
     char            *str        = RT_NULL;
     cJSON           *json       = cJSON_CreateObject();
@@ -2308,7 +2308,7 @@ char *ReplySetTank(char *cmd, cloudcmd_t cloud)//Justin debug 未验证
     return str;
 }
 
-char *ReplyGetTank(char *cmd, cloudcmd_t cloud)//Justin debug 未验证
+char *ReplyGetTank(char *cmd, cloudcmd_t cloud)
 {
     char            *str        = RT_NULL;
     cJSON           *json       = cJSON_CreateObject();
@@ -3515,7 +3515,7 @@ char *ReplyGetHubState(char *cmd, cloudcmd_t cloud)
                                     else if(F_S_WL == GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].func)
                                     {
                                         valueTemp[6] = GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].value;
-    //                                    LOG_I("wl = %d",GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].value);//Justin debug
+    //                                    LOG_I("wl = %d",GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].value);
     //                                    LOG_I("wl addr = %x",GetSysTank()->tank[no].sensorId[tank_id][id]);
                                     }
                                 }
@@ -3957,7 +3957,7 @@ char *ReplyGetPortSet(char *cmd, cloudcmd_t cloud)
             fatherFlg = 1;
         }
 
-        LOG_D("ReplyGetPortSet addr = %x, port = %x",addr,port);//Justin print
+        //LOG_D("ReplyGetPortSet addr = %x, port = %x",addr,port);
 
         module = GetDeviceByAddr(GetMonitor(), addr);
         line = GetLineByAddr(GetMonitor(), addr);
@@ -4166,7 +4166,7 @@ char *ReplyGetDeviceList(char *cmd, type_kv_c16 msgid)
 
                         if(HVAC_6_TYPE == module->port[0].type)
                         {
-//                            LOG_W("hvac work = %d",(module->port[0].ctrl.d_state << 8) + module->port[0].ctrl.d_value);//Justin print
+//                            LOG_W("hvac work = %d",(module->port[0].ctrl.d_state << 8) + module->port[0].ctrl.d_value);
                             if(((module->port[0].ctrl.d_state << 8) + module->port[0].ctrl.d_value) > 0)
                             {
                                 cJSON_AddNumberToObject(item, "workingStatus", ON);
@@ -4296,7 +4296,7 @@ char *ReplyGetDeviceList(char *cmd, type_kv_c16 msgid)
         {
             cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
             str = cJSON_PrintUnformatted(json);
-            LOG_I("str = %d",strlen(str));      //Justin print
+            //LOG_I("str = %d",strlen(str));
 
             cJSON_Delete(json);
             json = RT_NULL;

@@ -50,8 +50,6 @@ static rt_err_t Uart1_input(rt_device_t dev, rt_size_t size)
 {
     u16 crc16 = 0x0000;
 
-//    LOG_D("recv data");//Justin debug 仅仅测试
-
     /* 必须要等待从sd卡读取到的monitor 才能执行以下功能 */
     if (NO == sdCard.readInfo)
     {
@@ -198,7 +196,6 @@ void SensorUart2TaskEntry(void* parameter)
                 getRegisterData(data, 13, 0x00000000,PAR_TYPE);
                 AnlyzeDeviceRegister(&monitor, uart1_serial ,data, 13, 0);//注册par
 #elif (HUB_SELECT == HUB_IRRIGSTION)
-                //Justin debug
                 getRegisterData(data, 13, 0x00000001,PHEC_TYPE);
                 AnlyzeDeviceRegister(&monitor, uart1_serial ,data, 13, 0xE0);
                 getRegisterData(data, 13, 0x00000002,PHEC_TYPE);
@@ -257,7 +254,7 @@ void SensorUart2TaskEntry(void* parameter)
                 {
                     if(1 == device_start)
                     {
-                        if(YES == askDeviceHeart_new(&monitor, uart2_serial, getDeviceEvent()))//Justin debug 仅仅测试
+                        if(YES == askDeviceHeart_new(&monitor, uart2_serial, getDeviceEvent()))
                         {
                             device_start = 0;
                         }
@@ -317,7 +314,6 @@ void SensorUart2TaskEntry(void* parameter)
                     sys_set.cloudCmd.delete_id.value = 0;
                 }
 
-                //Justin debug 仅仅测试
 //                LOG_D("phec %d %d %d",GetSensorByAddr(GetMonitor(), 0xE0)->__stora[0].value,
 //                        GetSensorByAddr(GetMonitor(), 0xE0)->__stora[1].value,
 //                        GetSensorByAddr(GetMonitor(), 0xE0)->__stora[2].value);

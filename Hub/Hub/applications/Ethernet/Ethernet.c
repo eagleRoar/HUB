@@ -127,21 +127,16 @@ void UdpTaskEntry(void* parameter)
         if((bytes_read > 0) && (sizeof(type_package_t) >= bytes_read))
         {
             /* 判断主机的ip或者port为新,更新 */
-            if(YES == eth->IsNewEthernetConnect(inet_ntoa(broadcastRecvSerAddr.sin_addr), ntohs(broadcastRecvSerAddr.sin_port)))
+            if(0 == tcp_sock)
             {
                 /* 通知TCP和UDP需要更改socket,以监听新的网络 */
-                eth->udp.SetNotifyChange(YES);
                 eth->tcp.SetConnectTry(ON);
                 eth->tcp.SetConnectStatus(OFF);
 
                 SetIpAndPort(inet_ntoa(broadcastRecvSerAddr.sin_addr), ntohs(broadcastRecvSerAddr.sin_port), eth);
-                LOG_I("recv new master register massge, ip = %s, port = %d", eth->GetIp(), eth->GetPort());
-            }
-
-            if(OFF == eth->tcp.GetConnectStatus())
-            {
                 /* 更新网络以及申请TCP */
                 notifyTcpAndUdpSocket(inet_ntoa(broadcastRecvSerAddr.sin_addr), ntohs(broadcastRecvSerAddr.sin_port), eth);
+                LOG_I("recv new master register massge, ip = %s, port = %d", eth->GetIp(), eth->GetPort());
             }
         }
 
@@ -149,13 +144,21 @@ void UdpTaskEntry(void* parameter)
            (OFF == eth->tcp.GetConnectStatus()))
         {
             //尝试连接
-            if(RT_EOK == ConnectToSever(&tcp_sock, eth->GetIp(), eth->GetPort()))
+            if(0 == tcp_sock)
             {
-                eth->tcp.SetConnectStatus(ON);
-                eth->tcp.SetConnectTry(OFF);
-                LOG_D("tcp try to reconnrct......");
+                if(RT_EOK == ConnectToSever(&tcp_sock, eth->GetIp(), eth->GetPort()))
+                {
+                    eth->tcp.SetConnectStatus(ON);
+                    eth->tcp.SetConnectTry(OFF);
+                    LOG_W("reconnrct Ok......");
+                    LOG_D("mallo new sock = %d",tcp_sock);
+                }
+                else
+                {
+                    LOG_E("connrct Fail......");
+                    eth->tcp.SetConnectTry(OFF);
+                }
             }
-
         }
         else
         {

@@ -5,7 +5,7 @@
 /* Program Entry, set to mark it as "used" and avoid gc */
 MEMORY
 {
-ROM (rx) : ORIGIN =0x08020000,LENGTH =512k
+ROM (rx) : ORIGIN =0x08000000,LENGTH =1024k
 RAM (rw) : ORIGIN =0x20000000,LENGTH =128k
 CCM (rw) : ORIGIN =0x10000000,LENGTH =64k
 }

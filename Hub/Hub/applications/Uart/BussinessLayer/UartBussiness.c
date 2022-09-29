@@ -57,7 +57,6 @@ u8 askSensorStorage(type_monitor_t *monitor, rt_device_t serial)
         buffer[6] = crc16Result;                             //CRC16低位
         buffer[7] = (crc16Result>>8);                        //CRC16高位
 
-        //Justin debug
 //        LOG_D("ask sensor name %s",monitor->sensor[ask_sensor].name);
 
         rt_device_write(serial, 0, buffer, 8);
@@ -351,7 +350,7 @@ u8 askDeviceHeart_new(type_monitor_t *monitor, rt_device_t serial, u8 event)
             //5.1特殊处理,如果是AC_4则要先问类型
             if((AC_4_TYPE == device->type) && (YES != special[ask_device]))
             {
-                //LOG_W("ask ac_4 port");//Justin print
+                //LOG_W("ask ac_4 port");
                 buffer[1] = READ_MUTI;
                 buffer[2] = (0x0440 >> 8) & 0x00FF;
                 buffer[3] = 0x0440 & 0x00FF;

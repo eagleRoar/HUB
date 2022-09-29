@@ -56,8 +56,6 @@ void InitEthernetStruct(void)
         ethernetStruct->tcp.GetConnectStatus = GetTcpConnectStatus;
         ethernetStruct->tcp.SetRecvDataFlag = SetTcpRecvDataFlag;
         ethernetStruct->tcp.GetRecvDataFlag = GetTcpRecvDataFlag;
-        ethernetStruct->udp.SetNotifyChange = SetUdpNotifyChange;
-        ethernetStruct->udp.GetNotifyChange = GetUdpNotifyChange;
         ethernetStruct->udp.SetConnectStatus = SetUdpConnectStatus;
         ethernetStruct->udp.GetConnectStatus = GetUdpConnectStatus;
     }
@@ -94,15 +92,6 @@ static void SetUdpConnectStatus(u8 status)
     ethernetStruct->udp.connectStatus = status;
 }
 
-static u8 GetUdpNotifyChange(void)
-{
-    return ethernetStruct->udp.notifyChange;
-}
-
-static void SetUdpNotifyChange(u8 flag)
-{
-    ethernetStruct->udp.notifyChange = flag;
-}
 /******************UDP END*****************************************/
 
 /******************TCP START***************************************/

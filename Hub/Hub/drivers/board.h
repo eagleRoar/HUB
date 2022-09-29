@@ -30,8 +30,9 @@ extern "C"
 
 /*-------------------------- ROM/RAM CONFIG BEGIN --------------------------*/
 
-#define ROM_START              ((uint32_t)0x08020000)//((uint32_t)0x08000000)
-#define ROM_SIZE               (512 * 1024)//(1024 * 1024)
+//Justin debug 修改偏移地址
+#define ROM_START              ((uint32_t)0x08000000)//((uint32_t)0x08020000)//
+#define ROM_SIZE               (1024 * 1024)//(512 * 1024)//
 #define ROM_END                ((uint32_t)(ROM_START + ROM_SIZE))
 
 #define RAM_START              (0x20000000)

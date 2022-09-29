@@ -417,7 +417,6 @@ void DeviceStatePage_new(type_monitor_t *monitor)
                 ST7567_GotoXY(line, column);
                 rt_memcpy(name, monitor->device[index + start].name, 8);
                 name[8] = '\0';
-    //            LOG_I("name %s",monitor->device[index + start].name);//Justin debug
                 ST7567_Puts(name, &Font_8x16, 1);
 
                 line = 8 * 8 + 8;

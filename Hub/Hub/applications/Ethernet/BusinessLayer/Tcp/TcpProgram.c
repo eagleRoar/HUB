@@ -27,11 +27,6 @@ rt_err_t ConnectToSever(int *sock, char *ip, uint32_t port)
         ret = RT_ERROR;
     }
 
-//    if(NO == flg)
-//    {
-//        setnonblocking(*sock);    //设置成非阻塞
-//    }
-
     /* 初始化预连接的服务端地址 */
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(port);
@@ -42,7 +37,9 @@ rt_err_t ConnectToSever(int *sock, char *ip, uint32_t port)
     if (connect(*sock, (struct sockaddr *)&server_addr, sizeof(struct sockaddr)) == -1)
     {
         closesocket(*sock);
+        *sock = 0;
         ret = RT_ERROR;
+        LOG_W("ConnectToSever close sock");
     }
     return ret;
 }
@@ -52,14 +49,17 @@ rt_err_t TcpRecvMsg(int *sock, u8 *buff, u16 size, int *recLen)
     rt_err_t ret = RT_EOK;
     int bytes_received = 0;
 
-    bytes_received = recv(*sock, buff, size, 0);
-    *recLen = bytes_received;
-    if (bytes_received <= 0)
+    if(0 != *sock)
     {
-        LOG_E("TcpRecvMsg err");
-        closesocket(*sock);
-        *sock = 0;
-        ret = RT_ERROR;
+        bytes_received = recv(*sock, buff, size, 0);
+        *recLen = bytes_received;
+        if (bytes_received <= 0)
+        {
+            closesocket(*sock);
+            *sock = 0;
+            ret = RT_ERROR;
+            LOG_W("TcpRecvMsg err, close sock");
+        }
     }
 
     return ret;
@@ -71,11 +71,13 @@ rt_err_t TcpSendMsg(int *sock, u8 *buff, u16 size)
 
     if(0 != *sock)
     {
+        LOG_D("TcpSendMsg sock = %d",*sock);
         if(send(*sock, buff, size, 0) < 0)
         {
             closesocket(*sock);
             *sock = 0;
             ret = RT_ERROR;
+            LOG_W("TcpSendMsg close sock");
         }
     }
 
@@ -98,7 +100,7 @@ rt_err_t notifyTcpAndUdpSocket(char *newIp, int newPort, struct ethDeviceStruct 
     /* 设置新的Ip和port */
     SetIpAndPort(newIp, newPort, masterInfo);
 
-    masterInfo->tcp.SetConnectTry(ON);    //开启尝试申请开启TcpClient任务
+    //masterInfo->tcp.SetConnectTry(ON);    //开启尝试申请开启TcpClient任务
 
     return RT_EOK;
 }

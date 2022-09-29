@@ -128,7 +128,7 @@ void UpBtnCallBack(u8 type)
         }
         //提示界面刷新
         reflash_flag = ON;
-        LOG_D("cusor %d",pageSelect.cusor);//Justin debug
+        //LOG_D("cusor %d",pageSelect.cusor);
     }
 }
 void DowmBtnCallBack(u8 type)

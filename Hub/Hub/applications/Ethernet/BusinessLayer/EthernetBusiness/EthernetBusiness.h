@@ -44,8 +44,6 @@ struct ethDeviceStruct
     }tcp;
     struct udpStruct
     {
-        void                        (*SetNotifyChange)(u8);
-        u8                          (*GetNotifyChange)(void);
         void                        (*SetConnectStatus)(u8);
         u8                          (*GetConnectStatus)(void);
 

@@ -66,7 +66,7 @@ void insertPumpToTank(type_monitor_t *monitor, sys_tank_t *tank_list, u16 id)
             {
                 if(0 == tank_list->tank[item].pumpId)
                 {
-//                    LOG_W("insertPumpToTank ......................");//Justin print
+//                    LOG_W("insertPumpToTank ......................");
                     tank_list->tank[item].tankNo = item + 1;
                     tank_list->tank[item].autoFillValveId = 0;
                     tank_list->tank[item].autoFillHeight = 10;
@@ -736,7 +736,7 @@ void analyzeCloudData(char *data, u8 cloudFlg)
             else if(0 == rt_memcmp(CMD_SET_TANK_INFO, cmd->valuestring, strlen(CMD_SET_TANK_INFO)))
             {
                 CmdSetTank(data, &sys_set.cloudCmd);
-                LOG_D("id = %d",GetSysTank()->tank[0].autoFillValveId);//Justin debug
+                //LOG_D("id = %d",GetSysTank()->tank[0].autoFillValveId);
                 GetSysTank()->saveFlag = YES;
                 setCloudCmd(cmd->valuestring, ON);
             }
@@ -1191,7 +1191,6 @@ void timmerProgram(type_monitor_t *monitor)
                                (device->port[port].cycle.duration + device->port[port].cycle.pauseTime) <= device->port[port].cycle.duration)
                            {
                                device->port[port].ctrl.d_state = ON;
-                               //LOG_D("timmerProgram recycle on");//Justin debug
                            }
                            else
                            {
@@ -1222,7 +1221,7 @@ void timmerProgram(type_monitor_t *monitor)
                                    + device->port[port].timer[item].duration) )
                            {
                                device->port[port].ctrl.d_state = device->port[port].timer[item].en;
-                               LOG_D("timmerProgram schedule on");//Justin debug
+                               //LOG_D("timmerProgram schedule on");
                                break;
                            }
                        }
@@ -2785,7 +2784,7 @@ void pumpProgram(type_monitor_t *monitor, sys_tank_t *tank_list)
                 if(wl < tank_list->tank[tank].autoFillHeight ||
                    ph < tank_list->tank[tank].lowPhProtection ||
                    ph > tank_list->tank[tank].highPhProtection ||
-                   ec > tank_list->tank[tank].highEcProtection)//Justin debug 仅仅测试
+                   ec > tank_list->tank[tank].highEcProtection)
                 {
                     GetDeviceByAddr(GetMonitor(), addr)->port[port].ctrl.d_state = OFF;
                 }
@@ -2819,7 +2818,7 @@ void pumpProgram(type_monitor_t *monitor, sys_tank_t *tank_list)
             if(wl < tank_list->tank[tank].autoFillHeight ||
                ph < tank_list->tank[tank].lowPhProtection ||
                ph > tank_list->tank[tank].highPhProtection ||
-               ec > tank_list->tank[tank].highEcProtection)//Justin debug 仅仅测试
+               ec > tank_list->tank[tank].highEcProtection)
             {
                 GetDeviceByAddr(GetMonitor(), addr)->port[port].ctrl.d_state = OFF;
             }
