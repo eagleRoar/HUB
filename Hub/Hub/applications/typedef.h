@@ -77,6 +77,8 @@
 #include "stm32f4xx_hal.h"
 
 #define  ID_ADDR1  0x1FFF7A10        /*STM32F4唯一ID起始地址*/
+#define  ID_ADDR2  0x1FFF7A14        /*STM32F4唯一ID起始地址*/
+#define  ID_ADDR3  0x1FFF7A18        /*STM32F4唯一ID起始地址*/
 #pragma pack(1)   //按1字节对齐              //cJSON不能1字节对齐
 
 enum {

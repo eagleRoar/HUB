@@ -446,4 +446,47 @@ u16 GetValueAboutHACV(device_t *device, u8 cool, u8 heat)
     return value;
 }
 
+/**
+ *  如果没有数据就返回-9999
+ */
+int getSensorDataByFunc(type_monitor_t *monitor, u8 func)
+{
+    u8          index       = 0;
+    u8          port        = 0;
+    u8          num         = 0;
+    int         data        = 0;
+    sensor_t    *sensor     = RT_NULL;
+
+    //1.遍历全部，寻找符合条件的一个或者多个sensor 做平均，如果都没有就返回-9999
+    for(index = 0; index < monitor->sensor_size; index++)
+    {
+        sensor = &monitor->sensor[index];
+        //1.1 如果是失联的设备不加入平均
+        if(CON_FAIL != sensor->conn_state)
+        {
+            //1.2 查询同一个type
+            for(port = 0; port < sensor->storage_size; port++)
+            {
+                if(func == sensor->__stora[port].func)
+                {
+                    num++;
+                    data += sensor->__stora[port].value;
+                }
+            }
+        }
+    }
+
+    //2.如果num为0 则赋值数据为-9999
+    if(0 == num)
+    {
+        data = VALUE_NULL;
+    }
+    else
+    {
+        data /= num;
+    }
+
+    return data;
+}
+
 #endif /* APPLICATIONS_INFORMATIONMANAGE_MODULE_MODULE_C_ */

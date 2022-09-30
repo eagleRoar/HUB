@@ -13,6 +13,7 @@
 
 #include <stm32f4xx.h>
 #include <drv_common.h>
+#include "GlobalConfig.h"
 
 
 #ifdef __cplusplus
@@ -31,8 +32,13 @@ extern "C"
 /*-------------------------- ROM/RAM CONFIG BEGIN --------------------------*/
 
 //Justin debug 修改偏移地址
+#if (1 == DEBUG_MODE)
 #define ROM_START              ((uint32_t)0x08000000)//((uint32_t)0x08020000)//
 #define ROM_SIZE               (1024 * 1024)//(512 * 1024)//
+#else
+#define ROM_START              ((uint32_t)0x08020000)//((uint32_t)0x08000000)//
+#define ROM_SIZE               (512 * 1024)//(1024 * 1024)//
+#endif
 #define ROM_END                ((uint32_t)(ROM_START + ROM_SIZE))
 
 #define RAM_START              (0x20000000)

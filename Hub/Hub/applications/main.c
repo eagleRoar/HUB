@@ -449,7 +449,20 @@ int main(void)
 
 void ReadUniqueId(u32 *id)
 {
-    *id = *(__IO u32*)(ID_ADDR1);
+    u8      data[12]    = {0};
+    u32     id1         = 0;
+    u32     id2         = 0;
+    u32     id3         = 0;
+
+    id1 = *(__IO u32*)(ID_ADDR1);
+    id2 = *(__IO u32*)(ID_ADDR2);
+    id3 = *(__IO u32*)(ID_ADDR3);
+
+    rt_memcpy(&data[0], (u8 *)&id1, 4);
+    rt_memcpy(&data[4], (u8 *)&id2, 4);
+    rt_memcpy(&data[8], (u8 *)&id3, 4);
+
+    *id = crc32_cal(data, 12);
 }
 
 /**

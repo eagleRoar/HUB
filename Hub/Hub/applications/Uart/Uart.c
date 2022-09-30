@@ -147,7 +147,7 @@ void SensorUart2TaskEntry(void* parameter)
 //#if (HUB_SELECT == HUB_ENVIRENMENT)
     u8                          data[13];
 //#endif
-                u16             crc16Result     = 0;
+//                u16             crc16Result     = 0;
     static      u8              Timer1sTouch    = OFF;
     static      u8              Timer3sTouch    = OFF;
     static      u8              Timer5sTouch    = OFF;
@@ -162,6 +162,7 @@ void SensorUart2TaskEntry(void* parameter)
     static      u8              line_start      = 0;
     static      type_sys_time   sys_time_pre;
     static      u8              specailFlag     = 0;
+//    sensor_t    *sensor                         = RT_NULL;
 
     rt_memset((u8 *)&sys_time_pre, 0, sizeof(type_sys_time));
     initConnectState();
@@ -222,15 +223,6 @@ void SensorUart2TaskEntry(void* parameter)
             {
                 if(ON == uart1_msg.messageFlag)
                 {
-                    /*if(0xE4 == uart1_msg.data[0])
-                    {
-                        LOG_I("-----------------------------------sensor recv data ");
-                        for(int i = 0; i < uart1_msg.size; i++)
-                        {
-                            rt_kprintf("%x ",uart1_msg.data[i]);
-                        }
-                        rt_kprintf("\r\n");
-                    }*/
                     uart1_msg.messageFlag = OFF;
                     AnalyzeData(uart1_serial, &monitor, uart1_msg.data, uart1_msg.size);
                 }
@@ -308,11 +300,11 @@ void SensorUart2TaskEntry(void* parameter)
                 findLineLocation(GetMonitor(), &sys_set.cloudCmd, uart3_serial);
                 warnProgram(GetMonitor(), GetSysSet());             //监听告警信息
                 //检测到删除设备功能
-                if(0 != sys_set.cloudCmd.delete_id.value)
-                {
-                    deleteModule(GetMonitor(), sys_set.cloudCmd.delete_id.value);
-                    sys_set.cloudCmd.delete_id.value = 0;
-                }
+//                if(0 != sys_set.cloudCmd.delete_id.value)
+//                {
+//                    deleteModule(GetMonitor(), sys_set.cloudCmd.delete_id.value);
+//                    sys_set.cloudCmd.delete_id.value = 0;
+//                }
 
 //                LOG_D("phec %d %d %d",GetSensorByAddr(GetMonitor(), 0xE0)->__stora[0].value,
 //                        GetSensorByAddr(GetMonitor(), 0xE0)->__stora[1].value,
@@ -324,6 +316,7 @@ void SensorUart2TaskEntry(void* parameter)
 //                    rt_kprintf(" %x",GetSysTank()->tank[0].valve[val]);
 //                }
 //                rt_kprintf("\r\n");
+//                  LOG_D("co2 data = %d",getSensorDataByFunc(GetMonitor(), F_S_CO2));
             }
 
             /* 3s 事件*/

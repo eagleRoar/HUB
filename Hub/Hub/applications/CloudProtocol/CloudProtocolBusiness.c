@@ -498,6 +498,8 @@ void CmdDeleteDevice(char *data, cloudcmd_t *cmd)
         GetValueC16(temp, &cmd->msgid);
         GetValueU16(temp, &cmd->delete_id);
 
+        deleteModule(GetMonitor(), sys_set.cloudCmd.delete_id.value);
+
         cJSON_Delete(temp);
     }
     else
@@ -2403,7 +2405,7 @@ char *ReplyGetTank(char *cmd, cloudcmd_t cloud)
 
                             cJSON_AddNumberToObject(sen_item, "id", tank->sensorId[0][item]);
                             cJSON_AddNumberToObject(sen_item, "mid", tank->sensorId[0][item]);
-                            cJSON_AddStringToObject(sen_item, "name","PH");
+                            cJSON_AddStringToObject(sen_item, "name","pH");
                             cJSON_AddNumberToObject(sen_item, "value",
                                     GetSensorByAddr(GetMonitor(), tank->sensorId[0][item])->__stora[stora].value);
 
@@ -2464,7 +2466,7 @@ char *ReplyGetTank(char *cmd, cloudcmd_t cloud)
 
                             cJSON_AddNumberToObject(sen_item, "id", tank->sensorId[1][item]);
                             cJSON_AddNumberToObject(sen_item, "mid", tank->sensorId[1][item]);
-                            cJSON_AddStringToObject(sen_item, "name","PH");
+                            cJSON_AddStringToObject(sen_item, "name","pH");
                             cJSON_AddNumberToObject(sen_item, "value",
                                     GetSensorByAddr(GetMonitor(), tank->sensorId[1][item])->__stora[stora].value);
 
@@ -2934,7 +2936,7 @@ char *ReplyGetPumpSensorList(char *cmd, cloudcmd_t cloud)
 
                             cJSON_AddNumberToObject(item, "id", sensor.addr);
                             cJSON_AddNumberToObject(item, "mid", sensor.addr);
-                            cJSON_AddStringToObject(item, "name", "PH");
+                            cJSON_AddStringToObject(item, "name", "pH");
                             cJSON_AddNumberToObject(item, "value", sensor.__stora[sen_no].value);
                             cJSON_AddNumberToObject(item, "tankNo", tankNo);
                             cJSON_AddNumberToObject(item, "type", type);
@@ -4128,7 +4130,8 @@ char *ReplyGetDeviceList(char *cmd, type_kv_c16 msgid)
     cJSON           *line_i     = RT_NULL;
     cJSON           *portList   = RT_NULL;
     cJSON           *port       = RT_NULL;
-    cJSON           *json = cJSON_CreateObject();
+    cJSON           *json       = cJSON_CreateObject();
+    cJSON           *valveList  = RT_NULL;
 
     if(RT_NULL != json)
     {
@@ -4189,6 +4192,20 @@ char *ReplyGetDeviceList(char *cmd, type_kv_c16 msgid)
                                 {
                                     cJSON_AddNumberToObject(item, "autoFillValveId",
                                             GetSysTank()->tank[tank_no].autoFillValveId);
+
+                                    valveList = cJSON_CreateArray();
+                                    if(RT_NULL != valveList)
+                                    {
+                                        for(u8 valve_i = 0; valve_i < VALVE_MAX; valve_i++)
+                                        {
+                                            if(0 != GetSysTank()->tank[tank_no].valve[valve_i])
+                                            {
+                                                cJSON_AddItemToArray(valveList, cJSON_CreateNumber(GetSysTank()->tank[tank_no].valve[valve_i]));
+                                            }
+                                        }
+
+                                        cJSON_AddItemToObject(item, "valve", valveList);
+                                    }
                                 }
                             }
                         }
@@ -4236,10 +4253,24 @@ char *ReplyGetDeviceList(char *cmd, type_kv_c16 msgid)
                                     {
                                         for(u8 tank_no = 0; tank_no < TANK_LIST_MAX; tank_no++)
                                         {
-                                            if(module->addr == GetSysTank()->tank[tank_no].pumpId)
+                                            if(((module->addr << 8) | storage) == GetSysTank()->tank[tank_no].pumpId)
                                             {
                                                 cJSON_AddNumberToObject(port, "autoFillValveId",
                                                         GetSysTank()->tank[tank_no].autoFillValveId);
+
+                                                valveList = cJSON_CreateArray();
+                                                if(RT_NULL != valveList)
+                                                {
+                                                    for(u8 valve_i = 0; valve_i < VALVE_MAX; valve_i++)
+                                                    {
+                                                        if(0 != GetSysTank()->tank[tank_no].valve[valve_i])
+                                                        {
+                                                            cJSON_AddItemToArray(valveList, cJSON_CreateNumber(GetSysTank()->tank[tank_no].valve[valve_i]));
+                                                        }
+                                                    }
+
+                                                    cJSON_AddItemToObject(item, "valve", valveList);
+                                                }
                                             }
                                         }
                                     }

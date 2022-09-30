@@ -71,7 +71,7 @@ rt_err_t TcpSendMsg(int *sock, u8 *buff, u16 size)
 
     if(0 != *sock)
     {
-        LOG_D("TcpSendMsg sock = %d",*sock);
+        //LOG_D("TcpSendMsg sock = %d",*sock);
         if(send(*sock, buff, size, 0) < 0)
         {
             closesocket(*sock);

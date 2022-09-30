@@ -34,4 +34,5 @@ void CtrlAllDeviceByType(type_monitor_t *, u8 , u8 , u8);
 u8 FindLine(type_monitor_t *, line_t , u8 *);
 u16 GetValueAboutHACV(device_t *, u8, u8);
 void CtrlAllDeviceByFunc(type_monitor_t *, u8, u8, u8);
+int getSensorDataByFunc(type_monitor_t *, u8);
 #endif /* APPLICATIONS_INFORMATIONMANAGE_MODULE_MODULE_H_ */

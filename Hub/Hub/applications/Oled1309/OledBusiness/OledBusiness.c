@@ -139,13 +139,15 @@ void HomePage_new(type_page_t page, u8 canShow)
 
 void SensorStatePage_new(type_monitor_t *monitor)
 {
+#define     SHOWNUM     5
     u8              line        = LINE_HIGHT;
     u8              column      = 0;
     char            name[5]     = " ";
     float           num;
+    int             data;
     sys_set_t       *set        = GetSysSet();
     static u8       showInde    = 0;
-    static u8       showStorage = 0;
+    static u8       showList[SHOWNUM] = {F_S_CO2,F_S_TEMP,F_S_HUMI,F_S_LIGHT,F_S_PAR};
 
     //1.清除界面
     clear_screen();
@@ -156,29 +158,65 @@ void SensorStatePage_new(type_monitor_t *monitor)
     {
         //2.1 先显示固定位置的名称
         ST7567_GotoXY(LINE_HIGHT, 0);
-        rt_memcpy(name, monitor->sensor[showInde].__stora[showStorage].name, 4);
+        if(F_S_CO2 == showList[showInde])
+        {
+            strcpy(name, "Co2");
+        }
+        else if(F_S_TEMP == showList[showInde])
+        {
+            strcpy(name, "Temp");
+        }
+        else if(F_S_HUMI == showList[showInde])
+        {
+            strcpy(name, "humi");
+        }
+        else if(F_S_LIGHT == showList[showInde])
+        {
+            strcpy(name, "Ligh");
+        }
+        else if(F_S_PAR == showList[showInde])
+        {
+            strcpy(name, "par");
+        }
         name[4] = '\0';
         ST7567_Puts(name, &Font_12x24, 1);
 
         line = LINE_HIGHT + 4 * 12 + 8;
         column = 24 - 16;
         ST7567_GotoXY(line, column);
-        if(F_S_HUMI == monitor->sensor[showInde].__stora[showStorage].func ||
-           F_S_TEMP == monitor->sensor[showInde].__stora[showStorage].func)
+        if(F_S_HUMI == showList[showInde] ||
+           F_S_TEMP == showList[showInde])
         {
-            num = monitor->sensor[showInde].__stora[showStorage].value;
-            num /= 10;
-            sprintf(name, "%.1f", num);
+
+            data = getSensorDataByFunc(monitor, showList[showInde]);
+            if(VALUE_NULL == data)
+            {
+                strcpy(name, "--");
+            }
+            else
+            {
+                num = data;
+                num /= 10;
+                sprintf(name, "%.1f", num);
+            }
         }
         else
         {
-            itoa(monitor->sensor[showInde].__stora[showStorage].value, name, 10);
+            data = getSensorDataByFunc(monitor, showList[showInde]);
+            if(VALUE_NULL == data)
+            {
+                strcpy(name, "--");
+            }
+            else
+            {
+                sprintf(name, "%d", data);
+            }
         }
         name[4] = '\0';
         ST7567_Puts(name, &Font_8x16, 1);
 
         //2.2 显示单位
-        if(F_S_CO2 == monitor->sensor[showInde].__stora[showStorage].func)
+        if(F_S_CO2 == showList[showInde])
         {
             //显示单位
             line = LINE_HIGHT + 4 * 12 + 5 * 8;
@@ -211,7 +249,7 @@ void SensorStatePage_new(type_monitor_t *monitor)
             name[4] = '\0';
             ST7567_Puts(name, &Font_8x16, 1);
         }
-        else if(F_S_HUMI == monitor->sensor[showInde].__stora[showStorage].func)
+        else if(F_S_HUMI == showList[showInde])
         {
             //显示单位
             line = LINE_HIGHT + 4 * 12 + 5 * 8;
@@ -272,7 +310,7 @@ void SensorStatePage_new(type_monitor_t *monitor)
             name[4] = '\0';
             ST7567_Puts(name, &Font_8x16, 1);
         }
-        else if(F_S_TEMP == monitor->sensor[showInde].__stora[showStorage].func)
+        else if(F_S_TEMP == showList[showInde])
         {
             line = LINE_HIGHT + 4 * 12 + 5 * 8;
             column = 24 - 16;
@@ -335,7 +373,7 @@ void SensorStatePage_new(type_monitor_t *monitor)
             name[4] = '\0';
             ST7567_Puts(name, &Font_8x16, 1);
         }
-        else if(F_S_PAR == monitor->sensor[showInde].__stora[showStorage].func)
+        else if(F_S_PAR == showList[showInde])
         {
             line = LINE_HIGHT + 4 * 12 + 5 * 8;
             column = 24 - 16;
@@ -344,22 +382,13 @@ void SensorStatePage_new(type_monitor_t *monitor)
         }
     }
 
-    if(showStorage + 1 < monitor->sensor[showInde].storage_size)
+    if(showInde < SHOWNUM - 1)
     {
-        showStorage++;
+        showInde++;
     }
     else
     {
-        showStorage = 0;
-        if(showInde + 1 < monitor->sensor_size) // showInde < monitor->sensor_size - 1
-        {
-            showInde++;
-        }
-        else
-        {
-            showInde = 0;
-            showStorage = 0;
-        }
+        showInde = 0;
     }
 
     ST7567_UpdateScreen();
@@ -462,6 +491,7 @@ void qrcode(void)
 
     rt_memset(qrstr, ' ', 13);
     GetSnName(qrstr, 12);
+    LOG_D("sn = %s",qrstr);
 
     if (qrcodeBytes)
     {

@@ -86,16 +86,13 @@ void LedTaskEntry(void* parameter);
 u16 TimerTask(u16 *, u16 , u8 *);
 int sd_card_is_vaild(void);
 
-//void printModule(type_module_t);
 void printSensor(sensor_t);
 void printDevice(device_t);
-//void printMuduleConnect(type_monitor_t *);
 void rtcTest(type_sys_time);
 char *getRealTime(void);
 time_t getTimeStamp(void);
 //void printTimer12(timer12_t);
 void LedProgram(void);
 void getRealTimeForMat(type_sys_time *);
-//void PrintHumiSet(proHumiSet_t set);
-//void PrintTempSet(proTempSet_t set);
+u32 crc32_cal(u8 *, u32);
 #endif /* APPLICATIONS_GPIO_H_ */
