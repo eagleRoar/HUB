@@ -18,8 +18,6 @@ static char* GetIp(void);
 static void SetIp(char *);
 static u8 GetUdpConnectStatus(void);
 static void SetUdpConnectStatus(u8);
-static u8 GetUdpNotifyChange(void);
-static void SetUdpNotifyChange(u8);
 static u8 GetTcpConnectStatus(void);
 static void SetTcpConnectStatus(u8);
 static u8 GetTcpConnectTry(void);

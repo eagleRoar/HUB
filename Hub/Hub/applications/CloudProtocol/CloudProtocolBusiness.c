@@ -1739,21 +1739,9 @@ char *SendHubReport(char *cmd, sys_set_t *set)
         cJSON_AddStringToObject(json, "name", GetHub()->name);
         cJSON_AddNumberToObject(json, "nameSeq", GetHub()->nameSeq);
 
-        for(u8 index = 0; index < SENSOR_VALUE_MAX; index++)
-        {
-            if(F_S_CO2 == GetSensorByType(GetMonitor(), BHS_TYPE)->__stora[index].func)
-            {
-                cJSON_AddNumberToObject(json, "co2", GetSensorByType(GetMonitor(), BHS_TYPE)->__stora[index].value);
-            }
-            else if(F_S_TEMP == GetSensorByType(GetMonitor(), BHS_TYPE)->__stora[index].func)
-            {
-                cJSON_AddNumberToObject(json, "temp", GetSensorByType(GetMonitor(), BHS_TYPE)->__stora[index].value);
-            }
-            else if(F_S_HUMI == GetSensorByType(GetMonitor(), BHS_TYPE)->__stora[index].func)
-            {
-                cJSON_AddNumberToObject(json, "humid", GetSensorByType(GetMonitor(), BHS_TYPE)->__stora[index].value);
-            }
-        }
+        cJSON_AddNumberToObject(json, "co2", getSensorDataByFunc(GetMonitor(), F_S_CO2));
+        cJSON_AddNumberToObject(json, "temp", getSensorDataByFunc(GetMonitor(), F_S_TEMP));
+        cJSON_AddNumberToObject(json, "humid", getSensorDataByFunc(GetMonitor(), F_S_HUMI));
 
         if(ON == set->warn[WARN_CO2_HIGHT - 1])
         {
@@ -1825,7 +1813,7 @@ char *SendHubReport(char *cmd, sys_set_t *set)
         cJSON_AddNumberToObject(json, "co2Lock", GetSysSet()->co2Set.dehumidifyLock);
         cJSON_AddNumberToObject(json, "tempLock", GetSysSet()->tempSet.coolingDehumidifyLock);
         cJSON_AddNumberToObject(json, "humidLock", GetSysSet()->tempSet.coolingDehumidifyLock);
-        cJSON_AddNumberToObject(json, "ppfd", GetSysSet()->line1Set.byAutoDimming);
+        cJSON_AddNumberToObject(json, "ppfd", getSensorDataByFunc(GetMonitor(), F_S_PAR));
         cJSON_AddNumberToObject(json, "vpd", getVpd());
         cJSON_AddNumberToObject(json, "dayNight", GetSysSet()->dayOrNight);
         cJSON_AddNumberToObject(json, "maintain", GetSysSet()->sysPara.maintain);
@@ -2360,6 +2348,7 @@ char *ReplyGetTank(char *cmd, cloudcmd_t cloud)
                 }
 
                 cJSON_AddStringToObject(pump, "name", GetDeviceByAddr(GetMonitor(), addr)->name);
+                LOG_E("pump addr = %x, name = %s",GetDeviceByAddr(GetMonitor(), addr)->addr,GetDeviceByAddr(GetMonitor(), addr)->name);//Justin debug 仅仅测试
 
                 cJSON_AddNumberToObject(pump, "color", tank->color);
 
@@ -3159,7 +3148,6 @@ char *ReplyGetSysPara(char *cmd, cloudcmd_t cloud, sys_para_t para)
     char            temp2[4];
     char            name[12];
     cJSON           *json       = cJSON_CreateObject();
-    sensor_t        *sensor     = GetSensorByType(GetMonitor(), BHS_TYPE);
     type_sys_time   sys_time;
 
     if(RT_NULL != json)
@@ -3179,21 +3167,8 @@ char *ReplyGetSysPara(char *cmd, cloudcmd_t cloud, sys_para_t para)
         cJSON_AddNumberToObject(json, "timeFormat", para.timeFormat);
         cJSON_AddNumberToObject(json, "dayNightMode", para.dayNightMode);
         cJSON_AddNumberToObject(json, "photocellSensitivity", para.photocellSensitivity);
-        LOG_D("---------------------- sensor size = %d",sensor->storage_size);
-        if(RT_NULL != sensor)
-        {
-            for(u8 index = 0; index < sensor->storage_size; index++)
-            {
-                if(F_S_LIGHT == sensor->__stora[index].func)
-                {
-                    cJSON_AddNumberToObject(json, "lightIntensity", sensor->__stora[index].value);
-                }
-            }
-        }
-        else
-        {
-            cJSON_AddNumberToObject(json, "lightIntensity", VALUE_NULL);
-        }
+
+        cJSON_AddNumberToObject(json, "lightIntensity", getSensorDataByFunc(GetMonitor(), F_S_LIGHT));
         cJSON_AddNumberToObject(json, "dayTime", para.dayTime);
         cJSON_AddNumberToObject(json, "nightTime", para.nightTime);
         cJSON_AddNumberToObject(json, "maintain", para.maintain);
@@ -3397,21 +3372,9 @@ char *ReplyGetHubState(char *cmd, cloudcmd_t cloud)
         cJSON_AddStringToObject(json, "name", GetHub()->name);
         cJSON_AddNumberToObject(json, "nameSeq", GetHub()->nameSeq);
 
-        for(u8 index = 0; index < SENSOR_VALUE_MAX; index++)
-        {
-            if(F_S_CO2 == GetSensorByType(GetMonitor(), BHS_TYPE)->__stora[index].func)
-            {
-                cJSON_AddNumberToObject(json, "co2", GetSensorByType(GetMonitor(), BHS_TYPE)->__stora[index].value);
-            }
-            else if(F_S_TEMP == GetSensorByType(GetMonitor(), BHS_TYPE)->__stora[index].func)
-            {
-                cJSON_AddNumberToObject(json, "temp", GetSensorByType(GetMonitor(), BHS_TYPE)->__stora[index].value);
-            }
-            else if(F_S_HUMI == GetSensorByType(GetMonitor(), BHS_TYPE)->__stora[index].func)
-            {
-                cJSON_AddNumberToObject(json, "humid", GetSensorByType(GetMonitor(), BHS_TYPE)->__stora[index].value);
-            }
-        }
+        cJSON_AddNumberToObject(json, "co2", getSensorDataByFunc(GetMonitor(), F_S_CO2));
+        cJSON_AddNumberToObject(json, "temp", getSensorDataByFunc(GetMonitor(), F_S_TEMP));
+        cJSON_AddNumberToObject(json, "humid", getSensorDataByFunc(GetMonitor(), F_S_HUMI));
 
         if((GetSysSet()->co2Set.coolingLock == ON) || (GetSysSet()->co2Set.dehumidifyLock == ON))
         {
@@ -3423,14 +3386,7 @@ char *ReplyGetHubState(char *cmd, cloudcmd_t cloud)
         }
         cJSON_AddNumberToObject(json, "tempLock", GetSysSet()->tempSet.coolingDehumidifyLock);
         cJSON_AddNumberToObject(json, "humidLock", GetSysSet()->tempSet.coolingDehumidifyLock);
-        if(RT_NULL == GetSensorByType(GetMonitor(), PAR_TYPE))
-        {
-            cJSON_AddNumberToObject(json, "ppfd", VALUE_NULL);
-        }
-        else
-        {
-            cJSON_AddNumberToObject(json, "ppfd", GetSensorByType(GetMonitor(), PAR_TYPE)->__stora[0].value);
-        }
+        cJSON_AddNumberToObject(json, "ppfd", getSensorDataByFunc(GetMonitor(), F_S_PAR));
         cJSON_AddNumberToObject(json, "vpd", getVpd());
         cJSON_AddNumberToObject(json, "dayNight", GetSysSet()->dayOrNight);
         cJSON_AddNumberToObject(json, "maintain", GetSysSet()->sysPara.maintain);
@@ -4051,7 +4007,8 @@ char *ReplyGetPortSet(char *cmd, cloudcmd_t cloud)
 
             for(u8 tank_no = 0; tank_no < GetSysTank()->tank_size; tank_no++)
             {
-                if(addr == GetSysTank()->tank[tank_no].pumpId)//如果是查泵
+                if((((addr << 8) | port) == GetSysTank()->tank[tank_no].pumpId) ||
+                   (addr == GetSysTank()->tank[tank_no].pumpId))//如果是查泵
                 {
                     cJSON_AddNumberToObject(json, "tankNo", GetSysTank()->tank[tank_no].tankNo);
                     cJSON_AddNumberToObject(json, "color", GetSysTank()->tank[tank_no].color);
@@ -4169,7 +4126,6 @@ char *ReplyGetDeviceList(char *cmd, type_kv_c16 msgid)
 
                         if(HVAC_6_TYPE == module->port[0].type)
                         {
-//                            LOG_W("hvac work = %d",(module->port[0].ctrl.d_state << 8) + module->port[0].ctrl.d_value);
                             if(((module->port[0].ctrl.d_state << 8) + module->port[0].ctrl.d_value) > 0)
                             {
                                 cJSON_AddNumberToObject(item, "workingStatus", ON);
@@ -4269,7 +4225,7 @@ char *ReplyGetDeviceList(char *cmd, type_kv_c16 msgid)
                                                         }
                                                     }
 
-                                                    cJSON_AddItemToObject(item, "valve", valveList);
+                                                    cJSON_AddItemToObject(port, "valve", valveList);
                                                 }
                                             }
                                         }

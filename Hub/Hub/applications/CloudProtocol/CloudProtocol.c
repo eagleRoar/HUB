@@ -1047,114 +1047,96 @@ void GetNowSysSet(proTempSet_t *tempSet, proCo2Set_t *co2Set, proHumiSet_t *humi
 
 void tempProgram(type_monitor_t *monitor)
 {
-    u8              storage             = 0;
     u16             value               = 0;
-    u16             tempNow             = 0;
+    int             tempNow             = 0;
     u16             coolTarge           = 0;
     u16             HeatTarge           = 0;
-    sensor_t        *module             = RT_NULL;
     proTempSet_t    tempSet;
     device_t        *device             = RT_NULL;
     static u8       hvac[2]             = {0};
 
     GetNowSysSet(&tempSet, RT_NULL, RT_NULL, RT_NULL, RT_NULL, RT_NULL);
 
-    module = GetSensorByType(monitor, BHS_TYPE);
-
-    if(RT_NULL != module)
+    tempNow = getSensorDataByFunc(monitor, F_S_TEMP);
+    if(VALUE_NULL != tempNow)
     {
-        if(SENSOR_VALUE_MAX >= module->storage_size)
+        if(DAY_TIME == GetSysSet()->dayOrNight)
         {
-            for(storage = 0; storage < module->storage_size; storage++)
+            coolTarge = tempSet.dayCoolingTarget;
+            HeatTarge = tempSet.dayHeatingTarget;
+        }
+        else if(NIGHT_TIME == GetSysSet()->dayOrNight)
+        {
+            coolTarge = tempSet.nightCoolingTarget;
+            HeatTarge = tempSet.nightHeatingTarget;
+        }
+
+        //LOG_W("now temp %d, cooltar = %d, heatTar = %d",tempNow,coolTarge,HeatTarge);
+
+        if(tempNow >= coolTarge)
+        {
+            //打开所以制冷功能设备
+            CtrlAllDeviceByFunc(monitor, F_COOL, ON, 0);
+            for(u8 index = 0; index < monitor->device_size; index++)
             {
-                if(F_S_TEMP == module->__stora[storage].func)
+                if(HVAC_6_TYPE == monitor->device[index].type)
                 {
-                    tempNow = module->__stora[storage].value;
+                    hvac[0] = ON;
+                    device = &monitor->device[index];
+                    value = GetValueAboutHACV(device, hvac[0], hvac[1]);
+                    device->port[0].ctrl.d_state = value >> 8;
+                    device->port[0].ctrl.d_value = value;
                 }
             }
         }
-        else
+        else if(tempNow <= (coolTarge - tempSet.tempDeadband))
         {
-            LOG_E("tempProgram err");
-        }
-
-    }
-
-    if(DAY_TIME == GetSysSet()->dayOrNight)
-    {
-        coolTarge = tempSet.dayCoolingTarget;
-        HeatTarge = tempSet.dayHeatingTarget;
-    }
-    else if(NIGHT_TIME == GetSysSet()->dayOrNight)
-    {
-        coolTarge = tempSet.nightCoolingTarget;
-        HeatTarge = tempSet.nightHeatingTarget;
-    }
-
-    //LOG_W("now temp %d, cooltar = %d, heatTar = %d",tempNow,coolTarge,HeatTarge);
-
-    if(tempNow >= coolTarge)
-    {
-        //打开所以制冷功能设备
-        CtrlAllDeviceByFunc(monitor, F_COOL, ON, 0);
-        for(u8 index = 0; index < monitor->device_size; index++)
-        {
-            if(HVAC_6_TYPE == monitor->device[index].type)
+            CtrlAllDeviceByFunc(monitor, F_COOL, OFF, 0);
+            for(u8 index = 0; index < monitor->device_size; index++)
             {
-                hvac[0] = ON;
-                device = &monitor->device[index];
-                value = GetValueAboutHACV(device, hvac[0], hvac[1]);
-                device->port[0].ctrl.d_state = value >> 8;
-                device->port[0].ctrl.d_value = value;
+                if(HVAC_6_TYPE == monitor->device[index].type)
+                {
+                    hvac[0] = OFF;
+                    device = &monitor->device[index];
+                    value = GetValueAboutHACV(device, hvac[0], hvac[1]);
+                    device->port[0].ctrl.d_state = value >> 8;
+                    device->port[0].ctrl.d_value = value;
+                }
             }
         }
-    }
-    else if(tempNow <= (coolTarge - tempSet.tempDeadband))
-    {
-        CtrlAllDeviceByFunc(monitor, F_COOL, OFF, 0);
-        for(u8 index = 0; index < monitor->device_size; index++)
+
+        if(tempNow <= HeatTarge)
         {
-            if(HVAC_6_TYPE == monitor->device[index].type)
+            CtrlAllDeviceByFunc(monitor, F_HEAT, ON, 0);
+            for(u8 index = 0; index < monitor->device_size; index++)
             {
-                hvac[0] = OFF;
-                device = &monitor->device[index];
-                value = GetValueAboutHACV(device, hvac[0], hvac[1]);
-                device->port[0].ctrl.d_state = value >> 8;
-                device->port[0].ctrl.d_value = value;
+                if(HVAC_6_TYPE == monitor->device[index].type)
+                {
+                    hvac[1] = ON;
+                    device = &monitor->device[index];
+                    value = GetValueAboutHACV(device, hvac[0], hvac[1]);
+                    device->port[0].ctrl.d_state = value >> 8;
+                    device->port[0].ctrl.d_value = value;
+                }
+            }
+        }
+        else if(tempNow >= HeatTarge + tempSet.tempDeadband)
+        {
+            CtrlAllDeviceByFunc(monitor, F_HEAT, OFF, 0);
+            for(u8 index = 0; index < monitor->device_size; index++)
+            {
+                if(HVAC_6_TYPE == monitor->device[index].type)
+                {
+                    hvac[1] = OFF;
+                    device = &monitor->device[index];
+                    value = GetValueAboutHACV(device, hvac[0], hvac[1]);
+                    device->port[0].ctrl.d_state = value >> 8;
+                    device->port[0].ctrl.d_value = value;
+                }
             }
         }
     }
 
-    if(tempNow <= HeatTarge)
-    {
-        CtrlAllDeviceByFunc(monitor, F_HEAT, ON, 0);
-        for(u8 index = 0; index < monitor->device_size; index++)
-        {
-            if(HVAC_6_TYPE == monitor->device[index].type)
-            {
-                hvac[1] = ON;
-                device = &monitor->device[index];
-                value = GetValueAboutHACV(device, hvac[0], hvac[1]);
-                device->port[0].ctrl.d_state = value >> 8;
-                device->port[0].ctrl.d_value = value;
-            }
-        }
-    }
-    else if(tempNow >= HeatTarge + tempSet.tempDeadband)
-    {
-        CtrlAllDeviceByFunc(monitor, F_HEAT, OFF, 0);
-        for(u8 index = 0; index < monitor->device_size; index++)
-        {
-            if(HVAC_6_TYPE == monitor->device[index].type)
-            {
-                hvac[1] = OFF;
-                device = &monitor->device[index];
-                value = GetValueAboutHACV(device, hvac[0], hvac[1]);
-                device->port[0].ctrl.d_state = value >> 8;
-                device->port[0].ctrl.d_value = value;
-            }
-        }
-    }
 }
 
 void timmerProgram(type_monitor_t *monitor)
@@ -1182,7 +1164,6 @@ void timmerProgram(type_monitor_t *monitor)
                    //达到循环的条件
                    if(sys_time.hour * 60 * 60 + sys_time.minute * 60 + sys_time.second > device->port[port].cycle.startAt * 60)
                    {
-                       //当前时间是否满足循环次数
                        if((sys_time.hour * 60 * 60 + sys_time.minute * 60 + sys_time.second - device->port[port].cycle.startAt * 60) /
                           (device->port[port].cycle.duration + device->port[port].cycle.pauseTime) <= device->port[port].cycle.times)
                        {
@@ -1233,13 +1214,7 @@ void timmerProgram(type_monitor_t *monitor)
                        device->port[port].ctrl.d_value = 0;
                    }
                 }
-
-//                LOG_D("timer port %d in %d type, stro size = %d",
-//                        port,device->port[port].mode,device->storage_size);
-
             }
-//            LOG_D("------------------------------------------");
-//            LOG_I("timer port %d = %d",port,device->port[port].ctrl.d_state);
         }
     }
 
@@ -1248,25 +1223,16 @@ void timmerProgram(type_monitor_t *monitor)
 void dimmingLineCtrl(type_monitor_t *monitor, u8 *stage, u16 ppfd)
 {
     //stage 范围在10 - 115之间，一档为5 %
-    u8          index       = 0;
-    u8          item        = 0;
+    int         par         = 0;
     static u8   STAGE_VALUE = 5;
 
-    for(index = 0; index < monitor->sensor_size; index++)
+    par = getSensorDataByFunc(monitor, F_S_PAR);
+    if(VALUE_NULL != par)
     {
-        if(BHS_TYPE == monitor->sensor[index].type)
+        if(!((par + 50 >= ppfd) &&
+             (par <= ppfd + 50)))
         {
-            for(item = 0; item < monitor->sensor[index].storage_size; item++)
-            {
-                if(F_S_LIGHT == monitor->sensor[index].__stora[item].func)
-                {
-                    if(!((monitor->sensor[index].__stora[item].value + 50 >= ppfd) &&
-                         (monitor->sensor[index].__stora[item].value <= ppfd + 50)))
-                    {
-                        *stage += STAGE_VALUE;
-                    }
-                }
-            }
+            *stage += STAGE_VALUE;
         }
     }
 }
@@ -1720,156 +1686,120 @@ void lineProgram_new(type_monitor_t *monitor, u8 line_no, u16 mPeroid)
 
 void humiProgram(type_monitor_t *monitor)
 {
-    u8              storage             = 0;
-    u16             humiNow             = 0;
+    int             humiNow             = 0;
     u16             humiTarget          = 0;
     u16             dehumiTarget        = 0;
-    sensor_t        *module             = RT_NULL;
     proHumiSet_t    humiSet;
     proTempSet_t    tempSet;
 
     GetNowSysSet(&tempSet, RT_NULL, &humiSet, RT_NULL, RT_NULL, RT_NULL);
-    module = GetSensorByType(monitor, BHS_TYPE);
 
-    if(RT_NULL != module)
+    humiNow = getSensorDataByFunc(monitor, F_S_HUMI);
+    if(VALUE_NULL != humiNow)
     {
-        if(SENSOR_VALUE_MAX >= module->storage_size)
+        if(DAY_TIME == GetSysSet()->dayOrNight)
         {
-            for(storage = 0; storage < module->storage_size; storage++)
+            humiTarget = humiSet.dayHumiTarget;
+            dehumiTarget = humiSet.dayDehumiTarget;
+        }
+        else if(NIGHT_TIME == GetSysSet()->dayOrNight)
+        {
+            humiTarget = humiSet.nightHumiTarget;
+            dehumiTarget = humiSet.nightDehumiTarget;
+        }
+
+
+        //达到湿度目标
+        if(humiNow >= dehumiTarget)
+        {
+            CtrlAllDeviceByFunc(monitor, F_DEHUMI, ON, 0);
+        }
+        else if(humiNow <= dehumiTarget - humiSet.humidDeadband)
+        {
+            CtrlAllDeviceByFunc(monitor, F_DEHUMI, OFF, 0);
+        }
+
+        if(humiNow <= humiTarget)
+        {
+            CtrlAllDeviceByFunc(monitor, F_HUMI, ON, 0);
+        }
+        else if(humiNow >= humiTarget + humiSet.humidDeadband)
+        {
+            CtrlAllDeviceByFunc(monitor, F_HUMI, OFF, 0);
+        }
+
+        //当前有一个逻辑是降温和除湿联动选择
+        if(ON == tempSet.coolingDehumidifyLock)
+        {
+            //如果除湿是开的话，AC_cool 不能关，因为可能AC_cool 上插着风扇
+            if(ON == GetDeviceByType(monitor, DEHUMI_TYPE)->port[0].ctrl.d_state)
             {
-                if(F_S_HUMI == module->__stora[storage].func)
-                {
-                    humiNow = module->__stora[storage].value;
-                }
+                CtrlAllDeviceByType(monitor, COOL_TYPE, ON, 0);
             }
         }
-        else
-        {
-            LOG_E("humiProgram err");
-        }
     }
 
-//    if(humiSet.dayDehumiTarget.value < humiSet.dayHumiTarget.value + humiSet.humidDeadband.value * 2)
-//    {
-//        return;
-//    }
-
-    if(DAY_TIME == GetSysSet()->dayOrNight)
-    {
-        humiTarget = humiSet.dayHumiTarget;
-        dehumiTarget = humiSet.dayDehumiTarget;
-    }
-    else if(NIGHT_TIME == GetSysSet()->dayOrNight)
-    {
-        humiTarget = humiSet.nightHumiTarget;
-        dehumiTarget = humiSet.nightDehumiTarget;
-    }
-
-
-    //达到湿度目标
-    if(humiNow >= dehumiTarget)
-    {
-        CtrlAllDeviceByFunc(monitor, F_DEHUMI, ON, 0);
-    }
-    else if(humiNow <= dehumiTarget - humiSet.humidDeadband)
-    {
-        CtrlAllDeviceByFunc(monitor, F_DEHUMI, OFF, 0);
-    }
-
-    if(humiNow <= humiTarget)
-    {
-        CtrlAllDeviceByFunc(monitor, F_HUMI, ON, 0);
-    }
-    else if(humiNow >= humiTarget + humiSet.humidDeadband)
-    {
-        CtrlAllDeviceByFunc(monitor, F_HUMI, OFF, 0);
-    }
-
-    //当前有一个逻辑是降温和除湿联动选择
-    if(ON == tempSet.coolingDehumidifyLock)
-    {
-        //如果除湿是开的话，AC_cool 不能关，因为可能AC_cool 上插着风扇
-        if(ON == GetDeviceByType(monitor, DEHUMI_TYPE)->port[0].ctrl.d_state)
-        {
-            CtrlAllDeviceByType(monitor, COOL_TYPE, ON, 0);
-        }
-    }
 }
 
 //mPeriod 周期 单位ms
 void co2Program(type_monitor_t *monitor, u16 mPeriod)
 {
-    u8              storage     = 0;
-    u16             co2Now      = 0;
+    int             co2Now      = 0;
     u16             co2Target   = 0;
     static u16      runTime     = 0;
     static u16      stopTime    = 0;
     u8              switchFlg   = 0;
-    sensor_t        *module     = RT_NULL;
     proCo2Set_t     co2Set;
 
     GetNowSysSet(RT_NULL, &co2Set, RT_NULL, RT_NULL, RT_NULL, RT_NULL);
 
-    module = GetSensorByType(monitor, BHS_TYPE);
-
-    if(RT_NULL != module)
+    co2Now = getSensorDataByFunc(monitor, F_S_CO2);
+    if(VALUE_NULL != co2Now)
     {
-        if(SENSOR_VALUE_MAX >= module->storage_size)
+        if(DAY_TIME == GetSysSet()->dayOrNight)
         {
-            for(storage = 0; storage < module->storage_size; storage++)
+            co2Target = co2Set.dayCo2Target;
+        }
+        else if(NIGHT_TIME == GetSysSet()->dayOrNight)
+        {
+            co2Target = co2Set.nightCo2Target;
+        }
+
+        if(ON == sys_set.co2Set.isFuzzyLogic)
+        {
+            //检测当前
+            //开10s 再关闭 10秒
+            if((runTime < 10 * 1000) && (co2Now <= co2Target))
             {
-                if(F_S_CO2 == module->__stora[storage].func)
+                runTime += mPeriod;
+                switchFlg = 1;
+            }
+            else
+            {
+                switchFlg = 0;
+                if(stopTime < 10 * 1000)
                 {
-                    co2Now = module->__stora[storage].value;
+                    stopTime += mPeriod;
+                }
+                else
+                {
+                    runTime = 0;
+                    stopTime = 0;
                 }
             }
-        }
-        else
-        {
-            LOG_E("co2Program err");
-        }
 
-    }
-
-    if(DAY_TIME == GetSysSet()->dayOrNight)
-    {
-        co2Target = co2Set.dayCo2Target;
-    }
-    else if(NIGHT_TIME == GetSysSet()->dayOrNight)
-    {
-        co2Target = co2Set.nightCo2Target;
-    }
-
-    if(ON == sys_set.co2Set.isFuzzyLogic)
-    {
-        //检测当前
-        //开10s 再关闭 10秒
-        if((runTime < 10 * 1000) && (co2Now <= co2Target))
-        {
-            runTime += mPeriod;
-            switchFlg = 1;
-        }
-        else
-        {
-            switchFlg = 0;
-            if(stopTime < 10 * 1000)
+            if(1 == switchFlg)
             {
-                stopTime += mPeriod;
-            }
-            else
-            {
-                runTime = 0;
-                stopTime = 0;
-            }
-        }
-
-        if(1 == switchFlg)
-        {
-            if(!((ON == co2Set.dehumidifyLock && ON == GetDeviceByType(monitor, DEHUMI_TYPE)->port[0].ctrl.d_state) ||
-                 (ON == co2Set.coolingLock && (ON == GetDeviceByType(monitor, COOL_TYPE)->port[0].ctrl.d_state
-                  || GetDeviceByType(monitor, HVAC_6_TYPE)->port[0].ctrl.d_value & 0x08))))
-            {
-                CtrlAllDeviceByFunc(monitor, F_Co2_UP, ON, 0);
+                if(!((ON == co2Set.dehumidifyLock && ON == GetDeviceByType(monitor, DEHUMI_TYPE)->port[0].ctrl.d_state) ||
+                     (ON == co2Set.coolingLock && (ON == GetDeviceByType(monitor, COOL_TYPE)->port[0].ctrl.d_state
+                      || GetDeviceByType(monitor, HVAC_6_TYPE)->port[0].ctrl.d_value & 0x08))))
+                {
+                    CtrlAllDeviceByFunc(monitor, F_Co2_UP, ON, 0);
+                }
+                else
+                {
+                    CtrlAllDeviceByFunc(monitor, F_Co2_UP, OFF, 0);
+                }
             }
             else
             {
@@ -1878,29 +1808,25 @@ void co2Program(type_monitor_t *monitor, u16 mPeriod)
         }
         else
         {
-            CtrlAllDeviceByFunc(monitor, F_Co2_UP, OFF, 0);
-        }
-    }
-    else
-    {
-        if(co2Now <= co2Target)
-        {
-            //如果和制冷联动 则制冷的时候不增加co2
-            //如果和除湿联动 则除湿的时候不增加co2
-            if(!((ON == co2Set.dehumidifyLock && ON == GetDeviceByType(monitor, DEHUMI_TYPE)->port[0].ctrl.d_state) ||
-                 (ON == co2Set.coolingLock && (ON == GetDeviceByType(monitor, COOL_TYPE)->port[0].ctrl.d_state
-                  || GetDeviceByType(monitor, HVAC_6_TYPE)->port[0].ctrl.d_value & 0x08))))
+            if(co2Now <= co2Target)
             {
-                CtrlAllDeviceByFunc(monitor, F_Co2_UP, ON, 0);
+                //如果和制冷联动 则制冷的时候不增加co2
+                //如果和除湿联动 则除湿的时候不增加co2
+                if(!((ON == co2Set.dehumidifyLock && ON == GetDeviceByType(monitor, DEHUMI_TYPE)->port[0].ctrl.d_state) ||
+                     (ON == co2Set.coolingLock && (ON == GetDeviceByType(monitor, COOL_TYPE)->port[0].ctrl.d_state
+                      || GetDeviceByType(monitor, HVAC_6_TYPE)->port[0].ctrl.d_value & 0x08))))
+                {
+                    CtrlAllDeviceByFunc(monitor, F_Co2_UP, ON, 0);
+                }
+                else
+                {
+                    CtrlAllDeviceByFunc(monitor, F_Co2_UP, OFF, 0);
+                }
             }
-            else
+            else if(co2Now >= co2Target + co2Set.co2Deadband)
             {
                 CtrlAllDeviceByFunc(monitor, F_Co2_UP, OFF, 0);
             }
-        }
-        else if(co2Now >= co2Target + co2Set.co2Deadband)
-        {
-            CtrlAllDeviceByFunc(monitor, F_Co2_UP, OFF, 0);
         }
     }
 }
@@ -1953,19 +1879,9 @@ u16 getVpd(void)
     u16         res         = 0;
     float       humi        = 0;
     float       temp        = 0;
-    sensor_t    *sensor     = GetSensorByType(GetMonitor(), BHS_TYPE);
 
-    for(u8 index = 0; index < sensor->storage_size; index++)
-    {
-        if(F_S_TEMP == sensor->__stora[index].func)
-        {
-            temp = sensor->__stora[index].value / 10.0;//形如28.5 的格式
-        }
-        else if(F_S_HUMI == sensor->__stora[index].func)
-        {
-            humi = sensor->__stora[index].value / 1000.0;
-        }
-    }
+    temp = getSensorDataByFunc(GetMonitor(), F_S_TEMP) / 10.0;
+    humi = getSensorDataByFunc(GetMonitor(), F_S_HUMI) / 1000.0;
 
     res = (1 * 0.6107 * pow(10, 7.5 * temp /(237.3 + temp)) * (1 - humi)) * 100;
 
@@ -1982,6 +1898,7 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
     u16             ph          = 0;
     u16             wt          = 0;
     u16             wl          = 0;
+    int             data        = 0;
     static u8       co2State_pre    = OFF;
     static u8       tempState_pre   = OFF;
     static u8       humiState_pre   = OFF;
@@ -1994,427 +1911,364 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
     //白天
     if(DAY_TIME == set->dayOrNight)
     {
-        sensor = GetSensorByType(monitor, BHS_TYPE);
-
-        for(u8 item = 0; item < (sensor->storage_size > SENSOR_VALUE_MAX ? SENSOR_VALUE_MAX : sensor->storage_size); item++)
+        //1.温度
+        data = getSensorDataByFunc(monitor, F_S_TEMP);
+        if(VALUE_NULL != data)
         {
-            if(F_S_TEMP == sensor->__stora[item].func)
+            if(ON == set->sysWarn.dayTempEn)
             {
-                if(ON == set->sysWarn.dayTempEn)
+                if(data <= set->sysWarn.dayTempMin)
                 {
-                    if(sensor->__stora[item].value <= set->sysWarn.dayTempMin)
-                    {
-                        if(WARN_TEMP_LOW <= WARN_MAX)
-                        {
-                            set->warn[WARN_TEMP_LOW - 1] = ON;
-                            set->warn_value[WARN_TEMP_LOW - 1] = sensor->__stora[item].value;
-                        }
-                    }
-                    else if(sensor->__stora[item].value >= set->sysWarn.dayTempMax)
-                    {
-                        if(WARN_TEMP_HIGHT <= WARN_MAX)
-                        {
-                            set->warn[WARN_TEMP_HIGHT - 1] = ON;
-                            set->warn_value[WARN_TEMP_HIGHT - 1] = sensor->__stora[item].value;
-                        }
-                    }
+                    set->warn[WARN_TEMP_LOW - 1] = ON;
+                    set->warn_value[WARN_TEMP_LOW - 1] = data;
                 }
-
-                if(sensor->__stora[item].value > set->tempSet.dayCoolingTarget ||
-                   sensor->__stora[item].value < set->tempSet.dayHeatingTarget)
+                else if(data >= set->sysWarn.dayTempMax)
                 {
-                    tempState = ON;
-                }
-                else
-                {
-                    tempState = OFF;
-                }
-
-                if(tempState_pre != tempState)
-                {
-                    tempState_pre = tempState;
-
-                    if(ON == tempState_pre)
-                    {
-                        tempWarnTime = getTimeStamp();
-                    }
-                }
-
-                if(ON == tempState)
-                {
-                    if(getTimeStamp() > tempWarnTime + set->sysWarn.tempTimeoutseconds)
-                    {
-                        if(WARN_TEMP_TIMEOUT <= WARN_MAX)
-                        {
-                            if(ON == set->sysWarn.tempTimeoutEn)
-                            {
-                                set->warn[WARN_TEMP_TIMEOUT - 1] = ON;
-                                set->warn_value[WARN_TEMP_TIMEOUT - 1] = sensor->__stora[item].value;
-                            }
-                        }
-                    }
+                    set->warn[WARN_TEMP_HIGHT - 1] = ON;
+                    set->warn_value[WARN_TEMP_HIGHT - 1] = data;
                 }
             }
 
-            if(F_S_HUMI == sensor->__stora[item].func)
+            if(data > set->tempSet.dayCoolingTarget ||
+               data < set->tempSet.dayHeatingTarget)
             {
-                if(ON == set->sysWarn.dayhumidEn)
-                {
-                    if(sensor->__stora[item].value <= set->sysWarn.dayhumidMin)
-                    {
-                        if(WARN_HUMI_LOW <= WARN_MAX)
-                        {
-                            set->warn[WARN_HUMI_LOW - 1] = ON;
-                            set->warn_value[WARN_HUMI_LOW - 1] = sensor->__stora[item].value;
-                        }
-                    }
-                    else if(sensor->__stora[item].value >= set->sysWarn.dayhumidMax)
-                    {
-                        if(WARN_HUMI_HIGHT <= WARN_MAX)
-                        {
-                            set->warn[WARN_HUMI_HIGHT - 1] = ON;
-                            set->warn_value[WARN_HUMI_HIGHT - 1] = sensor->__stora[item].value;
-                        }
-                    }
-                }
-
-                if(sensor->__stora[item].value > set->humiSet.dayDehumiTarget ||
-                   sensor->__stora[item].value < set->humiSet.dayHumiTarget)
-                {
-                    humiState = ON;
-                }
-                else
-                {
-                    humiState = OFF;
-                }
-
-                if(humiState_pre != humiState)
-                {
-                    humiState_pre = humiState;
-
-                    if(ON == humiState_pre)
-                    {
-                        humiWarnTime = getTimeStamp();
-                    }
-                }
-
-                if(ON == humiState)
-                {
-                    if(getTimeStamp() > humiWarnTime + set->sysWarn.humidTimeoutseconds)
-                    {
-                        if(WARN_HUMI_TIMEOUT <= WARN_MAX)
-                        {
-                            if(ON == set->sysWarn.humidTimeoutEn)
-                            {
-                                set->warn[WARN_HUMI_TIMEOUT - 1] = ON;
-                                set->warn_value[WARN_HUMI_TIMEOUT - 1] = sensor->__stora[item].value;
-                            }
-                        }
-                    }
-                }
-
+                tempState = ON;
+            }
+            else
+            {
+                tempState = OFF;
             }
 
-            if(F_S_CO2 == sensor->__stora[item].func)
+            if(tempState_pre != tempState)
             {
-                if(ON == set->sysWarn.dayCo2En)
-                {
-                    if(sensor->__stora[item].value <= set->sysWarn.dayCo2Min)
-                    {
-                        if(WARN_CO2_LOW <= WARN_MAX)
-                        {
-                            set->warn[WARN_CO2_LOW - 1] = ON;
-                            set->warn_value[WARN_CO2_LOW - 1] = sensor->__stora[item].value;
-                        }
-                    }
-                    else if(sensor->__stora[item].value >= set->sysWarn.dayCo2Max)
-                    {
-                        if(WARN_CO2_HIGHT <= WARN_MAX)
-                        {
-                            set->warn[WARN_CO2_HIGHT - 1] = ON;
-                            set->warn_value[WARN_CO2_HIGHT - 1] = sensor->__stora[item].value;
-                        }
-                    }
-                }
+                tempState_pre = tempState;
 
-                if(sensor->__stora[item].value < set->co2Set.dayCo2Target)
+                if(ON == tempState_pre)
                 {
-                    co2State = ON;
+                    tempWarnTime = getTimeStamp();
                 }
-                else
-                {
-                    co2State = OFF;
-                }
+            }
 
-                if(co2State_pre != co2State)
+            if(ON == tempState)
+            {
+                if(getTimeStamp() > tempWarnTime + set->sysWarn.tempTimeoutseconds)
                 {
-                    co2State_pre = co2State;
-
-                    if(ON == co2State_pre)
+                    if(ON == set->sysWarn.tempTimeoutEn)
                     {
-                        co2WarnTime = getTimeStamp();
+                        set->warn[WARN_TEMP_TIMEOUT - 1] = ON;
+                        set->warn_value[WARN_TEMP_TIMEOUT - 1] = data;
                     }
                 }
+            }
+        }
 
-                if(ON == co2State)
+        //2.湿度
+        data = getSensorDataByFunc(monitor, F_S_HUMI);
+        if(VALUE_NULL != data)
+        {
+            if(ON == set->sysWarn.dayhumidEn)
+            {
+                if(data <= set->sysWarn.dayhumidMin)
                 {
-                    if(getTimeStamp() > co2WarnTime + set->sysWarn.co2Timeoutseconds)
+                    set->warn[WARN_HUMI_LOW - 1] = ON;
+                    set->warn_value[WARN_HUMI_LOW - 1] = data;
+                }
+                else if(data >= set->sysWarn.dayhumidMax)
+                {
+                    set->warn[WARN_HUMI_HIGHT - 1] = ON;
+                    set->warn_value[WARN_HUMI_HIGHT - 1] = data;
+                }
+            }
+
+            if(data > set->humiSet.dayDehumiTarget ||
+               data < set->humiSet.dayHumiTarget)
+            {
+                humiState = ON;
+            }
+            else
+            {
+                humiState = OFF;
+            }
+
+            if(humiState_pre != humiState)
+            {
+                humiState_pre = humiState;
+
+                if(ON == humiState_pre)
+                {
+                    humiWarnTime = getTimeStamp();
+                }
+            }
+
+            if(ON == humiState)
+            {
+                if(getTimeStamp() > humiWarnTime + set->sysWarn.humidTimeoutseconds)
+                {
+                    if(WARN_HUMI_TIMEOUT <= WARN_MAX)
                     {
-                        if(WARN_CO2_TIMEOUT <= WARN_MAX)
+                        if(ON == set->sysWarn.humidTimeoutEn)
                         {
-                            if(ON == set->sysWarn.humidTimeoutEn)
-                            {
-                                set->warn[WARN_CO2_TIMEOUT - 1] = ON;
-                                set->warn_value[WARN_CO2_TIMEOUT - 1] = sensor->__stora[item].value;
-                            }
+                            set->warn[WARN_HUMI_TIMEOUT - 1] = ON;
+                            set->warn_value[WARN_HUMI_TIMEOUT - 1] = data;
                         }
                     }
                 }
             }
         }
 
+        //3.CO2
+        data = getSensorDataByFunc(monitor, F_S_CO2);
+        if(VALUE_NULL!= data)
+        {
+            if(ON == set->sysWarn.dayCo2En)
+            {
+                if(data <= set->sysWarn.dayCo2Min)
+                {
+                    set->warn[WARN_CO2_LOW - 1] = ON;
+                    set->warn_value[WARN_CO2_LOW - 1] = data;
+                }
+                else if(data >= set->sysWarn.dayCo2Max)
+                {
+                    set->warn[WARN_CO2_HIGHT - 1] = ON;
+                    set->warn_value[WARN_CO2_HIGHT - 1] = data;
+                }
+            }
+
+            if(data < set->co2Set.dayCo2Target)
+            {
+                co2State = ON;
+            }
+            else
+            {
+                co2State = OFF;
+            }
+
+            if(co2State_pre != co2State)
+            {
+                co2State_pre = co2State;
+
+                if(ON == co2State_pre)
+                {
+                    co2WarnTime = getTimeStamp();
+                }
+            }
+
+            if(ON == co2State)
+            {
+                if(getTimeStamp() > co2WarnTime + set->sysWarn.co2Timeoutseconds)
+                {
+                    if(ON == set->sysWarn.humidTimeoutEn)
+                    {
+                        set->warn[WARN_CO2_TIMEOUT - 1] = ON;
+                        set->warn_value[WARN_CO2_TIMEOUT - 1] = data;
+                    }
+                }
+            }
+        }
+
+        //4.vpd
         if(ON == set->sysWarn.dayVpdEn)
         {
             if(getVpd() <= set->sysWarn.dayVpdMin)
             {
-                if(WARN_VPD_LOW <= WARN_MAX)
-                {
-                    set->warn[WARN_VPD_LOW - 1] = ON;
-                    set->warn_value[WARN_VPD_LOW - 1] = getVpd();
-                }
+                set->warn[WARN_VPD_LOW - 1] = ON;
+                set->warn_value[WARN_VPD_LOW - 1] = getVpd();
             }
             else if(getVpd() >= set->sysWarn.dayVpdMax)
             {
-                if(WARN_VPD_HIGHT <= WARN_MAX)
-                {
-                    set->warn[WARN_VPD_HIGHT - 1] = ON;
-                    set->warn_value[WARN_VPD_HIGHT - 1] = getVpd();
-                }
+                set->warn[WARN_VPD_HIGHT - 1] = ON;
+                set->warn_value[WARN_VPD_HIGHT - 1] = getVpd();
             }
         }
 
-        //par
-        sensor = GetSensorByType(monitor, PAR_TYPE);
-
-        if(ON == set->sysWarn.dayParEn)
+        //5.par
+        data = getSensorDataByFunc(monitor, F_S_PAR);
+        if(VALUE_NULL != data)
         {
-            if(sensor->__stora[0].value <= set->sysWarn.dayParMin)
+            if(ON == set->sysWarn.dayParEn)
             {
-                if(WARN_PAR_LOW <= WARN_MAX)
+                if(data <= set->sysWarn.dayParMin)
                 {
                     set->warn[WARN_PAR_LOW - 1] = ON;
-                    set->warn_value[WARN_PAR_LOW - 1] = sensor->__stora[0].value;
+                    set->warn_value[WARN_PAR_LOW - 1] = data;
                 }
-            }
-            else if(sensor->__stora[0].value >= set->sysWarn.dayParMax)
-            {
-                if(WARN_PAR_HIGHT <= WARN_MAX)
+                else if(data >= set->sysWarn.dayParMax)
                 {
                     set->warn[WARN_PAR_HIGHT - 1] = ON;
-                    set->warn_value[WARN_PAR_HIGHT - 1] = sensor->__stora[0].value;
+                    set->warn_value[WARN_PAR_HIGHT - 1] = data;
                 }
             }
         }
     }
     else if(NIGHT_TIME == set->dayOrNight)
     {
-        sensor = GetSensorByType(monitor, BHS_TYPE);
-
-        for(u8 item = 0; item < (sensor->storage_size > SENSOR_VALUE_MAX ? SENSOR_VALUE_MAX : sensor->storage_size); item++)
+        //1.temp
+        data = getSensorDataByFunc(monitor, F_S_TEMP);
+        if(VALUE_NULL != data)
         {
-            if(F_S_TEMP == sensor->__stora[item].func)
+            if(ON == set->sysWarn.nightTempEn)
             {
-                if(ON == set->sysWarn.nightTempEn)
+                if(data <= set->sysWarn.nightTempMin)
                 {
-                    if(sensor->__stora[item].value <= set->sysWarn.nightTempMin)
-                    {
-                        if(WARN_TEMP_LOW <= WARN_MAX)
-                        {
-                            set->warn[WARN_TEMP_LOW - 1] = ON;
-                            set->warn_value[WARN_TEMP_LOW - 1] = sensor->__stora[item].value;
-                        }
-                    }
-                    else if(sensor->__stora[item].value >= set->sysWarn.nightTempMax)
-                    {
-                        if(WARN_TEMP_HIGHT <= WARN_MAX)
-                        {
-                            set->warn[WARN_TEMP_HIGHT - 1] = ON;
-                            set->warn_value[WARN_TEMP_HIGHT - 1] = sensor->__stora[item].value;
-                        }
-                    }
+                    set->warn[WARN_TEMP_LOW - 1] = ON;
+                    set->warn_value[WARN_TEMP_LOW - 1] = data;
                 }
-
-
-                if(sensor->__stora[item].value > set->tempSet.dayCoolingTarget ||
-                   sensor->__stora[item].value < set->tempSet.dayHeatingTarget)
+                else if(data >= set->sysWarn.nightTempMax)
                 {
-                    tempState = ON;
-                }
-                else
-                {
-                    tempState = OFF;
-                }
-
-                if(tempState_pre != tempState)
-                {
-                    tempState_pre = tempState;
-
-                    if(ON == tempState_pre)
-                    {
-                        tempWarnTime = getTimeStamp();
-                    }
-                }
-
-                if(ON == tempState)
-                {
-                    if(getTimeStamp() > tempWarnTime + set->sysWarn.tempTimeoutseconds)
-                    {
-                        if(WARN_TEMP_TIMEOUT <= WARN_MAX)
-                        {
-                            if(ON == set->sysWarn.tempTimeoutEn)
-                            {
-                                set->warn[WARN_TEMP_TIMEOUT - 1] = ON;
-                                set->warn_value[WARN_TEMP_TIMEOUT - 1] = sensor->__stora[item].value;
-                            }
-                        }
-                    }
+                    set->warn[WARN_TEMP_HIGHT - 1] = ON;
+                    set->warn_value[WARN_TEMP_HIGHT - 1] = data;
                 }
             }
 
-            if(F_S_HUMI == sensor->__stora[item].func)
+            if(data > set->tempSet.nightCoolingTarget ||
+               data < set->tempSet.nightHeatingTarget)
             {
-                if(ON == set->sysWarn.nighthumidEn)
-                {
-                    if(sensor->__stora[item].value <= set->sysWarn.nighthumidMin)
-                    {
-                        if(WARN_HUMI_LOW <= WARN_MAX)
-                        {
-                            set->warn[WARN_HUMI_LOW - 1] = ON;
-                            set->warn_value[WARN_HUMI_LOW - 1] = sensor->__stora[item].value;
-                        }
-                    }
-                    else if(sensor->__stora[item].value >= set->sysWarn.nighthumidMax)
-                    {
-                        if(WARN_HUMI_HIGHT <= WARN_MAX)
-                        {
-                            set->warn[WARN_HUMI_HIGHT - 1] = ON;
-                            set->warn_value[WARN_HUMI_HIGHT - 1] = sensor->__stora[item].value;
-                        }
-                    }
-                }
+                tempState = ON;
+            }
+            else
+            {
+                tempState = OFF;
+            }
 
-                if(sensor->__stora[item].value > set->humiSet.dayDehumiTarget ||
-                   sensor->__stora[item].value < set->humiSet.dayHumiTarget)
-                {
-                    humiState = ON;
-                }
-                else
-                {
-                    humiState = OFF;
-                }
+            if(tempState_pre != tempState)
+            {
+                tempState_pre = tempState;
 
-                if(humiState_pre != humiState)
+                if(ON == tempState_pre)
                 {
-                    humiState_pre = humiState;
-
-                    if(ON == humiState_pre)
-                    {
-                        humiWarnTime = getTimeStamp();
-                    }
-                }
-
-                if(ON == humiState)
-                {
-                    if(getTimeStamp() > humiWarnTime + set->sysWarn.humidTimeoutseconds)
-                    {
-                        if(WARN_HUMI_TIMEOUT <= WARN_MAX)
-                        {
-                            if(ON == set->sysWarn.humidTimeoutEn)
-                            {
-                                set->warn[WARN_HUMI_TIMEOUT - 1] = ON;
-                                set->warn_value[WARN_HUMI_TIMEOUT - 1] = sensor->__stora[item].value;
-                            }
-                        }
-                    }
+                    tempWarnTime = getTimeStamp();
                 }
             }
 
-            if(F_S_CO2 == sensor->__stora[item].func)
+            if(ON == tempState)
             {
-                if(ON == set->sysWarn.nightCo2En)
+                if(getTimeStamp() > tempWarnTime + set->sysWarn.tempTimeoutseconds)
                 {
-                    if(sensor->__stora[item].value <= set->sysWarn.nightCo2Min)
+                    if(ON == set->sysWarn.tempTimeoutEn)
                     {
-                        if(WARN_CO2_LOW <= WARN_MAX)
-                        {
-                            set->warn[WARN_CO2_LOW - 1] = ON;
-                            set->warn_value[WARN_CO2_LOW - 1] = sensor->__stora[item].value;
-                        }
-                    }
-                    else if(sensor->__stora[item].value >= set->sysWarn.nightCo2Max)
-                    {
-                        if(WARN_CO2_HIGHT <= WARN_MAX)
-                        {
-                            set->warn[WARN_CO2_HIGHT - 1] = ON;
-                            set->warn_value[WARN_CO2_HIGHT - 1] = sensor->__stora[item].value;
-                        }
+                        set->warn[WARN_TEMP_TIMEOUT - 1] = ON;
+                        set->warn_value[WARN_TEMP_TIMEOUT - 1] = data;
                     }
                 }
+            }
+        }
 
-                if(sensor->__stora[item].value < set->co2Set.dayCo2Target)
+        //2.湿度
+        data = getSensorDataByFunc(monitor, F_S_HUMI);
+        if(VALUE_NULL != data)
+        {
+            if(ON == set->sysWarn.nighthumidEn)
+            {
+                if(data <= set->sysWarn.nighthumidMin)
                 {
-                    co2State = ON;
+                    set->warn[WARN_HUMI_LOW - 1] = ON;
+                    set->warn_value[WARN_HUMI_LOW - 1] = data;
                 }
-                else
+                else if(data >= set->sysWarn.nighthumidMax)
                 {
-                    co2State = OFF;
+                    set->warn[WARN_HUMI_HIGHT - 1] = ON;
+                    set->warn_value[WARN_HUMI_HIGHT - 1] = data;
                 }
+            }
 
-                if(co2State_pre != co2State)
+            if(data > set->humiSet.nightDehumiTarget ||
+               data < set->humiSet.nightHumiTarget)
+            {
+                humiState = ON;
+            }
+            else
+            {
+                humiState = OFF;
+            }
+
+            if(humiState_pre != humiState)
+            {
+                humiState_pre = humiState;
+
+                if(ON == humiState_pre)
                 {
-                    co2State_pre = co2State;
+                    humiWarnTime = getTimeStamp();
+                }
+            }
 
-                    if(ON == co2State_pre)
+            if(ON == humiState)
+            {
+                if(getTimeStamp() > humiWarnTime + set->sysWarn.humidTimeoutseconds)
+                {
+                    if(WARN_HUMI_TIMEOUT <= WARN_MAX)
                     {
-                        co2WarnTime = getTimeStamp();
-                    }
-                }
-
-                if(ON == co2State)
-                {
-                    if(getTimeStamp() > co2WarnTime + set->sysWarn.co2Timeoutseconds)
-                    {
-                        if(WARN_CO2_TIMEOUT <= WARN_MAX)
+                        if(ON == set->sysWarn.humidTimeoutEn)
                         {
-
-                            if(ON == set->sysWarn.co2TimeoutEn)
-                            {
-                                set->warn[WARN_CO2_TIMEOUT - 1] = ON;
-                                set->warn_value[WARN_CO2_TIMEOUT - 1] = sensor->__stora[item].value;
-                            }
+                            set->warn[WARN_HUMI_TIMEOUT - 1] = ON;
+                            set->warn_value[WARN_HUMI_TIMEOUT - 1] = data;
                         }
                     }
                 }
             }
         }
 
+        //3.CO2
+        data = getSensorDataByFunc(monitor, F_S_CO2);
+        if(VALUE_NULL!= data)
+        {
+            if(ON == set->sysWarn.nightCo2En)
+            {
+                if(data <= set->sysWarn.nightCo2Min)
+                {
+                    set->warn[WARN_CO2_LOW - 1] = ON;
+                    set->warn_value[WARN_CO2_LOW - 1] = data;
+                }
+                else if(data >= set->sysWarn.nightCo2Max)
+                {
+                    set->warn[WARN_CO2_HIGHT - 1] = ON;
+                    set->warn_value[WARN_CO2_HIGHT - 1] = data;
+                }
+            }
+
+            if(data < set->co2Set.nightCo2Target)
+            {
+                co2State = ON;
+            }
+            else
+            {
+                co2State = OFF;
+            }
+
+            if(co2State_pre != co2State)
+            {
+                co2State_pre = co2State;
+
+                if(ON == co2State_pre)
+                {
+                    co2WarnTime = getTimeStamp();
+                }
+            }
+
+            if(ON == co2State)
+            {
+                if(getTimeStamp() > co2WarnTime + set->sysWarn.co2Timeoutseconds)
+                {
+                    if(ON == set->sysWarn.humidTimeoutEn)
+                    {
+                        set->warn[WARN_CO2_TIMEOUT - 1] = ON;
+                        set->warn_value[WARN_CO2_TIMEOUT - 1] = data;
+                    }
+                }
+            }
+        }
+
+        //4.vpd
         if(ON == set->sysWarn.nightVpdEn)
         {
             if(getVpd() <= set->sysWarn.nightVpdMin)
             {
-                if(WARN_VPD_LOW <= WARN_MAX)
-                {
-                    set->warn[WARN_VPD_LOW - 1] = ON;
-                    set->warn_value[WARN_VPD_LOW - 1] = getVpd();
-                }
+                set->warn[WARN_VPD_LOW - 1] = ON;
+                set->warn_value[WARN_VPD_LOW - 1] = getVpd();
             }
             else if(getVpd() >= set->sysWarn.nightVpdMax)
             {
-                if(WARN_VPD_HIGHT <= WARN_MAX)
-                {
-                    set->warn[WARN_VPD_HIGHT - 1] = ON;
-                    set->warn_value[WARN_VPD_HIGHT - 1] = getVpd();
-                }
+                set->warn[WARN_VPD_HIGHT - 1] = ON;
+                set->warn_value[WARN_VPD_HIGHT - 1] = getVpd();
             }
         }
     }
@@ -2429,39 +2283,38 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
         {
             if((ON == monitor->line[0].d_state) || (ON == monitor->line[1].d_state))//灯开关为开
             {
-                if(GetSensorByType(monitor, PAR_TYPE)->__stora[0].value < 30)//检测到灯光没开
+                data = getSensorDataByFunc(monitor, F_S_PAR);
+                if(VALUE_NULL != data)
                 {
-                    if(WARN_LINE_STATE <= WARN_MAX)
+                    if(data < 30)//检测到灯光没开
                     {
                         set->warn[WARN_LINE_STATE - 1] = ON;
-                        set->warn_value[WARN_LINE_STATE - 1] =
-                                GetSensorByType(monitor, PAR_TYPE)->__stora[0].value;
+                        set->warn_value[WARN_LINE_STATE - 1] = data;
                     }
                 }
             }
             else if((OFF == monitor->line[0].d_state) && (OFF == monitor->line[1].d_state))
             {
-                if(GetSensorByType(monitor, PAR_TYPE)->__stora[0].value > 30)//检测到灯光没开
+                data = getSensorDataByFunc(monitor, F_S_PAR);
+                if(VALUE_NULL != data)
                 {
-                    if(WARN_LINE_STATE <= WARN_MAX)
+                    if(data > 30)//检测到灯光没开
                     {
                         set->warn[WARN_LINE_STATE - 1] = ON;
-                        set->warn_value[WARN_LINE_STATE - 1] =
-                                GetSensorByType(monitor, PAR_TYPE)->__stora[0].value;
+                        set->warn_value[WARN_LINE_STATE - 1] = data;
                     }
                 }
             }
-
         }
         else
         {
-            if(GetSensorByType(monitor, PAR_TYPE)->__stora[0].value > 30)
+            data = getSensorDataByFunc(monitor, F_S_PAR);
+            if(VALUE_NULL != data)
             {
-                if(WARN_LINE_STATE <= WARN_MAX)
+                if(data > 30)//检测到灯光没开
                 {
                     set->warn[WARN_LINE_STATE - 1] = ON;
-                    set->warn_value[WARN_LINE_STATE - 1] =
-                            GetSensorByType(monitor, PAR_TYPE)->__stora[0].value;
+                    set->warn_value[WARN_LINE_STATE - 1] = data;
                 }
             }
         }
@@ -2486,6 +2339,24 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
                         set->warn_value[WARN_LINE_AUTO_OFF - 1] = GetSensorByType(monitor, BHS_TYPE)->__stora[port].value;
                     }
                 }
+            }
+        }
+
+        //灯光过温保护 过温关灯 告警
+        data = getSensorDataByFunc(monitor, F_S_TEMP);
+        if(VALUE_NULL != data)
+        {
+            if(data > set->line1Set.tempStartDimming ||
+               data > set->line2Set.tempStartDimming)
+            {
+                set->warn[WARN_LINE_AUTO_T - 1] = ON;
+                set->warn_value[WARN_LINE_AUTO_T - 1] = data;
+            }
+            else if(data > set->line1Set.tempOffDimming ||
+                    data > set->line2Set.tempOffDimming)
+            {
+                set->warn[WARN_LINE_AUTO_OFF - 1] = ON;
+                set->warn_value[WARN_LINE_AUTO_OFF - 1] = data;
             }
         }
     }

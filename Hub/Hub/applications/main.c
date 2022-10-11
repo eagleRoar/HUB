@@ -103,7 +103,6 @@ int main(void)
         time10S = TimerTask(&time10S, 500, &Timer10sTouch);                 //1秒任务定时器
         time60S = TimerTask(&time60S, 3000, &Timer60sTouch);                //60秒任务定时器
 
-
         /* 监视网络模块是否上线 */
         ethStatus = GetEthDriverLinkStatus();
         if(LINKUP == ethStatus)

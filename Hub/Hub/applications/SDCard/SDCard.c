@@ -48,7 +48,6 @@ void sd_dfs_event_entry(void* parameter)
     static      u16         time1S              = 0;
     static      u8          sensor_size         = 0;
     static      u8          device_size         = 0;
-    static      u8          timer12_size        = 0;
     static      u8          line_size           = 0;
 
     rt_memset(&sdCard, 0, sizeof(struct sdCardState));
