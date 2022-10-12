@@ -427,6 +427,9 @@ void CmdSetPortSet(char *data, cloudcmd_t *cmd)
                 else if(BY_RECYCLE == device->port[port].mode)
                 {
                     GetValueByU16(temp, "startAt", &device->port[port].cycle.startAt);
+                    //存储当前设置的时间 //Justin debug
+                    device->port[port].cycle.start_at_timestamp =
+                            systimeToTimestamp(device->port[port].cycle.startAt / 60, device->port[port].cycle.startAt % 60, 0);
                     GetValueByU16(temp, "duration", &device->port[port].cycle.duration);
                     GetValueByU16(temp, "pauseTime", &device->port[port].cycle.pauseTime);
                     GetValueByU8(temp, "times", &device->port[port].cycle.times);
@@ -1591,7 +1594,8 @@ void CmdSetLine(char *data, proLine_t *line, cloudcmd_t *cmd)
             if(time != line->firstCycleTime)
             {
                 line->firstCycleTime = time;
-                line->isRunFirstCycle = 0;
+                line->firstRuncycleTime = systimeToTimestamp(time / 60, time % 60, 0);
+//                line->isRunFirstCycle = 0;
             }
             GetValueByU16(temp, "duration", &line->duration);
             GetValueByU16(temp, "pauseTime", &line->pauseTime);

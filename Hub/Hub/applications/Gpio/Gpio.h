@@ -95,4 +95,5 @@ time_t getTimeStamp(void);
 void LedProgram(void);
 void getRealTimeForMat(type_sys_time *);
 u32 crc32_cal(u8 *, u32);
+time_t systimeToTimestamp(u8, u8, u8);
 #endif /* APPLICATIONS_GPIO_H_ */

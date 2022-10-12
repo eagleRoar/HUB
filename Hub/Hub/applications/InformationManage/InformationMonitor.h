@@ -106,7 +106,7 @@ struct cycle
     u16     startAt;                                // 开启时间点 8:00 8*60=480
     u16     duration;                               //持续时间 秒
     u16     pauseTime;                              //停止时间 秒
-//    u8      times;
+    u8      times;
 };
 struct timer
 {

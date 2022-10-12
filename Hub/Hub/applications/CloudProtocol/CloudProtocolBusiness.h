@@ -136,7 +136,7 @@ struct proLine{
     u16         tempOffDimming;             // 灯光自动关闭温度点 0℃-60.0℃/32℉-140℉
     u8          sunriseSunSet;              // 0-30min /0 表示关闭状态
     u32         timestamp;                  //时间戳
-    u8          isRunFirstCycle;            //是否已经执行第一次循环
+//    u8          isRunFirstCycle;            //是否已经执行第一次循环
     time_t      firstRuncycleTime;          //记录第一次开始执行的时间 方便回溯
 };
 

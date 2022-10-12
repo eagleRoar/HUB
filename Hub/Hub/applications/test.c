@@ -235,4 +235,24 @@ void rtcTest(type_sys_time time)
 ////    LOG_D("%s %d",set.nightDehumiTarget.name, set.nightDehumiTarget.value);
 //}
 
+time_t systimeToTimestamp(u8 hour, u8 min, u8 sec)
+{
+    type_sys_time   fortime;
+    time_t          now_time;
+    struct tm       *time       = RT_NULL;
+
+    getRealTimeForMat(&fortime);
+    now_time = getTimeStamp();
+    time = getTimeStampByDate(&now_time);
+
+    time->tm_year = fortime.year - 1900;
+    time->tm_mon = fortime.month - 1;
+    time->tm_mday = fortime.day;
+    time->tm_hour = hour;
+    time->tm_min = min;
+    time->tm_sec = sec;
+
+    return changeTmTotimet(time);
+}
+
 #endif /* APPLICATIONS_TEST_C_ */

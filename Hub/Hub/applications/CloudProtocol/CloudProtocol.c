@@ -1152,7 +1152,6 @@ void timmerProgram(type_monitor_t *monitor)
     for(index = 0; index < monitor->device_size; index++)
     {
         //如果是定时器的话
-
         device = &monitor->device[index];
 
         for(port = 0; port < device->storage_size; port++)
@@ -1161,33 +1160,24 @@ void timmerProgram(type_monitor_t *monitor)
             {
                 if(BY_RECYCLE == device->port[port].mode)
                 {
-                   //达到循环的条件
-                   if(sys_time.hour * 60 * 60 + sys_time.minute * 60 + sys_time.second > device->port[port].cycle.startAt * 60)
-                   {
-                       if((sys_time.hour * 60 * 60 + sys_time.minute * 60 + sys_time.second - device->port[port].cycle.startAt * 60) /
-                          (device->port[port].cycle.duration + device->port[port].cycle.pauseTime) <= device->port[port].cycle.times)
-                       {
-                           //当前时间 - 开始时间
-                           if((sys_time.hour * 60 * 60 + sys_time.minute * 60 + sys_time.second - device->port[port].cycle.startAt * 60) %
-                               (device->port[port].cycle.duration + device->port[port].cycle.pauseTime) <= device->port[port].cycle.duration)
-                           {
-                               device->port[port].ctrl.d_state = ON;
-                           }
-                           else
-                           {
-                               device->port[port].ctrl.d_state = OFF;
-                           }
-                       }
-                       else
-                       {
-                           device->port[port].ctrl.d_state = OFF;
-                       }
-
-                   }
-                   else
-                   {
-                       device->port[port].ctrl.d_state = OFF;
-                   }
+                    //1.判断当前时间是否是满足进入循环周期的条件,即大于开始时间
+                    if(getTimeStamp() > device->port[port].cycle.start_at_timestamp)//Justin debug
+                    {
+                        if(((getTimeStamp() - device->port[port].cycle.start_at_timestamp) %
+                            (device->port[port].cycle.duration + device->port[port].cycle.pauseTime)) <=
+                            device->port[port].cycle.duration)
+                        {
+                            device->port[port].ctrl.d_state = ON;
+                        }
+                        else
+                        {
+                            device->port[port].ctrl.d_state = OFF;
+                        }
+                    }
+                    else
+                    {
+                        device->port[port].ctrl.d_state = OFF;
+                    }
 
                 }
                 else if(BY_SCHEDULE == device->port[port].mode)//定时器模式
@@ -2490,6 +2480,7 @@ void pumpDoing(u8 addr, u8 port)
 {
     u8                  item            = 0;
     type_sys_time       sys_time;
+    time_t              time_cycle      = 0;
     device_t            *device         = GetDeviceByAddr(GetMonitor(), addr);
 
     getRealTimeForMat(&sys_time);
@@ -2502,18 +2493,38 @@ void pumpDoing(u8 addr, u8 port)
             //定时器模式
             if(BY_RECYCLE == device->port[port].mode)
             {
-                //达到循环的条件
-                if(sys_time.hour * 60 * 60 + sys_time.minute * 60 + sys_time.second > device->port[port].cycle.startAt * 60)
+                //1.判断当前时间是否是满足进入循环周期的条件,即大于开始时间
+                if(getTimeStamp() > device->port[port].cycle.start_at_timestamp)//Justin debug
                 {
-                    //当前时间是否满足循环次数
-                    if((sys_time.hour * 60 * 60 + sys_time.minute * 60 + sys_time.second - device->port[port].cycle.startAt * 60) /
-                       (device->port[port].cycle.duration + device->port[port].cycle.pauseTime) <= device->port[port].cycle.times)
+                    //1.如果当前时间比开始的小时还小则加上24小时
+                    if(sys_time.hour * 60 * 60 + sys_time.minute * 60 + sys_time.second < device->port[port].cycle.startAt * 60)
                     {
-                        //当前时间 - 开始时间
-                        if((sys_time.hour * 60 * 60 + sys_time.minute * 60 + sys_time.second - device->port[port].cycle.startAt * 60) %
-                            (device->port[port].cycle.duration + device->port[port].cycle.pauseTime) <= device->port[port].cycle.duration)
+                        time_cycle = (sys_time.hour + 24) * 60 * 60 + sys_time.minute * 60 + sys_time.second;
+                    }
+                    else
+                    {
+                        time_cycle = sys_time.hour * 60 * 60 + sys_time.minute * 60 + sys_time.second;
+                    }
+
+                    //2.如果是达到了当日的开始时间
+                    if(device->port[port].cycle.duration + device->port[port].cycle.pauseTime > 0)
+                    {
+                        if(((time_cycle - device->port[port].cycle.startAt * 60) /
+                           (device->port[port].cycle.duration + device->port[port].cycle.pauseTime)) <= device->port[port].cycle.times)
                         {
-                            device->port[port].ctrl.d_state = ON;
+                            if(((time_cycle - device->port[port].cycle.startAt * 60) %
+                                (device->port[port].cycle.duration + device->port[port].cycle.pauseTime)) <=
+                                 device->port[port].cycle.duration)
+                            {
+                                LOG_W("time_cycle = %d, set = %d",
+                                        time_cycle - device->port[port].cycle.startAt * 60,
+                                        device->port[port].cycle.duration + device->port[port].cycle.pauseTime);//Justin debug 仅仅测试
+                               device->port[port].ctrl.d_state = ON;
+                            }
+                            else
+                            {
+                               device->port[port].ctrl.d_state = OFF;
+                            }
                         }
                         else
                         {
@@ -2522,9 +2533,8 @@ void pumpDoing(u8 addr, u8 port)
                     }
                     else
                     {
-                        device->port[port].ctrl.d_state = OFF;
+                       device->port[port].ctrl.d_state = OFF;
                     }
-
                 }
                 else
                 {

@@ -162,7 +162,7 @@ void SensorUart2TaskEntry(void* parameter)
     static      u8              line_start      = 0;
     static      type_sys_time   sys_time_pre;
     static      u8              specailFlag     = 0;
-//    sensor_t    *sensor                         = RT_NULL;
+    type_sys_time test_time;//Justin debug
 
     rt_memset((u8 *)&sys_time_pre, 0, sizeof(type_sys_time));
     initConnectState();
@@ -299,35 +299,20 @@ void SensorUart2TaskEntry(void* parameter)
                 findDeviceLocation(GetMonitor(), &sys_set.cloudCmd, uart2_serial);
                 findLineLocation(GetMonitor(), &sys_set.cloudCmd, uart3_serial);
                 warnProgram(GetMonitor(), GetSysSet());             //监听告警信息
-                //检测到删除设备功能
-//                if(0 != sys_set.cloudCmd.delete_id.value)
-//                {
-//                    deleteModule(GetMonitor(), sys_set.cloudCmd.delete_id.value);
-//                    sys_set.cloudCmd.delete_id.value = 0;
-//                }
-
-//                LOG_D("phec %d %d %d",GetSensorByAddr(GetMonitor(), 0xE0)->__stora[0].value,
-//                        GetSensorByAddr(GetMonitor(), 0xE0)->__stora[1].value,
-//                        GetSensorByAddr(GetMonitor(), 0xE0)->__stora[2].value);
-//                LOG_D("water lever %d",GetSensorByAddr(GetMonitor(), 0xE4)->__stora[0].value);
-//                rt_kprintf("valve = ");
-//                for(u8 val = 0; val < VALVE_MAX; val++)
-//                {
-//                    rt_kprintf(" %x",GetSysTank()->tank[0].valve[val]);
-//                }
-//                rt_kprintf("\r\n");
-//                  LOG_D("co2 data = %d",getSensorDataByFunc(GetMonitor(), F_S_CO2));
             }
 
             /* 3s 事件*/
             if(ON == Timer3sTouch)
             {
                 device_start = 1;
+
+                systimeToTimestamp(8,11,0);
             }
 
             /* 5s 事件 */
             if(ON == Timer5sTouch)
             {
+
             }
         }
         rt_thread_mdelay(UART_PERIOD);
