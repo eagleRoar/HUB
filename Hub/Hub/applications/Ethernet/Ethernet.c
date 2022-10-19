@@ -197,7 +197,7 @@ void UdpTaskEntry(void* parameter)
                 //心跳包检测,如果超时1分钟,断掉连接
                 if(YES == getEthHeart()->connect)
                 {
-                    if(getTimeStamp() > getEthHeart()->last_connet_time + /*CONNECT_TIME_OUT*/20)//Justin debug 仅仅测试
+                    if(getTimeStamp() > getEthHeart()->last_connet_time + CONNECT_TIME_OUT)//Justin debug 仅仅测试
                     {
                         getEthHeart()->connect = NO;
                         if(getSockState(tcp_sock) >= 0)
