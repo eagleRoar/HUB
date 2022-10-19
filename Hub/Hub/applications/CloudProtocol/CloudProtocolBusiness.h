@@ -90,6 +90,8 @@ struct cloudCmd{
     u8              add_pool_no;                //增加设置报警的no
     u8              add_pool_func;              //增加设置报警的类型
     u8              chg_dev_id;                 //修改设备类型
+    u8              recv_cloud_flag;            //接收到云服务器的标志
+    u8              recv_app_flag;            //接收到云服务器的标志
 };
 
 //cmd : getTempSetting
@@ -223,7 +225,7 @@ struct stage{//日程设置
 
 struct recipe{//配方 限制10个
     u8      id;//该id为hub分配
-    char    name[RECIPE_NAMESZ];
+    char    name[RECIPE_NAMESZ + 1];
     u8      color;
     u16     dayCoolingTarget;
     u16     dayHeatingTarget;

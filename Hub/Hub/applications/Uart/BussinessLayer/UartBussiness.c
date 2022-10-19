@@ -418,10 +418,6 @@ void replyStrorageType(type_monitor_t *monitor, u8 addr, u8 *data, u8 dataLen)
 
 void UpdateModuleConnect(type_monitor_t *monitor, u8 addr)
 {
-//    if(RT_NULL != GetDeviceByAddr(monitor, addr))
-//    {
-//        LOG_W("----------------recv device name %s",GetDeviceByAddr(monitor, addr)->name);
-//    }
     if(addr == monitor->device[ask_device].addr)
     {
         devConnectState[ask_device].send_state = OFF;

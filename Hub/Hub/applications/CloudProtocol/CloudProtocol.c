@@ -27,6 +27,7 @@ u8 sys_warn[WARN_MAX];
 u8 saveModuleFlag = NO;
 
 extern void getRealTimeForMat(type_sys_time *);
+extern const u8    HEAD_CODE[4];
 
 //特殊说明 传入的tm 的格式是year 需要减去1900 month需要减去1 范围0-11
 struct tm* getTimeStampByDate(time_t *t)
@@ -307,7 +308,7 @@ void initOfflineFlag(void)
     rt_memset(sys_set.offline, 0, sizeof(sys_set.offline));
 }
 
-void setCloudCmd(char *cmd, u8 flag)
+void setCloudCmd(char *cmd, u8 flag, u8 cloud_app)
 {
     if(RT_NULL != cmd)
     {
@@ -318,19 +319,28 @@ void setCloudCmd(char *cmd, u8 flag)
         rt_memset(sys_set.cloudCmd.cmd, ' ', CMD_NAME_SIZE);
     }
     sys_set.cloudCmd.recv_flag = flag;
+    if(NO == cloud_app)
+    {
+        sys_set.cloudCmd.recv_app_flag = YES;
+    }
+    else if(YES == cloud_app)
+    {
+        sys_set.cloudCmd.recv_cloud_flag = YES;
+    }
 }
 
 /**
  * 发布数据(回复云服务器)
  */
-rt_err_t ReplyDataToCloud(mqtt_client *client, u8 *res, u16 *len, u8 sendCloudFlg)
+u8 *ReplyDataToCloud1(mqtt_client *client, u8 *cloudRes, u16 *len, u8 sendCloudFlg)
 {
-    rt_err_t    ret         = RT_ERROR;
     char        name[20];
     char        *str        = RT_NULL;
+    u8          *page       = RT_NULL;
 
     if(ON == sys_set.cloudCmd.recv_flag)
     {
+        //LOG_D("-------------reply cmd %s",sys_set.cloudCmd.cmd);
         if(0 == rt_memcmp(CMD_SET_TEMP, sys_set.cloudCmd.cmd, sizeof(CMD_SET_TEMP)) ||
            0 == rt_memcmp(CMD_GET_TEMP, sys_set.cloudCmd.cmd, sizeof(CMD_GET_TEMP)))   //获取/设置温度参数
         {
@@ -515,35 +525,34 @@ rt_err_t ReplyDataToCloud(mqtt_client *client, u8 *res, u16 *len, u8 sendCloudFl
                 GetSnName(name, 12);
                 strcpy(name + 11, "/reply");
                 paho_mqtt_publish(client, QOS1, name, str, strlen(str));
+                *cloudRes = RT_EOK;
             }
             else
             {
                 *len = strlen(str);
-                if(SEND_ETH_BUFFSZ >= *len)
+                page = rt_malloc(sizeof(eth_page_head) + *len);
+                if(RT_NULL != page)
                 {
-                    rt_memcpy(res, (u8 *)str, *len);
+                    rt_memcpy(page, HEAD_CODE, 4);
+                    rt_memcpy(page + 4, (u8 *)len, 2);
+                    rt_memcpy(page + sizeof(eth_page_head), str, *len);
                 }
-                else
-                {
-                    *len = 0;
-                }
-                //LOG_D("len = %d, data : %s",*len,str);
             }
 
             //获取数据完之后需要free否知数据泄露
             cJSON_free(str);
             str = RT_NULL;
-            ret = RT_EOK;
-            setCloudCmd(RT_NULL, OFF);
+
+            setCloudCmd(RT_NULL, OFF, sendCloudFlg);
         }
         else
         {
+            *cloudRes = RT_ERROR;
             *len = 0;
             LOG_E("str == RT_NULL");
         }
-
     }
-    return ret;
+    return page;
 }
 
 rt_err_t SendDataToCloud(mqtt_client *client, char *cmd, u8 warn_no, u16 value, u8 *buf, u16 *length, u8 cloudFlg, u8 offline_no)
@@ -612,246 +621,246 @@ void analyzeCloudData(char *data, u8 cloudFlg)
             {
                 CmdSetTempValue(data, &sys_set.cloudCmd);
                 GetSysSet()->saveFlag = YES;
-                setCloudCmd(cmd->valuestring, ON);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
             }
             else if(0 == rt_memcmp(CMD_GET_TEMP, cmd->valuestring, strlen(CMD_GET_TEMP)))
             {
                 CmdGetTempValue(data, &sys_set.cloudCmd);
-                setCloudCmd(cmd->valuestring, ON);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
             }
             else if(0 == rt_memcmp(CMD_SET_CO2, cmd->valuestring, strlen(CMD_SET_CO2)))
             {
                 CmdSetCo2(data, &sys_set.cloudCmd);
                 GetSysSet()->saveFlag = YES;
-                setCloudCmd(cmd->valuestring, ON);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
             }
             else if(0 == rt_memcmp(CMD_GET_CO2, cmd->valuestring, strlen(CMD_GET_CO2)))
             {
                 CmdGetCo2(data, &sys_set.cloudCmd);
-                setCloudCmd(cmd->valuestring, ON);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
             }
             else if(0 == rt_memcmp(CMD_SET_HUMI, cmd->valuestring, strlen(CMD_SET_HUMI)))
             {
                 CmdSetHumi(data, &sys_set.cloudCmd);
                 GetSysSet()->saveFlag = YES;
-                setCloudCmd(cmd->valuestring, ON);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
             }
             else if(0 == rt_memcmp(CMD_GET_HUMI, cmd->valuestring, strlen(CMD_GET_HUMI)))
             {
                 CmdGetHumi(data, &sys_set.cloudCmd);
-                setCloudCmd(cmd->valuestring, ON);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
             }
             else if(0 == rt_memcmp(CMD_GET_DEVICELIST, cmd->valuestring, strlen(CMD_GET_DEVICELIST)))
             {
                 CmdGetDeviceList(data, &sys_set.cloudCmd);
-                setCloudCmd(cmd->valuestring, ON);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
             }
             else if(0 == rt_memcmp(CMD_SET_L1, cmd->valuestring, strlen(CMD_SET_L1)))
             {
                 CmdSetLine(data, &sys_set.line1Set, &sys_set.cloudCmd);
                 GetSysSet()->saveFlag = YES;
-                setCloudCmd(cmd->valuestring, ON);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
             }
             else if(0 == rt_memcmp(CMD_GET_L1, cmd->valuestring, strlen(CMD_GET_L1)))
             {
                 CmdGetLine(data, &sys_set.line1Set, &sys_set.cloudCmd);
-                setCloudCmd(cmd->valuestring, ON);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
             }
             else if(0 == rt_memcmp(CMD_SET_L2, cmd->valuestring, strlen(CMD_SET_L2)))
             {
                 CmdSetLine(data, &sys_set.line2Set, &sys_set.cloudCmd);
                 GetSysSet()->saveFlag = YES;
-                setCloudCmd(cmd->valuestring, ON);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
             }
             else if(0 == rt_memcmp(CMD_GET_L2, cmd->valuestring, strlen(CMD_GET_L2)))
             {
                 CmdGetLine(data, &sys_set.line2Set, &sys_set.cloudCmd);
-                setCloudCmd(cmd->valuestring, ON);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
             }
             else if(0 == rt_memcmp(CMD_FIND_LOCATION, cmd->valuestring, strlen(CMD_FIND_LOCATION)))
             {
                 CmdFindLocation(data, &sys_set.cloudCmd);
-                setCloudCmd(cmd->valuestring, ON);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
             }
             else if(0 == rt_memcmp(CMD_GET_PORT_SET, cmd->valuestring, strlen(CMD_GET_PORT_SET)))
             {
                 CmdGetPortSet(data, &sys_set.cloudCmd);
-                setCloudCmd(cmd->valuestring, ON);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
             }
             else if(0 == rt_memcmp(CMD_SET_PORT_SET, cmd->valuestring, strlen(CMD_SET_PORT_SET)))
             {
                 CmdSetPortSet(data, &sys_set.cloudCmd);
                 saveModuleFlag = YES;
-                setCloudCmd(cmd->valuestring, ON);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
             }
             else if(0 == rt_memcmp(CMD_SET_SYS_TIME, cmd->valuestring, strlen(CMD_SET_SYS_TIME)))
             {
                 CmdSetSysTime(data, &sys_set.cloudCmd);
-                setCloudCmd(cmd->valuestring, ON);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
             }
             else if(0 == rt_memcmp(CMD_GET_DEADBAND, cmd->valuestring, strlen(CMD_GET_DEADBAND)))
             {
                 CmdGetDeadBand(data, &sys_set.cloudCmd);
-                setCloudCmd(cmd->valuestring, ON);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
             }
             else if(0 == rt_memcmp(CMD_SET_DEADBAND, cmd->valuestring, strlen(CMD_SET_DEADBAND)))
             {
                 CmdSetDeadBand(data, &sys_set.cloudCmd);
                 GetSysSet()->saveFlag = YES;
-                setCloudCmd(cmd->valuestring, ON);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
             }
             else if(0 == rt_memcmp(CMD_DELETE_DEV, cmd->valuestring, strlen(CMD_DELETE_DEV)))
             {
                 CmdDeleteDevice(data, &sys_set.cloudCmd);
-                setCloudCmd(cmd->valuestring, ON);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
             }
             else if(0 == rt_memcmp(CMD_GET_SCHEDULE, cmd->valuestring, strlen(CMD_GET_SCHEDULE)))
             {
                 CmdGetSchedule(data, &sys_set.cloudCmd);
-                setCloudCmd(cmd->valuestring, ON);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
             }
             else if(0 == rt_memcmp(CMD_SET_SCHEDULE, cmd->valuestring, strlen(CMD_SET_SCHEDULE)))
             {
                 CmdSetSchedule(data, &sys_set.cloudCmd);
-                setCloudCmd(cmd->valuestring, ON);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
                 GetSysSet()->saveFlag = YES;
             }
             else if(0 == rt_memcmp(CMD_ADD_RECIPE, cmd->valuestring, strlen(CMD_ADD_RECIPE)))
             {
                 CmdAddRecipe(data, &sys_set.cloudCmd);
-                setCloudCmd(cmd->valuestring, ON);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
                 GetSysRecipt()->saveFlag = YES;
             }
             else if(0 == rt_memcmp(CMD_SET_RECIPE_SET, cmd->valuestring, strlen(CMD_SET_RECIPE_SET)))
             {
                 CmdSetRecipe(data, &sys_set.cloudCmd);
                 GetSysRecipt()->saveFlag = YES;
-                setCloudCmd(cmd->valuestring, ON);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
             }
             else if(0 == rt_memcmp(CMD_GET_RECIPE_SET, cmd->valuestring, strlen(CMD_GET_RECIPE_SET)))
             {
                 CmdGetRecipe(data, &sys_set.cloudCmd);
-                setCloudCmd(cmd->valuestring, ON);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
             }
             else if(0 == rt_memcmp(CMD_SET_TANK_INFO, cmd->valuestring, strlen(CMD_SET_TANK_INFO)))
             {
                 CmdSetTank(data, &sys_set.cloudCmd);
                 //LOG_D("id = %d",GetSysTank()->tank[0].autoFillValveId);
                 GetSysTank()->saveFlag = YES;
-                setCloudCmd(cmd->valuestring, ON);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
             }
             else if(0 == rt_memcmp(CMD_GET_TANK_INFO, cmd->valuestring, strlen(CMD_GET_TANK_INFO)))
             {
                 CmdGetTankInfo(data, &sys_set.cloudCmd);
-                setCloudCmd(cmd->valuestring, ON);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
             }
             else if(0 == rt_memcmp(CMD_GET_HUB_STATE, cmd->valuestring, strlen(CMD_GET_HUB_STATE)))
             {
                 CmdGetHubState(data, &sys_set.cloudCmd);
-                setCloudCmd(cmd->valuestring, ON);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
             }
             else if(0 == rt_memcmp(CMD_SET_HUB_NAME, cmd->valuestring, strlen(CMD_SET_HUB_NAME)))
             {
                 CmdSetHubName(data, &sys_set.cloudCmd);
-                setCloudCmd(cmd->valuestring, ON);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
             }
             else if(0 == rt_memcmp(TEST_CMD, cmd->valuestring, strlen(TEST_CMD)))
             {
                 LOG_I("-------------------recv test cmd, count = %d",count);
-                setCloudCmd(cmd->valuestring, ON);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
             }
             else if(0 == rt_memcmp(CMD_SET_PORTNAME, cmd->valuestring, strlen(CMD_SET_PORTNAME)))
             {
                 CmdSetPortName(data, &sys_set.cloudCmd);
                 saveModuleFlag = YES;
-                setCloudCmd(cmd->valuestring, ON);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
             }
             else if(0 == rt_memcmp(CMD_SET_SYS_SET, cmd->valuestring, strlen(CMD_SET_SYS_SET)))
             {
                 CmdSetSysSet(data, &sys_set.cloudCmd, &sys_set.sysPara);
                 GetSysSet()->saveFlag = YES;
-                setCloudCmd(cmd->valuestring, ON);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
             }
             else if(0 == rt_memcmp(CMD_GET_SYS_SET, cmd->valuestring, strlen(CMD_GET_SYS_SET)))
             {
                 CmdGetSysSet(data, &sys_set.cloudCmd);
-                setCloudCmd(cmd->valuestring, ON);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
             }
             else if(0 == rt_memcmp(CMD_SET_ALARM_SET, cmd->valuestring, strlen(CMD_SET_ALARM_SET)))
             {
                 CmdSetWarn(data, &sys_set.cloudCmd, &sys_set);
-                setCloudCmd(cmd->valuestring, ON);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
             }
             else if(0 == rt_memcmp(CMD_GET_ALARM_SET, cmd->valuestring, strlen(CMD_GET_ALARM_SET)))
             {
                 CmdGetWarn(data, &sys_set.cloudCmd);
-                setCloudCmd(cmd->valuestring, ON);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
             }
             else if(0 == rt_memcmp(CMD_GET_RECIPE, cmd->valuestring, strlen(CMD_GET_RECIPE)))
             {
                 CmdGetRecipeList(data, &sys_set.cloudCmd);
-                setCloudCmd(cmd->valuestring, ON);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
             }
             else if(0 == rt_memcmp(CMD_GET_RECIPE_ALL, cmd->valuestring, strlen(CMD_GET_RECIPE_ALL)))
             {
                 CmdGetRecipeListAll(data, &sys_set.cloudCmd);
-                setCloudCmd(cmd->valuestring, ON);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
             }
             else if(0 == rt_memcmp(CMD_ADD_PUMP_VALUE, cmd->valuestring, strlen(CMD_ADD_PUMP_VALUE)))
             {
                 CmdAddPumpValue(data, &sys_set.cloudCmd);
                 GetSysTank()->saveFlag = YES;
-                setCloudCmd(cmd->valuestring, ON);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
             }
             else if(0 == rt_memcmp(CMD_SET_PUMP_COLOR, cmd->valuestring, strlen(CMD_SET_PUMP_COLOR)))
             {
                 CmdSetPumpColor(data, &sys_set.cloudCmd);
                 GetSysTank()->saveFlag = YES;
-                setCloudCmd(cmd->valuestring, ON);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
             }
             else if(0 == rt_memcmp(CMD_DEL_PUMP_VALUE, cmd->valuestring, strlen(CMD_DEL_PUMP_VALUE)))
             {
                 CmdDelPumpValue(data, &sys_set.cloudCmd);
                 GetSysTank()->saveFlag = YES;
-                setCloudCmd(cmd->valuestring, ON);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
             }
             else if(0 == rt_memcmp(CMD_SET_TANK_SENSOR, cmd->valuestring, strlen(CMD_SET_TANK_SENSOR)))
             {
                 CmdSetTankSensor(data, &sys_set.cloudCmd);
                 GetSysTank()->saveFlag = YES;
-                setCloudCmd(cmd->valuestring, ON);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
             }
             else if(0 == rt_memcmp(CMD_DEL_TANK_SENSOR, cmd->valuestring, strlen(CMD_DEL_TANK_SENSOR)))
             {
                 CmdDelTankSensor(data, &sys_set.cloudCmd);
                 GetSysTank()->saveFlag = YES;
-                setCloudCmd(cmd->valuestring, ON);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
             }
             else if(0 == rt_memcmp(CMD_DELETE_RECIPE, cmd->valuestring, strlen(CMD_DELETE_RECIPE)))
             {
                 CmdDelRecipe(data, &sys_set.cloudCmd);
-                setCloudCmd(cmd->valuestring, ON);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
                 GetSysRecipt()->saveFlag = YES;
             }
             else if(0 == rt_memcmp(CMD_GET_SENSOR_LIST, cmd->valuestring, strlen(CMD_GET_SENSOR_LIST)))
             {
                 CmdGetSensor(data, &sys_set.cloudCmd);
-                setCloudCmd(cmd->valuestring, ON);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
             }
             else if(0 == rt_memcmp(CMD_SET_POOL_ALARM, cmd->valuestring, strlen(CMD_SET_POOL_ALARM)))
             {
                 CmdSetPoolAlarm(data, &sys_set.cloudCmd);
-                setCloudCmd(cmd->valuestring, ON);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
             }
             else if(0 == rt_memcmp(CMD_GET_POOL_ALARM, cmd->valuestring, strlen(CMD_GET_POOL_ALARM)))
             {
                 CmdGetPoolAlarm(data, &sys_set.cloudCmd);
-                setCloudCmd(cmd->valuestring, ON);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
             }
             else if(0 == rt_memcmp(CMD_SET_DEVICETYPE, cmd->valuestring, strlen(CMD_SET_DEVICETYPE)))
             {
                 CmdSetDeviceType(data, &sys_set.cloudCmd);
-                setCloudCmd(cmd->valuestring, ON);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
                 saveModuleFlag = YES;
             }
         }
@@ -861,12 +870,21 @@ void analyzeCloudData(char *data, u8 cloudFlg)
         }
 
         cJSON_Delete(json);
+
+        //检测和app的连接
+        if(NO == cloudFlg)
+        {
+            LOG_D("--------------- app connect");
+            getEthHeart()->connect = YES;
+            getEthHeart()->last_connet_time = getTimeStamp();
+        }
     }
     else
     {
         if((NO == cloudFlg) && (0 == rt_memcmp(data, "ack", 3)))
         {
-            //LOG_I("app connect...");
+            getEthHeart()->connect = YES;
+            getEthHeart()->last_connet_time = getTimeStamp();
         }
         else
         {
@@ -1192,7 +1210,6 @@ void timmerProgram(type_monitor_t *monitor)
                                    + device->port[port].timer[item].duration) )
                            {
                                device->port[port].ctrl.d_state = device->port[port].timer[item].en;
-                               //LOG_D("timmerProgram schedule on");
                                break;
                            }
                        }

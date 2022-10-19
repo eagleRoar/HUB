@@ -20,6 +20,7 @@
 #include "CloudProtocol.h"
 #include "Module.h"
 #include "Recipe.h"
+#include "TcpProgram.h"
 
 __attribute__((section(".ccmbss"))) type_monitor_t monitor;
 __attribute__((section(".ccmbss"))) u8 uart_task[1024 * 5];
@@ -306,7 +307,14 @@ void SensorUart2TaskEntry(void* parameter)
             {
                 device_start = 1;
 
-                systimeToTimestamp(8,11,0);
+                //systimeToTimestamp(8,11,0);
+                //Justin debug
+                char namename[8];
+
+//                strncpy(namename, "12345678", 8);
+//                LOG_W("name = %s",namename);
+//                rt_memcpy(namename, "12345678", 8);
+//                LOG_W("name = %s",namename);
             }
 
             /* 5s 事件 */

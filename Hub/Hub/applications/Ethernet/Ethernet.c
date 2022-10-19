@@ -15,21 +15,35 @@
 #include "CloudProtocol.h"
 
 
-__attribute__((section(".ccmbss"))) u8 udp_task[1024 * 3];
-__attribute__((section(".ccmbss"))) struct rt_thread udp_thread;
-__attribute__((section(".ccmbss"))) u8 tcp_task[1024 * 2];
-__attribute__((section(".ccmbss"))) struct rt_thread tcp_thread;
+__attribute__((section(".ccmbss"))) u8          udp_task[1024 * 3];
+__attribute__((section(".ccmbss"))) struct      rt_thread udp_thread;
+__attribute__((section(".ccmbss"))) u8          tcp_task[1024 * 2];
+__attribute__((section(".ccmbss"))) struct      rt_thread tcp_thread;
 
-__attribute__((section(".ccmbss"))) char tcpRecvBuffer[RCV_ETH_BUFFSZ];
-__attribute__((section(".ccmbss"))) char tcpSendBuffer[SEND_ETH_BUFFSZ];
+__attribute__((section(".ccmbss"))) char        tcpRecvBuffer[RCV_ETH_BUFFSZ];
+                                    u8          *tcp_reply              = RT_NULL;
 
-struct ethDeviceStruct *eth = RT_NULL;          //申请ethernet实例化对象
+struct ethDeviceStruct  *eth = RT_NULL;          //申请ethernet实例化对象
+eth_heart_t             eth_heart;
 
 u8                  tcp_recv_flag           = NO;
 int                 tcp_sock                = 0;
 u8                  udpSendBuffer[30];
 
 extern rt_uint8_t GetEthDriverLinkStatus(void);             //获取网口连接状态
+
+int getSockState(int sock)
+{
+    int error_code;
+    socklen_t error_code_size = sizeof(error_code);
+
+    return getsockopt(sock, SOL_SOCKET, SO_ERROR, &error_code, &error_code_size);
+}
+
+eth_heart_t *getEthHeart(void)
+{
+    return &eth_heart;
+}
 
 void TcpRecvTaskEntry(void* parameter)
 {
@@ -49,13 +63,10 @@ void TcpRecvTaskEntry(void* parameter)
             //解析数据
             if(0 != tcp_sock)
             {
+                LOG_D("------------- tcp_sock = %d",tcp_sock);
                 if(RT_EOK == TcpRecvMsg(&tcp_sock, (u8 *)tcpRecvBuffer, RCV_ETH_BUFFSZ, &length))
                 {
-                    if(length < RCV_ETH_BUFFSZ)
-                    {
-                        tcpRecvBuffer[length] = '\0';
-                    }
-                    tcp_recv_flag = YES;
+                    analyzeTcpData(tcpRecvBuffer, length);
                 }
             }
         }
@@ -101,7 +112,6 @@ void UdpTaskEntry(void* parameter)
         {
             closesocket(broadcastSock);
         }
-
     }
     else if(LINKDOWN == eth->GetethLinkStatus())
     {
@@ -113,7 +123,7 @@ void UdpTaskEntry(void* parameter)
     {
         /* 启用定时器 */
         time10S = TimerTask(&time10S, 200, &Timer10sTouch);           //1秒任务定时器
-        time60S = TimerTask(&time60S, 1200, &Timer60sTouch);         //60秒任务定时器
+        time60S = TimerTask(&time60S, 1200, &Timer60sTouch);          //60秒任务定时器
 
         /* 网络掉线 */
         if(LINKDOWN == eth->GetethLinkStatus())
@@ -127,37 +137,33 @@ void UdpTaskEntry(void* parameter)
         if((bytes_read > 0) && (sizeof(type_package_t) >= bytes_read))
         {
             /* 判断主机的ip或者port为新,更新 */
-            if(0 == tcp_sock)
-            {
-                /* 通知TCP和UDP需要更改socket,以监听新的网络 */
-                eth->tcp.SetConnectTry(ON);
-                eth->tcp.SetConnectStatus(OFF);
+            /* 通知TCP和UDP需要更改socket,以监听新的网络 */
+            eth->tcp.SetConnectTry(ON);
+            eth->tcp.SetConnectStatus(OFF);
 
-                SetIpAndPort(inet_ntoa(broadcastRecvSerAddr.sin_addr), ntohs(broadcastRecvSerAddr.sin_port), eth);
-                /* 更新网络以及申请TCP */
-                notifyTcpAndUdpSocket(inet_ntoa(broadcastRecvSerAddr.sin_addr), ntohs(broadcastRecvSerAddr.sin_port), eth);
-                LOG_I("recv new master register massge, ip = %s, port = %d", eth->GetIp(), eth->GetPort());
-            }
+            SetIpAndPort(inet_ntoa(broadcastRecvSerAddr.sin_addr), ntohs(broadcastRecvSerAddr.sin_port), eth);
+            /* 更新网络以及申请TCP */
+            notifyTcpAndUdpSocket(inet_ntoa(broadcastRecvSerAddr.sin_addr), ntohs(broadcastRecvSerAddr.sin_port), eth);
+            LOG_I("recv new master register massge, ip = %s, port = %d", eth->GetIp(), eth->GetPort());
         }
 
         if((ON == eth->tcp.GetConnectTry()) &&
            (OFF == eth->tcp.GetConnectStatus()))
         {
             //尝试连接
-            if(0 == tcp_sock)
+            if(RT_EOK == ConnectToSever(&tcp_sock, eth->GetIp(), eth->GetPort()))
             {
-                if(RT_EOK == ConnectToSever(&tcp_sock, eth->GetIp(), eth->GetPort()))
-                {
-                    eth->tcp.SetConnectStatus(ON);
-                    eth->tcp.SetConnectTry(OFF);
-                    LOG_W("reconnrct Ok......");
-                    LOG_D("mallo new sock = %d",tcp_sock);
-                }
-                else
-                {
-                    LOG_E("connrct Fail......");
-                    eth->tcp.SetConnectTry(OFF);
-                }
+                eth->tcp.SetConnectStatus(ON);
+                eth->tcp.SetConnectTry(OFF);
+                LOG_W("reconnrct Ok......");
+
+                eth_heart.connect = YES;
+                eth_heart.last_connet_time = getTimeStamp();
+            }
+            else
+            {
+                LOG_E("connrct Fail......");
+                eth->tcp.SetConnectTry(OFF);
             }
         }
         else
@@ -165,35 +171,54 @@ void UdpTaskEntry(void* parameter)
             if((OFF == eth->tcp.GetConnectTry()) &&
                (ON == eth->tcp.GetConnectStatus()))
             {
-                if(YES == tcp_recv_flag)
+                if(ON == GetSysSet()->cloudCmd.recv_flag)
                 {
-                    tcp_recv_flag = NO;
-
-                    analyzeCloudData(tcpRecvBuffer, NO);
-
-                    if(ON == GetSysSet()->cloudCmd.recv_flag)
+                    if(YES == GetSysSet()->cloudCmd.recv_app_flag)
                     {
-                        rt_memset(tcpSendBuffer, ' ', SEND_ETH_BUFFSZ);
-                        ReplyDataToCloud(RT_NULL, (u8 *)tcpSendBuffer, &length, NO);
-
-                        if(length > 0)
+                        tcp_reply = ReplyDataToCloud1(RT_NULL, RT_NULL, &length, NO);
+                        LOG_I("length = %d",length);
+                        LOG_I("%.*s",length,tcp_reply + sizeof(eth_page_head));
+                        if(RT_NULL != tcp_reply)
                         {
-                            if (RT_EOK != TcpSendMsg(&tcp_sock, (u8 *)tcpSendBuffer, length))
+                            if (RT_EOK != TcpSendMsg(&tcp_sock, tcp_reply, length + sizeof(eth_page_head)))
                             {
                                 LOG_E("send tcp err 1");
                                 eth->tcp.SetConnectStatus(OFF);
-                                eth->tcp.SetConnectTry(ON);
                             }
+
+                            rt_free(tcp_reply);
+                            tcp_reply = RT_NULL;
                         }
+
+                        GetSysSet()->cloudCmd.recv_app_flag = NO;
                     }
                 }
 
-                /* 10s 定时任务 */
-                if(ON == Timer10sTouch)
+                //心跳包检测,如果超时1分钟,断掉连接
+                if(YES == getEthHeart()->connect)
                 {
+                    if(getTimeStamp() > getEthHeart()->last_connet_time + /*CONNECT_TIME_OUT*/20)//Justin debug 仅仅测试
+                    {
+                        getEthHeart()->connect = NO;
+                        if(getSockState(tcp_sock) >= 0)
+                        {
+                            //断开连接
+                            LOG_E("over 1 min have not recv ack, sock close, sock = %d",tcp_sock);
+                            shutdown(tcp_sock, SHUT_RDWR);
+                            closesocket(tcp_sock);
+                        }
 
+                        eth->tcp.SetConnectStatus(OFF);
+                    }
                 }
             }
+        }
+
+        /* 10s 定时任务 */
+        if(ON == Timer10sTouch)
+        {
+//            LOG_I("now %x, last %x, get sock state = %d",
+//                    getTimeStamp(), getEthHeart()->last_connet_time,getSockState(tcp_sock));
         }
 
         /* 线程休眠一段时间 */

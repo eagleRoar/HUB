@@ -2224,10 +2224,13 @@ char *ReplyAddRecipe(char *cmd, cloudcmd_t cloud)
         id.value = AllotRecipeId(cloud.recipe_name.value, GetSysRecipt());
 
         recipe.id = id.value;
-        strncpy(recipe.name, cloud.recipe_name.value, 8);
+        rt_memcpy(recipe.name, cloud.recipe_name.value, 8);
+        LOG_D("1-------------------------name = %s",recipe.name);
         //设置默认值
         recipe.color = 1;
+        LOG_D("2-------------------------name = %s",recipe.name);
         recipe.dayCoolingTarget = COOLING_TARGET;
+        LOG_D("3-------------------------name = %s",recipe.name);
         recipe.nightCoolingTarget =  COOLING_TARGET;
         recipe.dayHeatingTarget = HEAT_TARGET;
         recipe.nightHeatingTarget = HEAT_TARGET;
@@ -2245,7 +2248,6 @@ char *ReplyAddRecipe(char *cmd, cloudcmd_t cloud)
         recipe.line_list[1].byPower = POWER_VALUE;
         recipe.line_list[1].byAutoDimming = AUTO_DIMMING;
         recipe.line_list[1].mode = LINE_BY_TIMER;
-
         AddRecipe(&recipe, GetSysRecipt());
 
         cJSON_AddNumberToObject(json, id.name, id.value);

@@ -344,6 +344,8 @@
 
 /* Communication */
 
+/* end of Communication */
+
 /* Device Control */
 
 /* end of Device Control */

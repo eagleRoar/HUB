@@ -13,6 +13,7 @@
 #include "Gpio.h"
 #include "mqtt_client.h"
 #include "CloudProtocolBusiness.h"
+#include "TcpProgram.h"
 
 #pragma pack(4)//因为cjson 不能使用1字节对齐
 
@@ -42,4 +43,5 @@ void initOfflineFlag(void);
 void initHubinfo(void);
 struct sysSet *GetSysSet(void);
 void autoBindPumpTotank(type_monitor_t *, struct sys_tank *);
+u8 *ReplyDataToCloud1(mqtt_client *, u8 *,u16 *, u8);
 #endif /* APPLICATIONS_CLOUDPROTOCOL_CLOUDPROTOCOL_H_ */

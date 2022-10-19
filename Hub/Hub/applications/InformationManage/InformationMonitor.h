@@ -36,6 +36,7 @@ typedef     struct line                     line_t;
 typedef     struct system_time              type_sys_time;
 typedef     struct buttonInfo               type_button_t;
 typedef     struct mqtt_client              mqtt_client;
+typedef     struct eth_heart                eth_heart_t;
 
 #define     SENSOR_MAX                      20
 #define     DEVICE_MAX                      16

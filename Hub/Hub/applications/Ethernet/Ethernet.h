@@ -26,6 +26,7 @@
 #define UDP_BROADCAST_PORT        TEST_PORT//9899//
 #define RCV_ETH_BUFFSZ            1024 * 2
 #define SEND_ETH_BUFFSZ           1024 * 8
+#define CONNECT_TIME_OUT          60
 
 struct packTop{
     u16 checkId;             //标识
@@ -51,6 +52,12 @@ struct masterBroadInfo
     u32 version;
 };
 
+struct eth_heart
+{
+    u8      connect;
+    time_t  last_connet_time;
+};
+
 enum
 {
     NORMAL_TYPE = 0x00,
@@ -73,5 +80,6 @@ enum
 void TcpTaskEntry(void* parameter);
 void UdpTaskEntry(void* parameter);
 void EthernetTaskInit(void);
-
+eth_heart_t *getEthHeart(void);
+int getSockState(int);
 #endif /* APPLICATIONS_ETHERNET_H_ */

@@ -28,6 +28,7 @@
 
 extern struct ethDeviceStruct *eth;
 extern int tcp_sock;
+extern const u8    HEAD_CODE[4];
 
 extern rt_uint8_t GetEthDriverLinkStatus(void);            //获取网口连接状态
 
@@ -35,7 +36,9 @@ int main(void)
 {
     rt_uint8_t      ethStatus           = LINKDOWN;
     u16             length              = 0;
-    char            *tcpSendBuffer      = RT_NULL;
+//    eth_page_t      package;
+    u8              *buf                = RT_NULL;\
+    u8              res                 = 0;
     static u8       warn[WARN_MAX];
     static u8       warn1[WARN_MAX];
 //    static u8       sensor_size         = 0;
@@ -96,6 +99,7 @@ int main(void)
 
     //MQTT线程
     mqtt_start();
+//    rt_memcpy(package.head.head_code, HEAD_CODE, 4);
     while(1)
     {
         time100mS = TimerTask(&time100mS, 5, &Timer100msTouch);             //100毫秒任务定时器
@@ -119,7 +123,8 @@ int main(void)
         //50ms 云服务器
         if(ON == GetRecvMqttFlg())
         {
-            if(RT_EOK == ReplyDataToCloud(GetMqttClient(), RT_NULL, RT_NULL, YES))
+            ReplyDataToCloud1(GetMqttClient(), &res, RT_NULL, YES);
+            if(RT_EOK == res)
             {
                 SetRecvMqttFlg(OFF);
             }
@@ -220,14 +225,16 @@ int main(void)
                             }
                         }
 
-                        //发送给app
+                        //发送给app //Justin debug 仅仅测试
                         if((OFF == eth->tcp.GetConnectTry()) &&
                            (ON == eth->tcp.GetConnectStatus()))
                         {
                             //申请内存
-                            tcpSendBuffer = rt_malloc(SEND_ETH_BUFFSZ);
-                            if(RT_NULL != tcpSendBuffer)
+//                            package.data = rt_malloc(SEND_ETH_BUFFSZ);
+                            buf = rt_malloc(1024 * 2);
+                            if(RT_NULL != buf)
                             {
+                                rt_memcpy(buf, HEAD_CODE, 4);
                                 //1.如果是离线的话 ,要发送全部的离线名称
                                 if(WARN_OFFLINE == item + 1)
                                 {
@@ -235,13 +242,13 @@ int main(void)
                                     {
                                         if(YES == GetSysSet()->offline[index])
                                         {
-                                            rt_memset(tcpSendBuffer, ' ', SEND_ETH_BUFFSZ);
                                             if(RT_EOK == SendDataToCloud(RT_NULL, CMD_HUB_REPORT_WARN, item,
-                                                    GetSysSet()->warn_value[item], (u8 *)tcpSendBuffer, &length, NO, index))
+                                                    GetSysSet()->warn_value[item], (u8 *)buf + sizeof(eth_page_head), &length, NO, index))
                                             {
                                                 if(length > 0)
                                                 {
-                                                    if (RT_EOK != TcpSendMsg(&tcp_sock, (u8 *)tcpSendBuffer, length))
+                                                    rt_memcpy(buf + 4, &length, 2);
+                                                    if (RT_EOK != TcpSendMsg(&tcp_sock, buf, length + sizeof(eth_page_head)))
                                                     {
                                                         LOG_E("send tcp err 2");
                                                         eth->tcp.SetConnectStatus(OFF);
@@ -275,13 +282,14 @@ int main(void)
                                         ((item + 1) == WARN_HUMI_TIMEOUT)||
                                         ((item + 1) == WARN_SMOKE))
                                     {
-                                        rt_memset(tcpSendBuffer, ' ', SEND_ETH_BUFFSZ);
+//                                        rt_memset(package.data, ' ', SEND_ETH_BUFFSZ);
                                         if(RT_EOK == SendDataToCloud(RT_NULL, CMD_HUB_REPORT_WARN, item,
-                                                GetSysSet()->warn_value[item], (u8 *)tcpSendBuffer, &length, NO, 0))
+                                                GetSysSet()->warn_value[item], (u8 *)buf + sizeof(eth_page_head), &length, NO, 0))
                                         {
                                             if(length > 0)
                                             {
-                                                if (RT_EOK != TcpSendMsg(&tcp_sock, (u8 *)tcpSendBuffer, length))
+                                                rt_memcpy(buf + 4, &length, 2);
+                                                if (RT_EOK != TcpSendMsg(&tcp_sock, buf, length + sizeof(eth_page_head)))
                                                 {
                                                     LOG_E("send tcp err 2");
                                                     eth->tcp.SetConnectStatus(OFF);
@@ -304,13 +312,14 @@ int main(void)
                                         ((item + 1) == WARN_OFFLINE)||
                                         ((item + 1) == WARN_AUTOFILL_TIMEOUT))
                                     {
-                                        rt_memset(tcpSendBuffer, ' ', SEND_ETH_BUFFSZ);
+                                        //rt_memset(package.data, ' ', SEND_ETH_BUFFSZ);
                                         if(RT_EOK == SendDataToCloud(RT_NULL, CMD_HUB_REPORT_WARN, item,
-                                                GetSysSet()->warn_value[item], (u8 *)tcpSendBuffer, &length, NO, 0))
+                                                GetSysSet()->warn_value[item], buf + sizeof(eth_page_head), &length, NO, 0))
                                         {
                                             if(length > 0)
                                             {
-                                                if (RT_EOK != TcpSendMsg(&tcp_sock, (u8 *)tcpSendBuffer, length))
+                                                rt_memcpy(buf + 4, length, 2);
+                                                if (RT_EOK != TcpSendMsg(&tcp_sock, buf, length + sizeof(eth_page_head)))
                                                 {
                                                     LOG_E("send tcp err 2");
                                                     eth->tcp.SetConnectStatus(OFF);
@@ -324,10 +333,10 @@ int main(void)
                             }
 
                             //释放内存
-                            if(RT_NULL != tcpSendBuffer)
+                            if(RT_NULL != buf)
                             {
-                                rt_free(tcpSendBuffer);
-                                tcpSendBuffer = RT_NULL;
+                                rt_free(buf);
+                                buf = RT_NULL;
                             }
                         }
                     }
@@ -411,15 +420,17 @@ int main(void)
                    (ON == eth->tcp.GetConnectStatus()))
                 {
                     //申请内存
-                    tcpSendBuffer = rt_malloc(SEND_ETH_BUFFSZ);
-                    if(RT_NULL != tcpSendBuffer)
+                    buf = rt_malloc(1024 * 2);
+                    if(RT_NULL != buf)
                     {
-                        rt_memset(tcpSendBuffer, ' ', SEND_ETH_BUFFSZ);
-                        if(RT_EOK == SendDataToCloud(RT_NULL, CMD_HUB_REPORT, 0 , 0, (u8 *)tcpSendBuffer, &length, NO, 0))
+                        //rt_memset(package.data, ' ', SEND_ETH_BUFFSZ);
+                        rt_memcpy(buf, HEAD_CODE, 4);
+                        if(RT_EOK == SendDataToCloud(RT_NULL, CMD_HUB_REPORT, 0 , 0, buf + sizeof(eth_page_head), &length, NO, 0))
                         {
                             if(length > 0)
                             {
-                                if (RT_EOK != TcpSendMsg(&tcp_sock, (u8 *)tcpSendBuffer, length))
+                                rt_memcpy(buf + 4, &length, 2);
+                                if (RT_EOK != TcpSendMsg(&tcp_sock, buf, length + sizeof(eth_page_head)))
                                 {
                                     LOG_E("send tcp err 3");
                                     eth->tcp.SetConnectStatus(OFF);
@@ -430,10 +441,10 @@ int main(void)
                     }
 
                     //释放内存
-                    if(RT_NULL != tcpSendBuffer)
+                    if(RT_NULL != buf)
                     {
-                        rt_free(tcpSendBuffer);
-                        tcpSendBuffer = RT_NULL;
+                        rt_free(buf);
+                        buf = RT_NULL;
                     }
                 }
             }

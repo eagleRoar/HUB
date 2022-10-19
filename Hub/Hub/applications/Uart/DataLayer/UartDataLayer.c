@@ -486,7 +486,8 @@ void AnlyzeDeviceRegister(type_monitor_t *monitor, rt_device_t serial, u8 *data,
         }
         else
         {
-            LOG_D("device have exist");
+
+            LOG_D("device have exist, type = %x",data[8]);
         }
         /* 发送注册回复 */
         devRegisterAnswer(monitor, serial, device.uuid);
