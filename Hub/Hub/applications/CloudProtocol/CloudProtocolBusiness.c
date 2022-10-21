@@ -1842,6 +1842,10 @@ char *SendHubReport(char *cmd, sys_set_t *set)
                 if(RT_NULL != tank)
                 {
                     cJSON_AddNumberToObject(tank, "no", GetSysTank()->tank[no].tankNo);
+                    for(u8 i = 0; i < 7; i++)
+                    {
+                        valueTemp[i] = VALUE_NULL;
+                    }
                     for(u8 tank_id = 0; tank_id < 2; tank_id++)
                     {
                         for(u8 id = 0; id < TANK_SENSOR_MAX; id++)
@@ -3445,6 +3449,10 @@ char *ReplyGetHubState(char *cmd, cloudcmd_t cloud)
                 if(RT_NULL != tank)
                 {
                     cJSON_AddNumberToObject(tank, "no", GetSysTank()->tank[no].tankNo);
+                    for(u8 i = 0; i < 7; i++)
+                    {
+                        valueTemp[i] = VALUE_NULL;
+                    }
                     for(u8 tank_id = 0; tank_id < 2; tank_id++)
                     {
                         for(u8 id = 0; id < TANK_SENSOR_MAX; id++)
@@ -3470,7 +3478,7 @@ char *ReplyGetHubState(char *cmd, cloudcmd_t cloud)
                                         {
                                             valueTemp[2] = GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].value;
                                             //LOG_I("tank ph = %d",GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].value);
-                                            LOG_I("ph addr = %x",GetSysTank()->tank[no].sensorId[tank_id][id]);
+                                            //LOG_I("ph addr = %x",GetSysTank()->tank[no].sensorId[tank_id][id]);
                                         }
                                         else
                                         {
