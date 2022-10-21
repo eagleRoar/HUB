@@ -241,6 +241,7 @@ rt_err_t TakeMonitorFromSD(type_monitor_t *monitor)
                     LOG_E("line name %s crc err",monitor->line[index].name);
                 }
             }
+
             rt_memset((u8 *)monitor, 0, monitorSize);
             monitor->crc = usModbusRTU_CRC((u8 *)monitor, monitorSize - 2);
             ret = RT_ERROR;

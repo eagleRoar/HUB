@@ -101,18 +101,18 @@ struct sensor
     sen_stora_t     __stora[SENSOR_VALUE_MAX];
 };//占35字节
 
-struct cycle
+struct cycle//Justin debug 仅仅测需要修改类型
 {
     time_t start_at_timestamp;                     //保存当天的时间戳
     u16     startAt;                                // 开启时间点 8:00 8*60=480
-    u16     duration;                               //持续时间 秒
-    u16     pauseTime;                              //停止时间 秒
+    int     duration;                               //持续时间 秒
+    int     pauseTime;                              //停止时间 秒
     u8      times;
 };
 struct timer
 {
-    u16     on_at;                                  //开始的时间
-    u16     duration;                               //持续时间 //该时间以秒为单位的
+    int     on_at;                                  //开始的时间
+    int     duration;                               //持续时间 //该时间以秒为单位的
     u8      en;
 };
 struct manual

@@ -413,8 +413,9 @@ void CmdSetPortSet(char *data, cloudcmd_t *cmd)
 
                             if(RT_NULL != list_item)
                             {
-                                GetValueByU16(list_item, "onAt", &device->port[port].timer[index].on_at);
-                                GetValueByU16(list_item, "duration", &device->port[port].timer[index].duration);
+                                GetValueByInt(list_item, "onAt", &device->port[port].timer[index].on_at);
+                                GetValueByInt(list_item, "duration", &device->port[port].timer[index].duration);
+                                LOG_D("duration = %d",device->port[port].timer[index].duration);//Justin debug 仅仅测试
                                 GetValueByU8(list_item, "en", &device->port[port].timer[index].en);
                             }
                         }
@@ -430,8 +431,8 @@ void CmdSetPortSet(char *data, cloudcmd_t *cmd)
                     //存储当前设置的时间 //Justin debug
                     device->port[port].cycle.start_at_timestamp =
                             systimeToTimestamp(device->port[port].cycle.startAt / 60, device->port[port].cycle.startAt % 60, 0);
-                    GetValueByU16(temp, "duration", &device->port[port].cycle.duration);
-                    GetValueByU16(temp, "pauseTime", &device->port[port].cycle.pauseTime);
+                    GetValueByInt(temp, "duration", &device->port[port].cycle.duration);
+                    GetValueByInt(temp, "pauseTime", &device->port[port].cycle.pauseTime);
                     GetValueByU8(temp, "times", &device->port[port].cycle.times);
                 }
             }
@@ -804,8 +805,8 @@ void CmdSetRecipe(char *data, cloudcmd_t *cmd)
                 GetValueByU16(line, "lightOn", &recipe->line_list[0].lightOn);
                 GetValueByU16(line, "lightOff", &recipe->line_list[0].lightOff);
                 GetValueByU16(line, "firstCycleTime", &recipe->line_list[0].firstCycleTime);
-                GetValueByU16(line, "duration", &recipe->line_list[0].duration);
-                GetValueByU16(line, "pauseTime", &recipe->line_list[0].pauseTime);
+                GetValueByInt(line, "duration", &recipe->line_list[0].duration);
+                GetValueByInt(line, "pauseTime", &recipe->line_list[0].pauseTime);
             }
 
             line = cJSON_GetObjectItem(temp, "line2");
@@ -818,8 +819,8 @@ void CmdSetRecipe(char *data, cloudcmd_t *cmd)
                 GetValueByU16(line, "lightOn", &recipe->line_list[1].lightOn);
                 GetValueByU16(line, "lightOff", &recipe->line_list[1].lightOff);
                 GetValueByU16(line, "firstCycleTime", &recipe->line_list[1].firstCycleTime);
-                GetValueByU16(line, "duration", &recipe->line_list[1].duration);
-                GetValueByU16(line, "pauseTime", &recipe->line_list[1].pauseTime);
+                GetValueByInt(line, "duration", &recipe->line_list[1].duration);
+                GetValueByInt(line, "pauseTime", &recipe->line_list[1].pauseTime);
             }
 
             if(recipe->dayCoolingTarget > 400)
@@ -1597,8 +1598,8 @@ void CmdSetLine(char *data, proLine_t *line, cloudcmd_t *cmd)
                 line->firstRuncycleTime = systimeToTimestamp(time / 60, time % 60, 0);
 //                line->isRunFirstCycle = 0;
             }
-            GetValueByU16(temp, "duration", &line->duration);
-            GetValueByU16(temp, "pauseTime", &line->pauseTime);
+            GetValueByInt(temp, "duration", &line->duration);
+            GetValueByInt(temp, "pauseTime", &line->pauseTime);
         }
 
         if(LINE_HID == line->lightsType)
@@ -1818,7 +1819,14 @@ char *SendHubReport(char *cmd, sys_set_t *set)
         cJSON_AddNumberToObject(json, "tempLock", GetSysSet()->tempSet.coolingDehumidifyLock);
         cJSON_AddNumberToObject(json, "humidLock", GetSysSet()->tempSet.coolingDehumidifyLock);
         cJSON_AddNumberToObject(json, "ppfd", getSensorDataByFunc(GetMonitor(), F_S_PAR));
-        cJSON_AddNumberToObject(json, "vpd", getVpd());
+        if(0 == getVpd())
+        {
+            cJSON_AddNumberToObject(json, "vpd", VALUE_NULL);
+        }
+        else
+        {
+            cJSON_AddNumberToObject(json, "vpd", getVpd());
+        }
         cJSON_AddNumberToObject(json, "dayNight", GetSysSet()->dayOrNight);
         cJSON_AddNumberToObject(json, "maintain", GetSysSet()->sysPara.maintain);
 
@@ -2224,13 +2232,11 @@ char *ReplyAddRecipe(char *cmd, cloudcmd_t cloud)
         id.value = AllotRecipeId(cloud.recipe_name.value, GetSysRecipt());
 
         recipe.id = id.value;
-        rt_memcpy(recipe.name, cloud.recipe_name.value, 8);
-        LOG_D("1-------------------------name = %s",recipe.name);
+        rt_memcpy(recipe.name, cloud.recipe_name.value, RECIPE_NAMESZ);
+        recipe.name[RECIPE_NAMESZ] = '\0';
         //设置默认值
         recipe.color = 1;
-        LOG_D("2-------------------------name = %s",recipe.name);
         recipe.dayCoolingTarget = COOLING_TARGET;
-        LOG_D("3-------------------------name = %s",recipe.name);
         recipe.nightCoolingTarget =  COOLING_TARGET;
         recipe.dayHeatingTarget = HEAT_TARGET;
         recipe.nightHeatingTarget = HEAT_TARGET;
@@ -3393,7 +3399,14 @@ char *ReplyGetHubState(char *cmd, cloudcmd_t cloud)
         cJSON_AddNumberToObject(json, "tempLock", GetSysSet()->tempSet.coolingDehumidifyLock);
         cJSON_AddNumberToObject(json, "humidLock", GetSysSet()->tempSet.coolingDehumidifyLock);
         cJSON_AddNumberToObject(json, "ppfd", getSensorDataByFunc(GetMonitor(), F_S_PAR));
-        cJSON_AddNumberToObject(json, "vpd", getVpd());
+        if(0 == getVpd())
+        {
+            cJSON_AddNumberToObject(json, "vpd", VALUE_NULL);
+        }
+        else
+        {
+            cJSON_AddNumberToObject(json, "vpd", getVpd());
+        }
         cJSON_AddNumberToObject(json, "dayNight", GetSysSet()->dayOrNight);
         cJSON_AddNumberToObject(json, "maintain", GetSysSet()->sysPara.maintain);
 
@@ -4148,7 +4161,7 @@ char *ReplyGetDeviceList(char *cmd, type_kv_c16 msgid)
                         cJSON_AddNumberToObject(item, "color", getColorFromTankList(module->addr, GetSysTank()));
                         if(PUMP_TYPE == module->port[0].type)
                         {
-                            for(u8 tank_no = 0; tank_no < TANK_LIST_MAX; tank_no++)
+                            for(u8 tank_no = 0; tank_no < GetSysTank()->tank_size; tank_no++)
                             {
                                 if(module->addr == GetSysTank()->tank[tank_no].pumpId)
                                 {
@@ -4213,7 +4226,7 @@ char *ReplyGetDeviceList(char *cmd, type_kv_c16 msgid)
                                             getColorFromTankList((module->addr << 8) | storage, GetSysTank()));
                                     if(PUMP_TYPE == module->port[storage].type)
                                     {
-                                        for(u8 tank_no = 0; tank_no < TANK_LIST_MAX; tank_no++)
+                                        for(u8 tank_no = 0; tank_no < GetSysTank()->tank_size; tank_no++)
                                         {
                                             if(((module->addr << 8) | storage) == GetSysTank()->tank[tank_no].pumpId)
                                             {

@@ -41,8 +41,8 @@ int main(void)
     u8              res                 = 0;
     static u8       warn[WARN_MAX];
     static u8       warn1[WARN_MAX];
-//    static u8       sensor_size         = 0;
-//    static u8       device_size         = 0;
+    static u8       sensor_size         = 0;
+    static u8       device_size         = 0;
     static u8       Timer100msTouch     = OFF;
     static u8       Timer1sTouch        = OFF;
     static u8       Timer10sTouch       = OFF;
@@ -383,32 +383,24 @@ int main(void)
                 }
             }
 
-//            if(sensor_size != GetMonitor()->sensor_size)
-//            {
-//                sensor_size = GetMonitor()->sensor_size;
-//
-//                for(int index = 0; index < sensor_size; index++)
-//                {
-//                    printSensor(GetMonitor()->sensor[index]);
-//                }
-//            }
-//            if(device_size != GetMonitor()->device_size)
-//            {
-//                device_size = GetMonitor()->device_size;
-//
-//                for(int index = 0; index < device_size; index++)
-//                {
-//                    printDevice(GetMonitor()->device[index]);
-//                }
-//            }
+            if(sensor_size != GetMonitor()->sensor_size)
+            {
+                sensor_size = GetMonitor()->sensor_size;
 
-//            LOG_D("------------------------------------------------------");
-//            for(u8 item = 0; item < 12; item++)
-//            {
-//                LOG_D("%d,%x %x %x",item,GetDeviceByType(GetMonitor(), PUMP_TYPE)->_storage[0]._time4_ctl._timer[item].on_at,
-//                        GetDeviceByType(GetMonitor(), PUMP_TYPE)->_storage[0]._time4_ctl._timer[item].duration,
-//                        GetDeviceByType(GetMonitor(), PUMP_TYPE)->_storage[0]._time4_ctl._timer[item].en);
-//            }
+                for(int index = 0; index < sensor_size; index++)
+                {
+                    printSensor(GetMonitor()->sensor[index]);
+                }
+            }
+            if(device_size != GetMonitor()->device_size)
+            {
+                device_size = GetMonitor()->device_size;
+
+                for(int index = 0; index < device_size; index++)
+                {
+                    printDevice(GetMonitor()->device[index]);
+                }
+            }
         }
 
         //10s

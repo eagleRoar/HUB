@@ -61,13 +61,14 @@ void TcpRecvTaskEntry(void* parameter)
         {
             rt_memset(tcpRecvBuffer, ' ', RCV_ETH_BUFFSZ);
             //解析数据
-            if(0 != tcp_sock)
+            LOG_D("------------- tcp_sock = %d",tcp_sock);
+            if(RT_EOK == TcpRecvMsg(&tcp_sock, (u8 *)tcpRecvBuffer, RCV_ETH_BUFFSZ, &length))
             {
-                LOG_D("------------- tcp_sock = %d",tcp_sock);
-                if(RT_EOK == TcpRecvMsg(&tcp_sock, (u8 *)tcpRecvBuffer, RCV_ETH_BUFFSZ, &length))
-                {
-                    analyzeTcpData(tcpRecvBuffer, length);
-                }
+                analyzeTcpData(tcpRecvBuffer, length);
+            }
+            else
+            {
+                eth->tcp.SetConnectStatus(OFF);
             }
         }
 
@@ -138,13 +139,15 @@ void UdpTaskEntry(void* parameter)
         {
             /* 判断主机的ip或者port为新,更新 */
             /* 通知TCP和UDP需要更改socket,以监听新的网络 */
-            eth->tcp.SetConnectTry(ON);
-            eth->tcp.SetConnectStatus(OFF);
+            if(OFF == eth->tcp.GetConnectStatus())
+            {
+                eth->tcp.SetConnectTry(ON);
 
-            SetIpAndPort(inet_ntoa(broadcastRecvSerAddr.sin_addr), ntohs(broadcastRecvSerAddr.sin_port), eth);
-            /* 更新网络以及申请TCP */
-            notifyTcpAndUdpSocket(inet_ntoa(broadcastRecvSerAddr.sin_addr), ntohs(broadcastRecvSerAddr.sin_port), eth);
-            LOG_I("recv new master register massge, ip = %s, port = %d", eth->GetIp(), eth->GetPort());
+                SetIpAndPort(inet_ntoa(broadcastRecvSerAddr.sin_addr), ntohs(broadcastRecvSerAddr.sin_port), eth);
+                /* 更新网络以及申请TCP */
+                notifyTcpAndUdpSocket(inet_ntoa(broadcastRecvSerAddr.sin_addr), ntohs(broadcastRecvSerAddr.sin_port), eth);
+                LOG_I("recv new master register massge, ip = %s, port = %d", eth->GetIp(), eth->GetPort());
+            }
         }
 
         if((ON == eth->tcp.GetConnectTry()) &&

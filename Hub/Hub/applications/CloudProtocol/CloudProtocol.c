@@ -49,7 +49,7 @@ void insertPumpToTank(type_monitor_t *monitor, sys_tank_t *tank_list, u16 id)
 {
     u8      index       = 0;
 
-    if(tank_list->tank_size < TANK_LIST_MAX - 1)
+    if(tank_list->tank_size < TANK_LIST_MAX)
     {
         for(index = 0; index < tank_list->tank_size; index++)
         {
@@ -1056,7 +1056,8 @@ void GetNowSysSet(proTempSet_t *tempSet, proCo2Set_t *co2Set, proHumiSet_t *humi
 
         if(RT_NULL != info)
         {
-            rt_memcpy((u8 *)info->name, (u8 *)recipe->recipe[item].name, RECIPE_NAMESZ);
+            rt_memcpy(info->name, recipe->recipe[item].name, RECIPE_NAMESZ);
+            info->name[RECIPE_NAMESZ] = '\0';
             info->week = set->stageSet._list[index].duration_day / 7;//天化为星期
             info->day = set->stageSet._list[index].duration_day % 7;
         }
@@ -1196,7 +1197,6 @@ void timmerProgram(type_monitor_t *monitor)
                     {
                         device->port[port].ctrl.d_state = OFF;
                     }
-
                 }
                 else if(BY_SCHEDULE == device->port[port].mode)//定时器模式
                 {
@@ -1211,6 +1211,25 @@ void timmerProgram(type_monitor_t *monitor)
                            {
                                device->port[port].ctrl.d_state = device->port[port].timer[item].en;
                                break;
+                           }
+                       }
+                       else
+                       {
+                           //1.判断如果存在跨天的话//Justin debug仅仅测试
+                           if((device->port[port].timer[item].on_at *60 + device->port[port].timer[item].duration) >
+                               24 * 60 * 60)
+                           {
+                               //如果当前时间处于跨天的时间
+                               if((sys_time.hour * 60 * 60 + sys_time.minute * 60 + sys_time.second) <
+                                       ((device->port[port].timer[item].on_at *60 + device->port[port].timer[item].duration)- 24 * 60 * 60))
+                               {
+                                   device->port[port].ctrl.d_state = device->port[port].timer[item].en;
+                                   LOG_I("now = %d %d %d %d, set = %d, %d, %d",sys_time.hour * 60 * 60 + sys_time.minute * 60 + sys_time.second,
+                                           sys_time.hour,sys_time.minute,sys_time.second,
+                                           ((device->port[port].timer[item].on_at *60 + device->port[port].timer[item].duration)- 24 * 60 * 60),
+                                           device->port[port].timer[item].on_at,device->port[port].timer[item].duration);
+                                   break;
+                               }
                            }
                        }
                    }
@@ -1249,6 +1268,7 @@ void dimmingLineCtrl(type_monitor_t *monitor, u8 *stage, u16 ppfd)
 #define LINE_STABLE     3//稳定
 #define LINE_MIN_VALUE  30
 #define LINE_DIMMING    40
+//Justin debug 需要验证一下新的灯光逻辑
 void lineProgram_new(type_monitor_t *monitor, u8 line_no, u16 mPeroid)
 {
     u8              state           = 0;
@@ -1300,25 +1320,84 @@ void lineProgram_new(type_monitor_t *monitor, u8 line_no, u16 mPeroid)
     {
         //3.1 如果是定时器模式 那就需要看看是否处于定时器范围内
         //3.1.1 处于正常的一天内
-        if(line_set.lightOff > line_set.lightOn)
+
+        if(line_set.lightOn < line_set.lightOff)
         {
-            if(((time.hour * 60 + time.minute) >= line_set.lightOn) &&
-               ((time.hour * 60 + time.minute) < line_set.lightOff))
+            if(time.hour * 60 * 60 + time.minute * 60 + time.second > line_set.lightOn * 60)
+            {
+               //小于持续时间
+               if(time.hour * 60 * 60 + time.minute * 60 + time.second <= line_set.lightOff * 60)
+               {
+                   //开
+                   state = ON;
+
+                   // 3.1.1 lightOff - lightOn <= sunriseSunSet  该过程只有上升过程
+                   now_time = time.hour * 60 * 60 + time.minute * 60 + time.second;
+                   start_time = line_set.lightOn;
+                   if(line_set.lightOff <= line_set.lightOn + line_set.sunriseSunSet)
+                   {
+                       sunriseFlg = LINE_UP;
+                   }
+                   // 3.1.2 sunriseSunSet <= lightOff - lightOn &&  2*sunriseSunSet >= lightOff - lightOn  该过程有上升过程 下降过程不完整
+                   else if((line_set.lightOff >= line_set.lightOn + line_set.sunriseSunSet) &&
+                           (line_set.lightOff <= line_set.lightOn + 2 *line_set.sunriseSunSet))
+                   {
+                       if(now_time <= (line_set.sunriseSunSet + line_set.lightOn) * 60)
+                       {
+                           sunriseFlg = LINE_UP;
+                       }
+                       else
+                       {
+                           sunriseFlg = LINE_DOWN;
+                       }
+                   }
+                   // 3.1.3 2*sunriseSunSet < lightOff - lightOn  该过程有上升过程 下降过程 恒定过程
+                   else if(line_set.lightOff > line_set.lightOn + 2 *line_set.sunriseSunSet)
+                   {
+                       if(now_time <= (line_set.sunriseSunSet + line_set.lightOn) * 60)
+                       {
+                           sunriseFlg = LINE_UP;
+                       }
+                       //now_time - lightOn < lightOff - lightOn - sunriseSunSet 恒定
+                       else if(now_time + line_set.sunriseSunSet * 60 < line_set.lightOff * 60)
+                       {
+                           sunriseFlg = LINE_STABLE;
+                       }
+                       else
+                       {
+                           sunriseFlg = LINE_DOWN;
+                       }
+                   }
+               }
+               else
+               {
+                   state = OFF;
+               }
+            }
+            else
+            {
+                state = OFF;
+            }
+        }
+        //跨天的话
+        else
+        {
+            //如果当前时间处于跨天的时间
+            if((time.hour * 60 * 60 + time.minute * 60 + time.second) < line_set.lightOff * 60)
             {
                 state = ON;
 
-                // 3.1.1 lightOff - lightOn <= sunriseSunSet  该过程只有上升过程
                 now_time = time.hour * 60 * 60 + time.minute * 60 + time.second;
                 start_time = line_set.lightOn;
-                if(line_set.lightOff <= line_set.lightOn + line_set.sunriseSunSet)
+                if(line_set.lightOff + 24 * 60 <= line_set.lightOn + line_set.sunriseSunSet)
                 {
                     sunriseFlg = LINE_UP;
                 }
                 // 3.1.2 sunriseSunSet <= lightOff - lightOn &&  2*sunriseSunSet >= lightOff - lightOn  该过程有上升过程 下降过程不完整
-                else if((line_set.lightOff >= line_set.lightOn + line_set.sunriseSunSet) &&
-                        (line_set.lightOff <= line_set.lightOn + 2 *line_set.sunriseSunSet))
+                else if((line_set.lightOff + 24 * 60 >= line_set.lightOn + line_set.sunriseSunSet) &&
+                        (line_set.lightOff + 24 * 60 <= line_set.lightOn + 2 *line_set.sunriseSunSet))
                 {
-                    if(now_time <= (line_set.sunriseSunSet + line_set.lightOn) * 60)
+                    if(now_time + 24 * 60 * 60 <= (line_set.sunriseSunSet + line_set.lightOn) * 60)
                     {
                         sunriseFlg = LINE_UP;
                     }
@@ -1328,9 +1407,9 @@ void lineProgram_new(type_monitor_t *monitor, u8 line_no, u16 mPeroid)
                     }
                 }
                 // 3.1.3 2*sunriseSunSet < lightOff - lightOn  该过程有上升过程 下降过程 恒定过程
-                else if(line_set.lightOff > line_set.lightOn + 2 *line_set.sunriseSunSet)
+                else if(line_set.lightOff + 24 * 60 > line_set.lightOn + 2 *line_set.sunriseSunSet)
                 {
-                    if(now_time <= (line_set.sunriseSunSet + line_set.lightOn) * 60)
+                    if(now_time + 24 * 60 * 60 <= (line_set.sunriseSunSet + line_set.lightOn) * 60)
                     {
                         sunriseFlg = LINE_UP;
                     }
@@ -1350,76 +1429,21 @@ void lineProgram_new(type_monitor_t *monitor, u8 line_no, u16 mPeroid)
                 state = OFF;
             }
         }
-//        else
-//        {
-//            //未完待续Justin debug
-//            //跨天
-//            time1 = time.hour * 60 + time.minute;
-//            if(((time1 >= line_set.lightOn) && (time1 <= 24 * 60)) ||
-//               ((time1 >= 0 * 60) && (time1 <= line_set.lightOff)))
-//            {
-//                state = ON;
-//
-//                now_time = time.hour * 60 * 60 + time.minute * 60 + time.second;
-//                start_time = line_set.lightOn;
-//                //3.1.1该过程只有上升过程
-//                if(line_set.lightOff + 24 * 60 <= line_set.lightOn + line_set.sunriseSunSet)
-//                {
-//                    sunriseFlg = LINE_UP;
-//                }
-//                // 3.1.2 sunriseSunSet <= lightOff - lightOn &&  2*sunriseSunSet >= lightOff - lightOn  该过程有上升过程 下降过程不完整
-//                else if((line_set.lightOff + 24 * 60 >= line_set.lightOn + line_set.sunriseSunSet) &&
-//                        (line_set.lightOff + 24 * 60 <= line_set.lightOn + 2 *line_set.sunriseSunSet))
-//                {
-//                    if()
-//
-//
-//                    if(now_time <= (line_set.sunriseSunSet + line_set.lightOn) * 60)
-//                    {
-//                        sunriseFlg = LINE_UP;
-//                    }
-//                    else
-//                    {
-//                        sunriseFlg = LINE_DOWN;
-//                    }
-//                }
-//                // 3.1.3 2*sunriseSunSet < lightOff - lightOn  该过程有上升过程 下降过程 恒定过程
-//                else if(line_set.lightOff > line_set.lightOn + 2 *line_set.sunriseSunSet)
-//                {
-//                    if(now_time <= (line_set.sunriseSunSet + line_set.lightOn) * 60)
-//                    {
-//                        sunriseFlg = LINE_UP;
-//                    }
-//                    //now_time - lightOn < lightOff - lightOn - sunriseSunSet 恒定
-//                    else if(now_time + line_set.sunriseSunSet * 60 < line_set.lightOff * 60)
-//                    {
-//                        sunriseFlg = LINE_STABLE;
-//                    }
-//                    else
-//                    {
-//                        sunriseFlg = LINE_DOWN;
-//                    }
-//                }
-//            }
-//            else
-//            {
-//                state = OFF;
-//            }
-//
-//        }
     }
     else if(LINE_BY_CYCLE == line_set.mode)
     {
-        //3.2 判断当前时间处于开还是关的状态
+        //1.判断当前时间是否是满足进入循环周期的条件,即大于开始时间
         now_time = time.hour * 60 * 60 + time.minute * 60 + time.second;
         start_time = line_set.firstCycleTime * 60;
         period_time = line_set.duration + line_set.pauseTime;
-        if(now_time >= start_time)
+        if(getTimeStamp() > line_set.firstRuncycleTime)
         {
-            if(((now_time - start_time) % period_time) <= line_set.duration)
-            {
-                state = ON;
+            state = ON;
 
+            if(((getTimeStamp() - line_set.firstRuncycleTime) %
+                (line_set.duration + line_set.pauseTime)) <=
+                line_set.duration)
+            {
                 temp_time = (now_time - start_time) % period_time;
                 // 3.2.1 duration <= sunriseSunSet  该过程只有上升过程
                 if(line_set.duration <= line_set.sunriseSunSet * 60)
@@ -1456,12 +1480,15 @@ void lineProgram_new(type_monitor_t *monitor, u8 line_no, u16 mPeroid)
                         sunriseFlg = LINE_DOWN;
                     }
                 }
-
             }
             else
             {
                 state = OFF;
             }
+        }
+        else
+        {
+            state = OFF;
         }
     }
 
@@ -1887,10 +1914,18 @@ u16 getVpd(void)
     float       humi        = 0;
     float       temp        = 0;
 
-    temp = getSensorDataByFunc(GetMonitor(), F_S_TEMP) / 10.0;
-    humi = getSensorDataByFunc(GetMonitor(), F_S_HUMI) / 1000.0;
+    if((getSensorDataByFunc(GetMonitor(), F_S_TEMP) == VALUE_NULL) ||
+            (getSensorDataByFunc(GetMonitor(), F_S_HUMI) == VALUE_NULL))
+    {
+        return 0;
+    }
+    else
+    {
+        temp = getSensorDataByFunc(GetMonitor(), F_S_TEMP) / 10.0;
+        humi = getSensorDataByFunc(GetMonitor(), F_S_HUMI) / 1000.0;
 
-    res = (1 * 0.6107 * pow(10, 7.5 * temp /(237.3 + temp)) * (1 - humi)) * 100;
+        res = (1 * 0.6107 * pow(10, 7.5 * temp /(237.3 + temp)) * (1 - humi)) * 100;
+    }
 
     return res;
 }
@@ -2513,44 +2548,15 @@ void pumpDoing(u8 addr, u8 port)
                 //1.判断当前时间是否是满足进入循环周期的条件,即大于开始时间
                 if(getTimeStamp() > device->port[port].cycle.start_at_timestamp)//Justin debug
                 {
-                    //1.如果当前时间比开始的小时还小则加上24小时
-                    if(sys_time.hour * 60 * 60 + sys_time.minute * 60 + sys_time.second < device->port[port].cycle.startAt * 60)
+                    if(((getTimeStamp() - device->port[port].cycle.start_at_timestamp) %
+                        (device->port[port].cycle.duration + device->port[port].cycle.pauseTime)) <=
+                        device->port[port].cycle.duration)
                     {
-                        time_cycle = (sys_time.hour + 24) * 60 * 60 + sys_time.minute * 60 + sys_time.second;
+                        device->port[port].ctrl.d_state = ON;
                     }
                     else
                     {
-                        time_cycle = sys_time.hour * 60 * 60 + sys_time.minute * 60 + sys_time.second;
-                    }
-
-                    //2.如果是达到了当日的开始时间
-                    if(device->port[port].cycle.duration + device->port[port].cycle.pauseTime > 0)
-                    {
-                        if(((time_cycle - device->port[port].cycle.startAt * 60) /
-                           (device->port[port].cycle.duration + device->port[port].cycle.pauseTime)) <= device->port[port].cycle.times)
-                        {
-                            if(((time_cycle - device->port[port].cycle.startAt * 60) %
-                                (device->port[port].cycle.duration + device->port[port].cycle.pauseTime)) <=
-                                 device->port[port].cycle.duration)
-                            {
-                                LOG_W("time_cycle = %d, set = %d",
-                                        time_cycle - device->port[port].cycle.startAt * 60,
-                                        device->port[port].cycle.duration + device->port[port].cycle.pauseTime);//Justin debug 仅仅测试
-                               device->port[port].ctrl.d_state = ON;
-                            }
-                            else
-                            {
-                               device->port[port].ctrl.d_state = OFF;
-                            }
-                        }
-                        else
-                        {
-                            device->port[port].ctrl.d_state = OFF;
-                        }
-                    }
-                    else
-                    {
-                       device->port[port].ctrl.d_state = OFF;
+                        device->port[port].ctrl.d_state = OFF;
                     }
                 }
                 else
@@ -2560,7 +2566,6 @@ void pumpDoing(u8 addr, u8 port)
             }
             else if(BY_SCHEDULE == device->port[port].mode)//定时器模式
             {
-                //LOG_W("now time %d, ontime %d",sys_time.hour * 60 * 60 + sys_time.minute * 60 + sys_time.second,device->port[port].timer[item].on_at * 60);
                 for(item = 0; item < TIMER_GROUP; item++)//该功能待测试
                 {
                     //选择处于第几组定时器
@@ -2571,15 +2576,28 @@ void pumpDoing(u8 addr, u8 port)
                                 + device->port[port].timer[item].duration) )
                         {
                             device->port[port].ctrl.d_state = device->port[port].timer[item].en;
-//                            LOG_W("open the timer");
                             break;
+                        }
+                    }
+                    else
+                    {
+                        //1.判断如果存在跨天的话
+                        if((device->port[port].timer[item].on_at *60 + device->port[port].timer[item].duration) >
+                            24 * 60 * 60)
+                        {
+                            //如果当前时间处于跨天的时间
+                            if((sys_time.hour * 60 * 60 + sys_time.minute * 60 + sys_time.second) <
+                                    ((device->port[port].timer[item].on_at *60 + device->port[port].timer[item].duration)- 24 * 60 * 60))
+                            {
+                                device->port[port].ctrl.d_state = device->port[port].timer[item].en;
+                                break;
+                            }
                         }
                     }
                 }
 
                 if(item == TIMER_GROUP)
                 {
-//                    LOG_I("close the timer");
                     device->port[port].ctrl.d_state = 0;
                     device->port[port].ctrl.d_value = 0;
                 }
@@ -2796,6 +2814,7 @@ void autoBindPumpTotank(type_monitor_t *monitor, sys_tank_t *tank_list)
                 if(PUMP_TYPE == device->port[stora].type)
                 {
                     id = device->addr << 8 | stora;
+                    //LOG_D("id = %x",id);//Justin debug
                     insertPumpToTank(monitor, tank_list, id);
                 }
             }

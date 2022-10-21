@@ -23,7 +23,7 @@
 #include "TcpProgram.h"
 
 __attribute__((section(".ccmbss"))) type_monitor_t monitor;
-__attribute__((section(".ccmbss"))) u8 uart_task[1024 * 5];
+__attribute__((section(".ccmbss"))) u8 uart_task[1024 * 6];
 __attribute__((section(".ccmbss"))) struct rt_thread uart_thread;
 
 struct rx_msg uart1_msg;                      //接收串口数据以及相关消息
@@ -91,6 +91,7 @@ static rt_err_t Uart2_input(rt_device_t dev, rt_size_t size)
     uart2_msg.dev = dev;
     uart2_msg.size = size;
     rt_device_read(uart2_msg.dev, 0, uart2_msg.data, uart2_msg.size);
+
     if(2 > size)
     {
         return RT_ERROR;
@@ -149,12 +150,15 @@ void SensorUart2TaskEntry(void* parameter)
     u8                          data[13];
 //#endif
 //                u16             crc16Result     = 0;
+#if(HUB_SELECT == HUB_IRRIGSTION)
+    u8                          tank_i          = 0;
+#endif
     static      u8              Timer1sTouch    = OFF;
     static      u8              Timer3sTouch    = OFF;
-    static      u8              Timer5sTouch    = OFF;
+    static      u8              Timer60sTouch    = OFF;
     static      u16             time1S = 0;
     static      u16             time3S = 0;
-    static      u16             time5S = 0;
+    static      u16             time60S = 0;
     static      rt_device_t     uart1_serial;
     //static      rt_device_t     uart2_serial;
     static      rt_device_t     uart3_serial;
@@ -163,7 +167,8 @@ void SensorUart2TaskEntry(void* parameter)
     static      u8              line_start      = 0;
     static      type_sys_time   sys_time_pre;
     static      u8              specailFlag     = 0;
-    type_sys_time test_time;//Justin debug
+    static      u8              allocate_flag   = OFF;
+    static      u8              allocate_i      = 0;
 
     rt_memset((u8 *)&sys_time_pre, 0, sizeof(type_sys_time));
     initConnectState();
@@ -187,7 +192,7 @@ void SensorUart2TaskEntry(void* parameter)
     {
         time1S = TimerTask(&time1S, 1000/UART_PERIOD, &Timer1sTouch);                       //1s定时任务
         time3S = TimerTask(&time3S, 3000/UART_PERIOD, &Timer3sTouch);                       //3s定时任务
-        time5S = TimerTask(&time5S, 5000/UART_PERIOD, &Timer5sTouch);                       //5s定时任务
+        time60S = TimerTask(&time60S, 60000/UART_PERIOD, &Timer60sTouch);                       //5s定时任务
 
         if(YES == sdCard.readInfo)                                  //必须要等待从sd卡读取到的monitor 才能执行以下功能
         {
@@ -277,6 +282,23 @@ void SensorUart2TaskEntry(void* parameter)
                     //校准时间
                     rtcTest(sys_time);
                 }
+
+                //1.有可能出现hub,重新分配地址出现不成功的情况
+                if(ON == allocate_flag)
+                {
+                    //解决办法为如果发现存在失联的情况就再次全部重新分配
+                    devRegisterAnswer(GetMonitor(), uart2_serial, GetMonitor()->device[allocate_i].uuid);
+                    LOG_E("send new add...................");//Justin debug 仅仅测试
+                    if(allocate_i < GetMonitor()->device_size - 1)
+                    {
+                        allocate_i++;
+                    }
+                    else
+                    {
+                        allocate_i = 0;
+                        allocate_flag = OFF;
+                    }
+                }
             }
 
             /* 1s 事件 */
@@ -295,6 +317,62 @@ void SensorUart2TaskEntry(void* parameter)
 #elif(HUB_SELECT == HUB_IRRIGSTION)
                 pumpProgram(GetMonitor(), GetSysTank());            //水泵的工作
                 autoBindPumpTotank(GetMonitor(), GetSysTank());
+                for(tank_i = 0; tank_i < GetSysTank()->tank_size; tank_i++)
+                {
+                    u16 id = GetSysTank()->tank[tank_i].pumpId;
+
+                    if(id > 0xFF)
+                    {
+                        u8 addr = id >> 8;
+                        u8 port = id;
+                        if(RT_NULL != GetDeviceByAddr(GetMonitor(), addr))
+                        {
+                            if(PUMP_TYPE != GetDeviceByAddr(GetMonitor(), addr)->port[port].type)
+                            {
+                                rt_memset((u8 *)&(GetSysTank()->tank[tank_i]), 0, sizeof(tank_t));
+                            }
+                        }
+                        else
+                        {
+                            rt_memset((u8 *)&(GetSysTank()->tank[tank_i]), 0, sizeof(tank_t));
+                        }
+                    }
+                    else
+                    {
+                        u8 addr = id;
+                        if(RT_NULL != GetDeviceByAddr(GetMonitor(), addr))
+                        {
+                            if(PUMP_TYPE != GetDeviceByAddr(GetMonitor(), addr)->type)
+                            {
+                                rt_memset((u8 *)&GetSysTank()->tank[tank_i], 0, sizeof(tank_t));
+                            }
+                        }
+                        else
+                        {
+                            rt_memset((u8 *)&GetSysTank()->tank[tank_i], 0, sizeof(tank_t));
+                        }
+                    }
+                }
+
+                for(tank_i = 0; tank_i < GetSysTank()->tank_size; tank_i++)
+                {
+                    if(0 == GetSysTank()->tank[tank_i].pumpId)
+                    {
+                        break;
+                    }
+                }
+
+                if(tank_i != GetSysTank()->tank_size)
+                {
+                    for(;tank_i < GetSysTank()->tank_size - 1; tank_i++)
+                    {
+                        rt_memcpy((u8 *)&GetSysTank()->tank[tank_i], (u8 *)&GetSysTank()->tank[tank_i + 1], sizeof(tank_t));
+                        GetSysTank()->tank[tank_i].tankNo = tank_i+1;
+                        rt_memset((u8 *)&GetSysTank()->tank[tank_i + 1], 0, sizeof(tank_t));
+                    }
+
+                    GetSysTank()->tank_size -= 1;
+                }
 #endif
                 timmerProgram(GetMonitor());
                 findDeviceLocation(GetMonitor(), &sys_set.cloudCmd, uart2_serial);
@@ -307,20 +385,14 @@ void SensorUart2TaskEntry(void* parameter)
             {
                 device_start = 1;
 
-                //systimeToTimestamp(8,11,0);
-                //Justin debug
-                char namename[8];
-
-//                strncpy(namename, "12345678", 8);
-//                LOG_W("name = %s",namename);
-//                rt_memcpy(namename, "12345678", 8);
-//                LOG_W("name = %s",namename);
+                //非法地址处理
+                deleteModule(GetMonitor(), 0);
             }
 
-            /* 5s 事件 */
-            if(ON == Timer5sTouch)
+            /* 60s 事件 */
+            if(ON == Timer60sTouch)
             {
-
+                allocate_flag = ON;
             }
         }
         rt_thread_mdelay(UART_PERIOD);

@@ -131,8 +131,8 @@ struct proLine{
     u16         lightOn;                    // 开启时间点 8:00 8*60=480
     u16         lightOff;                   // 关闭时间点 9:00 9*60=540
     u16         firstCycleTime;             //第一次循环开始时间 8*60=480
-    u16         duration;                   //循环持续时间 s
-    u16         pauseTime;                  //循环停止时间 s
+    int         duration;                   //循环持续时间 s
+    int         pauseTime;                  //循环停止时间 s
     u8          hidDelay;                   // HID 延时时间 3-180min HID 模式才有
     u16         tempStartDimming;           // 灯光自动调光温度点 0℃-60.0℃/32℉-140℉
     u16         tempOffDimming;             // 灯光自动关闭温度点 0℃-60.0℃/32℉-140℉
@@ -245,8 +245,8 @@ struct recipe{//配方 限制10个
         u16     lightOn;        // 开启时间点 8:00 8*60=480
         u16     lightOff;       // 关闭时间点 9:00 9*60=540
         u16     firstCycleTime; //第一次循环开始时间
-        u16     duration;       //循环持续时间 s
-        u16     pauseTime;      //循环停止时间 s
+        int     duration;       //循环持续时间 s
+        int     pauseTime;      //循环停止时间 s
     }line_list[2];
 };
 
@@ -282,7 +282,7 @@ struct sys_tank{
 };
 
 struct recipeInfor{
-    char            name[RECIPE_NAMESZ];
+    char            name[RECIPE_NAMESZ + 1];
     u8              week;
     u8              day;
 };

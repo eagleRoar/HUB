@@ -28,7 +28,7 @@ void deleteModule(type_monitor_t *monitor, u8 addr)
     {
         if(addr == monitor->device[index].addr)
         {
-            monitor->allocateStr.address[index] = 0x00;
+            monitor->allocateStr.address[addr] = 0x00;
             //如果是pump 或者 valve 的话需要删除桶设置相关联的id
             for(item = 0; item < GetSysTank()->tank_size; item++)
             {
@@ -62,7 +62,33 @@ void deleteModule(type_monitor_t *monitor, u8 addr)
                 rt_memcpy((u8 *)&monitor->device[index], (u8 *)&monitor->device[index + 1], sizeof(device_t));
             }
         }
+        //最后
+        //rt_memset((u8 *)&monitor->device[monitor->device_size - 1], 0, sizeof(device_t));//Justin debug 仅仅测试
         monitor->device_size -= 1;
+    }
+
+    for(index = 0; index < monitor->line_size; index++)
+    {
+        if(addr == monitor->line[index].addr)
+        {
+            monitor->allocateStr.address[addr] = 0x00;
+
+            break;
+        }
+    }
+
+    if(index != monitor->line_size)
+    {
+        if(index < (monitor->line_size - 1))
+        {
+            for(; index < monitor->line_size - 1; index++)
+            {
+                rt_memcpy((u8 *)&monitor->line[index], (u8 *)&monitor->line[index + 1], sizeof(line_t));
+            }
+        }
+        //最后
+//        rt_memset((u8 *)&monitor->line[monitor->line_size - 1], 0, sizeof(line_t));//Justin debug 仅仅测试
+        monitor->line_size -= 1;
     }
 }
 
@@ -341,9 +367,16 @@ device_t *GetDeviceByAddr(type_monitor_t *monitor, u8 addr)
 
     for(index = 0; index < monitor->device_size; index++)
     {
-        if(addr == monitor->device[index].addr)
+        if(0 != addr)
         {
-            return &(monitor->device[index]);
+            if(addr == monitor->device[index].addr)
+            {
+                return &(monitor->device[index]);
+            }
+        }
+        else
+        {
+            return RT_NULL;
         }
     }
 
