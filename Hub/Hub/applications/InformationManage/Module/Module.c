@@ -16,6 +16,7 @@
 #include "CloudProtocolBusiness.h"
 
 extern void printLine(line_t);
+extern void GetNowSysSet(proTempSet_t *, proCo2Set_t *, proHumiSet_t *, proLine_t *, proLine_t *, struct recipeInfor *);
 
 //删除设备
 void deleteModule(type_monitor_t *monitor, u8 addr)
@@ -102,7 +103,8 @@ void changeDeviceType(type_monitor_t *monitor, u8 addr, u8 port, u8 type)
         {
             //只有AC_4 和 IO_12 才允许修改类型
             if(AC_4_TYPE == monitor->device[index].type ||
-               IO_12_TYPE == monitor->device[index].type)
+               IO_12_TYPE == monitor->device[index].type ||
+               IO_4_TYPE == monitor->device[index].type)
             {
                 if(port < monitor->device[index].storage_size)
                 {
@@ -322,15 +324,38 @@ void CtrlAllDeviceByFunc(type_monitor_t *monitor, u8 func, u8 en, u8 value)
 {
     u8          index       = 0;
     u8          port        = 0;
+    u16         temp        = 0;
+    u16         res         = 0;
     device_t    *device     = RT_NULL;
+    proTempSet_t    tempSet;
+
+    GetNowSysSet(&tempSet, RT_NULL, RT_NULL, RT_NULL, RT_NULL, RT_NULL);
+
+    if(DAY_TIME == GetSysSet()->dayOrNight)
+    {
+        temp = tempSet.dayCoolingTarget;
+    }
+    else
+    {
+        temp = tempSet.nightCoolingTarget;
+    }
 
     for(index = 0;index < monitor->device_size; index++)
     {
         device = &monitor->device[index];
         if(func == device->port[0].func)
         {
-            device->port[0].ctrl.d_state = en;
-            device->port[0].ctrl.d_value = value;
+            if(IR_AIR_TYPE == device->port[0].type)
+            {
+                changeIrAirCode(temp, &res);
+                device->port[0].ctrl.d_state = res >> 8;
+                device->port[0].ctrl.d_value = res;
+            }
+            else
+            {
+                device->port[0].ctrl.d_state = en;
+                device->port[0].ctrl.d_value = value;
+            }
         }
         else
         {
@@ -520,6 +545,19 @@ int getSensorDataByFunc(type_monitor_t *monitor, u8 func)
     }
 
     return data;
+}
+
+
+//如果30 度 那么temp = 300
+void changeIrAirCode(u16 temp, u16 *ret)
+{
+    *ret |= 0xE0;
+
+    //以下操作按照红外协议
+    if(temp / 10 >= 16)
+    {
+        *ret |= ((temp / 10) - 16) | 0x0f;
+    }
 }
 
 #endif /* APPLICATIONS_INFORMATIONMANAGE_MODULE_MODULE_C_ */

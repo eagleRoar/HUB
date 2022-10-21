@@ -724,7 +724,8 @@ void CmdSetDeviceType(char *data, cloudcmd_t *cmd)
         //修改type 只有针对AC_4 IO_12
         changeDeviceType(GetMonitor(), addr, port ,type);
 
-        if(AC_4_TYPE == GetDeviceByAddr(GetMonitor(), addr)->type)
+        if((AC_4_TYPE == GetDeviceByAddr(GetMonitor(), addr)->type) ||
+           (IO_4_TYPE == GetDeviceByAddr(GetMonitor(), addr)->type))
         {
             //修改端口类型
             buff[0] = addr;
@@ -2317,13 +2318,14 @@ char *ReplySetTank(char *cmd, cloudcmd_t cloud)
 char *ReplyGetTank(char *cmd, cloudcmd_t cloud)
 {
     char            *str        = RT_NULL;
+    char            name[MODULE_NAMESZ*2 + 1] = " ";
     cJSON           *json       = cJSON_CreateObject();
     cJSON           *pump       = RT_NULL;
     cJSON           *list       = RT_NULL;
     cJSON           *sen_item   = RT_NULL;
     tank_t          *tank       = RT_NULL;
     u8              addr        = 0;
-//    u8              port        = 0;
+    u8              port        = 0;
 
     if(RT_NULL != json)
     {
@@ -2355,15 +2357,25 @@ char *ReplyGetTank(char *cmd, cloudcmd_t cloud)
                 if(tank->pumpId > 0xff)
                 {
                     addr = tank->pumpId >> 8;
-                    //port = tank->pumpId;
+                    port = tank->pumpId;
                 }
                 else
                 {
                     addr = tank->pumpId;
-                    //port = 0;
+                    port = 0;
                 }
 
-                cJSON_AddStringToObject(pump, "name", GetDeviceByAddr(GetMonitor(), addr)->name);
+                if(1 == GetDeviceByAddr(GetMonitor(), addr)->storage_size)
+                {
+                    cJSON_AddStringToObject(pump, "name", GetDeviceByAddr(GetMonitor(), addr)->name);
+                }
+                else//Justin debug 仅仅测试 返回的name有问题
+                {
+                    strcpy(name, GetDeviceByAddr(GetMonitor(), addr)->name);
+                    strcat(name, GetDeviceByAddr(GetMonitor(), addr)->port[port].name);
+                    name[MODULE_NAMESZ*2] = '\0';
+                    cJSON_AddStringToObject(pump, "name", name);
+                }
                 LOG_E("pump addr = %x, name = %s",GetDeviceByAddr(GetMonitor(), addr)->addr,GetDeviceByAddr(GetMonitor(), addr)->name);//Justin debug 仅仅测试
 
                 cJSON_AddNumberToObject(pump, "color", tank->color);

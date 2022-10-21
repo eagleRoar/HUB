@@ -387,6 +387,8 @@ void SensorUart2TaskEntry(void* parameter)
 
                 //非法地址处理
                 deleteModule(GetMonitor(), 0);
+
+                //LOG_D("%d",changeIrAirCode(10));
             }
 
             /* 60s 事件 */

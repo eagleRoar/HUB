@@ -242,6 +242,11 @@ u8 askDeviceHeart_new(type_monitor_t *monitor, rt_device_t serial, u8 event)
                 device->port[0].ctrl.d_state = value >> 8;
                 device->port[0].ctrl.d_value = value;
             }
+            else if(IR_AIR_TYPE == device->port[port].type)
+            {
+                device->port[0].ctrl.d_state = 0xe0;
+                device->port[0].ctrl.d_value = 0x00;
+            }
             else
             {
                 device->port[port].ctrl.d_state = ON;
@@ -348,7 +353,8 @@ u8 askDeviceHeart_new(type_monitor_t *monitor, rt_device_t serial, u8 event)
         else
         {
             //5.1特殊处理,如果是AC_4则要先问类型
-            if((AC_4_TYPE == device->type) && (YES != special[ask_device]))
+            if(((AC_4_TYPE == device->type) || (IO_4_TYPE == device->type)) &&
+                    (YES != special[ask_device]))
             {
                 //LOG_W("ask ac_4 port");
                 buffer[1] = READ_MUTI;
@@ -394,7 +400,8 @@ void replyStrorageType(type_monitor_t *monitor, u8 addr, u8 *data, u8 dataLen)
 {
     if(addr == monitor->device[ask_device].addr)
     {
-        if(AC_4_TYPE == monitor->device[ask_device].type)
+        if((AC_4_TYPE == monitor->device[ask_device].type) ||
+           (IO_4_TYPE == monitor->device[ask_device].type))
         {
             special[ask_device] = YES;      //标志已经收到端口数据
             if(dataLen/2 > TIMER_GROUP)

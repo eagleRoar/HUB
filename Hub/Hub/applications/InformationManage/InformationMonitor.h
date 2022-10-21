@@ -352,6 +352,8 @@ struct monitor
 #define     HVAC_6_TYPE     0x61
 #define     AC_4_TYPE       0x50
 #define     IO_12_TYPE      0x80
+#define     IO_4_TYPE       0x81
+#define     IR_AIR_TYPE          0xB4        //红外空调
 
 /**************************************从机 End*******************************************/
 
@@ -377,7 +379,8 @@ enum{
     S_AC_4              = 6,
     S_PUMP,
     S_VALVE,
-    S_IO_12
+    S_IO_12,
+    S_IO_4
 };
 
 enum{

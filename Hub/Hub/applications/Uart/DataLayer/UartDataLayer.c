@@ -96,38 +96,50 @@ char *GetModelByType(u8 type, char *name, u8 len)
         case BHS_TYPE:
             rt_memcpy(name, "BLS-4", len);
         break;
+        case PAR_TYPE:
+            rt_memcpy(name, "BLS-PAR", len);
+        break;
         case CO2_TYPE:
-            rt_memcpy(name, "BDS-Co2", len);
+            rt_memcpy(name, "BCS-PU", len);
             break;
         case HEAT_TYPE:
-            rt_memcpy(name, "BDS-He1", len);
+            rt_memcpy(name, "BTS-H", len);
             break;
         case HUMI_TYPE:
-            rt_memcpy(name, "BDS-Hu1", len);
+            rt_memcpy(name, "BHS-H", len);
             break;
         case DEHUMI_TYPE:
-            rt_memcpy(name, "BDS-DeHu", len);
+            rt_memcpy(name, "BHS-D", len);
             break;
         case COOL_TYPE:
-            rt_memcpy(name, "BDS-Coo1", len);
+            rt_memcpy(name, "BTS-C", len);
             break;
         case HVAC_6_TYPE:
-            rt_memcpy(name, "BDS-Hv1", len);
+            rt_memcpy(name, "BTS-1", len);
             break;
         case TIMER_TYPE:
-            rt_memcpy(name, "BDS-Ti", len);
+            rt_memcpy(name, "BPS", len);
             break;
         case LINE_TYPE:
-            rt_memcpy(name, "BDS-Lin1", len);
+            rt_memcpy(name, "LDA", len);
             break;
         case PUMP_TYPE:
-            rt_memcpy(name, "BDS-Pump", len);
+            rt_memcpy(name, "BIS", len);
+            break;
+        case VALVE_TYPE:
+            rt_memcpy(name, "BVS", len);
             break;
         case AC_4_TYPE:
-            rt_memcpy(name, "BDS-Ac4", len);
+            rt_memcpy(name, "BSS-4", len);
             break;
         case IO_12_TYPE:
-            rt_memcpy(name, "BDS-Io12", len);
+            rt_memcpy(name, "BDC-12", len);
+            break;
+        case IO_4_TYPE:
+            rt_memcpy(name, "BDC-4", len);
+            break;
+        case IR_AIR_TYPE:
+            rt_memcpy(name, "BTS-AR", len);
             break;
         default:
             break;
@@ -328,10 +340,27 @@ rt_err_t setDeviceDefault(device_t *module)
                 module->port[index].type = VALVE_TYPE;//目前暂定都是阀
                 module->port[index].func = F_VALVE;
                 strcpy(name," ");
-                sprintf(name,"%s%d","Val",index+1);
+                sprintf(name,"%s%d","port",index+1);
                 rt_memcpy(module->port[index].name, name, STORAGE_NAMESZ);
                 module->port[index].manual.manual_on_time = MANUAL_TIME_DEFAULT;
             }
+            break;
+        case IO_4_TYPE:
+            setDeviceDefaultPara(module, "IO4", 0x0401, S_IO_4, module->type, 4);
+            for(u8 index = 0; index < module->storage_size; index++)
+            {
+                module->port[index].type = VALVE_TYPE;//目前暂定都是阀
+                module->port[index].func = F_VALVE;
+                strcpy(name," ");
+                sprintf(name,"%s%d","port",index+1);
+                rt_memcpy(module->port[index].name, name, STORAGE_NAMESZ);
+                module->port[index].manual.manual_on_time = MANUAL_TIME_DEFAULT;
+            }
+            break;
+        case IR_AIR_TYPE:
+            setDeviceDefaultPara(module, "IR_AIR_TYPE", 0x0100, S_TEMP, module->type, 1);
+            addr = module->addr;
+            setDeviceDefaultStora(module, 0 , "IR_AIR_TYPE", F_COOL, module->type, addr , MANUAL_NO_HAND, 0);
             break;
         default:
             ret = RT_ERROR;
@@ -399,6 +428,8 @@ u8 getSOrD(u8 type)
         case PUMP_TYPE:
         case VALVE_TYPE:
         case IO_12_TYPE:
+        case IO_4_TYPE:
+        case IR_AIR_TYPE:
             ret = DEVICE_TYPE;
             break;
         case LINE_TYPE:

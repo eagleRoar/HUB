@@ -1224,10 +1224,10 @@ void timmerProgram(type_monitor_t *monitor)
                                        ((device->port[port].timer[item].on_at *60 + device->port[port].timer[item].duration)- 24 * 60 * 60))
                                {
                                    device->port[port].ctrl.d_state = device->port[port].timer[item].en;
-                                   LOG_I("now = %d %d %d %d, set = %d, %d, %d",sys_time.hour * 60 * 60 + sys_time.minute * 60 + sys_time.second,
-                                           sys_time.hour,sys_time.minute,sys_time.second,
-                                           ((device->port[port].timer[item].on_at *60 + device->port[port].timer[item].duration)- 24 * 60 * 60),
-                                           device->port[port].timer[item].on_at,device->port[port].timer[item].duration);
+//                                   LOG_I("now = %d %d %d %d, set = %d, %d, %d",sys_time.hour * 60 * 60 + sys_time.minute * 60 + sys_time.second,
+//                                           sys_time.hour,sys_time.minute,sys_time.second,
+//                                           ((device->port[port].timer[item].on_at *60 + device->port[port].timer[item].duration)- 24 * 60 * 60),
+//                                           device->port[port].timer[item].on_at,device->port[port].timer[item].duration);
                                    break;
                                }
                            }
@@ -1409,7 +1409,7 @@ void lineProgram_new(type_monitor_t *monitor, u8 line_no, u16 mPeroid)
                 // 3.1.3 2*sunriseSunSet < lightOff - lightOn  该过程有上升过程 下降过程 恒定过程
                 else if(line_set.lightOff + 24 * 60 > line_set.lightOn + 2 *line_set.sunriseSunSet)
                 {
-                    if(now_time + 24 * 60 * 60 <= (line_set.sunriseSunSet + line_set.lightOn) * 60)
+                    if(now_time <= (line_set.sunriseSunSet + line_set.lightOff) * 60)
                     {
                         sunriseFlg = LINE_UP;
                     }
