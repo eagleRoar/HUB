@@ -207,7 +207,7 @@ struct sysWarn
     u16 tempTimeoutseconds; //600, // temp 超时秒数
     u8 humidTimeoutEn;      //1,   //humid 超时报警 1-on 2-off
     u16 humidTimeoutseconds;// 600, // humid 超时秒数
-    u16 poolTimeout[TANK_LIST_MAX];
+//    u16 poolTimeout[TANK_LIST_MAX];
 };
 
 /****************************以下是灌溉部分的内容*****/
@@ -271,6 +271,7 @@ struct tank{
     u16     valve[VALVE_MAX];               //关联的阀的ID
     u8      sensorId[2][TANK_SENSOR_MAX];   //桶内存在两个sensor 一个是测试桶内的 一个测试管道的
     u8      color;                          //颜色
+    u16     poolTimeout;
 };
 
 //桶

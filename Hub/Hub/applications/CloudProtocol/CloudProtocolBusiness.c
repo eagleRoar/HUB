@@ -1086,7 +1086,7 @@ void CmdSetWarn(char *data, cloudcmd_t *cmd, sys_set_t *set)
         if(RT_NULL != pool)
         {
             poolNum = cJSON_GetArraySize(pool);
-            rt_memset(set->sysWarn.poolTimeout, 0, TANK_LIST_MAX * sizeof(u16));
+            //rt_memset(set->sysWarn.poolTimeout, 0, TANK_LIST_MAX * sizeof(u16));
             for(u8 index = 0; index < poolNum; index++)
             {
                 item = cJSON_GetArrayItem(pool, index);
@@ -1098,7 +1098,8 @@ void CmdSetWarn(char *data, cloudcmd_t *cmd, sys_set_t *set)
 
                     if((no > 0) && (no <= TANK_LIST_MAX))
                     {
-                        set->sysWarn.poolTimeout[no - 1] = timeout;
+//                        set->sysWarn.poolTimeout[no - 1] = timeout;
+                        GetSysTank()->tank[no - 1].poolTimeout = timeout;
                     }
                 }
             }
@@ -2318,7 +2319,7 @@ char *ReplySetTank(char *cmd, cloudcmd_t cloud)
 char *ReplyGetTank(char *cmd, cloudcmd_t cloud)
 {
     char            *str        = RT_NULL;
-    char            name[MODULE_NAMESZ*2 + 1] = " ";
+    char            name[MODULE_NAMESZ*2 + 2] = " ";
     cJSON           *json       = cJSON_CreateObject();
     cJSON           *pump       = RT_NULL;
     cJSON           *list       = RT_NULL;
@@ -2369,14 +2370,15 @@ char *ReplyGetTank(char *cmd, cloudcmd_t cloud)
                 {
                     cJSON_AddStringToObject(pump, "name", GetDeviceByAddr(GetMonitor(), addr)->name);
                 }
-                else//Justin debug 仅仅测试 返回的name有问题
+                else
                 {
                     strcpy(name, GetDeviceByAddr(GetMonitor(), addr)->name);
+                    strcat(name, "_");
                     strcat(name, GetDeviceByAddr(GetMonitor(), addr)->port[port].name);
-                    name[MODULE_NAMESZ*2] = '\0';
+                    name[MODULE_NAMESZ*2 + 1] = '\0';
                     cJSON_AddStringToObject(pump, "name", name);
                 }
-                LOG_E("pump addr = %x, name = %s",GetDeviceByAddr(GetMonitor(), addr)->addr,GetDeviceByAddr(GetMonitor(), addr)->name);//Justin debug 仅仅测试
+                LOG_E("pump name = %s",name);//Justin debug 仅仅测试
 
                 cJSON_AddNumberToObject(pump, "color", tank->color);
 
@@ -2594,18 +2596,15 @@ char *ReplySetWarn(char *cmd, cloudcmd_t cloud, sys_warn_t warn)
         pool = cJSON_CreateArray();
         if(RT_NULL != pool)
         {
-            for(index = 0; index < TANK_LIST_MAX; index++)
+            for(index = 0; index < GetSysTank()->tank_size; index++)
             {
-                if(0 != warn.poolTimeout[index])
+                item = cJSON_CreateObject();
+                if(RT_NULL != item)
                 {
-                    item = cJSON_CreateObject();
-                    if(RT_NULL != item)
-                    {
-                        cJSON_AddNumberToObject(item, "no", index + 1);
-                        cJSON_AddNumberToObject(item, "timeout", warn.poolTimeout[index]);
+                    cJSON_AddNumberToObject(item, "no", index + 1);
+                    cJSON_AddNumberToObject(item, "timeout", GetSysTank()->tank[index].poolTimeout);
 
-                        cJSON_AddItemToArray(pool, item);
-                    }
+                    cJSON_AddItemToArray(pool, item);
                 }
             }
 

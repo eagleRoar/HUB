@@ -388,7 +388,11 @@ void SensorUart2TaskEntry(void* parameter)
                 //非法地址处理
                 deleteModule(GetMonitor(), 0);
 
-                //LOG_D("%d",changeIrAirCode(10));
+//                LOG_D("--------------------start = %s",sys_set.stageSet.starts);//Justin debug 仅仅测试
+//                char year[4];
+//                strncpy(year,sys_set.stageSet.starts,4);
+//                LOG_D("--------- year = %s",year);
+////                changeDataToTimestamp();
             }
 
             /* 60s 事件 */

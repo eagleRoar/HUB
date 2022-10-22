@@ -77,6 +77,7 @@ void insertPumpToTank(type_monitor_t *monitor, sys_tank_t *tank_list, u16 id)
                     tank_list->tank[item].highPhProtection = 1200;                 //PH 高停止值
                     tank_list->tank[item].color = 1;
                     tank_list->tank[item].pumpId = id;
+                    tank_list->tank[item].poolTimeout = 100;
                     tank_list->tank_size++;
                     //保存到SD卡
                     tank_list->saveFlag = YES;
@@ -277,11 +278,6 @@ void initCloudProtocol(void)
     sys_set.sysWarn.tempTimeoutseconds = 600;
     sys_set.sysWarn.humidTimeoutEn = ON;
     sys_set.sysWarn.humidTimeoutseconds = 600;
-
-    for(u8 index = 0; index < TANK_LIST_MAX; index++)
-    {
-        sys_set.sysWarn.poolTimeout[index] = 100;
-    }
 
     for(u8 index = 0; index < TANK_LIST_MAX; index++)
     {
@@ -1056,10 +1052,23 @@ void GetNowSysSet(proTempSet_t *tempSet, proCo2Set_t *co2Set, proHumiSet_t *humi
 
         if(RT_NULL != info)
         {
+            char year[5] = " ", mon[3] = " ", day[3] = " ";
             rt_memcpy(info->name, recipe->recipe[item].name, RECIPE_NAMESZ);
             info->name[RECIPE_NAMESZ] = '\0';
-            info->week = set->stageSet._list[index].duration_day / 7;//天化为星期
-            info->day = set->stageSet._list[index].duration_day % 7;
+            strncpy(year, set->stageSet.starts, 4);
+            year[4] = '\0';
+            strncpy(mon, &set->stageSet.starts[4], 2);
+            mon[2] = '\0';
+            strncpy(day, &set->stageSet.starts[6], 2);
+            day[2] = '\0';
+            time_t time = changeDataToTimestamp(atoi(year), atoi(mon), atoi(day), 0, 0, 0);
+            LOG_E("GetNowSysSet %d %d, year = %d %d %d",getTimeStamp() ,time ,atoi(year), atoi(mon), atoi(day));
+            if(getTimeStamp() > time)
+            {
+                info->week = (getTimeStamp() - time) / (24 * 60 * 60) / 7;//天化为星期
+                info->day = (getTimeStamp() - time) / (24 * 60 * 60) % 7;
+            }
+
         }
     }
 }
