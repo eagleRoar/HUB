@@ -2541,7 +2541,6 @@ void pumpDoing(u8 addr, u8 port)
 {
     u8                  item            = 0;
     type_sys_time       sys_time;
-    time_t              time_cycle      = 0;
     device_t            *device         = GetDeviceByAddr(GetMonitor(), addr);
 
     getRealTimeForMat(&sys_time);

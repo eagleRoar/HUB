@@ -263,6 +263,11 @@ u8 askDeviceHeart_new(type_monitor_t *monitor, rt_device_t serial, u8 event)
                     device->port[0].ctrl.d_state = value >> 8;
                     device->port[0].ctrl.d_value = value;
                 }
+                else if(IR_AIR_TYPE == device->port[port].type)
+                {
+                    device->port[0].ctrl.d_state = 0x60;
+                    device->port[0].ctrl.d_value = 0x00;
+                }
                 else
                 {
                     device->port[port].ctrl.d_state = OFF;

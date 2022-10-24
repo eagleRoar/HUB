@@ -166,6 +166,7 @@ u8 GetFuncByType(u8 type)
             ret = F_DEHUMI;
             break;
         case COOL_TYPE:
+        case IR_AIR_TYPE:
             ret = F_COOL;
             break;
         case VALVE_TYPE:

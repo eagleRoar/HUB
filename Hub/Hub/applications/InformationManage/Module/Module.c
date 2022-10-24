@@ -14,6 +14,7 @@
 #include "Module.h"
 #include "UartBussiness.h"
 #include "CloudProtocolBusiness.h"
+#include "UartDataLayer.h"
 
 extern void printLine(line_t);
 extern void GetNowSysSet(proTempSet_t *, proCo2Set_t *, proHumiSet_t *, proLine_t *, proLine_t *, struct recipeInfor *);
@@ -109,6 +110,8 @@ void changeDeviceType(type_monitor_t *monitor, u8 addr, u8 port, u8 type)
                 if(port < monitor->device[index].storage_size)
                 {
                     monitor->device[index].port[port].type = type;
+                    monitor->device[index].port[port].func = GetFuncByType(type);
+                    monitor->device[index].port[port].ctrl.d_state = OFF;
                 }
             }
         }
@@ -347,9 +350,20 @@ void CtrlAllDeviceByFunc(type_monitor_t *monitor, u8 func, u8 en, u8 value)
         {
             if(IR_AIR_TYPE == device->port[0].type)
             {
-                changeIrAirCode(temp, &res);
-                device->port[0].ctrl.d_state = res >> 8;
-                device->port[0].ctrl.d_value = res;
+                if(ON == en)
+                {
+                    changeIrAirCode(temp, &res);
+
+                    device->port[0].ctrl.d_state = res >> 8;
+                    device->port[0].ctrl.d_value = res;
+                }
+                else
+                {
+                    device->port[0].ctrl.d_state = 0x60;
+                    device->port[0].ctrl.d_value = 0x00;
+                }
+
+                LOG_D("res = %x",res);
             }
             else
             {
