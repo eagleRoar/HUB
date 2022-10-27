@@ -288,7 +288,8 @@ void SensorUart2TaskEntry(void* parameter)
                 {
                     //解决办法为如果发现存在失联的情况就再次全部重新分配
                     devRegisterAnswer(GetMonitor(), uart2_serial, GetMonitor()->device[allocate_i].uuid);
-                    LOG_E("send new add...................");//Justin debug 仅仅测试
+//                    LOG_E("send addr, name = %s, uuid = %x",
+//                            GetMonitor()->device[allocate_i].name, GetMonitor()->device[allocate_i].uuid);//Justin debug 仅仅测试
                     if(allocate_i < GetMonitor()->device_size - 1)
                     {
                         allocate_i++;
@@ -387,12 +388,6 @@ void SensorUart2TaskEntry(void* parameter)
 
                 //非法地址处理
                 deleteModule(GetMonitor(), 0);
-
-//                LOG_D("--------------------start = %s",sys_set.stageSet.starts);//Justin debug 仅仅测试
-//                char year[4];
-//                strncpy(year,sys_set.stageSet.starts,4);
-//                LOG_D("--------- year = %s",year);
-////                changeDataToTimestamp();
             }
 
             /* 60s 事件 */

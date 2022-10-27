@@ -362,8 +362,6 @@ void CtrlAllDeviceByFunc(type_monitor_t *monitor, u8 func, u8 en, u8 value)
                     device->port[0].ctrl.d_state = 0x60;
                     device->port[0].ctrl.d_value = 0x00;
                 }
-
-                LOG_D("res = %x",res);
             }
             else
             {
@@ -570,7 +568,7 @@ void changeIrAirCode(u16 temp, u16 *ret)
     //以下操作按照红外协议
     if(temp / 10 >= 16)
     {
-        *ret |= ((temp / 10) - 16) | 0x0f;
+        *ret |= ((temp / 10) - 16);
     }
 }
 

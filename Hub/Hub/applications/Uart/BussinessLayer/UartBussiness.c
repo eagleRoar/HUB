@@ -361,12 +361,12 @@ u8 askDeviceHeart_new(type_monitor_t *monitor, rt_device_t serial, u8 event)
             if(((AC_4_TYPE == device->type) || (IO_4_TYPE == device->type)) &&
                     (YES != special[ask_device]))
             {
-                //LOG_W("ask ac_4 port");
+//                LOG_W("ask ac_4 port");
                 buffer[1] = READ_MUTI;
-                buffer[2] = (0x0440 >> 8) & 0x00FF;
-                buffer[3] = 0x0440 & 0x00FF;
-                buffer[4] = (device->storage_size >> 8) & 0x00FF;
-                buffer[5] = device->storage_size & 0x00FF;
+                buffer[2] = 0x04;
+                buffer[3] = 0x40;
+                buffer[4] = device->storage_size >> 8;
+                buffer[5] = device->storage_size;
             }
             else
             {
@@ -389,7 +389,9 @@ u8 askDeviceHeart_new(type_monitor_t *monitor, rt_device_t serial, u8 event)
         buffer[7] = (crc16Result>>8);                        //CRC16高位
 
         rt_device_write(serial, 0, buffer, 8);
-        //LOG_I("ask device name %s, addr %x",device->name,device->addr);
+//        LOG_I("ask device name %s, addr %x",device->name,device->addr);
+//        LOG_D("send data %x %x %x %x %x %x %x %x",
+//                buffer[0],buffer[1],buffer[2],buffer[3],buffer[4],buffer[5],buffer[6],buffer[7]);
         devConnectState[ask_device].send_count ++;
         if(devConnectState[ask_device].send_count >= CONNRCT_MISS_MAX)
         {
@@ -571,15 +573,15 @@ void AnlyzeModuleInfo(type_monitor_t *monitor, u8 *data, u8 dataLen)
             replyStrorageType(monitor, data[0], &data[3], data[2]);
         }
         UpdateModuleConnect(monitor, data[0]);
-        /*if(RT_NULL != GetDeviceByAddr(monitor, data[0]))
-        {
-            LOG_W("recv device name %s",GetDeviceByAddr(monitor, data[0])->name);
-            for(u8 index = 0; index < dataLen; index++)
-            {
-                rt_kprintf("%x ",data[index]);
-            }
-            rt_kprintf("\r\n");
-        }*/
+//        if(RT_NULL != GetDeviceByAddr(monitor, data[0]))
+//        {
+//            LOG_W("recv device name %s",GetDeviceByAddr(monitor, data[0])->name);
+//            for(u8 index = 0; index < dataLen; index++)
+//            {
+//                rt_kprintf("%x ",data[index]);
+//            }
+//            rt_kprintf("\r\n");
+//        }
     }
 }
 

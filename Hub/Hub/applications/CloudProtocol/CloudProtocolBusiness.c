@@ -4173,6 +4173,17 @@ char *ReplyGetDeviceList(char *cmd, type_kv_c16 msgid)
                                 cJSON_AddNumberToObject(item, "workingStatus", OFF);
                             }
                         }
+                        else if(IR_AIR_TYPE == module->port[0].type)
+                        {
+                            if(0 == (module->port[0].ctrl.d_state & 0x80))
+                            {
+                                cJSON_AddNumberToObject(item, "workingStatus", OFF);
+                            }
+                            else
+                            {
+                                cJSON_AddNumberToObject(item, "workingStatus", ON);
+                            }
+                        }
                         else
                         {
                             cJSON_AddNumberToObject(item, "workingStatus", module->port[0].ctrl.d_state);

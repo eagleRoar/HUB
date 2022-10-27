@@ -1062,7 +1062,6 @@ void GetNowSysSet(proTempSet_t *tempSet, proCo2Set_t *co2Set, proHumiSet_t *humi
             strncpy(day, &set->stageSet.starts[6], 2);
             day[2] = '\0';
             time_t time = changeDataToTimestamp(atoi(year), atoi(mon), atoi(day), 0, 0, 0);
-            LOG_E("GetNowSysSet %d %d, year = %d %d %d",getTimeStamp() ,time ,atoi(year), atoi(mon), atoi(day));
             if(getTimeStamp() > time)
             {
                 info->week = (getTimeStamp() - time) / (24 * 60 * 60) / 7;//天化为星期
