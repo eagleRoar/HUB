@@ -16,7 +16,8 @@
 #define     VALUE_NULL                      -9999       //如果没有值上传给MQTT的值
 
 #define     ALLOCATE_ADDRESS_SIZE           100
-#define     MODULE_NAMESZ                   8
+#define     HUB_NAMESZ                      13
+#define     MODULE_NAMESZ                   9
 #define     STORAGE_NAMESZ                  8
 #define     RECIPE_NAMESZ                   8
 #define     STORAGE_MAX                     12
@@ -60,7 +61,7 @@ typedef     struct eth_heart                eth_heart_t;
 #define     MANUAL_TIME_DEFAULT             10
 struct hub{
     u16 crc;
-    char name[MODULE_NAMESZ];
+    char name[HUB_NAMESZ];
     u8 nameSeq;   //名称序号 仅仅提供给主机使用
 };
 
@@ -341,19 +342,20 @@ struct monitor
 #define     PHEC_TYPE       0x05
 #define     PAR_TYPE        0x08
 #define     WATERlEVEL_TYPE 0x0A
-#define     CO2_TYPE        0x41
+#define     CO2_UP_TYPE     0x41
 #define     HEAT_TYPE       0x42
 #define     HUMI_TYPE       0x43
 #define     DEHUMI_TYPE     0x44
 #define     COOL_TYPE       0x45
 #define     VALVE_TYPE      0x49        //阀
+#define     CO2_DOWN_TYPE   0x4A
 #define     PUMP_TYPE       0x4B        //水泵
 #define     TIMER_TYPE      0x4f
 #define     HVAC_6_TYPE     0x61
 #define     AC_4_TYPE       0x50
 #define     IO_12_TYPE      0x80
 #define     IO_4_TYPE       0x81
-#define     IR_AIR_TYPE          0xB4        //红外空调
+#define     IR_AIR_TYPE     0xB4        //红外空调
 
 /**************************************从机 End*******************************************/
 
@@ -442,6 +444,14 @@ enum
     DOWNLOAD_FAIL,
     DOWNLOAD_NONEED,
     DOWNLOAD_OK
+};
+
+//Co2 校准状态
+enum
+{
+    CAL_NO = 0,
+    CAL_INCAL,
+    CAL_YES,
 };
 
 /******************************************* 类型定义 END*****************************/

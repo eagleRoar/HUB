@@ -280,6 +280,9 @@ rt_err_t TackSysSetFromSD(sys_set_t *set)
             }
             ret = RT_ERROR;
         }
+
+        //co2校准标志要置为初始状态
+        GetSysSet()->startCalFlg = NO;
     }
 
     return ret;

@@ -95,17 +95,14 @@ void EnterBtnCallBack(u8 type)
 {
     if(SHORT_PRESS == type)
     {
-//        LOG_D("---------------BUTTON_ENTER short");
         //唤醒屏幕
         wakeUpOledBackLight(&backlightTime);
-//        clear_screen();
         pageSelect.select = ON;
         //提示界面刷新
         reflash_flag = ON;
     }
     else if(LONG_PRESS == type)
     {
-//        LOG_D("---------------BUTTON_ENTER long");
         clear_screen();
         pageInfor = pageInfor >> 8;
         reflash_flag = ON;
@@ -117,7 +114,6 @@ void UpBtnCallBack(u8 type)
     {
         //唤醒屏幕
         wakeUpOledBackLight(&backlightTime);
-//        clear_screen();
         if(pageSelect.cusor > pageSelect.cusor_home)
         {
             pageSelect.cusor--;
@@ -128,7 +124,6 @@ void UpBtnCallBack(u8 type)
         }
         //提示界面刷新
         reflash_flag = ON;
-        //LOG_D("cusor %d",pageSelect.cusor);
     }
 }
 void DowmBtnCallBack(u8 type)
@@ -137,7 +132,6 @@ void DowmBtnCallBack(u8 type)
     {
         //唤醒屏幕
         wakeUpOledBackLight(&backlightTime);
-//        clear_screen();
         if(pageSelect.cusor_max > 0)
         {
             if(pageSelect.cusor < pageSelect.cusor_max)
@@ -167,16 +161,17 @@ static void pageSetting(u8 page)
     switch (page)
     {
         case HOME_PAGE:
-
-            pageSelectSet(YES, 1, 4);
+            pageSelectSet(YES, 1, 5);
             break;
-        case SENSOR_STATE_PAGE:
 
+        case SENSOR_STATE_PAGE:
             pageSelectSet(NO, 0, 0);
             break;
+
         case DEVICE_STATE_PAGE:
             pageSelectSet(NO, 0, 0);
             break;
+
         case QRCODE_PAGE:
             pageSelectSet(NO, 0, 0);
             break;
@@ -184,6 +179,11 @@ static void pageSetting(u8 page)
         case APP_UPDATE_PAGE:
             pageSelectSet(NO, 1, 2);
             break;
+
+        case CO2_CALIBRATE_PAGE:
+            pageSelectSet(NO, 1, 2);
+            break;
+
         default:
             break;
     }
@@ -227,21 +227,25 @@ static void pageProgram(u8 page)
                     pageInfor <<= 8;
                     pageInfor |= APP_UPDATE_PAGE;
                 }
+                else if(5 == pageSelect.cusor)
+                {
+                    pageInfor <<= 8;
+                    pageInfor |= CO2_CALIBRATE_PAGE;
+                }
                 pageSelect.select = OFF;
             }
 
             break;
 
         case SENSOR_STATE_PAGE:
-//            LOG_D("SENSOR_STATE_PAGE");
             SensorStatePage_new(GetMonitor());
             break;
+
         case DEVICE_STATE_PAGE:
             DeviceStatePage_new(GetMonitor());
             break;
 
         case QRCODE_PAGE:
-//            clear_screen();
             qrcode();
             ST7567_UpdateScreen();
             break;
@@ -249,6 +253,11 @@ static void pageProgram(u8 page)
         case APP_UPDATE_PAGE:
             UpdateAppProgram(&pageSelect, &pageInfor);
             break;
+
+        case CO2_CALIBRATE_PAGE:
+            co2CalibratePage(&pageSelect, &pageInfor);
+            break;
+
         default:
             break;
     }
@@ -266,7 +275,6 @@ void OledTaskEntry(void* parameter)
     static      u8              nowPagePre          = 0xFF;
 
     st7567Init();
-//    LCD_Test();
     pageInfor <<= 8;
     pageInfor |= HOME_PAGE;
 
@@ -298,7 +306,7 @@ void OledTaskEntry(void* parameter)
         if(ON == Timer1sTouch)
         {
             monitorBackLight(backlightTime);
-            if(HOME_PAGE == nowPage)
+            if((HOME_PAGE == nowPage) || (CO2_CALIBRATE_PAGE == nowPage))
             {
                 //需要刷新
                 reflash_flag = ON;

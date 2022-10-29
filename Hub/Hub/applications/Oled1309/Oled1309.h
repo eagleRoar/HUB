@@ -35,6 +35,7 @@ struct pageSelect
 #define     DEVICE_STATE_PAGE       0x03//主页面
 #define     QRCODE_PAGE             0x04//主页面
 #define     APP_UPDATE_PAGE         0x05//主页面
+#define     CO2_CALIBRATE_PAGE      0x06//CO2校准
 
 //二级界面
 //#define     HOME_PAGE       0x01//主页面

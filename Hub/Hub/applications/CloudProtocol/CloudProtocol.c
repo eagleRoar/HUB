@@ -1098,7 +1098,7 @@ void tempProgram(type_monitor_t *monitor)
             HeatTarge = tempSet.nightHeatingTarget;
         }
 
-        //LOG_W("now temp %d, cooltar = %d, heatTar = %d",tempNow,coolTarge,HeatTarge);
+//        LOG_W("now temp %d, cooltar = %d, heatTar = %d",tempNow,coolTarge,HeatTarge);
 
         if(tempNow >= coolTarge)
         {
@@ -1328,7 +1328,6 @@ void lineProgram_new(type_monitor_t *monitor, u8 line_no, u16 mPeroid)
     {
         //3.1 如果是定时器模式 那就需要看看是否处于定时器范围内
         //3.1.1 处于正常的一天内
-
         if(line_set.lightOn < line_set.lightOff)
         {
             if(time.hour * 60 * 60 + time.minute * 60 + time.second > line_set.lightOn * 60)
@@ -1400,6 +1399,7 @@ void lineProgram_new(type_monitor_t *monitor, u8 line_no, u16 mPeroid)
                 if(line_set.lightOff + 24 * 60 <= line_set.lightOn + line_set.sunriseSunSet)
                 {
                     sunriseFlg = LINE_UP;
+                    LOG_E("test 1");//Justin debug
                 }
                 // 3.1.2 sunriseSunSet <= lightOff - lightOn &&  2*sunriseSunSet >= lightOff - lightOn  该过程有上升过程 下降过程不完整
                 else if((line_set.lightOff + 24 * 60 >= line_set.lightOn + line_set.sunriseSunSet) &&
@@ -1408,10 +1408,12 @@ void lineProgram_new(type_monitor_t *monitor, u8 line_no, u16 mPeroid)
                     if(now_time + 24 * 60 * 60 <= (line_set.sunriseSunSet + line_set.lightOn) * 60)
                     {
                         sunriseFlg = LINE_UP;
+                        LOG_E("test 2");//Justin debug
                     }
                     else
                     {
                         sunriseFlg = LINE_DOWN;
+                        LOG_E("test 3");//Justin debug
                     }
                 }
                 // 3.1.3 2*sunriseSunSet < lightOff - lightOn  该过程有上升过程 下降过程 恒定过程
@@ -1420,21 +1422,26 @@ void lineProgram_new(type_monitor_t *monitor, u8 line_no, u16 mPeroid)
                     if(now_time <= (line_set.sunriseSunSet + line_set.lightOff) * 60)
                     {
                         sunriseFlg = LINE_UP;
+                        LOG_E("test 4");//Justin debug
                     }
                     //now_time - lightOn < lightOff - lightOn - sunriseSunSet 恒定
                     else if(now_time + line_set.sunriseSunSet * 60 < line_set.lightOff * 60)
                     {
                         sunriseFlg = LINE_STABLE;
+                        LOG_E("test 5");//Justin debug
                     }
                     else
                     {
                         sunriseFlg = LINE_DOWN;
+                        LOG_E("test 6");//Justin debug
                     }
                 }
             }
             else
             {
                 state = OFF;
+                LOG_E("test 7");//Justin debug
+                LOG_I("time1 = %d, time2 = %d",time.hour * 60 * 60 + time.minute * 60 + time.second, line_set.lightOff * 60);
             }
         }
     }
@@ -1807,36 +1814,43 @@ void co2Program(type_monitor_t *monitor, u16 mPeriod)
             co2Target = co2Set.nightCo2Target;
         }
 
-        if(ON == sys_set.co2Set.isFuzzyLogic)
+        if(DAY_TIME == GetSysSet()->dayOrNight)
         {
-            //检测当前
-            //开10s 再关闭 10秒
-            if((runTime < 10 * 1000) && (co2Now <= co2Target))
+            if(ON == sys_set.co2Set.isFuzzyLogic)
             {
-                runTime += mPeriod;
-                switchFlg = 1;
-            }
-            else
-            {
-                switchFlg = 0;
-                if(stopTime < 10 * 1000)
+                //检测当前
+                //开10s 再关闭 10秒
+                if((runTime < 10 * 1000) && (co2Now <= co2Target))
                 {
-                    stopTime += mPeriod;
+                    runTime += mPeriod;
+                    switchFlg = 1;
                 }
                 else
                 {
-                    runTime = 0;
-                    stopTime = 0;
+                    switchFlg = 0;
+                    if(stopTime < 10 * 1000)
+                    {
+                        stopTime += mPeriod;
+                    }
+                    else
+                    {
+                        runTime = 0;
+                        stopTime = 0;
+                    }
                 }
-            }
 
-            if(1 == switchFlg)
-            {
-                if(!((ON == co2Set.dehumidifyLock && ON == GetDeviceByType(monitor, DEHUMI_TYPE)->port[0].ctrl.d_state) ||
-                     (ON == co2Set.coolingLock && (ON == GetDeviceByType(monitor, COOL_TYPE)->port[0].ctrl.d_state
-                      || GetDeviceByType(monitor, HVAC_6_TYPE)->port[0].ctrl.d_value & 0x08))))
+                if(1 == switchFlg)
                 {
-                    CtrlAllDeviceByFunc(monitor, F_Co2_UP, ON, 0);
+                    if(!((ON == co2Set.dehumidifyLock && ON == GetDeviceByType(monitor, DEHUMI_TYPE)->port[0].ctrl.d_state) ||
+                         (ON == co2Set.coolingLock && (ON == GetDeviceByType(monitor, COOL_TYPE)->port[0].ctrl.d_state
+                          || GetDeviceByType(monitor, HVAC_6_TYPE)->port[0].ctrl.d_value & 0x08))))
+                    {
+                        CtrlAllDeviceByFunc(monitor, F_Co2_UP, ON, 0);
+                    }
+                    else
+                    {
+                        CtrlAllDeviceByFunc(monitor, F_Co2_UP, OFF, 0);
+                    }
                 }
                 else
                 {
@@ -1845,29 +1859,36 @@ void co2Program(type_monitor_t *monitor, u16 mPeriod)
             }
             else
             {
-                CtrlAllDeviceByFunc(monitor, F_Co2_UP, OFF, 0);
+                if(co2Now <= co2Target)
+                {
+                    //如果和制冷联动 则制冷的时候不增加co2
+                    //如果和除湿联动 则除湿的时候不增加co2
+                    if(!((ON == co2Set.dehumidifyLock && ON == GetDeviceByType(monitor, DEHUMI_TYPE)->port[0].ctrl.d_state) ||
+                         (ON == co2Set.coolingLock && (ON == GetDeviceByType(monitor, COOL_TYPE)->port[0].ctrl.d_state
+                          || GetDeviceByType(monitor, HVAC_6_TYPE)->port[0].ctrl.d_value & 0x08))))
+                    {
+                        CtrlAllDeviceByFunc(monitor, F_Co2_UP, ON, 0);
+                    }
+                    else
+                    {
+                        CtrlAllDeviceByFunc(monitor, F_Co2_UP, OFF, 0);
+                    }
+                }
+                else if(co2Now >= co2Target + co2Set.co2Deadband)
+                {
+                    CtrlAllDeviceByFunc(monitor, F_Co2_UP, OFF, 0);
+                }
             }
         }
-        else
+        else if(NIGHT_TIME == GetSysSet()->dayOrNight)
         {
-            if(co2Now <= co2Target)
+            if(co2Now > co2Target)
             {
-                //如果和制冷联动 则制冷的时候不增加co2
-                //如果和除湿联动 则除湿的时候不增加co2
-                if(!((ON == co2Set.dehumidifyLock && ON == GetDeviceByType(monitor, DEHUMI_TYPE)->port[0].ctrl.d_state) ||
-                     (ON == co2Set.coolingLock && (ON == GetDeviceByType(monitor, COOL_TYPE)->port[0].ctrl.d_state
-                      || GetDeviceByType(monitor, HVAC_6_TYPE)->port[0].ctrl.d_value & 0x08))))
-                {
-                    CtrlAllDeviceByFunc(monitor, F_Co2_UP, ON, 0);
-                }
-                else
-                {
-                    CtrlAllDeviceByFunc(monitor, F_Co2_UP, OFF, 0);
-                }
+                CtrlAllDeviceByFunc(monitor, F_Co2_DOWN, ON, 0);
             }
-            else if(co2Now >= co2Target + co2Set.co2Deadband)
+            else if(co2Now + co2Set.co2Deadband <= co2Target)
             {
-                CtrlAllDeviceByFunc(monitor, F_Co2_UP, OFF, 0);
+                CtrlAllDeviceByFunc(monitor, F_Co2_DOWN, OFF, 0);
             }
         }
     }
@@ -2829,3 +2850,119 @@ void autoBindPumpTotank(type_monitor_t *monitor, sys_tank_t *tank_list)
     }
 }
 
+//co2定标,处于ppm 420环境中
+void co2Calibrate(type_monitor_t *monitor, int *data, u8 *do_cal_flg, u8 *saveFlg)
+{
+    u8              index                   = 0;        //
+    u8              port                    = 0;
+    sensor_t        *sensor                 = RT_NULL;
+    static u8       cal_flag[SENSOR_MAX]    = {0};      //标记是否校准完成
+    static u8       cal_cnt[SENSOR_MAX]     = {0};      //计算校准的计数
+    static time_t   start_time[SENSOR_MAX]  = {0};      //开始校准时间
+    static int      cal_data[SENSOR_MAX][10];
+    static u8       do_cal_pre              = 0xFF;
+    static u8       haveCo2[SENSOR_MAX]     = {0};      //标记是否有co2
+
+//    LOG_I("co2Calibrate test, flg1 %x, flg2 %x",do_cal_pre,*do_cal_flg);      //Justin debug 仅仅测试
+    if(do_cal_pre != *do_cal_flg)
+    {
+        if(YES == *do_cal_flg)
+        {
+//            LOG_I("co2Calibrate test1");      //Justin debug 仅仅测试
+            for(index = 0; index < monitor->sensor_size; index++)
+            {
+                start_time[index] = getTimeStamp();
+                cal_flag[index] = CAL_INCAL;
+            }
+        }
+        do_cal_pre = *do_cal_flg;
+    }
+
+    //校准逻辑:
+    //1分钟内数值趋于稳定的时候取10组进行平均
+    for(index = 0; index < monitor->sensor_size; index++)
+    {
+        sensor = &monitor->sensor[index];
+        for(port = 0; port < SENSOR_VALUE_MAX; port++)
+        {
+            if(sensor->__stora[port].func == F_S_CO2)
+            {
+                if(CAL_INCAL == cal_flag[index])
+                {
+                    LOG_I("co2Calibrate test2");      //Justin debug 仅仅测试
+                    //2.如果在1分钟之内,能够稳定的取到10组数据
+                    if(getTimeStamp() < start_time[index] + 60)
+                    {
+                        LOG_I("co2Calibrate test3");
+                        //3.标记当前采集的第几组数据
+                        if(cal_cnt[index] < 9)
+                        {
+                            cal_cnt[index]++;
+                            cal_data[index][cal_cnt[index]] = sensor->__stora[port].value;
+                            //3.1如果出现异常,重新采集10组
+                            if(abs(cal_data[index][cal_cnt[index]] - 420) > 300)
+                            {
+                                cal_cnt[index] = 0;
+                            }
+                        }
+                        else
+                        {
+                            //4.采集完毕进行平均
+                            for(int group = 0; group < 10; group++)
+                            {
+                                data[index] += cal_data[index][group];
+                            }
+                            data[index] /= 10;
+
+                            if(data[index] >= 420)
+                            {
+                                data[index] = 420 - data[index];
+                            }
+                            else
+                            {
+                                data[index] = data[index] - 420;
+                            }
+
+                            cal_flag[index] = CAL_YES;
+                            cal_cnt[index] = 0;
+                        }
+                    }
+                    else
+                    {
+                        cal_flag[index] = CAL_YES;
+                        cal_cnt[index] = 0;
+                    }
+                }
+                haveCo2[index] = YES;
+            }
+        }
+
+        if(YES != haveCo2[index])
+        {
+            cal_flag[index] = CAL_YES;
+            cal_cnt[index] = 0;
+            data[index] = 0;
+        }
+    }
+
+    for(index = 0; index < monitor->sensor_size; index++)
+    {
+        if(CAL_YES != cal_flag[index])
+        {
+            break;
+        }
+    }
+
+    if(index == monitor->sensor_size)
+    {
+        *do_cal_flg = NO;
+        do_cal_pre = NO;
+        *saveFlg = YES;
+
+        //Justin debug 仅仅测试
+        for(index = 0; index < monitor->sensor_size; index++)
+        {
+            LOG_E("index = %d, data = %d",index,data[index]);
+        }
+    }
+}

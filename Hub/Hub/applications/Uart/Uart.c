@@ -91,7 +91,11 @@ static rt_err_t Uart2_input(rt_device_t dev, rt_size_t size)
     uart2_msg.dev = dev;
     uart2_msg.size = size;
     rt_device_read(uart2_msg.dev, 0, uart2_msg.data, uart2_msg.size);
-
+    for(int i = 0; i < uart2_msg.size; i++)
+    {
+        rt_kprintf("%x ",uart2_msg.data[i]);
+    }
+    rt_kprintf("\r\n");
     if(2 > size)
     {
         return RT_ERROR;
@@ -314,7 +318,7 @@ void SensorUart2TaskEntry(void* parameter)
                 co2Program(GetMonitor(), 1000);
                 humiProgram(GetMonitor());
                 lineProgram_new(GetMonitor(), 0, 1000);
-                lineProgram_new(GetMonitor(), 1, 1000);             //line2
+//                lineProgram_new(GetMonitor(), 1, 1000);             //line2//Justin debug  仅仅测试
 #elif(HUB_SELECT == HUB_IRRIGSTION)
                 pumpProgram(GetMonitor(), GetSysTank());            //水泵的工作
                 autoBindPumpTotank(GetMonitor(), GetSysTank());
@@ -379,6 +383,12 @@ void SensorUart2TaskEntry(void* parameter)
                 findDeviceLocation(GetMonitor(), &sys_set.cloudCmd, uart2_serial);
                 findLineLocation(GetMonitor(), &sys_set.cloudCmd, uart3_serial);
                 warnProgram(GetMonitor(), GetSysSet());             //监听告警信息
+
+                //co2 校准
+                if(YES == GetSysSet()->startCalFlg)
+                {
+                    co2Calibrate(GetMonitor(), GetSysSet()->co2Cal, &GetSysSet()->startCalFlg, &GetSysSet()->saveFlag);
+                }
             }
 
             /* 3s 事件*/
@@ -388,6 +398,8 @@ void SensorUart2TaskEntry(void* parameter)
 
                 //非法地址处理
                 deleteModule(GetMonitor(), 0);
+
+//                CtrlAllDeviceByFunc(GetMonitor(), F_COOL, 1, 0);//Justin debug
             }
 
             /* 60s 事件 */

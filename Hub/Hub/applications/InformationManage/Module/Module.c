@@ -346,27 +346,31 @@ void CtrlAllDeviceByFunc(type_monitor_t *monitor, u8 func, u8 en, u8 value)
     for(index = 0;index < monitor->device_size; index++)
     {
         device = &monitor->device[index];
-        if(func == device->port[0].func)
+        if(1 == device->storage_size)
         {
-            if(IR_AIR_TYPE == device->port[0].type)
+            if(func == device->port[0].func)
             {
-                if(ON == en)
+                if((IR_AIR_TYPE == device->port[0].type))
                 {
-                    changeIrAirCode(temp, &res);
+                    if(ON == en)
+                    {
+                        changeIrAirCode(temp, &res);
 
-                    device->port[0].ctrl.d_state = res >> 8;
-                    device->port[0].ctrl.d_value = res;
+                        device->port[0].ctrl.d_state = res >> 8;
+                        device->port[0].ctrl.d_value = res;
+                        LOG_D("ir %x %x",device->port[0].ctrl.d_state,device->port[0].ctrl.d_value);
+                    }
+                    else
+                    {
+                        device->port[0].ctrl.d_state = 0x60;
+                        device->port[0].ctrl.d_value = 0x00;
+                    }
                 }
                 else
                 {
-                    device->port[0].ctrl.d_state = 0x60;
-                    device->port[0].ctrl.d_value = 0x00;
+                    device->port[0].ctrl.d_state = en;
+                    device->port[0].ctrl.d_value = value;
                 }
-            }
-            else
-            {
-                device->port[0].ctrl.d_state = en;
-                device->port[0].ctrl.d_value = value;
             }
         }
         else
@@ -540,6 +544,16 @@ int getSensorDataByFunc(type_monitor_t *monitor, u8 func)
                 if(func == sensor->__stora[port].func)
                 {
                     num++;
+                    if(F_S_CO2 == sensor->__stora[port].func)
+                    {
+                        sensor->__stora[port].value += GetSysSet()->co2Set.co2Corrected + GetSysSet()->co2Cal[index];
+                    }
+
+                    if(F_S_WL == sensor->__stora[port].func)
+                    {
+                        sensor->__stora[port].value /= 10;
+                    }
+
                     data += sensor->__stora[port].value;
                 }
             }
@@ -559,16 +573,15 @@ int getSensorDataByFunc(type_monitor_t *monitor, u8 func)
     return data;
 }
 
-
 //如果30 度 那么temp = 300
 void changeIrAirCode(u16 temp, u16 *ret)
 {
-    *ret |= 0xE0;
+    *ret |= 0xE000;
 
     //以下操作按照红外协议
     if(temp / 10 >= 16)
     {
-        *ret |= ((temp / 10) - 16);
+        *ret |= (((temp / 10) - 16) << 8);
     }
 }
 

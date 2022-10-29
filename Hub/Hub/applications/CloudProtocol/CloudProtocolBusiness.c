@@ -1012,7 +1012,7 @@ void CmdSetHubName(char *data, cloudcmd_t *cmd)
     if(RT_NULL != temp)
     {
         GetValueC16(temp, &cmd->msgid);
-        GetValueByC16(temp, "name", GetHub()->name, MODULE_NAMESZ);
+        GetValueByC16(temp, "name", GetHub()->name, HUB_NAMESZ);
         GetValueByU8(temp, "nameSeq", &GetHub()->nameSeq);
 
         cJSON_Delete(temp);
@@ -4116,6 +4116,7 @@ char *ReplyGetDeviceList(char *cmd, type_kv_c16 msgid)
     u8              index       = 0;
     u8              line_no     = 0;
     u8              storage     = 0;
+    u8              work_state  = 0;
     char            *str        = RT_NULL;
     char            name[16];
     device_t        *module;
@@ -4162,32 +4163,53 @@ char *ReplyGetDeviceList(char *cmd, type_kv_c16 msgid)
                     {
                         cJSON_AddNumberToObject(item, "manual", module->port[0].manual.manual);
 
-                        if(HVAC_6_TYPE == module->port[0].type)
+                        //非手动
+                        if(MANUAL_NO_HAND == module->port[0].manual.manual)
                         {
-                            if(((module->port[0].ctrl.d_state << 8) + module->port[0].ctrl.d_value) > 0)
+                            if(HVAC_6_TYPE == module->port[0].type)
                             {
-                                cJSON_AddNumberToObject(item, "workingStatus", ON);
+                                if(((module->port[0].ctrl.d_state << 8) + module->port[0].ctrl.d_value) > 0)
+                                {
+                                    work_state = ON;
+                                }
+                                else
+                                {
+                                    work_state = OFF;
+                                }
+                            }
+                            else if(IR_AIR_TYPE == module->port[0].type)
+                            {
+                                LOG_D("---------ir %x %x",module->port[0].ctrl.d_state,module->port[0].ctrl.d_value);//Justin debug
+                                if(0 == (module->port[0].ctrl.d_state & 0x80))
+                                {
+                                    work_state = OFF;
+                                }
+                                else
+                                {//Justin debug
+                                    work_state = ON;
+                                }
                             }
                             else
                             {
-                                cJSON_AddNumberToObject(item, "workingStatus", OFF);
+                                work_state = module->port[0].ctrl.d_state;
                             }
                         }
-                        else if(IR_AIR_TYPE == module->port[0].type)
+                        else if(MANUAL_HAND_ON == module->port[0].manual.manual)
                         {
-                            if(0 == (module->port[0].ctrl.d_state & 0x80))
-                            {
-                                cJSON_AddNumberToObject(item, "workingStatus", OFF);
-                            }
-                            else
-                            {
-                                cJSON_AddNumberToObject(item, "workingStatus", ON);
-                            }
+                            work_state = ON;
                         }
-                        else
+                        else if(MANUAL_HAND_OFF == module->port[0].manual.manual)
                         {
-                            cJSON_AddNumberToObject(item, "workingStatus", module->port[0].ctrl.d_state);
+                            work_state = OFF;
                         }
+
+                        if(CON_FAIL == module->conn_state)
+                        {
+                            work_state = OFF;
+                        }
+
+                        cJSON_AddNumberToObject(item, "workingStatus", work_state);
+
                         cJSON_AddNumberToObject(item, "color", getColorFromTankList(module->addr, GetSysTank()));
                         if(PUMP_TYPE == module->port[0].type)
                         {
@@ -4236,21 +4258,39 @@ char *ReplyGetDeviceList(char *cmd, type_kv_c16 msgid)
                                     cJSON_AddNumberToObject(port, "id", module->port[storage].addr);
                                     cJSON_AddNumberToObject(port, "manual", module->port[storage].manual.manual);
 
-                                    if(HVAC_6_TYPE == module->port[storage].type)
+                                    if(MANUAL_NO_HAND == module->port[storage].manual.manual)
                                     {
-                                        if(((module->port[storage].ctrl.d_state << 8) + module->port[storage].ctrl.d_value) > 0)
+                                        if(HVAC_6_TYPE == module->port[storage].type)
                                         {
-                                            cJSON_AddNumberToObject(port, "workingStatus", ON);
+                                            if(((module->port[storage].ctrl.d_state << 8) + module->port[storage].ctrl.d_value) > 0)
+                                            {
+                                                work_state = ON;
+                                            }
+                                            else
+                                            {
+                                                work_state = OFF;
+                                            }
                                         }
                                         else
                                         {
-                                            cJSON_AddNumberToObject(port, "workingStatus", OFF);
+                                            work_state = module->port[storage].ctrl.d_state;
                                         }
                                     }
-                                    else
+                                    else if(MANUAL_HAND_ON == module->port[storage].manual.manual)
                                     {
-                                        cJSON_AddNumberToObject(port, "workingStatus", module->port[storage].ctrl.d_state);
+                                        work_state = ON;
                                     }
+                                    else if(MANUAL_HAND_OFF == module->port[storage].manual.manual)
+                                    {
+                                        work_state = OFF;
+                                    }
+
+                                    if(CON_FAIL == module->conn_state)
+                                    {
+                                        work_state = OFF;
+                                    }
+
+                                    cJSON_AddNumberToObject(port, "workingStatus", work_state);
 
                                     cJSON_AddNumberToObject(port, "color",
                                             getColorFromTankList((module->addr << 8) | storage, GetSysTank()));

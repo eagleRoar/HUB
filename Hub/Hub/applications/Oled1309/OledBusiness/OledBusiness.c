@@ -23,20 +23,16 @@ char    data[80];
 extern void GetUpdataFileFromWeb(u8 *ret);
 void HomePage_new(type_page_t page, u8 canShow)
 {
-//    time_t      now;
     char        time[16]    = "";
     char        temp[2];
     char        temp3;
     char        temp1[4];
-    char        show[4][16] = {"Sensor State", "Device State", "QR Code", "Update App"};
+    char        show[5][16] = {"Sensor State", "Device State", "QR Code", "Update App", "Co2 Calibrate"};
     type_sys_time   sys_time;
     u8          line        = LINE_HIGHT;
     u8          column      = 0;
 
-//    clear_screen();
-
     //1.显示时间
-//    now = time(RT_NULL);
     if(TIME_STYLE_12H == GetSysSet()->sysPara.timeFormat)
     {
         getRealTimeForMat(&sys_time);
@@ -602,8 +598,6 @@ void UpdateAppProgram(type_page_t *page, u32 *info)
                 ST7567_GotoXY(LINE_HIGHT, 0);
                 ST7567_Puts("Download OK", &Font_8x16, 1);
                 ST7567_UpdateScreen();
-
-                //*info >>= 8;
             }
             else if(DOWNLOAD_NONEED == downloadRes)
             {
@@ -612,7 +606,6 @@ void UpdateAppProgram(type_page_t *page, u32 *info)
                 ST7567_GotoXY(LINE_HIGHT, 0);
                 ST7567_Puts("Version is Last", &Font_8x16, 1);
                 ST7567_UpdateScreen();
-                //*info >>= 8;
             }
         }
         page->select = OFF;
@@ -621,3 +614,59 @@ void UpdateAppProgram(type_page_t *page, u32 *info)
     //5.刷新界面
     ST7567_UpdateScreen();
 }
+
+void co2CalibratePage(type_page_t *page, u32 *info)
+{
+    if(NO == GetSysSet()->startCalFlg)
+    {
+        //1.
+        ST7567_GotoXY(LINE_HIGHT, 0);
+        ST7567_Puts("Start Co2 Cali-", &Font_8x16, 1);
+        ST7567_GotoXY(LINE_HIGHT, 16);
+        ST7567_Puts("bration", &Font_8x16, 1);
+        //2.
+        ST7567_GotoXY(40, 16 * 2);
+        ST7567_Puts("No", &Font_12x24, (1 == page->cusor) ? 0 : 1);
+        ST7567_GotoXY(64, 16 * 2);
+        ST7567_Puts("Yes", &Font_12x24, (2 == page->cusor) ? 0 : 1);
+
+        if(ON == page->select)
+        {
+            //如果是否的话就返回
+            if(1 == page->cusor)
+            {
+                *info >>= 8;
+            }
+            else
+            {
+                GetSysSet()->startCalFlg = YES;
+                ST7567_GotoXY(LINE_HIGHT, 0);
+                ST7567_Puts("Calibrate now..", &Font_8x16, 1);
+                ST7567_GotoXY(LINE_HIGHT, 16);
+                ST7567_Puts("                ", &Font_8x16, 1);
+                ST7567_GotoXY(LINE_HIGHT, 16*2);
+                ST7567_Puts("                ", &Font_8x16, 1);
+                ST7567_GotoXY(LINE_HIGHT, 16*3);
+                ST7567_Puts("                ", &Font_8x16, 1);
+            }
+
+            page->select = OFF;
+        }
+    }
+    else
+    {
+        ST7567_GotoXY(LINE_HIGHT, 0);
+        ST7567_Puts("Calibrate now..", &Font_8x16, 1);
+        ST7567_GotoXY(LINE_HIGHT, 16);
+        ST7567_Puts("                ", &Font_8x16, 1);
+        ST7567_GotoXY(LINE_HIGHT, 16*2);
+        ST7567_Puts("                ", &Font_8x16, 1);
+        ST7567_GotoXY(LINE_HIGHT, 16*3);
+        ST7567_Puts("                ", &Font_8x16, 1);
+    }
+
+    //3
+    ST7567_UpdateScreen();
+}
+
+

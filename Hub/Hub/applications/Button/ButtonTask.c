@@ -17,24 +17,40 @@ __attribute__((section(".ccmbss"))) struct rt_thread button_thread;
 
 static void Buttonprogram(u8 period)
 {
+#define     BTN_COOL_TIME       2
     u8                  index       = 0;
     u16                 short_max   = 0;
+    static u8           btn_cooling[BUTTON_MAX] = {0};        //按键冷却时间避免长按的时候判断了长按和短按
+    static u8           on_set_pre[BUTTON_MAX] = {0};
+
+    if(on_set_pre[index] != buttonList[index].on_set)
+    {
+        on_set_pre[index] = buttonList[index].on_set;
+
+        //如果按键弹起 按键冷却时间清零
+        if(rt_pin_read(buttonList[index].pin) != buttonList[index].on_set)
+        {
+            btn_cooling[index] = 0;
+        }
+    }
 
     for(index = 0; index < BUTTON_MAX; index++)
     {
         if(rt_pin_read(buttonList[index].pin) == buttonList[index].on_set)
         {
-//            if(buttonList[index].pin == BUTTON_ENTER)
-//            {
-//                LOG_I("------enter key ,continue = %d",buttonList[index].continue_time);
-//            }
-
-            buttonList[index].continue_time += period;
-            buttonList[index].press_state = ON;
+            if(btn_cooling[index] >= BTN_COOL_TIME)
+            {
+                buttonList[index].continue_time += period;
+                buttonList[index].press_state = ON;
+            }
         }
         else
         {
             buttonList[index].press_state = OFF;
+            if(btn_cooling[index] < BTN_COOL_TIME)
+            {
+                btn_cooling[index]++;
+            }
         }
 
         //通过时间计算类型

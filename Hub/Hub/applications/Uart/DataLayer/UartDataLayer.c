@@ -99,8 +99,11 @@ char *GetModelByType(u8 type, char *name, u8 len)
         case PAR_TYPE:
             rt_memcpy(name, "BLS-PAR", len);
         break;
-        case CO2_TYPE:
+        case CO2_UP_TYPE:
             rt_memcpy(name, "BCS-PU", len);
+            break;
+        case CO2_DOWN_TYPE:
+            rt_memcpy(name, "BCS-PD", len);
             break;
         case HEAT_TYPE:
             rt_memcpy(name, "BTS-H", len);
@@ -153,8 +156,11 @@ u8 GetFuncByType(u8 type)
     u8      ret     = 0;
 
     switch (type) {
-        case CO2_TYPE:
+        case CO2_UP_TYPE:
             ret = F_Co2_UP;
+            break;
+        case CO2_DOWN_TYPE:
+            ret = F_Co2_DOWN;
             break;
         case HEAT_TYPE:
             ret = F_HEAT;
@@ -189,8 +195,11 @@ char *GetFunNameByType(u8 type, char *name, u8 len)
 {
     switch (type)
     {
-        case CO2_TYPE:
-            rt_memcpy(name, "Co2", len);
+        case CO2_UP_TYPE:
+            rt_memcpy(name, "Co2_U", len);
+            break;
+        case CO2_DOWN_TYPE:
+            rt_memcpy(name, "Co2_D", len);
             break;
         case HEAT_TYPE:
             rt_memcpy(name, "Heat", len);
@@ -284,10 +293,15 @@ rt_err_t setDeviceDefault(device_t *module)
     char        name[STORAGE_NAMESZ] = " ";
     switch (module->type) {
 
-        case CO2_TYPE:
-            setDeviceDefaultPara(module, "Co2", 0x0040, S_CO2, module->type, 1);
+        case CO2_UP_TYPE:
+            setDeviceDefaultPara(module, "Co2_U", 0x0040, S_CO2, module->type, 1);
             addr = module->addr;
-            setDeviceDefaultStora(module, 0 ,"Co2", F_Co2_UP, module->type, addr , MANUAL_NO_HAND, 0);
+            setDeviceDefaultStora(module, 0 ,"Co2_U", F_Co2_UP, module->type, addr , MANUAL_NO_HAND, 0);
+            break;
+        case CO2_DOWN_TYPE:
+            setDeviceDefaultPara(module, "Co2_D", 0x0040, S_CO2, module->type, 1);
+            addr = module->addr;
+            setDeviceDefaultStora(module, 0 ,"Co2_D", F_Co2_DOWN, module->type, addr , MANUAL_NO_HAND, 0);
             break;
         case HEAT_TYPE:
             setDeviceDefaultPara(module, "Heat", 0x0040, S_TEMP, module->type, 1);
@@ -418,7 +432,8 @@ u8 getSOrD(u8 type)
         case WATERlEVEL_TYPE:
             ret = SENSOR_TYPE;
             break;
-        case CO2_TYPE:
+        case CO2_UP_TYPE:
+        case CO2_DOWN_TYPE:
         case HEAT_TYPE:
         case HUMI_TYPE:
         case DEHUMI_TYPE:
@@ -670,16 +685,6 @@ void AnlyzeStorage(type_monitor_t *monitor, u8 addr, u8 read, u8 *data, u8 lengt
             for(storage = 0; storage < length/2; storage++)
             {
                 monitor->sensor[index].__stora[storage].value = (data[2 * storage] << 8) | data[2 * storage + 1];
-                if(F_S_CO2 == monitor->sensor[index].__stora[storage].func)
-                {
-                    monitor->sensor[index].__stora[storage].value += GetSysSet()->co2Set.co2Corrected;
-                }
-
-                //水位的原始数值是毫米单位，但是上报的是厘米单位的需要做调整
-                if(F_S_WL == monitor->sensor[index].__stora[storage].func)
-                {
-                    monitor->sensor[index].__stora[storage].value /= 10;
-                }
             }
         }
 
