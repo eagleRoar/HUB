@@ -19,14 +19,14 @@
 
 struct ethPageHead
 {
-    /*char*/u8      head_code[4];//Justin debug仅仅测试
+    /*char*/u8      head_code[4];
     u16       length;
 };
 
 typedef     struct ethPageHead  eth_page_head;
 
 //网络包
-struct ethPage      //Justin debug
+struct ethPage
 {
     eth_page_head   head;
     char*           data;

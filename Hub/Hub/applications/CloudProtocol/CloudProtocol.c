@@ -26,6 +26,8 @@ hub_t           hub_info;
 u8 sys_warn[WARN_MAX];
 u8 saveModuleFlag = NO;
 
+extern struct ethDeviceStruct *eth;
+extern int tcp_sock;
 extern void getRealTimeForMat(type_sys_time *);
 extern const u8    HEAD_CODE[4];
 
@@ -1188,7 +1190,7 @@ void timmerProgram(type_monitor_t *monitor)
                 if(BY_RECYCLE == device->port[port].mode)
                 {
                     //1.判断当前时间是否是满足进入循环周期的条件,即大于开始时间
-                    if(getTimeStamp() > device->port[port].cycle.start_at_timestamp)//Justin debug
+                    if(getTimeStamp() > device->port[port].cycle.start_at_timestamp)
                     {
                         if(((getTimeStamp() - device->port[port].cycle.start_at_timestamp) %
                             (device->port[port].cycle.duration + device->port[port].cycle.pauseTime)) <=
@@ -1223,7 +1225,7 @@ void timmerProgram(type_monitor_t *monitor)
                        }
                        else
                        {
-                           //1.判断如果存在跨天的话//Justin debug仅仅测试
+                           //1.判断如果存在跨天的话
                            if((device->port[port].timer[item].on_at *60 + device->port[port].timer[item].duration) >
                                24 * 60 * 60)
                            {
@@ -1276,7 +1278,7 @@ void dimmingLineCtrl(type_monitor_t *monitor, u8 *stage, u16 ppfd)
 #define LINE_STABLE     3//稳定
 #define LINE_MIN_VALUE  30
 #define LINE_DIMMING    40
-//Justin debug 需要验证一下新的灯光逻辑
+
 void lineProgram_new(type_monitor_t *monitor, u8 line_no, u16 mPeroid)
 {
     u8              state           = 0;
@@ -1387,61 +1389,80 @@ void lineProgram_new(type_monitor_t *monitor, u8 line_no, u16 mPeroid)
             }
         }
         //跨天的话
-        else
+        else if(line_set.lightOn > line_set.lightOff)
         {
-            //如果当前时间处于跨天的时间
-            if((time.hour * 60 * 60 + time.minute * 60 + time.second) < line_set.lightOff * 60)
+            now_time = time.hour * 60 * 60 + time.minute * 60 + time.second;
+
+            if((now_time < line_set.lightOff * 60) || (now_time >= line_set.lightOn * 60))
             {
                 state = ON;
 
-                now_time = time.hour * 60 * 60 + time.minute * 60 + time.second;
-                start_time = line_set.lightOn;
-                if(line_set.lightOff + 24 * 60 <= line_set.lightOn + line_set.sunriseSunSet)
+                //1.如果on 和 off之间的时间不足sunset时，那么只有上升阶段
+                if(line_set.lightOff + 24 * 60  <= line_set.sunriseSunSet + line_set.lightOn)
                 {
                     sunriseFlg = LINE_UP;
-                    LOG_E("test 1");//Justin debug
                 }
-                // 3.1.2 sunriseSunSet <= lightOff - lightOn &&  2*sunriseSunSet >= lightOff - lightOn  该过程有上升过程 下降过程不完整
-                else if((line_set.lightOff + 24 * 60 >= line_set.lightOn + line_set.sunriseSunSet) &&
-                        (line_set.lightOff + 24 * 60 <= line_set.lightOn + 2 *line_set.sunriseSunSet))
+                //2.
+                else if((line_set.lightOff + 24 * 60 > line_set.sunriseSunSet + line_set.lightOn) &&
+                        (line_set.lightOff + 24 * 60 <= line_set.sunriseSunSet * 2 + line_set.lightOn))
                 {
-                    if(now_time + 24 * 60 * 60 <= (line_set.sunriseSunSet + line_set.lightOn) * 60)
+                    if((now_time > line_set.lightOn * 60))//都化为秒
                     {
-                        sunriseFlg = LINE_UP;
-                        LOG_E("test 2");//Justin debug
+                        if(now_time <= line_set.sunriseSunSet * 60 + line_set.lightOn * 60)
+                        {
+                            sunriseFlg = LINE_UP;
+                        }
+                        else
+                        {
+                            sunriseFlg = LINE_DOWN;
+                        }
                     }
-                    else
+                    else if(now_time < line_set.lightOff * 60)
                     {
-                        sunriseFlg = LINE_DOWN;
-                        LOG_E("test 3");//Justin debug
+                        if(now_time + 24 * 60 * 60 <= line_set.sunriseSunSet * 60 + line_set.lightOn * 60)
+                        {
+                            sunriseFlg = LINE_UP;
+                        }
+                        else
+                        {
+                            sunriseFlg = LINE_DOWN;
+                        }
                     }
                 }
-                // 3.1.3 2*sunriseSunSet < lightOff - lightOn  该过程有上升过程 下降过程 恒定过程
-                else if(line_set.lightOff + 24 * 60 > line_set.lightOn + 2 *line_set.sunriseSunSet)
+                //3.
+                else if(line_set.lightOff + 24 * 60 > line_set.sunriseSunSet * 2 + line_set.lightOn)
                 {
-                    if(now_time <= (line_set.sunriseSunSet + line_set.lightOff) * 60)
+                    if((now_time > line_set.lightOn * 60))//都化为秒
                     {
-                        sunriseFlg = LINE_UP;
-                        LOG_E("test 4");//Justin debug
+                        if(now_time <= line_set.sunriseSunSet * 60 + line_set.lightOn * 60)
+                        {
+                            sunriseFlg = LINE_UP;
+                        }
+                        else if(line_set.lightOff * 60 + 24 * 60 * 60 <= line_set.sunriseSunSet * 60 + now_time)
+                        {
+                            sunriseFlg = LINE_DOWN;
+                        }
+                        else
+                        {
+                            sunriseFlg = LINE_STABLE;
+                        }
                     }
-                    //now_time - lightOn < lightOff - lightOn - sunriseSunSet 恒定
-                    else if(now_time + line_set.sunriseSunSet * 60 < line_set.lightOff * 60)
+                    else if((now_time < line_set.lightOff * 60))//都化为秒
                     {
-                        sunriseFlg = LINE_STABLE;
-                        LOG_E("test 5");//Justin debug
-                    }
-                    else
-                    {
-                        sunriseFlg = LINE_DOWN;
-                        LOG_E("test 6");//Justin debug
+                        if(now_time + 24 * 60 * 60 <= line_set.sunriseSunSet * 60 + line_set.lightOn * 60)
+                        {
+                            sunriseFlg = LINE_UP;
+                        }
+                        else if(line_set.lightOff * 60 <= line_set.sunriseSunSet * 60 + now_time)
+                        {
+                            sunriseFlg = LINE_DOWN;
+                        }
+                        else
+                        {
+                            sunriseFlg = LINE_STABLE;
+                        }
                     }
                 }
-            }
-            else
-            {
-                state = OFF;
-                LOG_E("test 7");//Justin debug
-                LOG_I("time1 = %d, time2 = %d",time.hour * 60 * 60 + time.minute * 60 + time.second, line_set.lightOff * 60);
             }
         }
     }
@@ -1522,20 +1543,36 @@ void lineProgram_new(type_monitor_t *monitor, u8 line_no, u16 mPeroid)
                     {
                         if(line_set.byPower > line->d_value)
                         {
-                            temp_stage = (((line_set.sunriseSunSet + line_set.lightOn) * 60 - now_time) *1000 / mPeroid)/
-                                         (line_set.byPower - line->d_value);
+                            if(now_time > line_set.lightOn * 60)
+                            {
+                                temp_stage = (((line_set.sunriseSunSet + line_set.lightOn) * 60 - now_time) *1000 / mPeroid)/
+                                             (line_set.byPower - line->d_value);
+                            }
+                            else if(now_time < line_set.lightOff * 60)
+                            {
+                                temp_stage = (((line_set.sunriseSunSet + line_set.lightOn) * 60 - now_time - 24 * 60 * 60) *1000 / mPeroid)/
+                                             (line_set.byPower - line->d_value);
+                            }
                         }
                     }
                 }
                 else if(LINE_DOWN == sunriseFlg)
                 {
-                    //(结束时间 - 当前时间))/(目标值 - 当前值)
-                    if(line_set.lightOff * 60 <= now_time + line_set.sunriseSunSet * 60)
+                    if(line_set.byPower > line->d_value)
                     {
-                        if(line->d_value > LINE_MIN_VALUE)
+                        if(now_time > line_set.lightOn * 60)
                         {
-                            temp_stage = ((line_set.lightOff * 60 - now_time) *1000 / mPeroid)/
-                                         (line->d_value - LINE_MIN_VALUE);
+                            if(line_set.lightOff * 60 + 24 * 60 * 60 < now_time + line_set.sunriseSunSet)
+                            {
+                                temp_stage = ((line_set.lightOff * 60 + 24 * 60 * 60 - now_time) *1000 / mPeroid)/(line_set.byPower - line->d_value);
+                            }
+                        }
+                        else if(now_time < line_set.lightOff * 60)
+                        {
+                            if(line_set.lightOff * 60 < now_time + line_set.sunriseSunSet)
+                            {
+                                temp_stage = ((line_set.lightOff * 60 - now_time) *1000 / mPeroid)/(line_set.byPower - line->d_value);
+                            }
                         }
                     }
                 }
@@ -1595,45 +1632,21 @@ void lineProgram_new(type_monitor_t *monitor, u8 line_no, u16 mPeroid)
             {
                 if(LINE_UP == sunriseFlg)
                 {
-                    if(LINE_BY_CYCLE == line_set.mode)
+                    if(temp_stage < 1)
                     {
-                        if(temp_stage < 1)
-                        {
-                            temp_stage = 1;
-                        }
-
-                        if(cnt[line_no] < temp_stage)
-                        {
-                            cnt[line_no]++;
-                        }
-                        else
-                        {
-                            cnt[line_no] = 0;
-                            if(stage[line_no]  + 1 <= line_set.byPower)
-                            {
-                                stage[line_no] ++;
-                            }
-                        }
-
+                        temp_stage = 1;
                     }
-                    else if(LINE_BY_TIMER == line_set.mode)
-                    {
-                        if(temp_stage < 1)
-                        {
-                            temp_stage = 1;
-                        }
 
-                        if(cnt[line_no] < temp_stage)
+                    if(cnt[line_no] < temp_stage)
+                    {
+                        cnt[line_no]++;
+                    }
+                    else
+                    {
+                        cnt[line_no] = 0;
+                        if(stage[line_no]  + 1 <= line_set.byPower)
                         {
-                            cnt[line_no]++;
-                        }
-                        else
-                        {
-                            cnt[line_no] = 0;
-                            if(stage[line_no]  + 1 <= line_set.byPower)
-                            {
-                                stage[line_no] ++;
-                            }
+                            stage[line_no] ++;
                         }
                     }
                 }
@@ -1643,44 +1656,21 @@ void lineProgram_new(type_monitor_t *monitor, u8 line_no, u16 mPeroid)
                 }
                 else if(LINE_DOWN == sunriseFlg)
                 {
-                    if(LINE_BY_CYCLE == line_set.mode)
+                    if(temp_stage < 1)
                     {
-                        if(temp_stage < 1)
-                        {
-                            temp_stage = 1;
-                        }
-
-                        if(cnt[line_no] < temp_stage)
-                        {
-                            cnt[line_no]++;
-                        }
-                        else
-                        {
-                            cnt[line_no] = 0;
-                            if(stage[line_no] >= 1 + LINE_MIN_VALUE)
-                            {
-                                stage[line_no] -= 1;
-                            }
-                        }
+                        temp_stage = 1;
                     }
-                    else if(LINE_BY_TIMER == line_set.mode)
-                    {
-                        if(temp_stage < 1)
-                        {
-                            temp_stage = 1;
-                        }
 
-                        if(cnt[line_no] < temp_stage)
+                    if(cnt[line_no] < temp_stage)
+                    {
+                        cnt[line_no]++;
+                    }
+                    else
+                    {
+                        cnt[line_no] = 0;
+                        if(stage[line_no] >= 1 + LINE_MIN_VALUE)
                         {
-                            cnt[line_no]++;
-                        }
-                        else
-                        {
-                            cnt[line_no] = 0;
-                            if(stage[line_no] >= 1 + LINE_MIN_VALUE)
-                            {
-                                stage[line_no] -= 1;
-                            }
+                            stage[line_no] -= 1;
                         }
                     }
                 }
@@ -1720,7 +1710,6 @@ void lineProgram_new(type_monitor_t *monitor, u8 line_no, u16 mPeroid)
         value = stage[line_no];
     }
 
-
     line->d_state = state;
     if(value <= LINE_MIN_VALUE)
     {
@@ -1730,6 +1719,7 @@ void lineProgram_new(type_monitor_t *monitor, u8 line_no, u16 mPeroid)
     {
         value = 115;
     }
+    //LOG_E("no = %x, state = %d, value = %d",line_no,state,value);//Justin debug 仅仅测试
     line->d_value = value;
 }
 
@@ -1756,7 +1746,6 @@ void humiProgram(type_monitor_t *monitor)
             humiTarget = humiSet.nightHumiTarget;
             dehumiTarget = humiSet.nightDehumiTarget;
         }
-
 
         //达到湿度目标
         if(humiNow >= dehumiTarget)
@@ -1879,9 +1868,11 @@ void co2Program(type_monitor_t *monitor, u16 mPeriod)
                     CtrlAllDeviceByFunc(monitor, F_Co2_UP, OFF, 0);
                 }
             }
+            CtrlAllDeviceByFunc(monitor, F_Co2_DOWN, OFF, 0);
         }
         else if(NIGHT_TIME == GetSysSet()->dayOrNight)
         {
+            //LOG_E("co2Program test");
             if(co2Now > co2Target)
             {
                 CtrlAllDeviceByFunc(monitor, F_Co2_DOWN, ON, 0);
@@ -1890,6 +1881,7 @@ void co2Program(type_monitor_t *monitor, u16 mPeriod)
             {
                 CtrlAllDeviceByFunc(monitor, F_Co2_DOWN, OFF, 0);
             }
+            CtrlAllDeviceByFunc(monitor, F_Co2_UP, OFF, 0);
         }
     }
 }
@@ -1976,6 +1968,7 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
     static time_t   co2WarnTime;
     static time_t   tempWarnTime;
     static time_t   humiWarnTime;
+//    static u8       connect_state[DEVICE_MAX];//Justin debug 仅仅测试
 
     rt_memset(set->warn, 0, WARN_MAX);
 
@@ -1998,7 +1991,18 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
                     set->warn[WARN_TEMP_HIGHT - 1] = ON;
                     set->warn_value[WARN_TEMP_HIGHT - 1] = data;
                 }
+                else
+                {
+                    set->warn[WARN_TEMP_LOW - 1] = OFF;
+                    set->warn[WARN_TEMP_HIGHT - 1] = OFF;
+                }
             }
+            else
+            {
+                set->warn[WARN_TEMP_LOW - 1] = OFF;
+                set->warn[WARN_TEMP_HIGHT - 1] = OFF;
+            }
+
 
             if(data > set->tempSet.dayCoolingTarget ||
                data < set->tempSet.dayHeatingTarget)
@@ -2029,7 +2033,15 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
                         set->warn[WARN_TEMP_TIMEOUT - 1] = ON;
                         set->warn_value[WARN_TEMP_TIMEOUT - 1] = data;
                     }
+                    else
+                    {
+                        set->warn[WARN_TEMP_TIMEOUT - 1] = OFF;
+                    }
                 }
+            }
+            else
+            {
+                set->warn[WARN_TEMP_TIMEOUT - 1] = OFF;
             }
         }
 
@@ -2049,6 +2061,16 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
                     set->warn[WARN_HUMI_HIGHT - 1] = ON;
                     set->warn_value[WARN_HUMI_HIGHT - 1] = data;
                 }
+                else
+                {
+                    set->warn[WARN_HUMI_LOW - 1] = OFF;
+                    set->warn[WARN_HUMI_HIGHT - 1] = OFF;
+                }
+            }
+            else
+            {
+                set->warn[WARN_HUMI_LOW - 1] = OFF;
+                set->warn[WARN_HUMI_HIGHT - 1] = OFF;
             }
 
             if(data > set->humiSet.dayDehumiTarget ||
@@ -2082,8 +2104,16 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
                             set->warn[WARN_HUMI_TIMEOUT - 1] = ON;
                             set->warn_value[WARN_HUMI_TIMEOUT - 1] = data;
                         }
+                        else
+                        {
+                            set->warn[WARN_HUMI_TIMEOUT - 1] = OFF;
+                        }
                     }
                 }
+            }
+            else
+            {
+                set->warn[WARN_HUMI_TIMEOUT - 1] = OFF;
             }
         }
 
@@ -2103,6 +2133,16 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
                     set->warn[WARN_CO2_HIGHT - 1] = ON;
                     set->warn_value[WARN_CO2_HIGHT - 1] = data;
                 }
+                else
+                {
+                    set->warn[WARN_CO2_LOW - 1] = OFF;
+                    set->warn[WARN_CO2_HIGHT - 1] = OFF;
+                }
+            }
+            else
+            {
+                set->warn[WARN_CO2_LOW - 1] = OFF;
+                set->warn[WARN_CO2_HIGHT - 1] = OFF;
             }
 
             if(data < set->co2Set.dayCo2Target)
@@ -2133,23 +2173,44 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
                         set->warn[WARN_CO2_TIMEOUT - 1] = ON;
                         set->warn_value[WARN_CO2_TIMEOUT - 1] = data;
                     }
+                    else
+                    {
+                        set->warn[WARN_CO2_TIMEOUT - 1] = OFF;
+                    }
                 }
+            }
+            else
+            {
+                set->warn[WARN_CO2_TIMEOUT - 1] = OFF;
             }
         }
 
         //4.vpd
         if(ON == set->sysWarn.dayVpdEn)
         {
-            if(getVpd() <= set->sysWarn.dayVpdMin)
+            if(0 != getVpd())
             {
-                set->warn[WARN_VPD_LOW - 1] = ON;
-                set->warn_value[WARN_VPD_LOW - 1] = getVpd();
+                if(getVpd() <= set->sysWarn.dayVpdMin)
+                {
+                    set->warn[WARN_VPD_LOW - 1] = ON;
+                    set->warn_value[WARN_VPD_LOW - 1] = getVpd();
+                }
+                else if(getVpd() >= set->sysWarn.dayVpdMax)
+                {
+                    set->warn[WARN_VPD_HIGHT - 1] = ON;
+                    set->warn_value[WARN_VPD_HIGHT - 1] = getVpd();
+                }
+                else
+                {
+                    set->warn[WARN_VPD_LOW - 1] = OFF;
+                    set->warn[WARN_VPD_HIGHT - 1] = OFF;
+                }
             }
-            else if(getVpd() >= set->sysWarn.dayVpdMax)
-            {
-                set->warn[WARN_VPD_HIGHT - 1] = ON;
-                set->warn_value[WARN_VPD_HIGHT - 1] = getVpd();
-            }
+        }
+        else
+        {
+            set->warn[WARN_VPD_LOW - 1] = OFF;
+            set->warn[WARN_VPD_HIGHT - 1] = OFF;
         }
 
         //5.par
@@ -2168,6 +2229,16 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
                     set->warn[WARN_PAR_HIGHT - 1] = ON;
                     set->warn_value[WARN_PAR_HIGHT - 1] = data;
                 }
+                else
+                {
+                    set->warn[WARN_PAR_LOW - 1] = OFF;
+                    set->warn[WARN_PAR_HIGHT - 1] = OFF;
+                }
+            }
+            else
+            {
+                set->warn[WARN_PAR_LOW - 1] = OFF;
+                set->warn[WARN_PAR_HIGHT - 1] = OFF;
             }
         }
     }
@@ -2189,6 +2260,16 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
                     set->warn[WARN_TEMP_HIGHT - 1] = ON;
                     set->warn_value[WARN_TEMP_HIGHT - 1] = data;
                 }
+                else
+                {
+                    set->warn[WARN_TEMP_LOW - 1] = OFF;
+                    set->warn[WARN_TEMP_HIGHT - 1] = OFF;
+                }
+            }
+            else
+            {
+                set->warn[WARN_TEMP_LOW - 1] = OFF;
+                set->warn[WARN_TEMP_HIGHT - 1] = OFF;
             }
 
             if(data > set->tempSet.nightCoolingTarget ||
@@ -2220,7 +2301,15 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
                         set->warn[WARN_TEMP_TIMEOUT - 1] = ON;
                         set->warn_value[WARN_TEMP_TIMEOUT - 1] = data;
                     }
+                    else
+                    {
+                        set->warn[WARN_TEMP_TIMEOUT - 1] = OFF;
+                    }
                 }
+            }
+            else
+            {
+                set->warn[WARN_TEMP_TIMEOUT - 1] = OFF;
             }
         }
 
@@ -2239,6 +2328,11 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
                 {
                     set->warn[WARN_HUMI_HIGHT - 1] = ON;
                     set->warn_value[WARN_HUMI_HIGHT - 1] = data;
+                }
+                else
+                {
+                    set->warn[WARN_HUMI_LOW - 1] = OFF;
+                    set->warn[WARN_HUMI_HIGHT - 1] = OFF;
                 }
             }
 
@@ -2273,8 +2367,16 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
                             set->warn[WARN_HUMI_TIMEOUT - 1] = ON;
                             set->warn_value[WARN_HUMI_TIMEOUT - 1] = data;
                         }
+                        else
+                        {
+                            set->warn[WARN_HUMI_TIMEOUT - 1] = OFF;
+                        }
                     }
                 }
+            }
+            else
+            {
+                set->warn[WARN_HUMI_TIMEOUT - 1] = OFF;
             }
         }
 
@@ -2294,6 +2396,16 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
                     set->warn[WARN_CO2_HIGHT - 1] = ON;
                     set->warn_value[WARN_CO2_HIGHT - 1] = data;
                 }
+                else
+                {
+                    set->warn[WARN_CO2_LOW - 1] = OFF;
+                    set->warn[WARN_CO2_HIGHT - 1] = OFF;
+                }
+            }
+            else
+            {
+                set->warn[WARN_CO2_LOW - 1] = OFF;
+                set->warn[WARN_CO2_HIGHT - 1] = OFF;
             }
 
             if(data < set->co2Set.nightCo2Target)
@@ -2324,23 +2436,44 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
                         set->warn[WARN_CO2_TIMEOUT - 1] = ON;
                         set->warn_value[WARN_CO2_TIMEOUT - 1] = data;
                     }
+                    else
+                    {
+                        set->warn[WARN_CO2_TIMEOUT - 1] = OFF;
+                    }
                 }
+            }
+            else
+            {
+                set->warn[WARN_CO2_TIMEOUT - 1] = OFF;
             }
         }
 
         //4.vpd
         if(ON == set->sysWarn.nightVpdEn)
         {
-            if(getVpd() <= set->sysWarn.nightVpdMin)
+            if(0 != getVpd())
             {
-                set->warn[WARN_VPD_LOW - 1] = ON;
-                set->warn_value[WARN_VPD_LOW - 1] = getVpd();
+                if(getVpd() <= set->sysWarn.nightVpdMin)
+                {
+                    set->warn[WARN_VPD_LOW - 1] = ON;
+                    set->warn_value[WARN_VPD_LOW - 1] = getVpd();
+                }
+                else if(getVpd() >= set->sysWarn.nightVpdMax)
+                {
+                    set->warn[WARN_VPD_HIGHT - 1] = ON;
+                    set->warn_value[WARN_VPD_HIGHT - 1] = getVpd();
+                }
+                else
+                {
+                    set->warn[WARN_VPD_LOW - 1] = OFF;
+                    set->warn[WARN_VPD_HIGHT - 1] = OFF;
+                }
             }
-            else if(getVpd() >= set->sysWarn.nightVpdMax)
-            {
-                set->warn[WARN_VPD_HIGHT - 1] = ON;
-                set->warn_value[WARN_VPD_HIGHT - 1] = getVpd();
-            }
+        }
+        else
+        {
+            set->warn[WARN_VPD_LOW - 1] = OFF;
+            set->warn[WARN_VPD_HIGHT - 1] = OFF;
         }
     }
 
@@ -2362,6 +2495,10 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
                         set->warn[WARN_LINE_STATE - 1] = ON;
                         set->warn_value[WARN_LINE_STATE - 1] = data;
                     }
+                    else
+                    {
+                        set->warn[WARN_LINE_STATE - 1] = OFF;
+                    }
                 }
             }
             else if((OFF == monitor->line[0].d_state) && (OFF == monitor->line[1].d_state))
@@ -2373,6 +2510,10 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
                     {
                         set->warn[WARN_LINE_STATE - 1] = ON;
                         set->warn_value[WARN_LINE_STATE - 1] = data;
+                    }
+                    else
+                    {
+                        set->warn[WARN_LINE_STATE - 1] = OFF;
                     }
                 }
             }
@@ -2387,28 +2528,9 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
                     set->warn[WARN_LINE_STATE - 1] = ON;
                     set->warn_value[WARN_LINE_STATE - 1] = data;
                 }
-            }
-        }
-
-        //灯光过温保护 过温关灯 告警
-        if(RT_NULL != GetSensorByType(monitor, BHS_TYPE))
-        {
-            for(u8 port = 0; port < GetSensorByType(monitor, BHS_TYPE)->storage_size; port++)
-            {
-                if(F_S_TEMP == GetSensorByType(monitor, BHS_TYPE)->__stora[port].func)
+                else
                 {
-                    if(GetSensorByType(monitor, BHS_TYPE)->__stora[port].value > set->line1Set.tempStartDimming ||
-                       GetSensorByType(monitor, BHS_TYPE)->__stora[port].value > set->line2Set.tempStartDimming)
-                    {
-                        set->warn[WARN_LINE_AUTO_T - 1] = ON;
-                        set->warn_value[WARN_LINE_AUTO_T - 1] = GetSensorByType(monitor, BHS_TYPE)->__stora[port].value;
-                    }
-                    else if(GetSensorByType(monitor, BHS_TYPE)->__stora[port].value > set->line1Set.tempOffDimming ||
-                            GetSensorByType(monitor, BHS_TYPE)->__stora[port].value > set->line2Set.tempOffDimming)
-                    {
-                        set->warn[WARN_LINE_AUTO_OFF - 1] = ON;
-                        set->warn_value[WARN_LINE_AUTO_OFF - 1] = GetSensorByType(monitor, BHS_TYPE)->__stora[port].value;
-                    }
+                    set->warn[WARN_LINE_STATE - 1] = OFF;
                 }
             }
         }
@@ -2429,20 +2551,10 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
                 set->warn[WARN_LINE_AUTO_OFF - 1] = ON;
                 set->warn_value[WARN_LINE_AUTO_OFF - 1] = data;
             }
-        }
-    }
-
-    //离线告警
-    if(ON == set->sysWarn.offlineEn)
-    {
-        for(u8 index = 0; index < monitor->device_size; index++)
-        {
-            if(CON_FAIL == monitor->device[index].conn_state)
+            else
             {
-                set->warn[WARN_OFFLINE - 1] = ON;
-                set->warn_value[WARN_OFFLINE - 1] = VALUE_NULL;
-                set->offline[index] = YES;
-                break;
+                set->warn[WARN_LINE_AUTO_T - 1] = OFF;
+                set->warn[WARN_LINE_AUTO_OFF - 1] = OFF;
             }
         }
     }
@@ -2498,6 +2610,16 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
                         set->warn[WARN_PH_HIGHT - 1] = ON;
                         set->warn_value[WARN_PH_HIGHT - 1] = ph;
                     }
+                    else
+                    {
+                        set->warn[WARN_PH_LOW - 1] = OFF;
+                        set->warn[WARN_PH_HIGHT - 1] = OFF;
+                    }
+                }
+                else
+                {
+                    set->warn[WARN_PH_LOW - 1] = OFF;
+                    set->warn[WARN_PH_HIGHT - 1] = OFF;
                 }
             }
             else if(F_S_EC == set->tankWarnSet[tank][item1].func)
@@ -2514,6 +2636,16 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
                         set->warn[WARN_EC_HIGHT - 1] = ON;
                         set->warn_value[WARN_EC_HIGHT - 1] = ec;
                     }
+                    else
+                    {
+                        set->warn[WARN_EC_LOW - 1] = OFF;
+                        set->warn[WARN_EC_HIGHT - 1] = OFF;
+                    }
+                }
+                else
+                {
+                    set->warn[WARN_EC_LOW - 1] = OFF;
+                    set->warn[WARN_EC_HIGHT - 1] = OFF;
                 }
             }
             else if(F_S_WT == set->tankWarnSet[tank][item1].func)
@@ -2530,6 +2662,16 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
                         set->warn[WARN_WT_HIGHT - 1] = ON;
                         set->warn_value[WARN_WT_HIGHT - 1] = wt;
                     }
+                    else
+                    {
+                        set->warn[WARN_WT_LOW - 1] = OFF;
+                        set->warn[WARN_WT_HIGHT - 1] = OFF;
+                    }
+                }
+                else
+                {
+                    set->warn[WARN_WT_LOW - 1] = OFF;
+                    set->warn[WARN_WT_HIGHT - 1] = OFF;
                 }
             }
             else if(F_S_WL == set->tankWarnSet[tank][item1].func)
@@ -2546,6 +2688,16 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
                         set->warn[WARN_WL_HIGHT - 1] = ON;
                         set->warn_value[WARN_WL_HIGHT - 1] = wl;
                     }
+                    else
+                    {
+                        set->warn[WARN_WL_LOW - 1] = OFF;
+                        set->warn[WARN_WL_HIGHT - 1] = OFF;
+                    }
+                }
+                else
+                {
+                    set->warn[WARN_WL_LOW - 1] = OFF;
+                    set->warn[WARN_WL_HIGHT - 1] = OFF;
                 }
             }
         }
@@ -2574,7 +2726,7 @@ void pumpDoing(u8 addr, u8 port)
             if(BY_RECYCLE == device->port[port].mode)
             {
                 //1.判断当前时间是否是满足进入循环周期的条件,即大于开始时间
-                if(getTimeStamp() > device->port[port].cycle.start_at_timestamp)//Justin debug
+                if(getTimeStamp() > device->port[port].cycle.start_at_timestamp)
                 {
                     if(((getTimeStamp() - device->port[port].cycle.start_at_timestamp) %
                         (device->port[port].cycle.duration + device->port[port].cycle.pauseTime)) <=
@@ -2645,10 +2797,69 @@ void pumpProgram(type_monitor_t *monitor, sys_tank_t *tank_list)
     u16         ph                      = 0;
     u16         ec                      = 0;
     u16         wl                      = 0;
+    u8          type                    = 0;
+    u8          port1                   = 0;
     static u8   waterState[TANK_LIST_MAX] = {NO_ADD_WATER,NO_ADD_WATER,NO_ADD_WATER,NO_ADD_WATER};
 
     for(tank = 0; tank < tank_list->tank_size; tank++)
     {
+        //1.如果子阀的类型被修改了之后需要删除
+        for(u8 item = 0; item < VALVE_MAX; item++)
+        {
+            if(tank_list->tank[tank].valve[item] > 0xFF)
+            {
+                port1 = tank_list->tank[tank].valve[item];
+                if(RT_NULL != GetDeviceByAddr(monitor, tank_list->tank[tank].valve[item] >> 8))
+                {
+                    type = GetDeviceByAddr(monitor, tank_list->tank[tank].valve[item] >> 8)->port[port1].type;
+                }
+            }
+            else
+            {
+                if(RT_NULL != GetDeviceByAddr(monitor, tank_list->tank[tank].valve[item]))
+                {
+                    type = GetDeviceByAddr(monitor, tank_list->tank[tank].valve[item])->port[0].type;
+                }
+            }
+
+            if(VALVE_TYPE != type)
+            {
+                if(item == VALVE_MAX - 1)
+                {
+                    GetSysTank()->tank[tank].valve[item] = 0;
+                }
+                else
+                {
+                    for(;item < VALVE_MAX - 1; item++)
+                    {
+                        GetSysTank()->tank[tank].valve[item] =
+                                GetSysTank()->tank[tank].valve[item + 1];
+                    }
+                }
+            }
+        }
+        //2.如果灌溉水阀类型变化，删除
+        if(tank_list->tank[tank].autoFillValveId > 0xFF)
+        {
+            port1 = tank_list->tank[tank].autoFillValveId;
+            if(RT_NULL != GetDeviceByAddr(monitor, tank_list->tank[tank].autoFillValveId >> 8))
+            {
+                type = GetDeviceByAddr(monitor, tank_list->tank[tank].autoFillValveId >> 8)->port[port1].type;
+            }
+        }
+        else
+        {
+            if(RT_NULL != GetDeviceByAddr(monitor, tank_list->tank[tank].autoFillValveId))
+            {
+                type = GetDeviceByAddr(monitor, tank_list->tank[tank].autoFillValveId)->port[0].type;
+            }
+        }
+
+        if(VALVE_TYPE != type)
+        {
+            tank_list->tank[tank].autoFillValveId = 0;
+        }
+
         for(sensor_index = 0; sensor_index < monitor->sensor_size; sensor_index++)
         {
             for(u8 item = 0; item < TANK_SENSOR_MAX; item++)
@@ -2842,7 +3053,7 @@ void autoBindPumpTotank(type_monitor_t *monitor, sys_tank_t *tank_list)
                 if(PUMP_TYPE == device->port[stora].type)
                 {
                     id = device->addr << 8 | stora;
-                    //LOG_D("id = %x",id);//Justin debug
+
                     insertPumpToTank(monitor, tank_list, id);
                 }
             }
@@ -2863,12 +3074,10 @@ void co2Calibrate(type_monitor_t *monitor, int *data, u8 *do_cal_flg, u8 *saveFl
     static u8       do_cal_pre              = 0xFF;
     static u8       haveCo2[SENSOR_MAX]     = {0};      //标记是否有co2
 
-//    LOG_I("co2Calibrate test, flg1 %x, flg2 %x",do_cal_pre,*do_cal_flg);      //Justin debug 仅仅测试
     if(do_cal_pre != *do_cal_flg)
     {
         if(YES == *do_cal_flg)
         {
-//            LOG_I("co2Calibrate test1");      //Justin debug 仅仅测试
             for(index = 0; index < monitor->sensor_size; index++)
             {
                 start_time[index] = getTimeStamp();
@@ -2889,11 +3098,9 @@ void co2Calibrate(type_monitor_t *monitor, int *data, u8 *do_cal_flg, u8 *saveFl
             {
                 if(CAL_INCAL == cal_flag[index])
                 {
-                    LOG_I("co2Calibrate test2");      //Justin debug 仅仅测试
                     //2.如果在1分钟之内,能够稳定的取到10组数据
                     if(getTimeStamp() < start_time[index] + 60)
                     {
-                        LOG_I("co2Calibrate test3");
                         //3.标记当前采集的第几组数据
                         if(cal_cnt[index] < 9)
                         {
@@ -2958,11 +3165,215 @@ void co2Calibrate(type_monitor_t *monitor, int *data, u8 *do_cal_flg, u8 *saveFl
         *do_cal_flg = NO;
         do_cal_pre = NO;
         *saveFlg = YES;
+    }
+}
 
-        //Justin debug 仅仅测试
-        for(index = 0; index < monitor->sensor_size; index++)
+void sendOfflinewarnning(type_monitor_t *monitor)
+{
+    u8          index               = 0;
+    u8          *buf                = RT_NULL;
+    u16         length              = 0;
+    sys_set_t   *set                = GetSysSet();
+    static u8   offline[DEVICE_MAX] = {NO};
+    static u8   first_run           = YES;
+
+    //初始化静态数据
+    if(YES == first_run)
+    {
+        rt_memset(offline, YES, DEVICE_MAX);
+        first_run = NO;
+    }
+
+    for(index = 0; index < monitor->device_size; index++)
+    {
+        if(CON_FAIL == monitor->device[index].conn_state)
         {
-            LOG_E("index = %d, data = %d",index,data[index]);
+            set->offline[index] = YES;
+        }
+        else
+        {
+            set->offline[index] = NO;
+        }
+    }
+
+    for(index = 0; index < monitor->device_size; index++)
+    {
+        if(offline[index] != set->offline[index])
+        {
+            offline[index] = set->offline[index];
+
+            if(YES == offline[index])
+            {
+                //发送给云服务器
+                SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT_WARN, WARN_OFFLINE - 1, VALUE_NULL, RT_NULL, RT_NULL, YES, index);
+                //发送给app
+                buf = rt_malloc(1024 * 2);
+                if(RT_NULL != buf)
+                {
+                    rt_memcpy(buf, HEAD_CODE, 4);
+
+                    if(RT_EOK == SendDataToCloud(RT_NULL, CMD_HUB_REPORT_WARN, WARN_OFFLINE - 1,
+                            VALUE_NULL, (u8 *)buf + sizeof(eth_page_head), &length, NO, index))
+                    {
+                        if(length > 0)
+                        {
+                            rt_memcpy(buf + 4, &length, 2);
+                            if (RT_EOK != TcpSendMsg(&tcp_sock, buf, length + sizeof(eth_page_head)))
+                            {
+                                eth->tcp.SetConnectStatus(OFF);
+                                eth->tcp.SetConnectTry(ON);
+                            }
+                        }
+                    }
+
+                    //回收内存 避免内存泄露
+                    rt_free(buf);
+                    buf = RT_NULL;
+                }
+            }
+        }
+    }
+}
+
+void sendwarnningInfo(void)
+{
+    u8              *buf                = RT_NULL;
+    u16             length              = 0;
+    static u8       warn[WARN_MAX];
+
+    for(u8 item = 0; item < WARN_MAX; item++)
+    {
+        if(warn[item] != GetSysSet()->warn[item])
+        {
+            warn[item] = GetSysSet()->warn[item];
+
+            if(ON == GetSysSet()->warn[item])
+            {
+                //发送给云平台
+                if(YES == GetMqttStartFlg())
+                {
+#if(HUB_SELECT == HUB_ENVIRENMENT)
+                        if(((item + 1) == WARN_TEMP_HIGHT) ||
+                            ((item + 1) == WARN_TEMP_LOW)||
+                            ((item + 1) == WARN_HUMI_HIGHT)||
+                            ((item + 1) == WARN_HUMI_LOW)||
+                            ((item + 1) == WARN_CO2_HIGHT)||
+                            ((item + 1) == WARN_CO2_LOW)||
+                            ((item + 1) == WARN_VPD_HIGHT)||
+                            ((item + 1) == WARN_VPD_LOW)||
+                            ((item + 1) == WARN_PAR_HIGHT)||
+                            ((item + 1) == WARN_PAR_LOW)||
+                            ((item + 1) == WARN_LINE_STATE)||
+                            ((item + 1) == WARN_LINE_AUTO_T)||
+                            ((item + 1) == WARN_LINE_AUTO_OFF)||
+                            ((item + 1) == WARN_CO2_TIMEOUT)||
+                            ((item + 1) == WARN_TEMP_TIMEOUT)||
+                            ((item + 1) == WARN_HUMI_TIMEOUT)||
+                            ((item + 1) == WARN_SMOKE))
+                        {
+                            SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT_WARN, item, GetSysSet()->warn_value[item], RT_NULL, RT_NULL, YES, 0);
+                        }
+#elif (HUB_SELECT == HUB_IRRIGSTION)
+                        if(((item + 1) == WARN_PH_HIGHT) ||
+                            ((item + 1) == WARN_PH_LOW)||
+                            ((item + 1) == WARN_EC_HIGHT)||
+                            ((item + 1) == WARN_EC_LOW)||
+                            ((item + 1) == WARN_WT_HIGHT)||
+                            ((item + 1) == WARN_WT_LOW)||
+                            ((item + 1) == WARN_WL_HIGHT)||
+                            ((item + 1) == WARN_WL_LOW)||
+                            ((item + 1) == WARN_WATER)||
+                            ((item + 1) == WARN_AUTOFILL_TIMEOUT))
+                        {
+                            SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT_WARN, item, GetSysSet()->warn_value[item], RT_NULL, RT_NULL, YES, 0);
+                        }
+#endif
+                }
+
+                //发送给app
+                if((OFF == eth->tcp.GetConnectTry()) &&
+                   (ON == eth->tcp.GetConnectStatus()))
+                {
+                    //申请内存
+                    buf = rt_malloc(1024 * 2);
+                    if(RT_NULL != buf)
+                    {
+                        rt_memcpy(buf, HEAD_CODE, 4);
+#if(HUB_SELECT == HUB_ENVIRENMENT)
+                            if(((item + 1) == WARN_TEMP_HIGHT) ||
+                                ((item + 1) == WARN_TEMP_LOW)||
+                                ((item + 1) == WARN_HUMI_HIGHT)||
+                                ((item + 1) == WARN_HUMI_LOW)||
+                                ((item + 1) == WARN_CO2_HIGHT)||
+                                ((item + 1) == WARN_CO2_LOW)||
+                                ((item + 1) == WARN_VPD_HIGHT)||
+                                ((item + 1) == WARN_VPD_LOW)||
+                                ((item + 1) == WARN_PAR_HIGHT)||
+                                ((item + 1) == WARN_PAR_LOW)||
+                                ((item + 1) == WARN_LINE_STATE)||
+                                ((item + 1) == WARN_LINE_AUTO_T)||
+                                ((item + 1) == WARN_LINE_AUTO_OFF)||
+                                ((item + 1) == WARN_CO2_TIMEOUT)||
+                                ((item + 1) == WARN_TEMP_TIMEOUT)||
+                                ((item + 1) == WARN_HUMI_TIMEOUT)||
+                                ((item + 1) == WARN_SMOKE))
+                            {
+                                if(RT_EOK == SendDataToCloud(RT_NULL, CMD_HUB_REPORT_WARN, item,
+                                        GetSysSet()->warn_value[item], (u8 *)buf + sizeof(eth_page_head), &length, NO, 0))
+                                {
+                                    if(length > 0)
+                                    {
+                                        rt_memcpy(buf + 4, &length, 2);
+                                        if (RT_EOK != TcpSendMsg(&tcp_sock, buf, length + sizeof(eth_page_head)))
+                                        {
+                                            LOG_E("send tcp err 2");
+                                            eth->tcp.SetConnectStatus(OFF);
+                                            eth->tcp.SetConnectTry(ON);
+                                        }
+                                        LOG_W("send to app: %.*s",length,buf + sizeof(eth_page_head));//Justin debug 仅仅测试
+                                    }
+                                }
+                            }
+#elif (HUB_SELECT == HUB_IRRIGSTION)
+
+                            if(((item + 1) == WARN_PH_HIGHT) ||
+                                ((item + 1) == WARN_PH_LOW)||
+                                ((item + 1) == WARN_EC_HIGHT)||
+                                ((item + 1) == WARN_EC_LOW)||
+                                ((item + 1) == WARN_WT_HIGHT)||
+                                ((item + 1) == WARN_WT_LOW)||
+                                ((item + 1) == WARN_WL_HIGHT)||
+                                ((item + 1) == WARN_WL_LOW)||
+                                ((item + 1) == WARN_WATER)||
+                                ((item + 1) == WARN_AUTOFILL_TIMEOUT))
+                            {
+                                //rt_memset(package.data, ' ', SEND_ETH_BUFFSZ);
+                                if(RT_EOK == SendDataToCloud(RT_NULL, CMD_HUB_REPORT_WARN, item,
+                                        GetSysSet()->warn_value[item], buf + sizeof(eth_page_head), &length, NO, 0))
+                                {
+                                    if(length > 0)
+                                    {
+                                        rt_memcpy(buf + 4, length, 2);
+                                        if (RT_EOK != TcpSendMsg(&tcp_sock, buf, length + sizeof(eth_page_head)))
+                                        {
+                                            LOG_E("send tcp err 2");
+                                            eth->tcp.SetConnectStatus(OFF);
+                                            eth->tcp.SetConnectTry(ON);
+                                        }
+                                    }
+                                }
+                            }
+#endif
+                    }
+
+                    //释放内存
+                    if(RT_NULL != buf)
+                    {
+                        rt_free(buf);
+                        buf = RT_NULL;
+                    }
+                }
+            }
         }
     }
 }

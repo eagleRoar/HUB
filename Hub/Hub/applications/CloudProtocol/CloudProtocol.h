@@ -45,4 +45,6 @@ struct sysSet *GetSysSet(void);
 void autoBindPumpTotank(type_monitor_t *, struct sys_tank *);
 u8 *ReplyDataToCloud1(mqtt_client *, u8 *,u16 *, u8);
 void co2Calibrate(type_monitor_t *, int *, u8 *, u8 *);
+void sendwarnningInfo(void);
+void sendOfflinewarnning(type_monitor_t *);
 #endif /* APPLICATIONS_CLOUDPROTOCOL_CLOUDPROTOCOL_H_ */

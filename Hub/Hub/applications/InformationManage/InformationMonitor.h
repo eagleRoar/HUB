@@ -102,7 +102,7 @@ struct sensor
     sen_stora_t     __stora[SENSOR_VALUE_MAX];
 };//占35字节
 
-struct cycle//Justin debug 仅仅测需要修改类型
+struct cycle
 {
     time_t start_at_timestamp;                     //保存当天的时间戳
     u16     startAt;                                // 开启时间点 8:00 8*60=480

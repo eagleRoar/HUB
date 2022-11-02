@@ -36,13 +36,12 @@ int main(void)
 {
     rt_uint8_t      ethStatus           = LINKDOWN;
     u16             length              = 0;
-//    eth_page_t      package;
-    u8              *buf                = RT_NULL;\
+    u8              *buf                = RT_NULL;
     u8              res                 = 0;
-    static u8       warn[WARN_MAX];
-    static u8       warn1[WARN_MAX];
     static u8       sensor_size         = 0;
     static u8       device_size         = 0;
+    static u8       cnt                 = 0;
+    static u8       start_warn_flg      = NO;
     static u8       Timer100msTouch     = OFF;
     static u8       Timer1sTouch        = OFF;
     static u8       Timer10sTouch       = OFF;
@@ -53,12 +52,7 @@ int main(void)
     static u16      time10S             = 0;
     static u16      time60S             = 0;
     static u16      timeInit            = 0;
-    static u8       cnt                 = 0;
-    static u8       warnEnFlag          = 0;
     type_sys_time   time;
-
-    rt_memset(warn, 0, WARN_MAX);
-    rt_memset(warn1, 0, WARN_MAX);
 
     //初始化GPIO口
     GpioInit();
@@ -99,7 +93,6 @@ int main(void)
 
     //MQTT线程
     mqtt_start();
-//    rt_memcpy(package.head.head_code, HEAD_CODE, 4);
     while(1)
     {
         time100mS = TimerTask(&time100mS, 5, &Timer100msTouch);             //100毫秒任务定时器
@@ -146,10 +139,9 @@ int main(void)
         //60s 主动发送给云服务
         if(ON == Timer60sTouch)
         {
+            start_warn_flg = YES;
             if(LINKUP == ethStatus)
             {
-                warnEnFlag = YES;
-
                 if(YES == GetMqttStartFlg())
                 {
                     SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT, 0 , 0, RT_NULL, RT_NULL, YES, 0);
@@ -160,187 +152,10 @@ int main(void)
         //主动发送告警
         if(LINKUP == ethStatus)
         {
-            for(u8 item = 0; item < WARN_MAX; item++)
+            if(YES == start_warn_flg)
             {
-                if((warn[item] != GetSysSet()->warn[item]) && (YES == warnEnFlag))
-                {
-                    warn[item] = GetSysSet()->warn[item];
-
-                    if(ON == GetSysSet()->warn[item])
-                    {
-                        //发送给云平台
-                        if(YES == GetMqttStartFlg())
-                        {
-                            //1.如果是离线的话 ,要发送全部的离线名称, 重置标记要在以下云服务端重置
-                            if(WARN_OFFLINE == item + 1)
-                            {
-                                for(u8 index = 0; index < DEVICE_MAX; index++)
-                                {
-                                    if(YES == GetSysSet()->offline[index])
-                                    {
-                                        SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT_WARN, item, GetSysSet()->warn_value[item], RT_NULL, RT_NULL, YES, index);
-                                    }
-                                }
-                            }
-                            else
-                            {
-#if(HUB_SELECT == HUB_ENVIRENMENT)
-                                if(((item + 1) == WARN_TEMP_HIGHT) ||
-                                    ((item + 1) == WARN_TEMP_LOW)||
-                                    ((item + 1) == WARN_HUMI_HIGHT)||
-                                    ((item + 1) == WARN_HUMI_LOW)||
-                                    ((item + 1) == WARN_CO2_HIGHT)||
-                                    ((item + 1) == WARN_CO2_LOW)||
-                                    ((item + 1) == WARN_VPD_HIGHT)||
-                                    ((item + 1) == WARN_VPD_LOW)||
-                                    ((item + 1) == WARN_PAR_HIGHT)||
-                                    ((item + 1) == WARN_PAR_LOW)||
-                                    ((item + 1) == WARN_LINE_STATE)||
-                                    ((item + 1) == WARN_LINE_AUTO_T)||
-                                    ((item + 1) == WARN_LINE_AUTO_OFF)||
-                                    ((item + 1) == WARN_OFFLINE)||
-                                    ((item + 1) == WARN_CO2_TIMEOUT)||
-                                    ((item + 1) == WARN_TEMP_TIMEOUT)||
-                                    ((item + 1) == WARN_HUMI_TIMEOUT)||
-                                    ((item + 1) == WARN_SMOKE))
-                                {
-                                    SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT_WARN, item, GetSysSet()->warn_value[item], RT_NULL, RT_NULL, YES, 0);
-                                }
-#elif (HUB_SELECT == HUB_IRRIGSTION)
-                                if(((item + 1) == WARN_PH_HIGHT) ||
-                                    ((item + 1) == WARN_PH_LOW)||
-                                    ((item + 1) == WARN_EC_HIGHT)||
-                                    ((item + 1) == WARN_EC_LOW)||
-                                    ((item + 1) == WARN_WT_HIGHT)||
-                                    ((item + 1) == WARN_WT_LOW)||
-                                    ((item + 1) == WARN_WL_HIGHT)||
-                                    ((item + 1) == WARN_WL_LOW)||
-                                    ((item + 1) == WARN_WATER)||
-                                    ((item + 1) == WARN_OFFLINE)||
-                                    ((item + 1) == WARN_AUTOFILL_TIMEOUT))
-                                {
-                                    SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT_WARN, item, GetSysSet()->warn_value[item], RT_NULL, RT_NULL, YES, 0);
-                                }
-#endif
-                            }
-                        }
-
-                        //发送给app //Justin debug 仅仅测试
-                        if((OFF == eth->tcp.GetConnectTry()) &&
-                           (ON == eth->tcp.GetConnectStatus()))
-                        {
-                            //申请内存
-//                            package.data = rt_malloc(SEND_ETH_BUFFSZ);
-                            buf = rt_malloc(1024 * 2);
-                            if(RT_NULL != buf)
-                            {
-                                rt_memcpy(buf, HEAD_CODE, 4);
-                                //1.如果是离线的话 ,要发送全部的离线名称
-                                if(WARN_OFFLINE == item + 1)
-                                {
-                                    for(u8 index = 0; index < DEVICE_MAX; index++)
-                                    {
-                                        if(YES == GetSysSet()->offline[index])
-                                        {
-                                            if(RT_EOK == SendDataToCloud(RT_NULL, CMD_HUB_REPORT_WARN, item,
-                                                    GetSysSet()->warn_value[item], (u8 *)buf + sizeof(eth_page_head), &length, NO, index))
-                                            {
-                                                if(length > 0)
-                                                {
-                                                    rt_memcpy(buf + 4, &length, 2);
-                                                    if (RT_EOK != TcpSendMsg(&tcp_sock, buf, length + sizeof(eth_page_head)))
-                                                    {
-                                                        LOG_E("send tcp err 2");
-                                                        eth->tcp.SetConnectStatus(OFF);
-                                                        eth->tcp.SetConnectTry(ON);
-                                                    }
-                                                }
-                                            }
-                                            GetSysSet()->offline[index] = NO;
-                                        }
-                                    }
-                                }
-                                else
-                                {
-#if(HUB_SELECT == HUB_ENVIRENMENT)
-                                    if(((item + 1) == WARN_TEMP_HIGHT) ||
-                                        ((item + 1) == WARN_TEMP_LOW)||
-                                        ((item + 1) == WARN_HUMI_HIGHT)||
-                                        ((item + 1) == WARN_HUMI_LOW)||
-                                        ((item + 1) == WARN_CO2_HIGHT)||
-                                        ((item + 1) == WARN_CO2_LOW)||
-                                        ((item + 1) == WARN_VPD_HIGHT)||
-                                        ((item + 1) == WARN_VPD_LOW)||
-                                        ((item + 1) == WARN_PAR_HIGHT)||
-                                        ((item + 1) == WARN_PAR_LOW)||
-                                        ((item + 1) == WARN_LINE_STATE)||
-                                        ((item + 1) == WARN_LINE_AUTO_T)||
-                                        ((item + 1) == WARN_LINE_AUTO_OFF)||
-                                        ((item + 1) == WARN_OFFLINE)||
-                                        ((item + 1) == WARN_CO2_TIMEOUT)||
-                                        ((item + 1) == WARN_TEMP_TIMEOUT)||
-                                        ((item + 1) == WARN_HUMI_TIMEOUT)||
-                                        ((item + 1) == WARN_SMOKE))
-                                    {
-//                                        rt_memset(package.data, ' ', SEND_ETH_BUFFSZ);
-                                        if(RT_EOK == SendDataToCloud(RT_NULL, CMD_HUB_REPORT_WARN, item,
-                                                GetSysSet()->warn_value[item], (u8 *)buf + sizeof(eth_page_head), &length, NO, 0))
-                                        {
-                                            if(length > 0)
-                                            {
-                                                rt_memcpy(buf + 4, &length, 2);
-                                                if (RT_EOK != TcpSendMsg(&tcp_sock, buf, length + sizeof(eth_page_head)))
-                                                {
-                                                    LOG_E("send tcp err 2");
-                                                    eth->tcp.SetConnectStatus(OFF);
-                                                    eth->tcp.SetConnectTry(ON);
-                                                }
-                                            }
-                                        }
-                                    }
-#elif (HUB_SELECT == HUB_IRRIGSTION)
-
-                                    if(((item + 1) == WARN_PH_HIGHT) ||
-                                        ((item + 1) == WARN_PH_LOW)||
-                                        ((item + 1) == WARN_EC_HIGHT)||
-                                        ((item + 1) == WARN_EC_LOW)||
-                                        ((item + 1) == WARN_WT_HIGHT)||
-                                        ((item + 1) == WARN_WT_LOW)||
-                                        ((item + 1) == WARN_WL_HIGHT)||
-                                        ((item + 1) == WARN_WL_LOW)||
-                                        ((item + 1) == WARN_WATER)||
-                                        ((item + 1) == WARN_OFFLINE)||
-                                        ((item + 1) == WARN_AUTOFILL_TIMEOUT))
-                                    {
-                                        //rt_memset(package.data, ' ', SEND_ETH_BUFFSZ);
-                                        if(RT_EOK == SendDataToCloud(RT_NULL, CMD_HUB_REPORT_WARN, item,
-                                                GetSysSet()->warn_value[item], buf + sizeof(eth_page_head), &length, NO, 0))
-                                        {
-                                            if(length > 0)
-                                            {
-                                                rt_memcpy(buf + 4, length, 2);
-                                                if (RT_EOK != TcpSendMsg(&tcp_sock, buf, length + sizeof(eth_page_head)))
-                                                {
-                                                    LOG_E("send tcp err 2");
-                                                    eth->tcp.SetConnectStatus(OFF);
-                                                    eth->tcp.SetConnectTry(ON);
-                                                }
-                                            }
-                                        }
-                                    }
-#endif
-                                }
-                            }
-
-                            //释放内存
-                            if(RT_NULL != buf)
-                            {
-                                rt_free(buf);
-                                buf = RT_NULL;
-                            }
-                        }
-                    }
-                }
+                sendOfflinewarnning(GetMonitor());      //发送离线报警
+                sendwarnningInfo();
             }
         }
 
@@ -363,7 +178,6 @@ int main(void)
                 {
                     GetSysSet()->dayOrNight = NIGHT_TIME;
                 }
-
             }
             else if(DAY_BY_PHOTOCELL == GetSysSet()->sysPara.dayNightMode)//按灯光分辨
             {

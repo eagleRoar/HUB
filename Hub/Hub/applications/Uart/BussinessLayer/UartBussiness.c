@@ -198,6 +198,7 @@ u8 askDeviceHeart_new(type_monitor_t *monitor, rt_device_t serial, u8 event)
     u16             crc16Result                                 = 0x0000;
     u16             temp                                        = 0x0000;
     device_t        *device                                     = RT_NULL;
+    struct control  control[DEVICE_MAX][DEVICE_PORT_MAX];
     static u8       manual_state[DEVICE_MAX][DEVICE_PORT_MAX]   ={0};
     static u8       state_pre[DEVICE_MAX][DEVICE_PORT_MAX]      ={0};
     static time_t   protectTime[DEVICE_MAX][DEVICE_PORT_MAX]        ={0};
@@ -239,17 +240,22 @@ u8 askDeviceHeart_new(type_monitor_t *monitor, rt_device_t serial, u8 event)
                 {
                     value = GetValueAboutHACV(device, OFF, ON);
                 }
-                device->port[0].ctrl.d_state = value >> 8;
-                device->port[0].ctrl.d_value = value;
+//                device->port[0].ctrl.d_state = value >> 8;
+//                device->port[0].ctrl.d_value = value;
+                control[ask_device][0].d_state = value >> 8;
+                control[ask_device][0].d_value = value;
             }
             else if(IR_AIR_TYPE == device->port[port].type)
             {
-                device->port[0].ctrl.d_state = 0xe0;
-                device->port[0].ctrl.d_value = 0x00;
+//                device->port[0].ctrl.d_state = 0xe0;
+//                device->port[0].ctrl.d_value = 0x00;
+                control[ask_device][0].d_state = 0xe0;
+                control[ask_device][0].d_value = 0x00;
             }
             else
             {
-                device->port[port].ctrl.d_state = ON;
+//                device->port[port].ctrl.d_state = ON;
+                control[ask_device][port].d_state = ON;
             }
 
             if(getTimeStamp() >=
@@ -260,17 +266,22 @@ u8 askDeviceHeart_new(type_monitor_t *monitor, rt_device_t serial, u8 event)
                 if(HVAC_6_TYPE == device->port[port].type)
                 {
                     value = GetValueAboutHACV(device, OFF, OFF);
-                    device->port[0].ctrl.d_state = value >> 8;
-                    device->port[0].ctrl.d_value = value;
+//                    device->port[0].ctrl.d_state = value >> 8;
+//                    device->port[0].ctrl.d_value = value;
+                    control[ask_device][0].d_state = value >> 8;
+                    control[ask_device][0].d_value = value;
                 }
                 else if(IR_AIR_TYPE == device->port[port].type)
                 {
-                    device->port[0].ctrl.d_state = 0x60;
-                    device->port[0].ctrl.d_value = 0x00;
+//                    device->port[0].ctrl.d_state = 0x60;
+//                    device->port[0].ctrl.d_value = 0x00;
+                    control[ask_device][0].d_state = 0x60;
+                    control[ask_device][0].d_value = 0x00;
                 }
                 else
                 {
-                    device->port[port].ctrl.d_state = OFF;
+//                    device->port[port].ctrl.d_state = OFF;
+                    control[ask_device][port].d_state = OFF;
                 }
                 //保存到SD卡
                 saveModuleFlag = YES;
@@ -281,12 +292,15 @@ u8 askDeviceHeart_new(type_monitor_t *monitor, rt_device_t serial, u8 event)
             if(HVAC_6_TYPE == device->port[port].type)
             {
                 value = GetValueAboutHACV(device, OFF, OFF);
-                device->port[0].ctrl.d_state = value >> 8;
-                device->port[0].ctrl.d_value = value;
+//                device->port[0].ctrl.d_state = value >> 8;
+//                device->port[0].ctrl.d_value = value;
+                control[ask_device][0].d_state = 0x60;
+                control[ask_device][0].d_value = 0x00;
             }
             else
             {
-                device->port[port].ctrl.d_state = OFF;
+//                device->port[port].ctrl.d_state = OFF;
+                control[ask_device][port].d_state = 0x60;
             }
         }
         else if(MANUAL_NO_HAND == device->port[port].manual.manual)
@@ -338,6 +352,7 @@ u8 askDeviceHeart_new(type_monitor_t *monitor, rt_device_t serial, u8 event)
         if(ON == GetSysSet()->sysPara.maintain)
         {
             device->port[port].ctrl.d_state = OFF;
+            control[ask_device][port].d_state = OFF;
             //LOG_D("in maintain, all device off");
         }
 
@@ -349,11 +364,23 @@ u8 askDeviceHeart_new(type_monitor_t *monitor, rt_device_t serial, u8 event)
         buffer[0] = device->addr;
         if(1 == monitor->device[ask_device].storage_size)
         {
-            buffer[1] = WRITE_SINGLE;
-            buffer[2] = (device->ctrl_addr >> 8) & 0x00FF;
-            buffer[3] = device->ctrl_addr & 0x00FF;
-            buffer[4] = device->port[0].ctrl.d_state;
-            buffer[5] = device->port[0].ctrl.d_value;
+            if(MANUAL_NO_HAND == device->port[0].manual.manual)
+            {
+                buffer[1] = WRITE_SINGLE;
+                buffer[2] = (device->ctrl_addr >> 8) & 0x00FF;
+                buffer[3] = device->ctrl_addr & 0x00FF;
+                buffer[4] = device->port[0].ctrl.d_state;
+                buffer[5] = device->port[0].ctrl.d_value;
+            }
+            else
+            {
+                //手动模式
+                buffer[1] = WRITE_SINGLE;
+                buffer[2] = (device->ctrl_addr >> 8) & 0x00FF;
+                buffer[3] = device->ctrl_addr & 0x00FF;
+                buffer[4] = control[ask_device][0].d_state;
+                buffer[5] = control[ask_device][0].d_value;
+            }
         }
         else
         {
@@ -361,7 +388,6 @@ u8 askDeviceHeart_new(type_monitor_t *monitor, rt_device_t serial, u8 event)
             if(((AC_4_TYPE == device->type) || (IO_4_TYPE == device->type)) &&
                     (YES != special[ask_device]))
             {
-//                LOG_W("ask ac_4 port");
                 buffer[1] = READ_MUTI;
                 buffer[2] = 0x04;
                 buffer[3] = 0x40;
@@ -371,13 +397,23 @@ u8 askDeviceHeart_new(type_monitor_t *monitor, rt_device_t serial, u8 event)
             else
             {
                 buffer[1] = WRITE_SINGLE;
-                buffer[2] = (device->ctrl_addr >> 8) & 0x00FF;
-                buffer[3] = device->ctrl_addr & 0x00FF;
+                buffer[2] = device->ctrl_addr >> 8;
+                buffer[3] = device->ctrl_addr;
                 for(u8 item = 0; item < device->storage_size; item++)
                 {
-                    if(ON == device->port[item].ctrl.d_state)
+                    if(MANUAL_NO_HAND == device->port[item].manual.manual)
                     {
-                        temp |= 1 << item;
+                        if(ON == device->port[item].ctrl.d_state)
+                        {
+                            temp |= 1 << item;
+                        }
+                    }
+                    else
+                    {
+                        if(ON == control[ask_device][item].d_state)
+                        {
+                            temp |= 1 << item;
+                        }
                     }
                 }
                 buffer[4] = temp >> 8;
@@ -389,9 +425,7 @@ u8 askDeviceHeart_new(type_monitor_t *monitor, rt_device_t serial, u8 event)
         buffer[7] = (crc16Result>>8);                        //CRC16高位
 
         rt_device_write(serial, 0, buffer, 8);
-//        LOG_I("ask device name %s, addr %x",device->name,device->addr);
-//        LOG_D("send data %x %x %x %x %x %x %x %x",
-//                buffer[0],buffer[1],buffer[2],buffer[3],buffer[4],buffer[5],buffer[6],buffer[7]);
+
         devConnectState[ask_device].send_count ++;
         if(devConnectState[ask_device].send_count >= CONNRCT_MISS_MAX)
         {

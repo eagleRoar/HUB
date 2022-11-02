@@ -292,8 +292,7 @@ void SensorUart2TaskEntry(void* parameter)
                 {
                     //解决办法为如果发现存在失联的情况就再次全部重新分配
                     devRegisterAnswer(GetMonitor(), uart2_serial, GetMonitor()->device[allocate_i].uuid);
-//                    LOG_E("send addr, name = %s, uuid = %x",
-//                            GetMonitor()->device[allocate_i].name, GetMonitor()->device[allocate_i].uuid);//Justin debug 仅仅测试
+
                     if(allocate_i < GetMonitor()->device_size - 1)
                     {
                         allocate_i++;
@@ -318,7 +317,7 @@ void SensorUart2TaskEntry(void* parameter)
                 co2Program(GetMonitor(), 1000);
                 humiProgram(GetMonitor());
                 lineProgram_new(GetMonitor(), 0, 1000);
-//                lineProgram_new(GetMonitor(), 1, 1000);             //line2//Justin debug  仅仅测试
+                lineProgram_new(GetMonitor(), 1, 1000);             //line2
 #elif(HUB_SELECT == HUB_IRRIGSTION)
                 pumpProgram(GetMonitor(), GetSysTank());            //水泵的工作
                 autoBindPumpTotank(GetMonitor(), GetSysTank());
@@ -398,8 +397,6 @@ void SensorUart2TaskEntry(void* parameter)
 
                 //非法地址处理
                 deleteModule(GetMonitor(), 0);
-
-//                CtrlAllDeviceByFunc(GetMonitor(), F_COOL, 1, 0);//Justin debug
             }
 
             /* 60s 事件 */

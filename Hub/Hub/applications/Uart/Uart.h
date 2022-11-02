@@ -19,7 +19,7 @@
 #define             DEVICE_UART3            "uart3"
 
 #define             UART_MSG_SIZE           512
-#define             UART_PERIOD             70//50 //注意周期不应该低于50,因为发送心跳包的操作太快的话发送有问题//Justin debug 仅仅测试
+#define             UART_PERIOD             70//50 //注意周期不应该低于50,因为发送心跳包的操作太快的话发送有问题
 #define             CONNRCT_MISS_MAX        5
 /* 串口接收消息结构*/
 struct rx_msg

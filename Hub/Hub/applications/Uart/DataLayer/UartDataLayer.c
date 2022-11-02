@@ -395,10 +395,42 @@ rt_err_t setLineDefault(line_t *line)
     return RT_EOK;
 }
 
-/* 获取分配的地址 */
+//获取当前分配的最大的地址
+u8 getMonitorMaxAddr(type_monitor_t *monitor)
+{
+    u8          index       = 0;
+    static u8   max_addr    = 0;
 
+    for(index = 0; index < monitor->sensor_size; index++)
+    {
+        if(monitor->sensor[index].addr > max_addr)
+        {
+            max_addr = monitor->sensor[index].addr;
+        }
+    }
+
+    for(index = 0; index < monitor->device_size; index++)
+    {
+        if(monitor->device[index].addr > max_addr)
+        {
+            max_addr = monitor->device[index].addr;
+        }
+    }
+
+    for(index = 0; index < monitor->line_size; index++)
+    {
+        if(monitor->line[index].addr > max_addr)
+        {
+            max_addr = monitor->line[index].addr;
+        }
+    }
+
+    return max_addr;
+}
+
+/* 获取分配的地址 */
 //0xE0~0xEF预留
-u8 getAllocateAddress(type_monitor_t *monitor, u8 type)
+u8 getAllocateAddress(type_monitor_t *monitor, u8 type)//Justin debug 待验证
 {
     u16 i = 0;
 
@@ -408,7 +440,16 @@ u8 getAllocateAddress(type_monitor_t *monitor, u8 type)
     }
     else
     {
-        for(i = 2; i < ALLOCATE_ADDRESS_SIZE; i++)
+        if(getMonitorMaxAddr(monitor) + 3 >= ALLOCATE_ADDRESS_SIZE)
+        {
+            i = 2;
+        }
+        else
+        {
+            i = getMonitorMaxAddr(monitor) + 2;
+        }
+        LOG_I("the max addr = %d",i);//Justin debug 仅仅测试+
+        for(; i < ALLOCATE_ADDRESS_SIZE; i++)
         {
             if((monitor->allocateStr.address[i] != i) &&
                 (i != 0xFA) && (i != 0xFE))//0xFA 是注册的代码 0xFE是PHEC通用

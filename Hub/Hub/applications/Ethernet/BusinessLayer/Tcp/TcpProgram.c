@@ -114,7 +114,6 @@ rt_err_t notifyTcpAndUdpSocket(char *newIp, int newPort, struct ethDeviceStruct 
     return RT_EOK;
 }
 
-//Justin debug 仅仅测试
 /**
  * 本函数用于解决实际过程中碰到的粘包和分包问题
  *
@@ -142,7 +141,7 @@ void analyzeTcpData(char *data, u16 size)
             if(index != 0)
             {
                 //LOG_I("%.*s",index - start,data + start);
-                splitJointData(data + start, index - start);       //Justin debug
+                splitJointData(data + start, index - start);
             }
             start = index;
         }
@@ -152,7 +151,7 @@ void analyzeTcpData(char *data, u16 size)
     if(start + 4 != size)//start + 3 == size - 1
     {
         //LOG_E("%.*s",size - start,data + start);
-        splitJointData(data + start, size - start);       //Justin debug
+        splitJointData(data + start, size - start);
     }
 }
 
@@ -195,7 +194,7 @@ void splitJointData(char *data, u16 size)
                 //1.继续将数据拼接上去
                 //LOG_D("len = %d,size = %d",now_size - sizeof(eth_page_head),size);
 
-                rt_memcpy(page.data + (now_size - sizeof(eth_page_head)), data, size);//Justin debug 仅仅测试
+                rt_memcpy(page.data + (now_size - sizeof(eth_page_head)), data, size);
 
                 //2.加上这一包就完成完整包
                 changDataToEthPage(&page, page_size);
@@ -203,7 +202,7 @@ void splitJointData(char *data, u16 size)
                 nocompleted = NO;       //标识为完整包
                 //3.调用上层解析
                 //LOG_W("recv buf = %.*s",page.head.length,page.data);
-                analyzeCloudData(page.data, NO);//Justin debug 仅仅测试
+                analyzeCloudData(page.data, NO);
                 //4.注意解析完数据后要释放空间
                 if(RT_NULL != page.data)
                 {
@@ -216,7 +215,7 @@ void splitJointData(char *data, u16 size)
             {
                 LOG_W("test 5");
                 //1.数据拼接上去
-                rt_memcpy(page.data + (now_size - sizeof(eth_page_head)), data, size);//Justin debug 仅仅测试
+                rt_memcpy(page.data + (now_size - sizeof(eth_page_head)), data, size);
                 //2.这一包不是尾包 继续等待粘包
                 now_size += size;
                 nocompleted = YES;       //标识为存在未完整包
@@ -272,7 +271,7 @@ void splitJointData(char *data, u16 size)
                             now_size = 0;
                             //2.调用上层解析
                             LOG_I("len = %d ,recv buf = %.*s",page.head.length,page.head.length,page.data);
-                            analyzeCloudData(page.data, NO);//Justin debug 仅仅测试
+                            analyzeCloudData(page.data, NO);
                             //3.注意解析完数据后要释放空间
                             if(RT_NULL != page.data)
                             {

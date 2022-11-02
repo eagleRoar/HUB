@@ -65,7 +65,7 @@ void deleteModule(type_monitor_t *monitor, u8 addr)
             }
         }
         //最后
-        //rt_memset((u8 *)&monitor->device[monitor->device_size - 1], 0, sizeof(device_t));//Justin debug 仅仅测试
+        //rt_memset((u8 *)&monitor->device[monitor->device_size - 1], 0, sizeof(device_t));
         monitor->device_size -= 1;
     }
 
@@ -89,7 +89,7 @@ void deleteModule(type_monitor_t *monitor, u8 addr)
             }
         }
         //最后
-//        rt_memset((u8 *)&monitor->line[monitor->line_size - 1], 0, sizeof(line_t));//Justin debug 仅仅测试
+//        rt_memset((u8 *)&monitor->line[monitor->line_size - 1], 0, sizeof(line_t));
         monitor->line_size -= 1;
     }
 }
@@ -354,11 +354,16 @@ void CtrlAllDeviceByFunc(type_monitor_t *monitor, u8 func, u8 en, u8 value)
                 {
                     if(ON == en)
                     {
+                        //LOG_E("set temp = %d",temp);
+                        if(temp > tempSet.tempDeadband)
+                        {
+                            temp -= tempSet.tempDeadband;
+                        }
                         changeIrAirCode(temp, &res);
 
                         device->port[0].ctrl.d_state = res >> 8;
                         device->port[0].ctrl.d_value = res;
-                        LOG_D("ir %x %x",device->port[0].ctrl.d_state,device->port[0].ctrl.d_value);
+                        //LOG_D("ir %x %x",device->port[0].ctrl.d_state,device->port[0].ctrl.d_value);
                     }
                     else
                     {
@@ -576,7 +581,7 @@ int getSensorDataByFunc(type_monitor_t *monitor, u8 func)
 //如果30 度 那么temp = 300
 void changeIrAirCode(u16 temp, u16 *ret)
 {
-    *ret |= 0xE000;
+    *ret |= 0xE010;
 
     //以下操作按照红外协议
     if(temp / 10 >= 16)

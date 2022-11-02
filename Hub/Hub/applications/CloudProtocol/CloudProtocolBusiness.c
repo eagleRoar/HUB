@@ -415,7 +415,6 @@ void CmdSetPortSet(char *data, cloudcmd_t *cmd)
                             {
                                 GetValueByInt(list_item, "onAt", &device->port[port].timer[index].on_at);
                                 GetValueByInt(list_item, "duration", &device->port[port].timer[index].duration);
-                                LOG_D("duration = %d",device->port[port].timer[index].duration);//Justin debug 仅仅测试
                                 GetValueByU8(list_item, "en", &device->port[port].timer[index].en);
                             }
                         }
@@ -428,7 +427,7 @@ void CmdSetPortSet(char *data, cloudcmd_t *cmd)
                 else if(BY_RECYCLE == device->port[port].mode)
                 {
                     GetValueByU16(temp, "startAt", &device->port[port].cycle.startAt);
-                    //存储当前设置的时间 //Justin debug
+                    //存储当前设置的时间
                     device->port[port].cycle.start_at_timestamp =
                             systimeToTimestamp(device->port[port].cycle.startAt / 60, device->port[port].cycle.startAt % 60, 0);
                     GetValueByInt(temp, "duration", &device->port[port].cycle.duration);
@@ -2378,7 +2377,6 @@ char *ReplyGetTank(char *cmd, cloudcmd_t cloud)
                     name[MODULE_NAMESZ*2 + 1] = '\0';
                     cJSON_AddStringToObject(pump, "name", name);
                 }
-                LOG_E("pump name = %s",name);//Justin debug 仅仅测试
 
                 cJSON_AddNumberToObject(pump, "color", tank->color);
 
@@ -2665,7 +2663,6 @@ char *ReplyGetRecipeList(char *cmd, cloudcmd_t cloud, sys_recipe_t *list)
     return str;
 }
 
-//Justin debug 注意以下数据返回的空间太大 申请不到这么大的空间
 char *ReplyGetRecipeListAll(char *cmd, cloudcmd_t cloud, sys_recipe_t *list)
 {
     char            *str        = RT_NULL;
@@ -4179,13 +4176,12 @@ char *ReplyGetDeviceList(char *cmd, type_kv_c16 msgid)
                             }
                             else if(IR_AIR_TYPE == module->port[0].type)
                             {
-                                LOG_D("---------ir %x %x",module->port[0].ctrl.d_state,module->port[0].ctrl.d_value);//Justin debug
                                 if(0 == (module->port[0].ctrl.d_state & 0x80))
                                 {
                                     work_state = OFF;
                                 }
                                 else
-                                {//Justin debug
+                                {
                                     work_state = ON;
                                 }
                             }
@@ -4349,10 +4345,12 @@ char *ReplyGetDeviceList(char *cmd, type_kv_c16 msgid)
                     if(CON_FAIL == line.conn_state)
                     {
                         cJSON_AddNumberToObject(line_i, "online", 0);
+                        cJSON_AddNumberToObject(line_i, "workingStatus", OFF);
                     }
                     else
                     {
                         cJSON_AddNumberToObject(line_i, "online", 1);
+                        cJSON_AddNumberToObject(line_i, "workingStatus", line.d_state);
                     }
                     cJSON_AddNumberToObject(line_i, "lightType", GetSysSet()->line1Set.lightsType);
                     cJSON_AddNumberToObject(line_i, "lightPower", line.d_value);

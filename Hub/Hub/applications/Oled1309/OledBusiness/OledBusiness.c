@@ -521,6 +521,10 @@ void qrcode(void)
         LOG_D("qrc.size = %d",qrc.size);
 
         rt_free(qrcodeBytes);
+
+        ST7567_GotoXY(0, 48);
+        ST7567_Puts(qrstr, &Font_8x16, 1);
+        ST7567_UpdateScreen();
     }
     else
     {

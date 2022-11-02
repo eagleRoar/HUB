@@ -27,7 +27,7 @@
 //        return -RT_ERROR;
 //    }
 //
-//    rt_sfud_flash_probe(FAL_USING_NOR_FLASH_DEV_NAME, "spi10");//Justin debug 注册nor flash
+//    rt_sfud_flash_probe(FAL_USING_NOR_FLASH_DEV_NAME, "spi10");// 注册nor flash
 //
 //    return RT_EOK;
 //}

@@ -65,7 +65,7 @@ void AddRecipe(recipe_t *rec, sys_recipe_t *sys_rec)
         if(sys_rec->recipe[index].id == rec->id)
         {
             rt_memcpy(&sys_rec->recipe[index], rec, sizeof(recipe_t));
-            LOG_E("name = %s",sys_rec->recipe[index].name);//Justin debug 仅仅测试
+            //LOG_E("name = %s",sys_rec->recipe[index].name);
             break;
         }
     }
@@ -79,7 +79,7 @@ void AddRecipe(recipe_t *rec, sys_recipe_t *sys_rec)
         else
         {
             rt_memcpy(&sys_rec->recipe[index], rec, sizeof(recipe_t));
-            LOG_E("name = %s",sys_rec->recipe[index].name);//Justin debug 仅仅测试
+            //LOG_E("name = %s",sys_rec->recipe[index].name);
             sys_rec->recipe_size++;
         }
     }
