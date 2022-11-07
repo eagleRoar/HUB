@@ -120,27 +120,11 @@ static void ButtonRegister(void)
 
 static void ButtonTaskEntry(void* parameter)
 {
-//    static u8       Timer1sTouch        = OFF;
-//    static u16      time1S              = 0;
     //注册按键信息，告诉我，按键的pin，按键0/1认为是已经点击
     ButtonRegister();
 
     while(1)
     {
-//        time1S = TimerTask(&time1S, 1000 / BUTTON_TASK_PERIOD, &Timer1sTouch);
-//
-//        if(YES == Timer1sTouch)
-//        {
-//            //LOG_I("-------------key enter is %d",rt_pin_read(BUTTON_ENTER));
-//
-////            for(int index = 0; index < BUTTON_MAX;index++)
-////            {
-////                if(buttonList[index].pin == BUTTON_ENTER)
-////                {
-////                    LOG_I("enter button is %d",index);
-////                }
-////            }
-//        }
 
         Buttonprogram(BUTTON_TASK_PERIOD);
 
@@ -156,20 +140,6 @@ static void ButtonTaskEntry(void* parameter)
  */
 void ButtonTaskInit(void)
 {
-//    rt_err_t threadStart = RT_NULL;
-//
-//    /* 创建串口 线程 */
-//    rt_thread_t thread = rt_thread_create("button task", ButtonTaskEntry, RT_NULL, 1024, BUTTON_PRIORITY, 10);
-//
-//    /* 如果线程创建成功则开始启动线程，否则提示线程创建失败 */
-//    if (RT_NULL != thread) {
-//        threadStart = rt_thread_startup(thread);
-//        if (RT_EOK != threadStart) {
-//            LOG_E("button task start failed");
-//        }
-//    } else {
-//        LOG_E("button task create failed");
-//    }
     if(RT_EOK != rt_thread_init(&button_thread, BUTTON_TASK, ButtonTaskEntry, RT_NULL, button_task, sizeof(button_task), BUTTON_PRIORITY, 10))
     {
         LOG_E("uart thread fail");

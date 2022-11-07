@@ -198,13 +198,6 @@ void rtcTest(type_sys_time time)
 {
     rt_err_t ret = RT_EOK;
 
-//    /* 设置日期 */
-//    ret = set_date(2022, 5, 30);
-//    set_time(14, 22, 0);
-//    if (ret != RT_EOK)
-//    {
-//        LOG_D("set RTC date failed\n");
-//    }
     /* 设置日期 */
     ret = set_date(time.year, time.month, time.day);
     set_time(time.hour, time.minute, time.second);
@@ -214,28 +207,7 @@ void rtcTest(type_sys_time time)
     }
 }
 
-//void PrintTempSet(proTempSet_t set)
-//{
-//    LOG_D("-----------------------PrintTempSet");
-//    LOG_D("%s %s",set.msgid.name, set.msgid.value);
-//    LOG_D("%s %d",set.dayCoolingTarget.name, set.dayCoolingTarget.value);
-//    LOG_D("%s %d",set.dayHeatingTarget.name, set.dayHeatingTarget.value);
-//    LOG_D("%s %d",set.nightCoolingTarget.name, set.nightCoolingTarget.value);
-//    LOG_D("%s %d",set.nightHeatingTarget.name, set.nightHeatingTarget.value);
-//    LOG_D("%s %d",set.coolingDehumidifyLock.name, set.coolingDehumidifyLock.value);
-//}
-
-//void PrintHumiSet(proHumiSet_t set)
-//{
-//    LOG_D("-----------------------PrintHumiSet");
-////    LOG_D("%s %s",set.msgid.name, set.msgid.value);
-////    LOG_D("%s %d",set.dayHumiTarget.name, set.dayHumiTarget.value);
-//    LOG_D("%s %d",set.dayDehumiTarget.name, set.dayDehumiTarget.value);
-////    LOG_D("%s %d",set.nightHumiTarget.name, set.nightHumiTarget.value);
-////    LOG_D("%s %d",set.nightDehumiTarget.name, set.nightDehumiTarget.value);
-//}
-
-time_t systimeToTimestamp(u8 hour, u8 min, u8 sec)
+time_t systimeToTimestamp(u16 year, u8 mon, u8 day, u8 hour, u8 min, u8 sec)
 {
     type_sys_time   fortime;
     time_t          now_time;

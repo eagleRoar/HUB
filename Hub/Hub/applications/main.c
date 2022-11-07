@@ -57,6 +57,9 @@ int main(void)
     //初始化GPIO口
     GpioInit();
 
+    //灯光
+    LedTaskInit();
+
     initMonitor();
 
     //oled1309屏线程初始化
@@ -162,7 +165,7 @@ int main(void)
         //1s event
         if(ON == Timer1sTouch)
         {
-            LedProgram();
+            //LedProgram();
 
             //分辨白天黑夜
             if(DAY_BY_TIME == GetSysSet()->sysPara.dayNightMode)//按时间分辨
@@ -215,6 +218,7 @@ int main(void)
                     printDevice(GetMonitor()->device[index]);
                 }
             }
+
         }
 
         //10s

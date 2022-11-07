@@ -15,7 +15,7 @@
 #define     name_null                       "null"     //长度32的空字符串
 #define     VALUE_NULL                      -9999       //如果没有值上传给MQTT的值
 
-#define     ALLOCATE_ADDRESS_SIZE           100
+#define     ALLOCATE_ADDRESS_SIZE           256//100
 #define     HUB_NAMESZ                      13
 #define     MODULE_NAMESZ                   9
 #define     STORAGE_NAMESZ                  8

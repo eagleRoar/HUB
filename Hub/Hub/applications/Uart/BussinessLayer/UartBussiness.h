@@ -49,4 +49,6 @@ void findLineLocation(type_monitor_t *, cloudcmd_t *,rt_device_t);
 void replyStrorageType(type_monitor_t *, u8, u8 *, u8);
 void setDeviceEvent(u8);
 u8 getDeviceEvent(void);
+rt_err_t changeCharToDate(char*, type_sys_time *);
+rt_err_t changeDataToChar(char*, type_sys_time *);
 #endif /* APPLICATIONS_UART_BUSSINESSLAYER_UARTBUSSINESS_H_ */

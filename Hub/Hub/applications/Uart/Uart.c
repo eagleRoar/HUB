@@ -171,8 +171,12 @@ void SensorUart2TaskEntry(void* parameter)
     static      u8              line_start      = 0;
     static      type_sys_time   sys_time_pre;
     static      u8              specailFlag     = 0;
-    static      u8              allocate_flag   = OFF;
+    static      u8              re_allocate_dec   = OFF;
+    static      u8              re_allocate_line   = OFF;
+    static      u8              re_allocate_sen   = OFF;
     static      u8              allocate_i      = 0;
+    static      u8              allo_line_i      = 0;
+    static      u8              allo_sen_i      = 0;
 
     rt_memset((u8 *)&sys_time_pre, 0, sizeof(type_sys_time));
     initConnectState();
@@ -285,12 +289,12 @@ void SensorUart2TaskEntry(void* parameter)
 
                     //校准时间
                     rtcTest(sys_time);
+                    getEthHeart()->last_connet_time = getTimeStamp();//一定要更新时间
                 }
 
                 //1.有可能出现hub,重新分配地址出现不成功的情况
-                if(ON == allocate_flag)
+                if(ON == re_allocate_dec)
                 {
-                    //解决办法为如果发现存在失联的情况就再次全部重新分配
                     devRegisterAnswer(GetMonitor(), uart2_serial, GetMonitor()->device[allocate_i].uuid);
 
                     if(allocate_i < GetMonitor()->device_size - 1)
@@ -300,7 +304,37 @@ void SensorUart2TaskEntry(void* parameter)
                     else
                     {
                         allocate_i = 0;
-                        allocate_flag = OFF;
+                        re_allocate_dec = OFF;
+                    }
+                }
+
+                if(ON == re_allocate_line)
+                {
+                    devRegisterAnswer(GetMonitor(), uart3_serial, GetMonitor()->line[allo_line_i].uuid);
+
+                    if(allo_line_i < GetMonitor()->line_size - 1)
+                    {
+                        allo_line_i++;
+                    }
+                    else
+                    {
+                        allo_line_i = 0;
+                        re_allocate_line = OFF;
+                    }
+                }
+
+                if(ON == re_allocate_sen)
+                {
+                    devRegisterAnswer(GetMonitor(), uart1_serial, GetMonitor()->sensor[allo_sen_i].uuid);
+
+                    if(allo_sen_i < GetMonitor()->sensor_size - 1)
+                    {
+                        allo_sen_i++;
+                    }
+                    else
+                    {
+                        allo_sen_i = 0;
+                        re_allocate_sen = OFF;
                     }
                 }
             }
@@ -402,7 +436,9 @@ void SensorUart2TaskEntry(void* parameter)
             /* 60s 事件 */
             if(ON == Timer60sTouch)
             {
-                allocate_flag = ON;
+                re_allocate_dec = ON;
+                re_allocate_line = ON;
+                re_allocate_sen = ON;
             }
         }
         rt_thread_mdelay(UART_PERIOD);

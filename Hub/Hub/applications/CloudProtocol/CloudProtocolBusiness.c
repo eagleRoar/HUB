@@ -108,6 +108,7 @@ rt_err_t GetValueByU16(cJSON *temp, char *name, u16 *value)
     return ret;
 }
 
+//传入的data value数组长度要大于16
 rt_err_t GetValueC16(cJSON *temp, type_kv_c16 *data)
 {
     rt_err_t ret = RT_ERROR;
@@ -124,6 +125,7 @@ rt_err_t GetValueC16(cJSON *temp, type_kv_c16 *data)
         LOG_E("parse c16 err, name %s",data->name);
         rt_memset(data->value, ' ', 16);
     }
+    data->value[16] = '\0';
 
     return ret;
 }
@@ -348,6 +350,8 @@ void CmdSetPortSet(char *data, cloudcmd_t *cmd)
     device_t        *device     = RT_NULL;
     line_t          *line       = RT_NULL;
     //u8              fatherFlg   = 0;            //判断是否是父模块 区别端口
+    type_sys_time   time;
+    char            firstStartAt[15];
 
     temp = cJSON_Parse(data);
     if(RT_NULL != temp)
@@ -426,10 +430,17 @@ void CmdSetPortSet(char *data, cloudcmd_t *cmd)
                 }
                 else if(BY_RECYCLE == device->port[port].mode)
                 {
-                    GetValueByU16(temp, "startAt", &device->port[port].cycle.startAt);
-                    //存储当前设置的时间
-                    device->port[port].cycle.start_at_timestamp =
-                            systimeToTimestamp(device->port[port].cycle.startAt / 60, device->port[port].cycle.startAt % 60, 0);
+//                    GetValueByU16(temp, "startAt", &device->port[port].cycle.startAt);
+                    //存储当前设置的时间 //Justin debug 仅仅测试
+//                    device->port[port].cycle.start_at_timestamp =
+//                            systimeToTimestamp(device->port[port].cycle.startAt / 60, device->port[port].cycle.startAt % 60, 0);
+                    GetValueByC16(temp, "firstStartAt", firstStartAt, 15);
+                    firstStartAt[14] = '\0';
+                    changeCharToDate(firstStartAt, &time);
+//                    LOG_E("year %d, mon %d, day %d, hour %d, min %d, sec %d",
+//                            time.year,time.month,time.day,time.hour,time.minute,time.second);
+                    device->port[port].cycle.startAt = time.hour * 60 + time.minute;//Justin debug 云服务器修改协议，后续逻辑修改较多，在此转化
+                    device->port[port].cycle.start_at_timestamp = systimeToTimestamp(time.year, time.month, time.day, time.hour, time.minute, 0);
                     GetValueByInt(temp, "duration", &device->port[port].cycle.duration);
                     GetValueByInt(temp, "pauseTime", &device->port[port].cycle.pauseTime);
                     GetValueByU8(temp, "times", &device->port[port].cycle.times);
@@ -769,6 +780,8 @@ void CmdGetRecipe(char *data, cloudcmd_t *cmd)
 void CmdSetRecipe(char *data, cloudcmd_t *cmd)
 {
     u16             tempValue   = 0;
+    char            firstStartAt[15] = "";
+    type_sys_time   time;
     cJSON           *temp       = RT_NULL;
     cJSON           *line       = RT_NULL;
     recipe_t        *recipe     = RT_NULL;
@@ -804,7 +817,14 @@ void CmdSetRecipe(char *data, cloudcmd_t *cmd)
                 GetValueByU8(line, "mode", &recipe->line_list[0].mode);
                 GetValueByU16(line, "lightOn", &recipe->line_list[0].lightOn);
                 GetValueByU16(line, "lightOff", &recipe->line_list[0].lightOff);
-                GetValueByU16(line, "firstCycleTime", &recipe->line_list[0].firstCycleTime);
+//                GetValueByU16(line, "firstCycleTime", &recipe->line_list[0].firstCycleTime);//Justin debug 该地方要修改
+                GetValueByC16(line, "firstStartAt", firstStartAt, 15);
+                firstStartAt[14] = '\0';
+                changeCharToDate(firstStartAt, &time);
+    //            LOG_E("year %d, mon %d, day %d, hour %d, min %d, sec %d",
+    //                    time.year,time.month,time.day,time.hour,time.minute,time.second);
+                recipe->line_list[0].firstCycleTime = time.hour * 60 + time.minute;
+                recipe->line_list[0].firstRuncycleTime = systimeToTimestamp(time.year, time.month, time.day, time.hour, time.minute, 0);
                 GetValueByInt(line, "duration", &recipe->line_list[0].duration);
                 GetValueByInt(line, "pauseTime", &recipe->line_list[0].pauseTime);
             }
@@ -818,7 +838,14 @@ void CmdSetRecipe(char *data, cloudcmd_t *cmd)
                 GetValueByU8(line, "mode", &recipe->line_list[1].mode);
                 GetValueByU16(line, "lightOn", &recipe->line_list[1].lightOn);
                 GetValueByU16(line, "lightOff", &recipe->line_list[1].lightOff);
-                GetValueByU16(line, "firstCycleTime", &recipe->line_list[1].firstCycleTime);
+//                GetValueByU16(line, "firstCycleTime", &recipe->line_list[1].firstCycleTime);//Justin debug 该地方要修改
+                GetValueByC16(line, "firstStartAt", firstStartAt, 15);
+                firstStartAt[14] = '\0';
+                changeCharToDate(firstStartAt, &time);
+    //            LOG_E("year %d, mon %d, day %d, hour %d, min %d, sec %d",
+    //                    time.year,time.month,time.day,time.hour,time.minute,time.second);
+                recipe->line_list[1].firstCycleTime = time.hour * 60 + time.minute;
+                recipe->line_list[1].firstRuncycleTime = systimeToTimestamp(time.year, time.month, time.day, time.hour, time.minute, 0);
                 GetValueByInt(line, "duration", &recipe->line_list[1].duration);
                 GetValueByInt(line, "pauseTime", &recipe->line_list[1].pauseTime);
             }
@@ -1389,15 +1416,15 @@ void CmdGetSysSet(char *data, cloudcmd_t *cmd)
 void CmdSetSysSet(char *data, cloudcmd_t *cmd, sys_para_t *para)
 {
     cJSON   *temp       = RT_NULL;
-    char    ntpzone[16];
+    char    ntpzone[10];
 
     temp = cJSON_Parse(data);
     if(RT_NULL != temp)
     {
         GetValueC16(temp, &cmd->msgid);
         GetValueByC16(temp, "ntpzone", ntpzone, 16);
-        ntpzone[7] = '\0';
         strncpy(para->ntpzone, ntpzone, 8);
+        ntpzone[8] = '\0';
         GetValueByU8(temp, "tempUnit", &para->tempUnit);
         GetValueByU8(temp, "ecUnit", &para->ecUnit);
         GetValueByU8(temp, "timeFormat", &para->timeFormat);
@@ -1529,7 +1556,7 @@ void CmdSetSchedule(char *data, cloudcmd_t *cmd)
 void CmdSetSysTime(char *data, cloudcmd_t *cmd)
 {
     cJSON   *temp = RT_NULL;
-    char    time[4];
+    char    time[5];
 
     temp = cJSON_Parse(data);
     if(RT_NULL != temp)
@@ -1564,10 +1591,58 @@ void CmdSetSysTime(char *data, cloudcmd_t *cmd)
     }
 }
 
-void CmdSetLine(char *data, proLine_t *line, cloudcmd_t *cmd)
+rt_err_t changeDataToChar(char* data, type_sys_time *time)
 {
-    cJSON *temp = RT_NULL;
-    u16   time  = 0;
+    rt_err_t ret = RT_ERROR;
+
+//    if(strlen(data) >= 15)
+    {
+        sprintf(data,"%04d%02d%02d%02d%02d%02d",time->year,time->month,time->day,time->hour,time->minute,time->second);
+        data[14] = '\0';
+        ret = RT_EOK;
+    }
+
+    return ret;
+}
+
+rt_err_t changeCharToDate(char* data, type_sys_time *time)
+{
+    rt_err_t    ret         = RT_ERROR;
+    char        year[5]     = "";
+    char        month[3]    = "";
+    char        day[3]      = "";
+    char        hour[3]     = "";
+    char        min[3]      = "";
+    char        second[3]   = "";
+
+//    if(strlen(data) >= 15)
+    {
+        strncpy(year, &data[0], 4);
+        strncpy(month, &data[4], 2);
+        strncpy(day, &data[6], 2);
+        strncpy(hour, &data[8], 2);
+        strncpy(min, &data[10], 2);
+        strncpy(second, &data[12], 2);
+
+        time->year = atoi(year);
+        time->month = atoi(month);
+        time->day = atoi(day);
+        time->hour = atoi(hour);
+        time->minute = atoi(min);
+        time->second = atoi(second);
+
+        ret = RT_EOK;
+    }
+
+    return ret;
+}
+
+void CmdSetLine(char *data, proLine_t *line, cloudcmd_t *cmd)//Justin debug 仅仅测试
+{
+    cJSON           *temp = RT_NULL;
+    //u16             time  = 0;
+    char            firstStartAt[15] = "";
+    type_sys_time   time;
 
     temp = cJSON_Parse(data);
 
@@ -1592,13 +1667,19 @@ void CmdSetLine(char *data, proLine_t *line, cloudcmd_t *cmd)
         }
         else if(LINE_BY_CYCLE == line->mode)
         {
-            GetValueByU16(temp, "firstCycleTime", &time);
-            if(time != line->firstCycleTime)
-            {
-                line->firstCycleTime = time;
-                line->firstRuncycleTime = systimeToTimestamp(time / 60, time % 60, 0);
-//                line->isRunFirstCycle = 0;
-            }
+//            GetValueByU16(temp, "firstCycleTime", &time);//Justin debug 仅仅测试
+//            if(time != line->firstCycleTime)
+//            {
+//                line->firstCycleTime = time;
+//                line->firstRuncycleTime = systimeToTimestamp(time / 60, time % 60, 0);
+//            }
+            GetValueByC16(temp, "firstStartAt", firstStartAt, 15);
+            firstStartAt[14] = '\0';
+            changeCharToDate(firstStartAt, &time);
+//            LOG_E("year %d, mon %d, day %d, hour %d, min %d, sec %d",
+//                    time.year,time.month,time.day,time.hour,time.minute,time.second);
+            line->firstCycleTime = time.hour * 60 + time.minute;//Justin debug 云服务器修改协议，后续逻辑修改较多，在此转化
+            line->firstRuncycleTime = systimeToTimestamp(time.year, time.month, time.day, time.hour, time.minute, 0);
             GetValueByInt(temp, "duration", &line->duration);
             GetValueByInt(temp, "pauseTime", &line->pauseTime);
         }
@@ -1742,6 +1823,7 @@ char *SendHubReport(char *cmd, sys_set_t *set)
         cJSON_AddStringToObject(json, "cmd", cmd);
         cJSON_AddStringToObject(json, "sn", GetSnName(name, 12));
         cJSON_AddStringToObject(json, "model", GetModelByType(HUB_TYPE, model, 15));
+        model[14] = '\0';
         cJSON_AddStringToObject(json, "name", GetHub()->name);
         cJSON_AddNumberToObject(json, "nameSeq", GetHub()->nameSeq);
 
@@ -2004,9 +2086,11 @@ char *ReplyGetHumi(char *cmd, cloudcmd_t cloud)
 
 char *ReplyGetLine(char *cmd, type_kv_c16 msgid, proLine_t line, cloudcmd_t cloud)
 {
+    char    firstStartAt[15] = "";
     char    name[12];
     char    *str        = RT_NULL;
     cJSON   *json       = cJSON_CreateObject();
+    type_sys_time       format_time;
 
     if(RT_NULL != json)
     {
@@ -2020,7 +2104,27 @@ char *ReplyGetLine(char *cmd, type_kv_c16 msgid, proLine_t line, cloudcmd_t clou
         cJSON_AddNumberToObject(json, "mode", line.mode);
         cJSON_AddNumberToObject(json, "lightOn", line.lightOn);
         cJSON_AddNumberToObject(json, "lightOff", line.lightOff);
-        cJSON_AddNumberToObject(json, "firstCycleTime", line.firstCycleTime);
+//        cJSON_AddNumberToObject(json, "firstCycleTime", line.firstCycleTime);//新协议修改
+        if(0 != line.firstRuncycleTime)
+        {
+            struct tm *time1 = getTimeStampByDate(&line.firstRuncycleTime);
+            format_time.year = time1->tm_year + 1900;
+            format_time.month = time1->tm_mon + 1;
+            format_time.day = time1->tm_mday;
+            format_time.hour = line.firstCycleTime / 60;
+            format_time.minute = line.firstCycleTime % 60;
+            format_time.second = 0;
+            changeDataToChar(firstStartAt, &format_time);
+        }
+        else
+        {
+            getRealTimeForMat(&format_time);
+            format_time.hour = 0;
+            format_time.minute = 0;
+            format_time.second = 0;
+            changeDataToChar(firstStartAt, &format_time);
+        }
+        cJSON_AddStringToObject(json, "firstStartAt", firstStartAt);
         cJSON_AddNumberToObject(json, "duration", line.duration);
         cJSON_AddNumberToObject(json, "pauseTime", line.pauseTime);
         cJSON_AddNumberToObject(json, "hidDelay", line.hidDelay);
@@ -3544,10 +3648,12 @@ char *ReplyGetHubState(char *cmd, cloudcmd_t cloud)
 
 char *ReplySetRecipe(char *cmd, cloudcmd_t cloud)
 {
-    char            *str        = RT_NULL;
-    recipe_t        *recipe     = RT_NULL;
-    cJSON           *json       = cJSON_CreateObject();
-    cJSON           *line       = RT_NULL;
+    char            firstStartAt[15]    = "";
+    type_sys_time   format_time;
+    char            *str                = RT_NULL;
+    recipe_t        *recipe             = RT_NULL;
+    cJSON           *json               = cJSON_CreateObject();
+    cJSON           *line               = RT_NULL;
 
     if(RT_NULL != json)
     {
@@ -3588,7 +3694,28 @@ char *ReplySetRecipe(char *cmd, cloudcmd_t cloud)
                         cJSON_AddNumberToObject(line, "mode", recipe->line_list[index].mode);
                         cJSON_AddNumberToObject(line, "lightOn", recipe->line_list[index].lightOn);
                         cJSON_AddNumberToObject(line, "lightOff", recipe->line_list[index].lightOff);
-                        cJSON_AddNumberToObject(line, "firstCycleTime", recipe->line_list[index].firstCycleTime);
+//                        cJSON_AddNumberToObject(line, "firstCycleTime", recipe->line_list[index].firstCycleTime);
+                        if(0 != recipe->line_list[index].firstRuncycleTime)
+                        {
+                            struct tm *time1 = getTimeStampByDate(&recipe->line_list[index].firstRuncycleTime);
+                            format_time.year = time1->tm_year + 1900;
+                            format_time.month = time1->tm_mon + 1;
+                            format_time.day = time1->tm_mday;
+                            LOG_W("firstCycleTime = %d",recipe->line_list[index].firstCycleTime);//Justin debug
+                            format_time.hour = recipe->line_list[index].firstCycleTime / 60;
+                            format_time.minute = recipe->line_list[index].firstCycleTime % 60;
+                            format_time.second = 0;
+                            changeDataToChar(firstStartAt, &format_time);
+                        }
+                        else
+                        {
+                            getRealTimeForMat(&format_time);
+                            format_time.hour = 0;
+                            format_time.minute = 0;
+                            format_time.second = 0;
+                            changeDataToChar(firstStartAt, &format_time);
+                        }
+                        cJSON_AddStringToObject(line, "firstStartAt", firstStartAt);
                         cJSON_AddNumberToObject(line, "duration", recipe->line_list[index].duration);
                         cJSON_AddNumberToObject(line, "pauseTime", recipe->line_list[index].pauseTime);
 
@@ -3650,12 +3777,12 @@ char *ReplyGetSchedule(char *cmd, cloudcmd_t cloud)
     cJSON       *list       = RT_NULL;
     cJSON       *list_item  = RT_NULL;
     static type_sys_time   end;
-    char        end_date[14] = "";
+    char        end_date[16] = "";
     struct tm   tm_test;
     struct tm   *tm_test1;
     time_t      time_temp;
     char        temp[4];
-    char        start_time[14] = "";
+    char        start_time[16] = "";
     type_sys_time   sys_time;
 
     if(RT_NULL != json)
@@ -3808,109 +3935,6 @@ char *ReplyGetSchedule(char *cmd, cloudcmd_t cloud)
     return str;
 }
 
-char *ReplySetPortSet(char *cmd, cloudcmd_t cloud)
-{
-    u8              addr        = 0;
-    u8              port        = 0;
-    u8              group       = 0;
-    u8              valid_gro   = 0xFF;
-    char            *str        = RT_NULL;
-    cJSON           *json       = cJSON_CreateObject();
-    cJSON           *list       = RT_NULL;
-    cJSON           *item       = RT_NULL;
-    device_t       *device     = RT_NULL;
-
-    if(RT_NULL != json)
-    {
-        cJSON_AddStringToObject(json, "cmd", cmd);
-        cJSON_AddStringToObject(json, cloud.msgid.name, cloud.msgid.value);
-        cJSON_AddNumberToObject(json, cloud.get_port_id.name, cloud.get_port_id.value);
-
-        if(cloud.get_port_id.value > 0xff)
-        {
-            addr = cloud.get_port_id.value >> 8;
-            port = cloud.get_port_id.value;
-        }
-        else
-        {
-            addr = cloud.get_port_id.value;
-            port = 0;
-        }
-
-        device = GetDeviceByAddr(GetMonitor(), addr);
-
-        if(RT_NULL != device)
-        {
-            cJSON_AddNumberToObject(json, "manual", device->port[port].manual.manual);
-            cJSON_AddNumberToObject(json, "manualOnTime", device->port[port].manual.manual_on_time);
-
-            if((COOL_TYPE == device->port[port].type) ||
-               (HEAT_TYPE == device->port[port].type) ||
-               (DEHUMI_TYPE == device->port[port].type))
-            {
-                cJSON_AddNumberToObject(json, "hotStartDelay", device->port[port].hotStartDelay);
-            }
-
-            if(HVAC_6_TYPE == device->port[port].type)
-            {
-                cJSON_AddNumberToObject(json, "manualOnMode", device->_hvac.manualOnMode);
-                cJSON_AddNumberToObject(json, "fanNormallyOpen", device->_hvac.fanNormallyOpen);
-                cJSON_AddNumberToObject(json, "hvacMode", device->_hvac.hvacMode);
-            }
-
-            if(TIMER_TYPE == device->port[port].type)
-            {
-                list = cJSON_CreateArray();
-
-                if(RT_NULL != list)
-                {
-                    for(group = 0; group < TIMER_GROUP; group++)
-                    {
-                        if(!((0 == device->port[port].timer[group].on_at) &&
-                            (0 == device->port[port].timer[group].duration)))
-                        {
-                            valid_gro = group;
-                        }
-                    }
-
-                    if(valid_gro <= TIMER_GROUP)
-                    {
-                        for(group = 0; group <= valid_gro; group++)
-                        {
-                            item = cJSON_CreateObject();
-                            if(RT_NULL != item)
-                            {
-                                cJSON_AddNumberToObject(item, "onAt", device->port[port].timer[group].on_at);
-                                cJSON_AddNumberToObject(item, "duration", device->port[port].timer[group].duration);
-                                cJSON_AddNumberToObject(item, "en", device->port[port].timer[group].en);
-
-                                cJSON_AddItemToArray(list, item);
-                            }
-                        }
-                    }
-
-                    cJSON_AddItemToObject(json, "list", list);
-                }
-                else
-                {
-                    LOG_E("ReplySetPortSet apply list err");
-                }
-
-                cJSON_AddNumberToObject(json, "startAt", device->port[port].cycle.startAt);
-                cJSON_AddNumberToObject(json, "duration", device->port[port].cycle.duration);
-                cJSON_AddNumberToObject(json, "pauseTime", device->port[port].cycle.pauseTime);
-            }
-        }
-
-        cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
-        str = cJSON_PrintUnformatted(json);
-
-        cJSON_Delete(json);
-    }
-
-    return str;
-}
-
 char *ReplyGetPortSet(char *cmd, cloudcmd_t cloud)
 {
     char            name[16];
@@ -3928,6 +3952,8 @@ char *ReplyGetPortSet(char *cmd, cloudcmd_t cloud)
     device_t        *module     = RT_NULL;
     line_t          *line       = RT_NULL;
     u8              fatherFlg   = 0;            //判断是否是父模块 区别端口
+    type_sys_time   format_time;
+    char            firstStartAt[15] = "";
 
     rt_memcpy(fun_name, "port", STORAGE_NAMESZ);
 
@@ -3961,17 +3987,20 @@ char *ReplyGetPortSet(char *cmd, cloudcmd_t cloud)
             cJSON_AddStringToObject(json, cloud.msgid.name, cloud.msgid.value);
             cJSON_AddStringToObject(json, "sn", GetSnName(name, 12));
             cJSON_AddStringToObject(json, "model", GetModelByType(module->type, model, 15));
+            model[14] = '\0';
             cJSON_AddNumberToObject(json, "id", module->addr);
             if(0 == fatherFlg)//端口
             {
                 cJSON_AddStringToObject(json, "name", module->port[port].name);
                 cJSON_AddStringToObject(json, "funcName", GetFunNameByType(module->port[port].type, fun_name, 15));
+                fun_name[14] = '\0';
                 cJSON_AddNumberToObject(json, "type", module->port[port].type);
             }
             else
             {
                 cJSON_AddStringToObject(json, "name", module->name);
                 cJSON_AddStringToObject(json, "funcName", GetFunNameByType(module->type, fun_name, 15));
+                fun_name[14] = '\0';
                 cJSON_AddNumberToObject(json, "type", module->type);
             }
             cJSON_AddNumberToObject(json, "mainType", module->main_type);
@@ -4034,7 +4063,27 @@ char *ReplyGetPortSet(char *cmd, cloudcmd_t cloud)
                     LOG_E("ReplyGetPortSet err5");
                 }
 
-                cJSON_AddNumberToObject(json, "startAt", module->port[port].cycle.startAt);
+//                cJSON_AddNumberToObject(json, "startAt", module->port[port].cycle.startAt);
+                if(0 != module->port[port].cycle.start_at_timestamp)
+                {
+                    struct tm *time1 = getTimeStampByDate(&module->port[port].cycle.start_at_timestamp);
+                    format_time.year = time1->tm_year + 1900;
+                    format_time.month = time1->tm_mon + 1;
+                    format_time.day = time1->tm_mday;
+                    format_time.hour = module->port[port].cycle.startAt / 60;
+                    format_time.minute = module->port[port].cycle.startAt % 60;
+                    format_time.second = 0;
+                    changeDataToChar(firstStartAt, &format_time);
+                }
+                else
+                {
+                    getRealTimeForMat(&format_time);
+                    format_time.hour = 0;
+                    format_time.minute = 0;
+                    format_time.second = 0;
+                    changeDataToChar(firstStartAt, &format_time);
+                }
+                cJSON_AddStringToObject(json, "firstStartAt", firstStartAt);
                 cJSON_AddNumberToObject(json, "duration", module->port[port].cycle.duration);
                 cJSON_AddNumberToObject(json, "pauseTime", module->port[port].cycle.pauseTime);
                 cJSON_AddNumberToObject(json, "times", module->port[port].cycle.times);

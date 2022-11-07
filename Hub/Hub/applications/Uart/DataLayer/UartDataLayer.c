@@ -76,6 +76,8 @@ void setDeviceDefaultStora(device_t *dev, u8 index, char *name, u8 func, u8 type
     dev->port[index].cycle.startAt = 0;
     dev->port[index].cycle.pauseTime = 0;
     dev->port[index].cycle.duration = 0;
+    dev->port[index].cycle.start_at_timestamp = 0;
+    dev->port[index].cycle.times = 0;
 
     dev->port[index].manual.manual = 0;
     dev->port[index].manual.manual_on_time = MANUAL_TIME_DEFAULT;
@@ -392,6 +394,9 @@ rt_err_t setLineDefault(line_t *line)
     line->d_state = 0;
     line->d_value = 0;
 
+    line->_manual.manual = MANUAL_NO_HAND;
+    line->_manual.manual_on_time = MANUAL_TIME_DEFAULT;
+
     return RT_EOK;
 }
 
@@ -430,7 +435,7 @@ u8 getMonitorMaxAddr(type_monitor_t *monitor)
 
 /* 获取分配的地址 */
 //0xE0~0xEF预留
-u8 getAllocateAddress(type_monitor_t *monitor, u8 type)//Justin debug 待验证
+u8 getAllocateAddress(type_monitor_t *monitor, u8 type)
 {
     u16 i = 0;
 
@@ -440,19 +445,21 @@ u8 getAllocateAddress(type_monitor_t *monitor, u8 type)//Justin debug 待验证
     }
     else
     {
-        if(getMonitorMaxAddr(monitor) + 3 >= ALLOCATE_ADDRESS_SIZE)
+        if(getMonitorMaxAddr(monitor) + 2 >= ALLOCATE_ADDRESS_SIZE)
         {
             i = 2;
         }
         else
         {
-            i = getMonitorMaxAddr(monitor) + 2;
+            i = getMonitorMaxAddr(monitor) + 1;
         }
-        LOG_I("the max addr = %d",i);//Justin debug 仅仅测试+
+
         for(; i < ALLOCATE_ADDRESS_SIZE; i++)
         {
             if((monitor->allocateStr.address[i] != i) &&
-                (i != 0xFA) && (i != 0xFE))//0xFA 是注册的代码 0xFE是PHEC通用
+                (i != 0xFA) && (i != 0xFE) &&
+                !((i <= 0xEF) && (i <= 0xE0))
+                && (i >= 2) && (i != 0xFF))//0xFA 是注册的代码 0xFE是PHEC通用
             {
                 monitor->allocateStr.address[i] = i;
                 return i;

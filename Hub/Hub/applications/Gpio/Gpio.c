@@ -9,7 +9,14 @@
  */
 
 #include "Gpio.h"
+#include "Uart.h"
 
+static u8 alarm_flag = NO;
+
+u8 getAlarmFlag(void)
+{
+    return alarm_flag;
+}
 
 /**
  * @brief  : GPIO口初始化
@@ -22,10 +29,13 @@ void GpioInit(void)
     /* led引脚设置*/
     rt_pin_mode(LED_SENSOR, PIN_MODE_OUTPUT);
     rt_pin_mode(LED_DEVICE, PIN_MODE_OUTPUT);
-    rt_pin_mode(LED_LIGHT, PIN_MODE_OUTPUT);
-    rt_pin_mode(LED_COMMS, PIN_MODE_OUTPUT);
-    rt_pin_mode(LED_BLUETOOTH, PIN_MODE_OUTPUT);
-    rt_pin_mode(LED_POWER, PIN_MODE_OUTPUT);
+#if(HUB_SELECT == HUB_ENVIRENMENT)
+    rt_pin_mode(LED_LINE, PIN_MODE_OUTPUT);
+#endif
+    rt_pin_mode(LED_ALAEM, PIN_MODE_OUTPUT);
+    rt_pin_mode(LED_HEART, PIN_MODE_OUTPUT);
+    rt_pin_mode(ALARM_OUT, PIN_MODE_OUTPUT);
+//    rt_pin_mode(LED_POWER, PIN_MODE_OUTPUT);
 
     /* oled 1309屏设置引脚*/
     rt_pin_mode(LCD_DB0, PIN_MODE_OUTPUT);
@@ -113,23 +123,157 @@ void LedTaskInit(void)
  */
 void LedTaskEntry(void* parameter)
 {
+    static      u8              ledState            = 0;
+    static      u8              Timer500msTouch     = OFF;
+    static      u8              Timer1sTouch        = OFF;
+    static      u16             time500ms           = 0;
+    static      u16             time1s              = 0;
     while(1)
     {
+        time500ms = TimerTask(&time500ms, 500/100, &Timer500msTouch);                       //1s定时任务
+        time1s = TimerTask(&time1s, 1000/100, &Timer1sTouch);                       //1s定时任务
 
-//        LedProgram();
+        //100ms
+        {
+            LedProgram();
+        }
 
-        rt_thread_mdelay(500);
+        //500ms 定时器
+        if(ON == Timer500msTouch)
+        {
+            AlarmLedProgram();
+        }
+
+        //1s 定时器
+        if(ON == Timer1sTouch)
+        {
+            //呼吸灯
+            Ctrl_LED(LED_HEART,ledState++ % 2);
+        }
+
+        rt_thread_mdelay(100);
+    }
+}
+
+//报警逻辑: 如果是有标志报警的话就一直报 否则关闭
+void AlarmLedProgram(void)
+{
+    u8          index           = 0;
+
+    for(index = 0; index < WARN_MAX; index++)
+    {
+        if(ON == GetSysSet()->warn[index])
+        {
+            break;
+        }
+    }
+
+    if(index == WARN_MAX)
+    {
+        rt_pin_write(ALARM_OUT, 0);
+    }
+    else
+    {
+        rt_pin_write(ALARM_OUT, 1);
     }
 }
 
 void LedProgram(void)
 {
-    static u8 ledState = 0;
-        Ctrl_LED(LED_SENSOR,1);
-//        Ctrl_LED(LED_DEVICE,0);
-        Ctrl_LED(LED_LIGHT,ledState++ % 2);
-//        Ctrl_LED(LED_COMMS,0);
-//        Ctrl_LED(LED_BLUETOOTH,0);
-//        Ctrl_LED(LED_POWER,0);
+    type_monitor_t  *monitor        = RT_NULL;
+    static u8       sensor_s        = 0;
+    static u8       device_s        = 0;
+    static u8       line_s          = 0;
+    static u8       sensor_cnt      = 0;
+    static u8       device_cnt      = 0;
+    static u8       line_cnt        = 0;
+
+    monitor = GetMonitor();
+
+    if(sensor_s != monitor->sensor_size)
+    {
+        //如果删除或者增加sensor 之后就会闪烁一下
+        if(sensor_cnt < 2)
+        {
+            sensor_cnt++;
+            Ctrl_LED(LED_SENSOR, 0 == rt_pin_read(LED_SENSOR) ? 1 : 0);
+        }
+        else
+        {
+            sensor_cnt = 0;
+            sensor_s = monitor->sensor_size;
+        }
+    }
+    else
+    {
+        if(monitor->sensor_size > 0)
+        {
+            //1.如果有sensor 的话就亮灯
+            Ctrl_LED(LED_SENSOR,0);
+        }
+        else
+        {
+            //2.如果没有sensor 的时候就灭灯
+            Ctrl_LED(LED_SENSOR,1);
+        }
+    }
+
+    if(device_s != monitor->device_size)
+    {
+        //如果删除或者增加device 之后就会闪烁一下
+        if(device_cnt < 2)
+        {
+            device_cnt++;
+            Ctrl_LED(LED_DEVICE, 0 == rt_pin_read(LED_DEVICE) ? 1 : 0);
+        }
+        else
+        {
+            device_cnt = 0;
+            device_s = monitor->device_size;
+        }
+    }
+    else
+    {
+        if(monitor->device_size > 0)
+        {
+            //1.如果有device 的话就亮灯
+            Ctrl_LED(LED_DEVICE,0);
+        }
+        else
+        {
+            //2.如果没有device 的时候就灭灯
+            Ctrl_LED(LED_DEVICE,1);
+        }
+    }
+
+#if(HUB_SELECT == HUB_ENVIRENMENT)
+    if(line_s != monitor->line_size)
+    {
+        //如果删除或者增加line 之后就会闪烁一下
+        if(line_cnt < 2)
+        {
+            line_cnt++;
+            Ctrl_LED(LED_LINE, 0 == rt_pin_read(LED_LINE) ? 1 : 0);
+        }
+        else
+        {
+            line_cnt = 0;
+            line_s = monitor->line_size;
+        }
+    }
+    else
+    {
+        if(monitor->line_size > 0)
+        {
+            //1.如果有line 的话就亮灯
+            Ctrl_LED(LED_LINE,0);
+        }
+        else
+        {
+            //2.如果没有line 的时候就灭灯
+            Ctrl_LED(LED_LINE,1);
+        }
+    }
+#endif
 }
 

@@ -26,7 +26,7 @@
 #define UDP_BROADCAST_PORT        TEST_PORT//9899//
 #define RCV_ETH_BUFFSZ            1024 * 2
 #define SEND_ETH_BUFFSZ           1024 * 8
-#define CONNECT_TIME_OUT          60
+#define CONNECT_TIME_OUT          120
 
 struct packTop{
     u16 checkId;             //标识

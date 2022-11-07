@@ -206,7 +206,7 @@ void UdpTaskEntry(void* parameter)
                         if(getSockState(tcp_sock) >= 0)
                         {
                             //断开连接
-                            LOG_E("over 1 min have not recv ack, sock close, sock = %d",tcp_sock);
+                            LOG_E("over 2 min have not recv ack, sock close, sock = %d",tcp_sock);
                             shutdown(tcp_sock, SHUT_RDWR);
                             closesocket(tcp_sock);
                         }

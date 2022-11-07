@@ -223,6 +223,7 @@ void initCloudProtocol(void)
     sys_set.line1Set.tempStartDimming = 300;// 灯光自动调光温度点 0℃-60.0℃/32℉-140℉
     sys_set.line1Set.tempOffDimming = 300;// 灯光自动关闭温度点 0℃-60.0℃/32℉-140℉
     sys_set.line1Set.sunriseSunSet = 10;// 0-180min/0 表示关闭状态 日升日落
+    sys_set.line1Set.firstRuncycleTime = 0;
 
     strcpy(sys_set.sysPara.ntpzone, "+00:00");
     sys_set.sysPara.timeFormat = TIME_STYLE_24H;
@@ -522,6 +523,7 @@ u8 *ReplyDataToCloud1(mqtt_client *client, u8 *cloudRes, u16 *len, u8 sendCloudF
                 rt_memset(name, ' ', 20);
                 GetSnName(name, 12);
                 strcpy(name + 11, "/reply");
+                name[19] = '\0';
                 paho_mqtt_publish(client, QOS1, name, str, strlen(str));
                 *cloudRes = RT_EOK;
             }
@@ -573,6 +575,7 @@ rt_err_t SendDataToCloud(mqtt_client *client, char *cmd, u8 warn_no, u16 value, 
         rt_memset(name, ' ', 20);
         GetSnName(name, 12);
         strcpy(name + 11, "/reply");
+        name[19] = '\0';
 
         //是否是云端
         if(NO == cloudFlg)
@@ -872,7 +875,7 @@ void analyzeCloudData(char *data, u8 cloudFlg)
         //检测和app的连接
         if(NO == cloudFlg)
         {
-            LOG_D("--------------- app connect");
+            //LOG_D("--------------- app connect");
             getEthHeart()->connect = YES;
             getEthHeart()->last_connet_time = getTimeStamp();
         }
@@ -897,7 +900,7 @@ void GetNowSysSet(proTempSet_t *tempSet, proCo2Set_t *co2Set, proHumiSet_t *humi
         proLine_t *line1Set, proLine_t *line2Set, struct recipeInfor *info)
 {
     struct tm       tm_test;
-    char            temp[4];
+    char            temp[5];
     u8              item = 0;
     u8              index = 0;
     time_t          starts;
@@ -1034,6 +1037,7 @@ void GetNowSysSet(proTempSet_t *tempSet, proCo2Set_t *co2Set, proHumiSet_t *humi
             line1Set->lightOn = recipe->recipe[item].line_list[0].lightOn;
             line1Set->lightOff = recipe->recipe[item].line_list[0].lightOff;
             line1Set->firstCycleTime = recipe->recipe[item].line_list[0].firstCycleTime;
+            line1Set->firstRuncycleTime = recipe->recipe[item].line_list[0].firstRuncycleTime;
             line1Set->duration = recipe->recipe[item].line_list[0].duration;
             line1Set->pauseTime = recipe->recipe[item].line_list[0].pauseTime;
         }
@@ -1048,6 +1052,7 @@ void GetNowSysSet(proTempSet_t *tempSet, proCo2Set_t *co2Set, proHumiSet_t *humi
             line2Set->lightOn = recipe->recipe[item].line_list[1].lightOn;
             line2Set->lightOff = recipe->recipe[item].line_list[1].lightOff;
             line2Set->firstCycleTime = recipe->recipe[item].line_list[1].firstCycleTime;
+            line2Set->firstRuncycleTime = recipe->recipe[item].line_list[1].firstRuncycleTime;
             line2Set->duration = recipe->recipe[item].line_list[1].duration;
             line2Set->pauseTime = recipe->recipe[item].line_list[1].pauseTime;
         }
@@ -1892,13 +1897,14 @@ time_t ReplyTimeStamp(void)
     time_t      now_time;
     struct tm   *time       = RT_NULL;
     int         zone;
-    char        ntpzone[8];
+    char        ntpzone[9];
     char        delim[]     = ":";
     char *p         = RT_NULL;
 
     now_time = getTimeStamp();
     time = getTimeStampByDate(&now_time);
     strcpy(ntpzone, GetSysSet()->sysPara.ntpzone);
+    ntpzone[8] = '\0';
     p = strtok(ntpzone, delim);
     if(RT_NULL != p)
     {
@@ -1968,7 +1974,6 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
     static time_t   co2WarnTime;
     static time_t   tempWarnTime;
     static time_t   humiWarnTime;
-//    static u8       connect_state[DEVICE_MAX];//Justin debug 仅仅测试
 
     rt_memset(set->warn, 0, WARN_MAX);
 

@@ -65,7 +65,7 @@ struct keyAndVauleU32{
 
 struct keyAndVauleChar16{
     char    name[KEYVALUE_NAME_SIZE];
-    char    value[16];
+    char    value[17];
 };
 
 struct cloudCmd{
@@ -138,7 +138,6 @@ struct proLine{
     u16         tempOffDimming;             // 灯光自动关闭温度点 0℃-60.0℃/32℉-140℉
     u8          sunriseSunSet;              // 0-30min /0 表示关闭状态
     u32         timestamp;                  //时间戳
-//    u8          isRunFirstCycle;            //是否已经执行第一次循环
     time_t      firstRuncycleTime;          //记录第一次开始执行的时间 方便回溯
 };
 
@@ -247,6 +246,7 @@ struct recipe{//配方 限制10个
         u16     firstCycleTime; //第一次循环开始时间
         int     duration;       //循环持续时间 s
         int     pauseTime;      //循环停止时间 s
+        time_t  firstRuncycleTime;
     }line_list[2];
 };
 

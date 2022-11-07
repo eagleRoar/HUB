@@ -161,7 +161,11 @@ static void pageSetting(u8 page)
     switch (page)
     {
         case HOME_PAGE:
+#if(HUB_SELECT == HUB_ENVIRENMENT)
             pageSelectSet(YES, 1, 5);
+#elif(HUB_SELECT == HUB_IRRIGSTION)
+            pageSelectSet(YES, 1, 4);
+#endif
             break;
 
         case SENSOR_STATE_PAGE:
@@ -207,6 +211,7 @@ static void pageProgram(u8 page)
             HomePage_new(pageSelect, 3);
             if(ON == pageSelect.select)
             {
+#if (HUB_SELECT == HUB_ENVIRENMENT)
                 if(1 == pageSelect.cusor)
                 {
                     pageInfor <<= 8;
@@ -232,6 +237,28 @@ static void pageProgram(u8 page)
                     pageInfor <<= 8;
                     pageInfor |= CO2_CALIBRATE_PAGE;
                 }
+#elif (HUB_SELECT == HUB_IRRIGSTION)
+                if(1 == pageSelect.cusor)
+                {
+                    pageInfor <<= 8;
+                    pageInfor |= DEVICE_STATE_PAGE;
+                }
+                else if(2 == pageSelect.cusor)
+                {
+                    pageInfor <<= 8;
+                    pageInfor |= QRCODE_PAGE;
+                }
+                else if(3 == pageSelect.cusor)
+                {
+                    pageInfor <<= 8;
+                    pageInfor |= APP_UPDATE_PAGE;
+                }
+                else if(4 == pageSelect.cusor)
+                {
+                    pageInfor <<= 8;
+                    pageInfor |= CO2_CALIBRATE_PAGE;
+                }
+#endif
                 pageSelect.select = OFF;
             }
 

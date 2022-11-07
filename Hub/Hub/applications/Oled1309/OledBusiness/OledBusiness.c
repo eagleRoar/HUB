@@ -27,7 +27,11 @@ void HomePage_new(type_page_t page, u8 canShow)
     char        temp[2];
     char        temp3;
     char        temp1[4];
+#if(HUB_SELECT == HUB_ENVIRENMENT)
     char        show[5][16] = {"Sensor State", "Device State", "QR Code", "Update App", "Co2 Calibrate"};
+#elif (HUB_SELECT == HUB_IRRIGSTION)
+    char        show[4][16] = {"Device State", "QR Code", "Update App", "Co2 Calibrate"};
+#endif
     type_sys_time   sys_time;
     u8          line        = LINE_HIGHT;
     u8          column      = 0;
@@ -85,7 +89,7 @@ void HomePage_new(type_page_t page, u8 canShow)
 
         column = 0;
         ST7567_GotoXY(line, column);
-        ST7567_Puts(data, &Font_6x12, 1);
+        ST7567_Puts(data, &Font_6x12, 0);
     }
     else
     {

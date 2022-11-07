@@ -38,12 +38,22 @@
 #include "CloudProtocolBusiness.h"
 
 //LED
+#if (HUB_SELECT == HUB_ENVIRENMENT)
 #define LED_SENSOR        GET_PIN(D, 10)  //senser
 #define LED_DEVICE        GET_PIN(D, 11)  //device
-#define LED_LIGHT         GET_PIN(D, 12)  //呼吸灯
-#define LED_COMMS         GET_PIN(D, 13)  //通讯灯
-#define LED_BLUETOOTH     GET_PIN(D, 14)  //蓝牙灯
-#define LED_POWER         GET_PIN(D, 15)  //电源灯
+#define LED_LINE          GET_PIN(D, 12)  //呼吸灯
+#define LED_ALAEM         GET_PIN(D, 13)  //通讯灯
+#define LED_HEART         GET_PIN(D, 14)  //蓝牙灯
+#elif(HUB_SELECT == HUB_IRRIGSTION)
+#define LED_SENSOR        GET_PIN(D, 10)  //senser
+#define LED_DEVICE        GET_PIN(D, 11)  //device
+#define LED_ALAEM         GET_PIN(D, 12)  //呼吸灯
+
+#define LED_HEART         GET_PIN(D, 14)  //蓝牙灯
+#endif
+#define ALARM_OUT         GET_PIN(B, 0)  //蓝牙灯
+
+//#define LED_POWER         GET_PIN(D, 15)  //电源灯
 
 //LCD GPIO
 //#define RST_CTR GET_PIN(A, 15) //硬件上没有该脚
@@ -91,10 +101,11 @@ void printDevice(device_t);
 void rtcTest(type_sys_time);
 char *getRealTime(void);
 time_t getTimeStamp(void);
-//void printTimer12(timer12_t);
 void LedProgram(void);
+void AlarmLedProgram(void);
 void getRealTimeForMat(type_sys_time *);
 u32 crc32_cal(u8 *, u32);
-time_t systimeToTimestamp(u8, u8, u8);
+time_t systimeToTimestamp(u16, u8, u8, u8, u8, u8);
 time_t changeDataToTimestamp(u16 , u8 , u8 , u8 , u8 , u8);
+u8 getAlarmFlag(void);
 #endif /* APPLICATIONS_GPIO_H_ */
