@@ -24,6 +24,11 @@ __attribute__((section(".ccmbss"))) struct sdCardState      sdCard;
 extern u8 saveModuleFlag;
 extern int rt_hw_sdio_init(void);
 
+//struct sdCardState getSdState(void)
+//{
+//    return sdCard;
+//}
+
 /**
  * @brief SD处理线程初始化
  * @return
@@ -96,7 +101,7 @@ void sd_dfs_event_entry(void* parameter)
                                 LOG_E("TackSysTankFromSD err");
                             }
 
-                            initHubinfo();
+                            //initHubinfo();
                             sdCard.readInfo = YES;
                         }
                         else //挂载失败

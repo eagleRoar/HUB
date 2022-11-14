@@ -217,9 +217,9 @@ time_t systimeToTimestamp(u16 year, u8 mon, u8 day, u8 hour, u8 min, u8 sec)
     now_time = getTimeStamp();
     time = getTimeStampByDate(&now_time);
 
-    time->tm_year = fortime.year - 1900;
-    time->tm_mon = fortime.month - 1;
-    time->tm_mday = fortime.day;
+    time->tm_year = year - 1900;
+    time->tm_mon = mon - 1;
+    time->tm_mday = day;
     time->tm_hour = hour;
     time->tm_min = min;
     time->tm_sec = sec;

@@ -445,7 +445,7 @@ u8 getAllocateAddress(type_monitor_t *monitor, u8 type)
     }
     else
     {
-        if(getMonitorMaxAddr(monitor) + 2 >= ALLOCATE_ADDRESS_SIZE)
+        if(getMonitorMaxAddr(monitor) + 2 > ALLOCATE_ADDRESS_SIZE)
         {
             i = 2;
         }
@@ -453,12 +453,25 @@ u8 getAllocateAddress(type_monitor_t *monitor, u8 type)
         {
             i = getMonitorMaxAddr(monitor) + 1;
         }
-
+LOG_W("i = %d",i);
         for(; i < ALLOCATE_ADDRESS_SIZE; i++)
         {
             if((monitor->allocateStr.address[i] != i) &&
                 (i != 0xFA) && (i != 0xFE) &&
-                !((i <= 0xEF) && (i <= 0xE0))
+                !((i <= 0xEF) && (i >= 0xE0))
+                && (i >= 2) && (i != 0xFF))//0xFA 是注册的代码 0xFE是PHEC通用
+            {
+                monitor->allocateStr.address[i] = i;
+                return i;
+            }
+        }
+
+        i = 2;
+        for(; i < ALLOCATE_ADDRESS_SIZE; i++)
+        {
+            if((monitor->allocateStr.address[i] != i) &&
+                (i != 0xFA) && (i != 0xFE) &&
+                !((i <= 0xEF) && (i >= 0xE0))
                 && (i >= 2) && (i != 0xFF))//0xFA 是注册的代码 0xFE是PHEC通用
             {
                 monitor->allocateStr.address[i] = i;
@@ -590,6 +603,7 @@ void AnlyzeDeviceRegister(type_monitor_t *monitor, rt_device_t serial, u8 *data,
     }
     else if(LINE1OR2_TYPE == s_or_d)
     {
+        //LOG_E("line uuid = %x",line.uuid);//Justin debug
         if(NO == FindLine(monitor, line, &no))
         {
             line.addr = getAllocateAddress(monitor, line.type);

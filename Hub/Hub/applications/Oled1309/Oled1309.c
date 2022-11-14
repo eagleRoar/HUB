@@ -29,8 +29,9 @@ extern "C" {
 
 u8              reflash_flag        = OFF;
 type_page_t     pageSelect;
-u32             pageInfor       = 0x00000000;   //只支持最多四级目录
+u32             pageInfor           = 0x00000000;   //只支持最多四级目录
 time_t          backlightTime;
+u8              factory_mode        = NO;
 
 __attribute__((section(".ccmbss"))) u8 oled_task[1024*3];
 __attribute__((section(".ccmbss"))) struct rt_thread oled_thread;
@@ -55,10 +56,21 @@ __attribute__((section(".ccmbss"))) struct rt_thread oled_thread;
 #define OLED_SPI_PIN_CS                    SSD1309_8080_PIN_CS
 #define OLED_BACK_LIGHT                    SSD1309_8080_PIN_D2
 
+//判断当前是否是工厂模式
+u8 getFactoryMode(void)
+{
+    return factory_mode;
+}
+
+void setFactoryMode(u8 flg)
+{
+    factory_mode = flg;
+}
+
 void clear_screen(void)
 {
   ST7567_Fill(0);
-  ST7567_UpdateScreen();
+//  ST7567_UpdateScreen();
 }
 
 void st7567Init(void)
@@ -93,8 +105,10 @@ void monitorBackLight(time_t time)
 }
 void EnterBtnCallBack(u8 type)
 {
+    u8      info    = 0;
     if(SHORT_PRESS == type)
     {
+        //LOG_D("------------- short press");//Justin debug
         //唤醒屏幕
         wakeUpOledBackLight(&backlightTime);
         pageSelect.select = ON;
@@ -103,7 +117,16 @@ void EnterBtnCallBack(u8 type)
     }
     else if(LONG_PRESS == type)
     {
+        //LOG_D("------------- long press, pageinfo = %x",pageInfor);//Justin debug
         clear_screen();
+        info = pageInfor;
+
+        //如果是工厂模式退出去的话就直接关闭工厂模式
+        if(FACTORY_PAGE == info)
+        {
+            setFactoryMode(NO);
+        }
+
         pageInfor = pageInfor >> 8;
         reflash_flag = ON;
     }
@@ -130,16 +153,19 @@ void DowmBtnCallBack(u8 type)
 {
     if(SHORT_PRESS == type)
     {
+        //LOG_I("DowmBtnCallBack 1");
         //唤醒屏幕
         wakeUpOledBackLight(&backlightTime);
         if(pageSelect.cusor_max > 0)
         {
             if(pageSelect.cusor < pageSelect.cusor_max)
             {
+                //LOG_I("DowmBtnCallBack 2");
                 pageSelect.cusor++;
             }
             else
             {
+                //LOG_I("DowmBtnCallBack 3");
                 pageSelect.cusor = pageSelect.cusor_home;
             }
         }
@@ -161,11 +187,17 @@ static void pageSetting(u8 page)
     switch (page)
     {
         case HOME_PAGE:
+            pageSelectSet(YES, 1, 1);
+            break;
+        case SETTING_PAGE:
 #if(HUB_SELECT == HUB_ENVIRENMENT)
             pageSelectSet(YES, 1, 5);
 #elif(HUB_SELECT == HUB_IRRIGSTION)
             pageSelectSet(YES, 1, 4);
 #endif
+            break;
+        case FACTORY_PAGE:
+            pageSelectSet(YES, 1, 5);
             break;
 
         case SENSOR_STATE_PAGE:
@@ -188,6 +220,22 @@ static void pageSetting(u8 page)
             pageSelectSet(NO, 1, 2);
             break;
 
+        case FA_SENSOR_PAGE:
+            pageSelectSet(NO, 0, 0);
+            break;
+        case FA_DEVICE_PAGE:
+            pageSelectSet(NO, 1, 2);
+            break;
+        case FA_LINE_PAGE:
+            pageSelectSet(NO, 1, 2);
+            break;
+        case FA_SD_PAGE:
+            pageSelectSet(NO, 0, 0);
+            break;
+        case FA_TEST_PAGE:
+            pageSelectSet(NO, 1, 5);
+            break;
+
         default:
             break;
     }
@@ -208,7 +256,22 @@ static void pageProgram(u8 page)
     switch (page)
     {
         case HOME_PAGE:
-            HomePage_new(pageSelect, 3);
+            HomePage(&pageSelect, GetMonitor());//Justin debug 仅仅测试
+
+            if(ON == pageSelect.select)
+            {
+                if(1 == pageSelect.cusor)
+                {
+                    pageInfor <<= 8;
+                    pageInfor |= SETTING_PAGE;
+                }
+
+                pageSelect.select = OFF;
+            }
+
+            break;
+        case SETTING_PAGE:
+            SettingPage(pageSelect, 3);
             if(ON == pageSelect.select)
             {
 #if (HUB_SELECT == HUB_ENVIRENMENT)
@@ -261,7 +324,41 @@ static void pageProgram(u8 page)
 #endif
                 pageSelect.select = OFF;
             }
+            break;
 
+        case FACTORY_PAGE:
+            factoryPage(pageSelect, 3);
+
+            if(ON == pageSelect.select)
+            {
+                if(1 == pageSelect.cusor)
+                {
+                    pageInfor <<= 8;
+                    pageInfor |= FA_SENSOR_PAGE;
+                }
+                else if(2 == pageSelect.cusor)
+                {
+                    pageInfor <<= 8;
+                    pageInfor |= FA_DEVICE_PAGE;
+                }
+                else if(3 == pageSelect.cusor)
+                {
+                    pageInfor <<= 8;
+                    pageInfor |= FA_LINE_PAGE;
+                }
+                else if(4 == pageSelect.cusor)
+                {
+                    pageInfor <<= 8;
+                    pageInfor |= FA_SD_PAGE;
+                }
+                else if(5 == pageSelect.cusor)
+                {
+                    pageInfor <<= 8;
+                    pageInfor |= FA_TEST_PAGE;
+                }
+
+                pageSelect.select = OFF;
+            }
             break;
 
         case SENSOR_STATE_PAGE:
@@ -285,6 +382,26 @@ static void pageProgram(u8 page)
             co2CalibratePage(&pageSelect, &pageInfor);
             break;
 
+        case FA_SENSOR_PAGE:
+            SensorStatePage_fac(GetMonitor(), 4);
+            break;
+
+        case FA_DEVICE_PAGE:
+            deviceStatePage_fac(&pageSelect, GetMonitor(), 3);
+            break;
+
+        case FA_LINE_PAGE:
+            lineStatePage_fac(&pageSelect, GetMonitor(), 3);
+            break;
+
+        case FA_SD_PAGE:
+            SDState_Fac();
+            break;
+
+        case FA_TEST_PAGE:
+            testFacPage(&pageSelect, GetMonitor(), 4);
+
+            break;
         default:
             break;
     }
@@ -299,17 +416,19 @@ void OledTaskEntry(void* parameter)
     static      u16             time1S              = 0;
     static      u8              Timer3sTouch        = OFF;
     static      u16             time3S              = 0;
+    static      u16             timeFactory         = 0;
     static      u8              nowPagePre          = 0xFF;
 
     st7567Init();
     pageInfor <<= 8;
     pageInfor |= HOME_PAGE;
-
+    wakeUpOledBackLight(&backlightTime);
     while(1)
     {
         time1S = TimerTask(&time1S, 20, &Timer1sTouch);
         time3S = TimerTask(&time3S, 60, &Timer3sTouch);
 
+        //50ms
         nowPage = pageInfor & 0x000000FF;
 
         if(nowPagePre != nowPage)
@@ -329,11 +448,29 @@ void OledTaskEntry(void* parameter)
             }
         }
 
+        //1.特殊功能
+        if((KEY_ON == rt_pin_read(BUTTON_UP)) && (KEY_ON == rt_pin_read(BUTTON_DOWN)))
+        {
+            if(timeFactory < (/*10000*/2000 / 50))//Justin debug 仅仅测试 后续要更改过来
+            {
+                timeFactory++;
+            }
+            else
+            {
+                setFactoryMode(YES);
+                pageInfor = FACTORY_PAGE;
+            }
+        }
+        else
+        {
+            timeFactory = 0;
+        }
+
         //1s event
         if(ON == Timer1sTouch)
         {
             monitorBackLight(backlightTime);
-            if((HOME_PAGE == nowPage) || (CO2_CALIBRATE_PAGE == nowPage))
+            if((HOME_PAGE == nowPage) || (SETTING_PAGE == nowPage) || (CO2_CALIBRATE_PAGE == nowPage))
             {
                 //需要刷新
                 reflash_flag = ON;
@@ -344,7 +481,12 @@ void OledTaskEntry(void* parameter)
         if(ON == Timer3sTouch)
         {
             if((SENSOR_STATE_PAGE == nowPage) ||
-               (DEVICE_STATE_PAGE == nowPage))
+               (DEVICE_STATE_PAGE == nowPage) ||
+               (FA_SENSOR_PAGE == nowPage) ||
+               (FA_DEVICE_PAGE == nowPage) ||
+               (FA_LINE_PAGE == nowPage) ||
+               (FA_SD_PAGE == nowPage) ||
+               (FA_TEST_PAGE == nowPage))
             {
                 //需要刷新
                 reflash_flag = ON;

@@ -307,6 +307,7 @@ struct sysSet{
     u16             warn_value[WARN_MAX];//该值主要为了显示使用 数据
     int             co2Cal[SENSOR_MAX];   //co2校准值
     u8              startCalFlg;
+    hub_t           hub_info;
     u8              saveFlag;
 };
 

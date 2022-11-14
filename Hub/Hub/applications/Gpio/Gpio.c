@@ -141,7 +141,10 @@ void LedTaskEntry(void* parameter)
         //500ms 定时器
         if(ON == Timer500msTouch)
         {
-            AlarmLedProgram();
+            if(NO == getFactoryMode())
+            {
+                AlarmLedProgram();
+            }
         }
 
         //1s 定时器
@@ -158,23 +161,22 @@ void LedTaskEntry(void* parameter)
 //报警逻辑: 如果是有标志报警的话就一直报 否则关闭
 void AlarmLedProgram(void)
 {
-    u8          index           = 0;
-
-    for(index = 0; index < WARN_MAX; index++)
+    if((ON == GetSysSet()->sysWarn.dayCo2Buzz && DAY_TIME == GetSysSet()->dayOrNight) ||
+       (ON == GetSysSet()->sysWarn.nightCo2Buzz && NIGHT_TIME == GetSysSet()->dayOrNight))
     {
-        if(ON == GetSysSet()->warn[index])
+        if((ON == GetSysSet()->warn[WARN_CO2_LOW - 1]) ||
+           (ON == GetSysSet()->warn[WARN_CO2_HIGHT - 1]))
         {
-            break;
+            rt_pin_write(ALARM_OUT, ON);
         }
-    }
-
-    if(index == WARN_MAX)
-    {
-        rt_pin_write(ALARM_OUT, 0);
+        else
+        {
+            rt_pin_write(ALARM_OUT, OFF);
+        }
     }
     else
     {
-        rt_pin_write(ALARM_OUT, 1);
+        rt_pin_write(ALARM_OUT, OFF);
     }
 }
 

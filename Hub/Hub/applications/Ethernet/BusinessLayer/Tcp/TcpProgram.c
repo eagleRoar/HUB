@@ -130,7 +130,7 @@ void analyzeTcpData(char *data, u16 size)
     u16             index               = 0;
     u16             start               = 0;
 
-    LOG_I("-----------------------size = %d",size);
+    //LOG_I("-----------------------size = %d",size);
 
     //1.通过包头分割完整数据
     for(;index + 3 < size; index++)
@@ -173,7 +173,7 @@ void splitJointData(char *data, u16 size)
 //        if(RT_NULL != strstr(data, HEAD_CODE))
         if(0 == rt_memcmp(data, HEAD_CODE, 4))
         {
-            LOG_E("test 7");
+//            LOG_E("test 7");
             //1.上个包没有完整,但是没有收到后续包,收到了新包，那么抛弃上一包拼包
             now_size = 0;
             nocompleted = NO;       //放弃此包
@@ -190,7 +190,7 @@ void splitJointData(char *data, u16 size)
             //1.3拼包,判断粘上这一包是否就是完整包
             if(now_size + size == page_size)
             {
-                LOG_W("test 4");
+//                LOG_W("test 4");
                 //1.继续将数据拼接上去
                 //LOG_D("len = %d,size = %d",now_size - sizeof(eth_page_head),size);
 
@@ -213,7 +213,7 @@ void splitJointData(char *data, u16 size)
             }
             else if(now_size + size < page_size)
             {
-                LOG_W("test 5");
+//                LOG_W("test 5");
                 //1.数据拼接上去
                 rt_memcpy(page.data + (now_size - sizeof(eth_page_head)), data, size);
                 //2.这一包不是尾包 继续等待粘包
@@ -223,7 +223,7 @@ void splitJointData(char *data, u16 size)
             }
             else if(now_size + size > page_size)
             {
-                LOG_E("test 6");
+//                LOG_E("test 6");
                 //1.加上这一包就超过了,说明丢包,直接放弃粘包
                 now_size = 0;
                 nocompleted = NO;       //放弃此包
@@ -250,7 +250,7 @@ void splitJointData(char *data, u16 size)
             //1.申请动态空间
             if(page.head.length > 0)
             {
-                LOG_D("length = %d",page.head.length);
+//                LOG_D("length = %d",page.head.length);
                 page.data = rt_malloc(page.head.length);
                 //1.申请动态空间
                 if(RT_NULL != page.data)
@@ -261,7 +261,7 @@ void splitJointData(char *data, u16 size)
                         //2.2.1 如果收到的包的大小 和 包里面的长度+包头大小一样的话,那么这一包刚好接收完成
                         if(page.head.length == size - sizeof(eth_page_head))
                         {
-                            LOG_W("test 1");
+//                            LOG_W("test 1");
                             rt_memcpy((u8 *)&page.head, data, sizeof(eth_page_head));
                             rt_memcpy(page.data, data + sizeof(eth_page_head), size - sizeof(eth_page_head));
                             changDataToEthPage(&page, size);
@@ -283,7 +283,7 @@ void splitJointData(char *data, u16 size)
                         //2.2.2 如果接收的包的大小小于 包里面的长度+包头大小的话,那么这包没接收完，等待接收完成
                         else if(size - sizeof(eth_page_head) < page.head.length)
                         {
-                            LOG_W("test 2");
+//                            LOG_W("test 2");
 //                            LOG_D("size = %d,sizeof(eth_page_head) = %d,page.head.length = %d",
 //                                    size,sizeof(eth_page_head),page.head.length);
                             if(size == sizeof(eth_page_head))
@@ -303,7 +303,7 @@ void splitJointData(char *data, u16 size)
                         //2.2.3 如果接收的包的大小小于 包里面的长度+包头大小的话,认为包出错,直接舍弃
                         else
                         {
-                            LOG_E("test 3");
+//                            LOG_E("test 3");
                             //LOG_W("recv size = %d, page_len = %d",size,page.head.length);
                             //1.标志置为零
                             nocompleted = NO;

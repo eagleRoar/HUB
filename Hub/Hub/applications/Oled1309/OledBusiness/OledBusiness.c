@@ -18,23 +18,147 @@
 #include "ascii_fonts.h"
 #include "qrcode.h"
 #include "ST7567.h"
+#include "SDCard.h"
 
 char    data[80];
 extern void GetUpdataFileFromWeb(u8 *ret);
-void HomePage_new(type_page_t page, u8 canShow)
+extern  __attribute__((section(".ccmbss"))) struct sdCardState      sdCard;
+
+void HomePage(type_page_t *page, type_monitor_t *monitor)
 {
-    char        time[16]    = "";
-    char        temp[2];
-    char        temp3;
-    char        temp1[4];
+    char                time[22]    = "";
+    char                name[5]     = "";
+    char                value[5]    = "";
+    char                day_night[6] = "";
+    type_sys_time       time_for;
+    int                 data;
+
+    //1.显示时间
+    getRealTimeForMat(&time_for);
+    if(TIME_STYLE_12H == GetSysSet()->sysPara.timeFormat)
+    {
+        if((time_for.hour > 12) || (12 == time_for.hour && time_for.second > 0))
+        {
+            time_for.hour -= 12;
+        }
+    }
+
+    if(DAY_TIME == GetSysSet()->dayOrNight)
+    {
+        rt_memcpy(day_night, "Day", 3);
+        day_night[3] = '\0';
+    }
+    else if(NIGHT_TIME == GetSysSet()->dayOrNight)
+    {
+        rt_memcpy(day_night, "Night", 5);
+        day_night[5] = '\0';
+    }
+
+    sprintf(time," %02d:%02d:%02d %02d/%02d %5s ",time_for.hour,time_for.minute,time_for.second,
+            time_for.month,time_for.day,day_night);
+    time[21] = '\0';
+    ST7567_GotoXY(0, 0);
+    ST7567_Puts(time, &Font_6x12, 0);
+
+    //2.显示TEMP HUMI CO2
+    rt_memcpy(name, "Temp", 4);
+    name[4] = '\0';
+    ST7567_GotoXY(8, 16);
+    ST7567_Puts(name, &Font_6x12, 1);
+
+    data = getSensorDataByFunc(monitor, F_S_TEMP);
+    if(VALUE_NULL == data)
+    {
+        rt_memcpy(value, "--", 2);
+        ST7567_GotoXY(8, 32);
+        ST7567_Puts(value, &Font_8x16, 1);
+    }
+    else
+    {
+        rt_memset(value, ' ', 4);
+        sprintf(value, "%d",data);
+        value[3] = '\0';
+        ST7567_GotoXY(0, 32);
+        ST7567_Puts(value, &Font_11x18, 1);
+        ST7567_DrawFilledCircle(21, 46, 1, 1);
+    }
+    //显示单位
+    ST7567_DrawCircle(8*2, 54, 1, 1);
+    ST7567_GotoXY(8*2+2, 52);
+    ST7567_Puts("C", &Font_6x12, 1);
+
+    ST7567_DrawLine(8 + 8*4 + 2, 22, 8 + 8*4 + 2, 56, 1);
+
+    rt_memcpy(name, "Humi", 4);
+    name[4] = '\0';
+    ST7567_GotoXY(8 + 8*5, 16);
+    ST7567_Puts(name, &Font_6x12, 1);
+
+    data = getSensorDataByFunc(monitor, F_S_HUMI);
+    if(VALUE_NULL == data)
+    {
+        rt_memcpy(value, "--", 2);
+        ST7567_GotoXY(8 + 8*5, 32);
+        ST7567_Puts(value, &Font_8x16, 1);
+    }
+    else
+    {
+        sprintf(value, "%d",data);
+        value[3] = '\0';
+        ST7567_GotoXY(8 + 8*5, 32);
+        ST7567_Puts(value, &Font_11x18, 1);
+        ST7567_DrawFilledCircle(8 + 8*5 + 2*11 - 1, 46, 1, 1);
+    }
+
+    //显示单位
+    ST7567_GotoXY(8 + 8*6, 52);
+    ST7567_Puts("%", &Font_6x12, 1);
+
+    ST7567_DrawLine(8 + 8*9 + 2, 22, 8 + 8*9 + 2, 56, 1);
+
+    rt_memcpy(name, "CO2", 3);
+    name[3] = '\0';
+    ST7567_GotoXY(8 + 8*11, 16);
+    ST7567_Puts(name, &Font_6x12, 1);
+
+    data = getSensorDataByFunc(monitor, F_S_CO2);
+    if(VALUE_NULL == data)
+    {
+        rt_memcpy(value, "--", 2);
+        ST7567_GotoXY(8 + 8*11, 32);
+        ST7567_Puts(value, &Font_8x16, 1);
+    }
+    else
+    {
+        sprintf(value, "%4d",data);
+        value[4] = '\0';
+        ST7567_GotoXY(8 + 8*9 + 4, 32);
+        ST7567_Puts(value, &Font_11x18, 1);
+    }
+
+    //显示单位
+    ST7567_GotoXY(8 + 8*11, 52);
+    ST7567_Puts("ppm", &Font_6x12, 1);
+
+    //刷新界面
+    ST7567_UpdateScreen();
+}
+
+void SettingPage(type_page_t page, u8 canShow)
+{
+    char                time[22]    = "";
+    char                temp[2];
+    char                temp3;
+    char                temp1[4];
+    type_sys_time       time_for;
 #if(HUB_SELECT == HUB_ENVIRENMENT)
-    char        show[5][16] = {"Sensor State", "Device State", "QR Code", "Update App", "Co2 Calibrate"};
+    char                show[5][16] = {"Sensor State", "Device State", "QR Code", "Update App", "Co2 Calibrate"};
 #elif (HUB_SELECT == HUB_IRRIGSTION)
-    char        show[4][16] = {"Device State", "QR Code", "Update App", "Co2 Calibrate"};
+    char                show[4][16] = {"Device State", "QR Code", "Update App", "Co2 Calibrate"};
 #endif
-    type_sys_time   sys_time;
-    u8          line        = LINE_HIGHT;
-    u8          column      = 0;
+    type_sys_time       sys_time;
+    u8                  line        = LINE_HIGHT;
+    u8                  column      = 0;
 
     //1.显示时间
     if(TIME_STYLE_12H == GetSysSet()->sysPara.timeFormat)
@@ -88,15 +212,19 @@ void HomePage_new(type_page_t page, u8 canShow)
         strcpy(data, time);
 
         column = 0;
-        ST7567_GotoXY(line, column);
+        ST7567_GotoXY(0, column);
         ST7567_Puts(data, &Font_6x12, 0);
     }
     else
     {
-        strcpy(data, getRealTime());
+//        strcpy(data, getRealTime());
+        getRealTimeForMat(&time_for);
+        sprintf(time," %02d:%02d:%02d %02d/%02d      ",time_for.hour,time_for.minute,time_for.second,
+                time_for.month,time_for.day);
+        time[21] = '\0';
         column = 0;
-        ST7567_GotoXY(line, column);
-        ST7567_Puts(data, &Font_5x7, 1);
+        ST7567_GotoXY(0, column);
+        ST7567_Puts(time, &Font_6x12, 0);
     }
 
     //循环列表选择
@@ -481,12 +609,10 @@ void DeviceStatePage_new(type_monitor_t *monitor)
 void qrcode(void)
 {
 #define DEFAULT_QR_VERSION 6
-//#define DEFAULT_QR_STRING "HELLO WORLD"
 
     QRCode qrc;
     uint8_t x, y, *qrcodeBytes = (uint8_t *)rt_calloc(1, qrcode_getBufferSize(DEFAULT_QR_VERSION));
     int8_t result;
-//    char *qrstr = DEFAULT_QR_STRING;
     char qrstr[13] = " ";
 
     rt_memset(qrstr, ' ', 13);
@@ -506,15 +632,12 @@ void qrcode(void)
                 {
                     if (qrcode_getModule(&qrc, x, y))
                     {
-//                        rt_kprintf("ÛÛ");
                         ST7567_DrawLine(x, y, x, y, 1);
                     }
                     else
                     {
-//                        rt_kprintf("  ");
                     }
                 }
-//                rt_kprintf("\n");
             }
         }
         else
@@ -677,4 +800,473 @@ void co2CalibratePage(type_page_t *page, u32 *info)
     ST7567_UpdateScreen();
 }
 
+void factoryPage(type_page_t page, u8 canShow)
+{
+    char                show[5][16] = {"Sensor State", "Device State", "Line State", "SD Card", "Test"};
+    u8                  column      = 0;
+    u8                  line        = LINE_HIGHT;
 
+    ST7567_GotoXY(line, column);
+    ST7567_Puts("FACTORY MODE", &Font_8x16, 0);
+
+    column = 16;
+    if(page.cusor <= canShow)
+    {
+        for(u8 index = 0; index < canShow; index++)
+        {
+            ST7567_GotoXY(line, column + index * 16);
+            //显示选中
+            if(page.cusor == index + 1)
+            {
+                ST7567_Puts(show[index], &Font_8x16, 0);
+            }
+            else
+            {
+                ST7567_Puts(show[index], &Font_8x16, 1);
+            }
+        }
+    }
+    else
+    {
+        for(u8 index = 0; index < canShow; index++)
+        {
+            ST7567_GotoXY(line, column + index * 16);
+            //显示选中
+            if(page.cusor == index + 1 + page.cusor - canShow)
+            {
+                ST7567_Puts(show[index + page.cusor - canShow], &Font_8x16, 0);
+            }
+            else
+            {
+                ST7567_Puts(show[index + page.cusor - canShow], &Font_8x16, 1);
+            }
+        }
+    }
+
+    ST7567_UpdateScreen();
+}
+
+//工厂模式
+void SensorStatePage_fac(type_monitor_t *monitor, u8 canShow)
+{
+#define                 LIST_NUM        9
+    int                 data            = 0;
+    char                temp[17]        = "";
+    char                show[LIST_NUM][6] = {"Temp", "Humi", "Co2", "Light", "Par", "Ec", "Ph","wt", "wl"};
+    u8                  show_fun[LIST_NUM] = {F_S_TEMP,F_S_HUMI,F_S_CO2,F_S_LIGHT,F_S_PAR,F_S_EC,F_S_PH,F_S_WT,F_S_WL};
+    u8                  column      = 0;
+    u8                  line        = LINE_HIGHT;
+    static u8           showInde    = 0;
+    static u8           connect[SENSOR_MAX];
+
+    //1.特殊处理,如果是有断线的就清除
+    for(u8 index = 0; index < SENSOR_MAX; index++)
+    {
+        if(connect[index] != monitor->sensor[index].conn_state)
+        {
+            //如果是上次状态是在线这次掉线，则删除
+            if((CON_SUCCESS == connect[index]) && (CON_FAIL == monitor->sensor[index].conn_state))
+            {
+                deleteModule(monitor, monitor->sensor[index].addr);
+            }
+
+            connect[index] = monitor->sensor[index].conn_state;
+        }
+    }
+
+    //2.显示值
+    for(u8 index = showInde; index < showInde + canShow; index++)
+    {
+        column = (index - showInde) * 16;
+        ST7567_GotoXY(line, column);
+        data = getSensorDataByFunc(monitor, show_fun[index]);
+        rt_memset(temp, ' ', 16);
+        temp[16] = '\0';
+        if(VALUE_NULL == data)
+        {
+            sprintf(temp,"%5s      -- ",show[index]);
+            ST7567_Puts(temp, &Font_8x16, 0);
+        }
+        else
+        {
+            sprintf(temp,"%5s     %4d",show[index],data);
+            ST7567_Puts(temp, &Font_8x16, 1);
+        }
+    }
+
+    //3.刷新界面
+    ST7567_UpdateScreen();
+
+    //4.计算循环,显示到底部了再次从前面开始
+    if(showInde + canShow < LIST_NUM)
+    {
+        showInde++;
+    }
+    else
+    {
+        showInde = 0;
+    }
+}
+
+void lineStatePage_fac(type_page_t *page, type_monitor_t *monitor, u8 canShow)
+{
+
+    int                 data            = 0;
+    char                name[7]         = "";
+    char                temp[17]        = "";
+    u8                  list_num        = 0;
+    u8                  column          = 0;
+    u8                  line            = LINE_HIGHT;
+    static u8           showInde        = 0;
+    static u8           connect[LINE_MAX];
+
+    //1.特殊处理,如果是有断线的就清除
+    for(u8 index = 0; index < LINE_MAX; index++)
+    {
+        if(connect[index] != monitor->line[index].conn_state)
+        {
+            //如果是上次状态是在线这次掉线，则删除
+            if((CON_SUCCESS == connect[index]) && (CON_FAIL == monitor->line[index].conn_state))
+            {
+                deleteModule(monitor, monitor->line[index].addr);
+            }
+
+            connect[index] = monitor->line[index].conn_state;
+        }
+    }
+
+    list_num = monitor->line_size;
+
+    if(canShow > list_num)
+    {
+        canShow = list_num;
+    }
+
+    //1.
+    for(u8 index = showInde; index < showInde + canShow; index++)
+    {
+        column = (index - showInde) * 16;
+        ST7567_GotoXY(line, column);
+        strncpy(name,GetMonitor()->line[index].name,6);
+        name[6] = '\0';
+        data = GetMonitor()->line[index].conn_state;
+        rt_memset(temp, ' ', 16);
+        temp[16] = '\0';
+//        if(CON_FAIL == data)
+//        {
+//            sprintf(temp,"%6s  offline", name);
+//            temp[16] = '\0';
+//            ST7567_Puts(temp, &Font_8x16, 0);
+//        }
+//        else
+        if(CON_SUCCESS == data)
+        {
+            if(OFF == GetMonitor()->line[index].d_state)
+            {
+                sprintf(temp,"%6s   OFF", name);
+            }
+            else
+            {
+                sprintf(temp,"%6s   %3d%%", name, GetMonitor()->line[index].d_value);
+            }
+            temp[16] = '\0';
+            ST7567_Puts(temp, &Font_8x16, 1);
+        }
+    }
+
+    //2.是否全开/全关
+    ST7567_GotoXY(48, 48);
+    ST7567_Puts("ON", &Font_8x16, 1 == page->cusor ? 0 : 1);
+    ST7567_GotoXY(64, 48);
+    ST7567_Puts("OFF", &Font_8x16, 2 == page->cusor ? 0 : 1);
+
+    if(ON == page->select)
+    {
+        if(1 == page->cusor)
+        {
+            lineStage_Fa(monitor);
+        }
+        else if(2 == page->cusor)
+        {
+            lineStageClose_Fa(monitor);
+        }
+        page->select = OFF;
+    }
+
+    //3.刷新界面
+    ST7567_UpdateScreen();
+
+    //4.计算循环,显示到底部了再次从前面开始
+    if(list_num > canShow)
+    {
+        if(showInde + canShow < list_num)
+        {
+            showInde++;
+        }
+        else
+        {
+            showInde = 0;
+        }
+    }
+}
+
+void deviceStatePage_fac(type_page_t *page, type_monitor_t *monitor, u8 canShow)
+{
+    int                 data            = 0;
+    char                name[7]         = "";
+    char                temp[17]        = "";
+    u8                  list_num        = 0;
+    u8                  column          = 0;
+    u8                  line            = LINE_HIGHT;
+    static u8           showInde        = 0;
+    static u8           connect[DEVICE_MAX];
+
+    //1.特殊处理,如果是有断线的就清除
+    for(u8 index = 0; index < DEVICE_MAX; index++)
+    {
+        if(connect[index] != monitor->device[index].conn_state)
+        {
+            //如果是上次状态是在线这次掉线，则删除
+            if((CON_SUCCESS == connect[index]) && (CON_FAIL == monitor->device[index].conn_state))
+            {
+                deleteModule(monitor, monitor->device[index].addr);
+            }
+
+            connect[index] = monitor->device[index].conn_state;
+        }
+    }
+
+    list_num = monitor->device_size;
+
+    if(canShow > list_num)
+    {
+        canShow = list_num;
+    }
+
+    //2.
+    for(u8 index = showInde; index < showInde + canShow; index++)
+    {
+        column = (index - showInde) * 16;
+        ST7567_GotoXY(line, column);
+        strncpy(name,GetMonitor()->device[index].name,6);
+        name[6] = '\0';
+        data = GetMonitor()->device[index].conn_state;
+        rt_memset(temp, ' ', 16);
+        temp[16] = '\0';
+//        if(CON_FAIL == data)
+//        {
+//            sprintf(temp,"%6s  offline", name);
+//            temp[16] = '\0';
+//            ST7567_Puts(temp, &Font_8x16, 0);
+//        }
+//        else
+        if(CON_SUCCESS == data)
+        {
+            if(MANUAL_HAND_ON == GetMonitor()->device[index].port[0].manual.manual)
+            {
+                sprintf(temp,"%6s  on     ", name);
+            }
+            else
+            {
+                sprintf(temp,"%6s  off    ", name);
+            }
+            temp[16] = '\0';
+            ST7567_Puts(temp, &Font_8x16, 1);
+        }
+    }
+
+    //3.是否全开/全关
+    ST7567_GotoXY(48, 48);
+    ST7567_Puts("ON", &Font_8x16, 1 == page->cusor ? 0 : 1);
+    ST7567_GotoXY(64, 48);
+    ST7567_Puts("OFF", &Font_8x16, 2 == page->cusor ? 0 : 1);
+
+    if(ON == page->select)
+    {
+        if(1 == page->cusor)
+        {
+            openDevices_Fa(monitor);
+        }
+        else if(2 == page->cusor)
+        {
+            closeDevices_Fa(monitor);
+        }
+        page->select = OFF;
+    }
+
+    //4.刷新界面
+    ST7567_UpdateScreen();
+
+    //5.计算循环,显示到底部了再次从前面开始
+    if(list_num > canShow)
+    {
+        if(showInde + canShow < list_num)
+        {
+            showInde++;
+        }
+        else
+        {
+            showInde = 0;
+        }
+    }
+}
+
+void SDState_Fac(void)
+{
+    char                temp[17]        = "";
+
+    //1.根据sd卡的情况判断
+    ST7567_GotoXY(LINE_HIGHT, 0);
+    if((YES != sdCard.init) || (YES != sdCard.mount))
+    {
+        strcpy(temp,"SD Card   ERROR");
+        temp[16] = '\0';
+        ST7567_Puts(temp, &Font_8x16, 0);
+    }
+    else
+    {
+        strcpy(temp,"SD Card      OK");
+        temp[16] = '\0';
+        ST7567_Puts(temp, &Font_8x16, 1);
+    }
+
+    //2.刷新界面
+    ST7567_UpdateScreen();
+}
+
+void testFacPage(type_page_t *page,type_monitor_t *monitor, u8 canShow)
+{
+    u8                  line            = LINE_HIGHT;
+    u8                  column          = 0;
+    char                show[5][17]     = {"Open Devices", "Close Devices", "Line stage", "Open Dry", "Close Dry"};
+    FAC_FUNC            show_fun[5]     = {openDevices_Fa,closeDevices_Fa,lineStage_Fa,openDryFac,closeDryFac};
+
+    //1.循环列表选择
+    column = 0;
+    if(page->cusor <= canShow)
+    {
+        for(u8 index = 0; index < canShow; index++)
+        {
+            ST7567_GotoXY(line, column + index * 16);
+            //显示选中
+            if(page->cusor == index + 1)
+            {
+                ST7567_Puts(show[index], &Font_8x16, 0);
+            }
+            else
+            {
+                ST7567_Puts(show[index], &Font_8x16, 1);
+            }
+        }
+    }
+    else
+    {
+        for(u8 index = 0; index < canShow; index++)
+        {
+            ST7567_GotoXY(line, column + index * 16);
+            //显示选中
+            if(page->cusor == index + 1 + page->cusor - canShow)
+            {
+                ST7567_Puts(show[index + page->cusor - canShow], &Font_8x16, 0);
+            }
+            else
+            {
+                ST7567_Puts(show[index + page->cusor - canShow], &Font_8x16, 1);
+            }
+        }
+    }
+
+    //2.选择功能
+    if(ON == page->select)
+    {
+        show_fun[page->cusor - 1](monitor);
+        page->select = OFF;
+    }
+
+    //2.刷新界面
+    ST7567_UpdateScreen();
+}
+
+void openDevices_Fa(type_monitor_t *monitor)
+{
+    u8          index   = 0;
+    u8          port    = 0;
+    device_t    *device = RT_NULL;
+
+    for(index = 0; index < monitor->device_size; index++)
+    {
+        device = &monitor->device[index];
+
+        for(port = 0; port < device->storage_size; port++)
+        {
+            device->port[port].manual.manual = MANUAL_HAND_ON;
+            device->port[port].manual.manual_on_time = 65535;
+        }
+    }
+}
+
+void closeDevices_Fa(type_monitor_t *monitor)
+{
+    u8          index   = 0;
+    u8          port    = 0;
+    device_t    *device = RT_NULL;
+
+    for(index = 0; index < monitor->device_size; index++)
+    {
+        device = &monitor->device[index];
+
+        for(port = 0; port < device->storage_size; port++)
+        {
+            device->port[port].manual.manual = MANUAL_HAND_OFF;
+        }
+    }
+}
+
+void lineStage_Fa(type_monitor_t *monitor)
+{
+    u8              index               = 0;
+    line_t          *line               = RT_NULL;
+    static u8       value[LINE_MAX]     = {0,0};
+    static u8       stage[3] = {0, 49, 100};
+
+    for(index = 0; index < LINE_MAX; index++)
+    {
+        line = &monitor->line[index];
+
+        if(value[index] < 2)
+        {
+            value[index] += 1;
+        }
+        else
+        {
+            value[index] = 0;
+        }
+
+        line->d_state = ON;
+        line->d_value = stage[value[index]];
+    }
+}
+
+void lineStageClose_Fa(type_monitor_t *monitor)
+{
+    u8              index               = 0;
+    line_t          *line               = RT_NULL;
+
+    for(index = 0; index < LINE_MAX; index++)
+    {
+        line = &monitor->line[index];
+
+        line->d_state = OFF;
+        line->d_value = 0;
+    }
+}
+
+void openDryFac(type_monitor_t *monitor)
+{
+    rt_pin_write(ALARM_OUT, 1);
+}
+
+void closeDryFac(type_monitor_t *monitor)
+{
+    rt_pin_write(ALARM_OUT, 0);
+}

@@ -21,6 +21,7 @@
 #include "Module.h"
 #include "Recipe.h"
 #include "TcpProgram.h"
+#include "Oled1309.h"
 
 __attribute__((section(".ccmbss"))) type_monitor_t monitor;
 __attribute__((section(".ccmbss"))) u8 uart_task[1024 * 6];
@@ -127,6 +128,11 @@ static rt_err_t Uart3_input(rt_device_t dev, rt_size_t size)
     uart3_msg.dev = dev;
     uart3_msg.size = size;
     rt_device_read(uart3_msg.dev, 0, uart3_msg.data, uart3_msg.size);
+//    for(int i = 0; i < uart3_msg.size; i++)
+//    {
+//        rt_kprintf("%x ",uart3_msg.data[i]);
+//    }
+//    rt_kprintf("\r\n");
     if(2 > size)
     {
         return RT_ERROR;
@@ -164,7 +170,6 @@ void SensorUart2TaskEntry(void* parameter)
     static      u16             time3S = 0;
     static      u16             time60S = 0;
     static      rt_device_t     uart1_serial;
-    //static      rt_device_t     uart2_serial;
     static      rt_device_t     uart3_serial;
     static      u8              device_start    = 0;
     static      u8              sensor_start    = 0;
@@ -253,8 +258,8 @@ void SensorUart2TaskEntry(void* parameter)
 
                 if(ON == uart2_msg.messageFlag)
                 {
+                    AnalyzeData(uart2_serial, &monitor, uart2_msg.data, uart2_msg.size);//Justin debug
                     uart2_msg.messageFlag = OFF;
-                    AnalyzeData(uart2_serial, &monitor, uart2_msg.data, uart2_msg.size);
                 }
                 else
                 {
@@ -346,81 +351,84 @@ void SensorUart2TaskEntry(void* parameter)
                 line_start = 1;
 
                 MonitorModuleConnect(GetMonitor());
-#if(HUB_SELECT == HUB_ENVIRENMENT)      //环控版才有以下功能
-                tempProgram(GetMonitor());
-                co2Program(GetMonitor(), 1000);
-                humiProgram(GetMonitor());
-                lineProgram_new(GetMonitor(), 0, 1000);
-                lineProgram_new(GetMonitor(), 1, 1000);             //line2
-#elif(HUB_SELECT == HUB_IRRIGSTION)
-                pumpProgram(GetMonitor(), GetSysTank());            //水泵的工作
-                autoBindPumpTotank(GetMonitor(), GetSysTank());
-                for(tank_i = 0; tank_i < GetSysTank()->tank_size; tank_i++)
+                if(NO == getFactoryMode())
                 {
-                    u16 id = GetSysTank()->tank[tank_i].pumpId;
-
-                    if(id > 0xFF)
+#if(HUB_SELECT == HUB_ENVIRENMENT)      //环控版才有以下功能
+                    tempProgram(GetMonitor());
+                    co2Program(GetMonitor(), 1000);
+                    humiProgram(GetMonitor());
+                    lineProgram_new(GetMonitor(), 0, 1000);
+                    lineProgram_new(GetMonitor(), 1, 1000);             //line2
+#elif(HUB_SELECT == HUB_IRRIGSTION)
+                    pumpProgram(GetMonitor(), GetSysTank());            //水泵的工作
+                    autoBindPumpTotank(GetMonitor(), GetSysTank());
+                    for(tank_i = 0; tank_i < GetSysTank()->tank_size; tank_i++)
                     {
-                        u8 addr = id >> 8;
-                        u8 port = id;
-                        if(RT_NULL != GetDeviceByAddr(GetMonitor(), addr))
+                        u16 id = GetSysTank()->tank[tank_i].pumpId;
+
+                        if(id > 0xFF)
                         {
-                            if(PUMP_TYPE != GetDeviceByAddr(GetMonitor(), addr)->port[port].type)
+                            u8 addr = id >> 8;
+                            u8 port = id;
+                            if(RT_NULL != GetDeviceByAddr(GetMonitor(), addr))
+                            {
+                                if(PUMP_TYPE != GetDeviceByAddr(GetMonitor(), addr)->port[port].type)
+                                {
+                                    rt_memset((u8 *)&(GetSysTank()->tank[tank_i]), 0, sizeof(tank_t));
+                                }
+                            }
+                            else
                             {
                                 rt_memset((u8 *)&(GetSysTank()->tank[tank_i]), 0, sizeof(tank_t));
                             }
                         }
                         else
                         {
-                            rt_memset((u8 *)&(GetSysTank()->tank[tank_i]), 0, sizeof(tank_t));
-                        }
-                    }
-                    else
-                    {
-                        u8 addr = id;
-                        if(RT_NULL != GetDeviceByAddr(GetMonitor(), addr))
-                        {
-                            if(PUMP_TYPE != GetDeviceByAddr(GetMonitor(), addr)->type)
+                            u8 addr = id;
+                            if(RT_NULL != GetDeviceByAddr(GetMonitor(), addr))
+                            {
+                                if(PUMP_TYPE != GetDeviceByAddr(GetMonitor(), addr)->type)
+                                {
+                                    rt_memset((u8 *)&GetSysTank()->tank[tank_i], 0, sizeof(tank_t));
+                                }
+                            }
+                            else
                             {
                                 rt_memset((u8 *)&GetSysTank()->tank[tank_i], 0, sizeof(tank_t));
                             }
                         }
-                        else
+                    }
+
+                    for(tank_i = 0; tank_i < GetSysTank()->tank_size; tank_i++)
+                    {
+                        if(0 == GetSysTank()->tank[tank_i].pumpId)
                         {
-                            rt_memset((u8 *)&GetSysTank()->tank[tank_i], 0, sizeof(tank_t));
+                            break;
                         }
                     }
-                }
 
-                for(tank_i = 0; tank_i < GetSysTank()->tank_size; tank_i++)
-                {
-                    if(0 == GetSysTank()->tank[tank_i].pumpId)
+                    if(tank_i != GetSysTank()->tank_size)
                     {
-                        break;
-                    }
-                }
+                        for(;tank_i < GetSysTank()->tank_size - 1; tank_i++)
+                        {
+                            rt_memcpy((u8 *)&GetSysTank()->tank[tank_i], (u8 *)&GetSysTank()->tank[tank_i + 1], sizeof(tank_t));
+                            GetSysTank()->tank[tank_i].tankNo = tank_i+1;
+                            rt_memset((u8 *)&GetSysTank()->tank[tank_i + 1], 0, sizeof(tank_t));
+                        }
 
-                if(tank_i != GetSysTank()->tank_size)
-                {
-                    for(;tank_i < GetSysTank()->tank_size - 1; tank_i++)
-                    {
-                        rt_memcpy((u8 *)&GetSysTank()->tank[tank_i], (u8 *)&GetSysTank()->tank[tank_i + 1], sizeof(tank_t));
-                        GetSysTank()->tank[tank_i].tankNo = tank_i+1;
-                        rt_memset((u8 *)&GetSysTank()->tank[tank_i + 1], 0, sizeof(tank_t));
+                        GetSysTank()->tank_size -= 1;
                     }
-
-                    GetSysTank()->tank_size -= 1;
-                }
 #endif
-                timmerProgram(GetMonitor());
-                findDeviceLocation(GetMonitor(), &sys_set.cloudCmd, uart2_serial);
-                findLineLocation(GetMonitor(), &sys_set.cloudCmd, uart3_serial);
-                warnProgram(GetMonitor(), GetSysSet());             //监听告警信息
+                    timmerProgram(GetMonitor());
+                    findDeviceLocation(GetMonitor(), &sys_set.cloudCmd, uart2_serial);
+                    findLineLocation(GetMonitor(), &sys_set.cloudCmd, uart3_serial);
+                    warnProgram(GetMonitor(), GetSysSet());             //监听告警信息
 
-                //co2 校准
-                if(YES == GetSysSet()->startCalFlg)
-                {
-                    co2Calibrate(GetMonitor(), GetSysSet()->co2Cal, &GetSysSet()->startCalFlg, &GetSysSet()->saveFlag);
+                    //co2 校准
+                    if(YES == GetSysSet()->startCalFlg)
+                    {
+                        co2Calibrate(GetMonitor(), GetSysSet()->co2Cal, &GetSysSet()->startCalFlg, &GetSysSet()->saveFlag);
+                    }
                 }
             }
 

@@ -61,7 +61,7 @@ void TcpRecvTaskEntry(void* parameter)
         {
             rt_memset(tcpRecvBuffer, ' ', RCV_ETH_BUFFSZ);
             //解析数据
-            LOG_D("------------- tcp_sock = %d",tcp_sock);
+            //LOG_D("------------- tcp_sock = %d",tcp_sock);
             if(RT_EOK == TcpRecvMsg(&tcp_sock, (u8 *)tcpRecvBuffer, RCV_ETH_BUFFSZ, &length))
             {
                 analyzeTcpData(tcpRecvBuffer, length);
@@ -179,8 +179,8 @@ void UdpTaskEntry(void* parameter)
                     if(YES == GetSysSet()->cloudCmd.recv_app_flag)
                     {
                         tcp_reply = ReplyDataToCloud1(RT_NULL, RT_NULL, &length, NO);
-                        LOG_I("length = %d",length);
-                        LOG_I("%.*s",length,tcp_reply + sizeof(eth_page_head));
+                        LOG_W("length = %d",length);
+                        LOG_W("%.*s",length,tcp_reply + sizeof(eth_page_head));//Justin debug
                         if(RT_NULL != tcp_reply)
                         {
                             if (RT_EOK != TcpSendMsg(&tcp_sock, tcp_reply, length + sizeof(eth_page_head)))
@@ -197,7 +197,7 @@ void UdpTaskEntry(void* parameter)
                     }
                 }
 
-                //心跳包检测,如果超时1分钟,断掉连接
+                //心跳包检测,如果超时2分钟,断掉连接
                 if(YES == getEthHeart()->connect)
                 {
                     if(getTimeStamp() > getEthHeart()->last_connet_time + CONNECT_TIME_OUT)

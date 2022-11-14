@@ -70,6 +70,8 @@ rt_err_t GetValueByU8(cJSON *temp, char *name, u8 *value)
     rt_err_t    ret     = RT_ERROR;
 
     rt_memcpy(data.name, name, KEYVALUE_NAME_SIZE);
+//    LOG_D("GetValueByU8 name %s",name);//Justin debug
+    data.name[KEYVALUE_NAME_SIZE - 1] = '\0';
     ret = GetValueU8(temp, &data);
     *value = data.value;
 
@@ -1418,17 +1420,24 @@ void CmdSetSysSet(char *data, cloudcmd_t *cmd, sys_para_t *para)
     cJSON   *temp       = RT_NULL;
     char    ntpzone[10];
 
+    LOG_I("data : %s",data);
     temp = cJSON_Parse(data);
+
     if(RT_NULL != temp)
     {
+        LOG_I("recv size %d",cJSON_GetArraySize(temp));
+
         GetValueC16(temp, &cmd->msgid);
-        GetValueByC16(temp, "ntpzone", ntpzone, 16);
+        GetValueByC16(temp, "ntpzone", ntpzone, 10);
         strncpy(para->ntpzone, ntpzone, 8);
         ntpzone[8] = '\0';
-        GetValueByU8(temp, "tempUnit", &para->tempUnit);
-        GetValueByU8(temp, "ecUnit", &para->ecUnit);
-        GetValueByU8(temp, "timeFormat", &para->timeFormat);
+//        GetValueByU8(temp, "tempUnit", &para->tempUnit);
+//        GetValueByU8(temp, "ecUnit", &para->ecUnit);
+//        GetValueByU8(temp, "timeFormat", &para->timeFormat);
+
+        GetValueByU8(temp, "maintain", &para->maintain);
         GetValueByU8(temp, "dayNightMode", &para->dayNightMode);
+
         if(DAY_BY_PHOTOCELL == para->dayNightMode)
         {
             GetValueByU16(temp, "photocellSensitivity", &para->photocellSensitivity);
@@ -1438,7 +1447,7 @@ void CmdSetSysSet(char *data, cloudcmd_t *cmd, sys_para_t *para)
             GetValueByU16(temp, "dayTime", &para->dayTime);
             GetValueByU16(temp, "nightTime", &para->nightTime);
         }
-        GetValueByU8(temp, "maintain", &para->maintain);
+
         cJSON_Delete(temp);
     }
     else
@@ -1566,21 +1575,27 @@ void CmdSetSysTime(char *data, cloudcmd_t *cmd)
 
         rt_memset(time, 0, 4);
         rt_memcpy(time, &cmd->sys_time.value[0], 4);
+        time[4] = '\0';
         sys_time.year = atoi(time);
         rt_memset(time, 0, 4);
         rt_memcpy(time, &cmd->sys_time.value[4], 2);
+        time[4] = '\0';
         sys_time.month = atoi(time);
         rt_memset(time, 0, 4);
         rt_memcpy(time, &cmd->sys_time.value[6], 2);
+        time[4] = '\0';
         sys_time.day = atoi(time);
         rt_memset(time, 0, 4);
         rt_memcpy(time, &cmd->sys_time.value[8], 2);
+        time[4] = '\0';
         sys_time.hour = atoi(time);
         rt_memset(time, 0, 4);
         rt_memcpy(time, &cmd->sys_time.value[10], 2);
+        time[4] = '\0';
         sys_time.minute = atoi(time);
         rt_memset(time, 0, 4);
         rt_memcpy(time, &cmd->sys_time.value[12], 2);
+        time[4] = '\0';
         sys_time.second = atoi(time);
 
         cJSON_Delete(temp);
@@ -1676,8 +1691,8 @@ void CmdSetLine(char *data, proLine_t *line, cloudcmd_t *cmd)//Justin debug 仅�
             GetValueByC16(temp, "firstStartAt", firstStartAt, 15);
             firstStartAt[14] = '\0';
             changeCharToDate(firstStartAt, &time);
-//            LOG_E("year %d, mon %d, day %d, hour %d, min %d, sec %d",
-//                    time.year,time.month,time.day,time.hour,time.minute,time.second);
+            LOG_E("year %d, mon %d, day %d, hour %d, min %d, sec %d",
+                    time.year,time.month,time.day,time.hour,time.minute,time.second);
             line->firstCycleTime = time.hour * 60 + time.minute;//Justin debug 云服务器修改协议，后续逻辑修改较多，在此转化
             line->firstRuncycleTime = systimeToTimestamp(time.year, time.month, time.day, time.hour, time.minute, 0);
             GetValueByInt(temp, "duration", &line->duration);

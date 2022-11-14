@@ -96,8 +96,8 @@ void ST7567_Init(void)
     ST7567_WriteCommand(ST7567_RESET); //软件复位
 
     ST7567_WriteCommand(ST7567_POWER_CONTROL | ST7567_POWER_CONTROL_VB | ST7567_POWER_CONTROL_VR | ST7567_POWER_CONTROL_VF); //电压升压，0x2f
-    ST7567_WriteCommand(ST7567_SET_EV);                                                                                      //设置对比度
-    ST7567_WriteCommand(ST7567_SET_EV_MASK & 0x1C/*0x1A*//*0x015*/);                                                                          //微调对比度
+    ST7567_WriteCommand(ST7567_SET_EV);//Justin debug                                                                                      //设置对比度
+    ST7567_WriteCommand(ST7567_SET_EV_MASK & 0x20);                                                                          //微调对比度
     ST7567_WriteCommand(ST7567_BIAS_1_9);                                                                                    //偏压比，0xa2
     ST7567_WriteCommand(ST7567_X_ORIENT);                                                                                    //显示方向
     ST7567_WriteCommand(ST7567_Y_ORIENT);                                                                                    //显示方向

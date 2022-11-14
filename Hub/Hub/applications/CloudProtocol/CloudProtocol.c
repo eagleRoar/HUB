@@ -22,7 +22,7 @@
 sys_set_t       sys_set;
 type_sys_time   sys_time;
 sys_tank_t      sys_tank;
-hub_t           hub_info;
+//hub_t           hub_info;
 u8 sys_warn[WARN_MAX];
 u8 saveModuleFlag = NO;
 
@@ -105,13 +105,13 @@ sys_set_t *GetSysSet(void)
 void initHubinfo(void)
 {
     char name[12];
-    strcpy(hub_info.name,GetSnName(name, 12));
-    hub_info.nameSeq = 0;
+    strcpy(GetSysSet()->hub_info.name,GetSnName(name, 12));
+    GetSysSet()->hub_info.nameSeq = 0;
 }
 
 hub_t *GetHub(void)
 {
-    return &hub_info;
+    return &GetSysSet()->hub_info;
 }
 
 char *GetSnName(char *name, u8 len)
@@ -300,6 +300,8 @@ void initCloudProtocol(void)
     }
 
     rt_memcpy(&sys_set.line2Set, &sys_set.line1Set, sizeof(proLine_t));
+
+    initHubinfo();
 }
 
 void initOfflineFlag(void)
@@ -764,6 +766,7 @@ void analyzeCloudData(char *data, u8 cloudFlg)
             {
                 CmdSetHubName(data, &sys_set.cloudCmd);
                 setCloudCmd(cmd->valuestring, ON, cloudFlg);
+                GetSysSet()->saveFlag = YES;
             }
             else if(0 == rt_memcmp(TEST_CMD, cmd->valuestring, strlen(TEST_CMD)))
             {
@@ -791,6 +794,7 @@ void analyzeCloudData(char *data, u8 cloudFlg)
             {
                 CmdSetWarn(data, &sys_set.cloudCmd, &sys_set);
                 setCloudCmd(cmd->valuestring, ON, cloudFlg);
+                GetSysSet()->saveFlag = YES;
             }
             else if(0 == rt_memcmp(CMD_GET_ALARM_SET, cmd->valuestring, strlen(CMD_GET_ALARM_SET)))
             {
@@ -1724,7 +1728,7 @@ void lineProgram_new(type_monitor_t *monitor, u8 line_no, u16 mPeroid)
     {
         value = 115;
     }
-    //LOG_E("no = %x, state = %d, value = %d",line_no,state,value);//Justin debug 仅仅测试
+
     line->d_value = value;
 }
 
@@ -3335,7 +3339,7 @@ void sendwarnningInfo(void)
                                             eth->tcp.SetConnectStatus(OFF);
                                             eth->tcp.SetConnectTry(ON);
                                         }
-                                        LOG_W("send to app: %.*s",length,buf + sizeof(eth_page_head));//Justin debug 仅仅测试
+                                        LOG_W("send to app: %.*s",length,buf + sizeof(eth_page_head));
                                     }
                                 }
                             }

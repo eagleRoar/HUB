@@ -64,9 +64,9 @@ u8 askSensorStorage(type_monitor_t *monitor, rt_device_t serial)
         senConnectState[ask_sensor].send_count ++;
 
         senConnectState[ask_sensor].send_count ++;
-        if(senConnectState[ask_sensor].send_count >= CONNRCT_MISS_MAX)
+//        if(senConnectState[ask_sensor].send_count >= CONNRCT_MISS_MAX)
         {
-            if(ask_sensor < monitor->sensor_size)
+//            if(ask_sensor < monitor->sensor_size)
             {
                 ask_sensor ++;
             }
@@ -174,8 +174,10 @@ u8 askLineHeart(type_monitor_t *monitor, rt_device_t serial)
         buffer[7] = (crc16Result>>8);                        //CRC16高位
 
         rt_device_write(serial, 0, buffer, 8);
+//        LOG_W("ask no %d line,data %x %x %x %x %x %x %x %x",ask_line,
+//                buffer[0],buffer[1],buffer[2],buffer[3],buffer[4],buffer[5],buffer[6],buffer[7]);
         lineConnectState[ask_line].send_count ++;
-        if(lineConnectState[ask_line].send_count >= CONNRCT_MISS_MAX)
+//        if(lineConnectState[ask_line].send_count >= CONNRCT_MISS_MAX)//Justin debug
         {
             ask_line ++;
         }
@@ -240,21 +242,19 @@ u8 askDeviceHeart_new(type_monitor_t *monitor, rt_device_t serial, u8 event)
                 {
                     value = GetValueAboutHACV(device, OFF, ON);
                 }
-//                device->port[0].ctrl.d_state = value >> 8;
-//                device->port[0].ctrl.d_value = value;
+
                 control[ask_device][0].d_state = value >> 8;
                 control[ask_device][0].d_value = value;
             }
             else if(IR_AIR_TYPE == device->port[port].type)
             {
-//                device->port[0].ctrl.d_state = 0xe0;
-//                device->port[0].ctrl.d_value = 0x00;
+
                 control[ask_device][0].d_state = 0xe0;
                 control[ask_device][0].d_value = 0x00;
             }
             else
             {
-//                device->port[port].ctrl.d_state = ON;
+
                 control[ask_device][port].d_state = ON;
             }
 
@@ -266,21 +266,19 @@ u8 askDeviceHeart_new(type_monitor_t *monitor, rt_device_t serial, u8 event)
                 if(HVAC_6_TYPE == device->port[port].type)
                 {
                     value = GetValueAboutHACV(device, OFF, OFF);
-//                    device->port[0].ctrl.d_state = value >> 8;
-//                    device->port[0].ctrl.d_value = value;
+
                     control[ask_device][0].d_state = value >> 8;
                     control[ask_device][0].d_value = value;
                 }
                 else if(IR_AIR_TYPE == device->port[port].type)
                 {
-//                    device->port[0].ctrl.d_state = 0x60;
-//                    device->port[0].ctrl.d_value = 0x00;
+
                     control[ask_device][0].d_state = 0x60;
                     control[ask_device][0].d_value = 0x00;
                 }
                 else
                 {
-//                    device->port[port].ctrl.d_state = OFF;
+
                     control[ask_device][port].d_state = OFF;
                 }
                 //保存到SD卡
@@ -292,15 +290,14 @@ u8 askDeviceHeart_new(type_monitor_t *monitor, rt_device_t serial, u8 event)
             if(HVAC_6_TYPE == device->port[port].type)
             {
                 value = GetValueAboutHACV(device, OFF, OFF);
-//                device->port[0].ctrl.d_state = value >> 8;
-//                device->port[0].ctrl.d_value = value;
+
                 control[ask_device][0].d_state = 0x60;
                 control[ask_device][0].d_value = 0x00;
             }
             else
             {
-//                device->port[port].ctrl.d_state = OFF;
-                control[ask_device][port].d_state = 0x60;
+
+                control[ask_device][port].d_state = OFF;
             }
         }
         else if(MANUAL_NO_HAND == device->port[port].manual.manual)
@@ -393,6 +390,7 @@ u8 askDeviceHeart_new(type_monitor_t *monitor, rt_device_t serial, u8 event)
                 buffer[3] = 0x40;
                 buffer[4] = device->storage_size >> 8;
                 buffer[5] = device->storage_size;
+                LOG_I("ask ac_4");//Justin debug 仅仅测试
             }
             else
             {
@@ -425,11 +423,12 @@ u8 askDeviceHeart_new(type_monitor_t *monitor, rt_device_t serial, u8 event)
         buffer[7] = (crc16Result>>8);                        //CRC16高位
 
         rt_device_write(serial, 0, buffer, 8);
+        //LOG_I("ask name %s",monitor->device[ask_device].name);
 
         devConnectState[ask_device].send_count ++;
-        if(devConnectState[ask_device].send_count >= CONNRCT_MISS_MAX)
+//        if(devConnectState[ask_device].send_count >= CONNRCT_MISS_MAX)
         {
-            ask_device ++;
+            ask_device++;
         }
         devConnectState[ask_device].send_state = ON;
     }
@@ -439,86 +438,88 @@ u8 askDeviceHeart_new(type_monitor_t *monitor, rt_device_t serial, u8 event)
 
 void replyStrorageType(type_monitor_t *monitor, u8 addr, u8 *data, u8 dataLen)
 {
-    if(addr == monitor->device[ask_device].addr)
+    for(int i = 0; i < monitor->device_size; i++)
     {
-        if((AC_4_TYPE == monitor->device[ask_device].type) ||
-           (IO_4_TYPE == monitor->device[ask_device].type))
+        if(addr == monitor->device[i].addr)
         {
-            special[ask_device] = YES;      //标志已经收到端口数据
-            if(dataLen/2 > TIMER_GROUP)
+            if((AC_4_TYPE == monitor->device[i].type) ||
+               (IO_4_TYPE == monitor->device[i].type))
             {
-                dataLen = TIMER_GROUP * 2;
-            }
 
-            for(u8 storage = 0; storage < dataLen/2; storage++)
-            {
-                monitor->device[ask_device].port[storage].type =
-                        (data[2 * storage] << 8) | data[2 * storage + 1];
-                monitor->device[ask_device].port[storage].func =
-                        GetFuncByType(monitor->device[ask_device].port[storage].type);
+                LOG_W("reply ac_4 port type");//Justin debug 仅仅测试
+                special[i] = YES;      //标志已经收到端口数据
+                if(dataLen/2 > TIMER_GROUP)
+                {
+                    dataLen = TIMER_GROUP * 2;
+                }
+
+                for(u8 storage = 0; storage < dataLen/2; storage++)
+                {
+                    monitor->device[i].port[storage].type =
+                            (data[2 * storage] << 8) | data[2 * storage + 1];
+                    monitor->device[i].port[storage].func =
+                            GetFuncByType(monitor->device[i].port[storage].type);
+                }
+                LOG_I("recv ac_4 port %x %x %x %x",monitor->device[i].port[0].type,
+                        monitor->device[i].port[1].type,monitor->device[i].port[2].type,
+                        monitor->device[i].port[3].type);
             }
-            /*LOG_I("recv ac_4 port %x %x %x %x",monitor->device[ask_device].port[0].type,
-                    monitor->device[ask_device].port[1].type,monitor->device[ask_device].port[2].type,
-                    monitor->device[ask_device].port[3].type);*/
         }
     }
 }
 
-void UpdateModuleConnect(type_monitor_t *monitor, u8 addr)
+void UpdateModuleConnect(type_monitor_t *monitor, u8 addr)//Justin debug 已经修改逻辑需要注意
 {
-    if(addr == monitor->device[ask_device].addr)
-    {
-        devConnectState[ask_device].send_state = OFF;
-        monitor->device[ask_device].conn_state = CON_SUCCESS;
-        devConnectState[ask_device].send_count = 0;
+    sensor_t *sensor = RT_NULL;
+    device_t *device = RT_NULL;
+    line_t *line = RT_NULL;
 
-        if(ask_device == monitor->device_size)
+    sensor = GetSensorByAddr(monitor, addr);
+    device = GetDeviceByAddr(monitor, addr);
+    line = GetLineByAddr(monitor, addr);
+
+    if(RT_NULL != device)
+    {
+        if(DEVICE_TYPE == getSOrD(device->type))
         {
-           //一个循环结束
-           ask_device = 0;
-        }
-        else
-        {
-            if(ask_device < monitor->device_size)
+            for(u8 index = 0; index < monitor->device_size; index++)
             {
-               ask_device++;
+                if(addr == monitor->device[index].addr)
+                {
+                    devConnectState[index].send_state = OFF;
+                    monitor->device[index].conn_state = CON_SUCCESS;
+                    devConnectState[index].send_count = 0;
+                }
             }
         }
     }
-    else if(addr == monitor->sensor[ask_sensor].addr)
+    else if(RT_NULL != sensor)
     {
-        senConnectState[ask_sensor].send_state = OFF;
-        monitor->sensor[ask_sensor].conn_state = CON_SUCCESS;
-        senConnectState[ask_sensor].send_count = 0;
-
-        if(ask_sensor == monitor->sensor_size)
+        if(SENSOR_TYPE == getSOrD(sensor->type))
         {
-           //一个循环结束
-           ask_sensor = 0;
-        }
-        else
-        {
-            if(ask_sensor < monitor->sensor_size)
+            for(u8 index = 0; index < monitor->sensor_size; index++)
             {
-               ask_sensor++;
+                if(addr == monitor->sensor[index].addr)
+                {
+                    senConnectState[index].send_state = OFF;
+                    monitor->sensor[index].conn_state = CON_SUCCESS;
+                    senConnectState[index].send_count = 0;
+                }
             }
         }
     }
-    else if(addr == monitor->line[ask_line].addr)
+    else if(RT_NULL != line)
     {
-        lineConnectState[ask_line].send_state = OFF;
-        monitor->line[ask_line].conn_state = CON_SUCCESS;
-        lineConnectState[ask_line].send_count = 0;
-
-        if(ask_line == monitor->line_size)
+        if(LINE1OR2_TYPE == getSOrD(line->type))
         {
-            ask_line = 0;
-        }
-        else
-        {
-            if(ask_line < monitor->line_size)
+            for(u8 index = 0; index < monitor->line_size; index++)
             {
-                ask_line++;
+                if(addr == monitor->line[index].addr)
+                {
+                    lineConnectState[index].send_state = OFF;
+                    monitor->line[index].conn_state = CON_SUCCESS;
+                    lineConnectState[index].send_count = 0;
+                }
             }
         }
     }
@@ -607,7 +608,8 @@ void AnlyzeModuleInfo(type_monitor_t *monitor, u8 *data, u8 dataLen)
             replyStrorageType(monitor, data[0], &data[3], data[2]);
         }
         UpdateModuleConnect(monitor, data[0]);
-//        if(RT_NULL != GetDeviceByAddr(monitor, data[0]))
+
+//        if(RT_NULL != GetDeviceByAddr(monitor, data[0]))//Justin debug
 //        {
 //            LOG_W("recv device name %s",GetDeviceByAddr(monitor, data[0])->name);
 //            for(u8 index = 0; index < dataLen; index++)

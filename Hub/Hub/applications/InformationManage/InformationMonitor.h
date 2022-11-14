@@ -59,6 +59,9 @@ typedef     struct eth_heart                eth_heart_t;
 #define     POWER_VALUE                     80
 #define     AUTO_DIMMING                    1200
 #define     MANUAL_TIME_DEFAULT             10
+
+typedef     void (*FAC_FUNC)(type_monitor_t *);
+
 struct hub{
     u16 crc;
     char name[HUB_NAMESZ];

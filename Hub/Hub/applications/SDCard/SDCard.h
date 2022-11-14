@@ -25,5 +25,5 @@ struct sdCardState{
 
 int SDCardTaskInit(void);
 void sd_dfs_event_entry(void* parameter);
-
+//struct sdCardState getSdState(void);
 #endif /* APPLICATIONS_SDCARD_SDCARD_H_ */

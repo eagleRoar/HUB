@@ -92,6 +92,31 @@ void deleteModule(type_monitor_t *monitor, u8 addr)
 //        rt_memset((u8 *)&monitor->line[monitor->line_size - 1], 0, sizeof(line_t));
         monitor->line_size -= 1;
     }
+
+    //删除sensor
+    for(index = 0; index < monitor->sensor_size; index++)
+    {
+        if(addr == monitor->sensor[index].addr)
+        {
+            monitor->allocateStr.address[addr] = 0x00;
+
+            break;
+        }
+    }
+
+    if(index != monitor->sensor_size)
+    {
+        if(index < (monitor->sensor_size - 1))
+        {
+            for(; index < monitor->sensor_size - 1; index++)
+            {
+                rt_memcpy((u8 *)&monitor->sensor[index], (u8 *)&monitor->sensor[index + 1], sizeof(sensor_t));
+            }
+        }
+        //最后
+//        rt_memset((u8 *)&monitor->sensor[monitor->sensor_size - 1], 0, sizeof(sensor_t));
+        monitor->sensor_size -= 1;
+    }
 }
 
 void changeDeviceType(type_monitor_t *monitor, u8 addr, u8 port, u8 type)
