@@ -17,6 +17,7 @@
 
 #pragma pack(4)//因为cjson 不能使用1字节对齐
 
+void initCloudSet(void);
 void initCloudProtocol(void);
 char *GetSnName(char *,u8);
 void tempProgram(type_monitor_t *);

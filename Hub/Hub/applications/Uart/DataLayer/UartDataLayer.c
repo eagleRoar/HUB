@@ -15,8 +15,7 @@
 
 void setDeviceDefaultPara(device_t *module, char *name, u16 ctrl_addr, u8 main_type, u8 type, u8 storage_size)
 {
-    rt_memcpy(module->name, name, MODULE_NAMESZ - 1);                   //产品名称
-    module->name[MODULE_NAMESZ - 1] = '\0';
+    strncpy(module->name, name, MODULE_NAMESZ);                   //产品名称
     module->ctrl_addr = ctrl_addr;                                  //终端控制的寄存器地址
     module->main_type = main_type;                                  //主类型 如co2 温度 湿度 line timer
     module->conn_state = CON_SUCCESS;                               //连接状态
@@ -34,7 +33,7 @@ void setDeviceDefaultPara(device_t *module, char *name, u16 ctrl_addr, u8 main_t
 
 void setSensorDefaultPara(sensor_t *module, char *name, u16 ctrl_addr, u8 type, u8 storage_size)
 {
-    rt_memcpy(module->name, name, MODULE_NAMESZ-1);                   //产品名称
+    strncpy(module->name, name, MODULE_NAMESZ);                   //产品名称
     module->ctrl_addr = ctrl_addr;                                  //终端控制的寄存器地址
     module->conn_state = CON_SUCCESS;                               //连接状态
     module->reg_state = SEND_NULL;                                  //注册状态
@@ -47,16 +46,16 @@ void setSensorDefuleStora(sensor_t *module, sen_stora_t sen0, sen_stora_t sen1, 
 {
     module->__stora[0].func = sen0.func;
     module->__stora[0].value = sen0.value;
-    rt_memcpy(module->__stora[0].name, sen0.name, STORAGE_NAMESZ);
+    strncpy(module->__stora[0].name, sen0.name, STORAGE_NAMESZ);
     module->__stora[1].func = sen1.func;
     module->__stora[1].value = sen1.value;
-    rt_memcpy(module->__stora[1].name, sen1.name, STORAGE_NAMESZ);
+    strncpy(module->__stora[1].name, sen1.name, STORAGE_NAMESZ);
     module->__stora[2].func = sen2.func;
     module->__stora[2].value = sen2.value;
-    rt_memcpy(module->__stora[2].name, sen2.name, STORAGE_NAMESZ);
+    strncpy(module->__stora[2].name, sen2.name, STORAGE_NAMESZ);
     module->__stora[3].func = sen3.func;
     module->__stora[3].value = sen3.value;
-    rt_memcpy(module->__stora[3].name, sen3.name, STORAGE_NAMESZ);
+    strncpy(module->__stora[3].name, sen3.name, STORAGE_NAMESZ);
 }
 
 void setDeviceDefaultStora(device_t *dev, u8 index, char *name, u8 func, u8 type, u16 addr, u8 manual,u16 manual_on_time)
@@ -66,7 +65,7 @@ void setDeviceDefaultStora(device_t *dev, u8 index, char *name, u8 func, u8 type
         return;
     }
 
-    rt_memcpy(dev->port[index].name, name, STORAGE_NAMESZ);
+    strncpy(dev->port[index].name, name, STORAGE_NAMESZ);
     dev->port[index].func = func;                                       //功能，如co2
     dev->port[index].type = type;
     //dev->port[index].addr = addr;                                       //module id+ port号
@@ -90,61 +89,61 @@ char *GetModelByType(u8 type, char *name, u8 len)
     {
         case HUB_TYPE:
 #if(HUB_IRRIGSTION == HUB_SELECT)
-            rt_memcpy(name, "BBH-I", len);
+            strncpy(name, "BLH-I", len);
 #elif(HUB_ENVIRENMENT == HUB_SELECT)
-            rt_memcpy(name, "BBH-E", len);
+            strncpy(name, "BLH-E", len);
 #endif
             break;
         case BHS_TYPE:
-            rt_memcpy(name, "BLS-4", len);
+            strncpy(name, "BLS-4", len);
         break;
         case PAR_TYPE:
-            rt_memcpy(name, "BLS-PAR", len);
+            strncpy(name, "BLS-PAR", len);
         break;
         case CO2_UP_TYPE:
-            rt_memcpy(name, "BCS-PU", len);
+            strncpy(name, "BCS-PU", len);
             break;
         case CO2_DOWN_TYPE:
-            rt_memcpy(name, "BCS-PD", len);
+            strncpy(name, "BCS-PD", len);
             break;
         case HEAT_TYPE:
-            rt_memcpy(name, "BTS-H", len);
+            strncpy(name, "BTS-H", len);
             break;
         case HUMI_TYPE:
-            rt_memcpy(name, "BHS-H", len);
+            strncpy(name, "BHS-H", len);
             break;
         case DEHUMI_TYPE:
-            rt_memcpy(name, "BHS-D", len);
+            strncpy(name, "BHS-D", len);
             break;
         case COOL_TYPE:
-            rt_memcpy(name, "BTS-C", len);
+            strncpy(name, "BTS-C", len);
             break;
         case HVAC_6_TYPE:
-            rt_memcpy(name, "BTS-1", len);
+            strncpy(name, "BTS-1", len);
             break;
         case TIMER_TYPE:
-            rt_memcpy(name, "BPS", len);
+            strncpy(name, "BPS", len);
             break;
         case LINE_TYPE:
-            rt_memcpy(name, "LDA", len);
+            strncpy(name, "LDA", len);
             break;
         case PUMP_TYPE:
-            rt_memcpy(name, "BIS", len);
+            strncpy(name, "BIS", len);
             break;
         case VALVE_TYPE:
-            rt_memcpy(name, "BVS", len);
+            strncpy(name, "BVS", len);
             break;
         case AC_4_TYPE:
-            rt_memcpy(name, "BSS-4", len);
+            strncpy(name, "BSS-4", len);
             break;
         case IO_12_TYPE:
-            rt_memcpy(name, "BDC-12", len);
+            strncpy(name, "BDC-12", len);
             break;
         case IO_4_TYPE:
-            rt_memcpy(name, "BDC-4", len);
+            strncpy(name, "BDC-4", len);
             break;
         case IR_AIR_TYPE:
-            rt_memcpy(name, "BTS-AR", len);
+            strncpy(name, "BTS-AR", len);
             break;
         default:
             break;
@@ -198,34 +197,34 @@ char *GetFunNameByType(u8 type, char *name, u8 len)
     switch (type)
     {
         case CO2_UP_TYPE:
-            rt_memcpy(name, "Co2_U", len);
+            strncpy(name, "Co2_U", len);
             break;
         case CO2_DOWN_TYPE:
-            rt_memcpy(name, "Co2_D", len);
+            strncpy(name, "Co2_D", len);
             break;
         case HEAT_TYPE:
-            rt_memcpy(name, "Heat", len);
+            strncpy(name, "Heat", len);
             break;
         case HUMI_TYPE:
-            rt_memcpy(name, "Humi", len);
+            strncpy(name, "Humi", len);
             break;
         case DEHUMI_TYPE:
-            rt_memcpy(name, "DeHumi", len);
+            strncpy(name, "DeHumi", len);
             break;
         case COOL_TYPE:
-            rt_memcpy(name, "Cool", len);
+            strncpy(name, "Cool", len);
             break;
         case HVAC_6_TYPE:
-            rt_memcpy(name, "HVAC_6", len);
+            strncpy(name, "HVAC_6", len);
             break;
         case PUMP_TYPE:
-            rt_memcpy(name, "Pump", len);
+            strncpy(name, "Pump", len);
             break;
         case VALVE_TYPE:
-            rt_memcpy(name, "Valve", len);
+            strncpy(name, "Valve", len);
             break;
         case TIMER_TYPE:
-            rt_memcpy(name, "timer", len);
+            strncpy(name, "timer", len);
             break;
         default:
             break;
@@ -242,10 +241,10 @@ rt_err_t setSensorDefault(sensor_t *module)
     {
         case BHS_TYPE:
             setSensorDefaultPara(module, "Bhs", 0x0010, module->type, 4);
-            rt_memcpy(sen_stora[0].name, "Co2", STORAGE_NAMESZ);
-            rt_memcpy(sen_stora[1].name, "Humi", STORAGE_NAMESZ);
-            rt_memcpy(sen_stora[2].name, "Temp", STORAGE_NAMESZ);
-            rt_memcpy(sen_stora[3].name, "Light", STORAGE_NAMESZ);
+            strncpy(sen_stora[0].name, "Co2", STORAGE_NAMESZ);
+            strncpy(sen_stora[1].name, "Humi", STORAGE_NAMESZ);
+            strncpy(sen_stora[2].name, "Temp", STORAGE_NAMESZ);
+            strncpy(sen_stora[3].name, "Light", STORAGE_NAMESZ);
             sen_stora[0].value = 0;
             sen_stora[1].value = 0;
             sen_stora[2].value = 0;
@@ -258,15 +257,15 @@ rt_err_t setSensorDefault(sensor_t *module)
             break;
         case PAR_TYPE:
             setSensorDefaultPara(module, "Par", 0x0000, module->type, 1);
-            rt_memcpy(module->__stora[0].name, "Par", STORAGE_NAMESZ);
+            strncpy(module->__stora[0].name, "Par", STORAGE_NAMESZ);
             module->__stora[0].value = 0;
             module->__stora[0].func = F_S_PAR;
             break;
         case PHEC_TYPE:
             setSensorDefaultPara(module, "PhEc", 0x0000, module->type, 3);
-            rt_memcpy(module->__stora[0].name, "Ec", STORAGE_NAMESZ);
-            rt_memcpy(module->__stora[1].name, "Ph", STORAGE_NAMESZ);
-            rt_memcpy(module->__stora[2].name, "Wt", STORAGE_NAMESZ);
+            strncpy(module->__stora[0].name, "Ec", STORAGE_NAMESZ);
+            strncpy(module->__stora[1].name, "Ph", STORAGE_NAMESZ);
+            strncpy(module->__stora[2].name, "Wt", STORAGE_NAMESZ);
             module->__stora[0].value = 0;
             module->__stora[0].func = F_S_EC;
             module->__stora[1].value = 0;
@@ -276,7 +275,7 @@ rt_err_t setSensorDefault(sensor_t *module)
             break;
         case WATERlEVEL_TYPE:
             setSensorDefaultPara(module, "Wl", 0x0004, module->type, 1);
-            rt_memcpy(module->__stora[0].name, "Wl", STORAGE_NAMESZ);
+            strncpy(module->__stora[0].name, "Wl", STORAGE_NAMESZ);
             module->__stora[0].value = 0;
             module->__stora[0].func = F_S_WL;
             break;
@@ -341,7 +340,7 @@ rt_err_t setDeviceDefault(device_t *module)
             {
                 strcpy(name," ");
                 sprintf(name,"%s%d","port",index+1);
-                rt_memcpy(module->port[index].name, name, STORAGE_NAMESZ);
+                strncpy(module->port[index].name, name, STORAGE_NAMESZ);
                 module->port[index].manual.manual_on_time = MANUAL_TIME_DEFAULT;
             }
             break;
@@ -358,7 +357,7 @@ rt_err_t setDeviceDefault(device_t *module)
                 module->port[index].func = F_VALVE;
                 strcpy(name," ");
                 sprintf(name,"%s%d","port",index+1);
-                rt_memcpy(module->port[index].name, name, STORAGE_NAMESZ);
+                strncpy(module->port[index].name, name, STORAGE_NAMESZ);
                 module->port[index].manual.manual_on_time = MANUAL_TIME_DEFAULT;
             }
             break;
@@ -370,7 +369,7 @@ rt_err_t setDeviceDefault(device_t *module)
                 module->port[index].func = F_VALVE;
                 strcpy(name," ");
                 sprintf(name,"%s%d","port",index+1);
-                rt_memcpy(module->port[index].name, name, STORAGE_NAMESZ);
+                strncpy(module->port[index].name, name, STORAGE_NAMESZ);
                 module->port[index].manual.manual_on_time = MANUAL_TIME_DEFAULT;
             }
             break;
@@ -389,7 +388,7 @@ rt_err_t setDeviceDefault(device_t *module)
 
 rt_err_t setLineDefault(line_t *line)
 {
-    strcpy(line->name, "line");
+    strncpy(line->name, "line", MODULE_NAMESZ);
     line->ctrl_addr = 0x0060;
     line->d_state = 0;
     line->d_value = 0;
@@ -453,13 +452,13 @@ u8 getAllocateAddress(type_monitor_t *monitor, u8 type)
         {
             i = getMonitorMaxAddr(monitor) + 1;
         }
-LOG_W("i = %d",i);
+
         for(; i < ALLOCATE_ADDRESS_SIZE; i++)
         {
             if((monitor->allocateStr.address[i] != i) &&
                 (i != 0xFA) && (i != 0xFE) &&
                 !((i <= 0xEF) && (i >= 0xE0))
-                && (i >= 2) && (i != 0xFF))//0xFA 是注册的代码 0xFE是PHEC通用
+                && (i >= 2) && (i != 0xFF) && (i != 0x18))//0xFA 是注册的代码 0xFE是PHEC通用 0x18是par特殊
             {
                 monitor->allocateStr.address[i] = i;
                 return i;
@@ -472,7 +471,7 @@ LOG_W("i = %d",i);
             if((monitor->allocateStr.address[i] != i) &&
                 (i != 0xFA) && (i != 0xFE) &&
                 !((i <= 0xEF) && (i >= 0xE0))
-                && (i >= 2) && (i != 0xFF))//0xFA 是注册的代码 0xFE是PHEC通用
+                && (i >= 2) && (i != 0xFF) && (i != 0x18))//0xFA 是注册的代码 0xFE是PHEC通用 0x18是par特殊
             {
                 monitor->allocateStr.address[i] = i;
                 return i;
@@ -548,7 +547,8 @@ void AnlyzeDeviceRegister(type_monitor_t *monitor, rt_device_t serial, u8 *data,
         if(NO == FindSensor(monitor, sensor, &no))
         {
             if((PHEC_TYPE != sensor.type) &&
-               (WATERlEVEL_TYPE != sensor.type))
+               (WATERlEVEL_TYPE != sensor.type) &&
+               (PAR_TYPE != sensor.type))
             {
                 sensor.addr = getAllocateAddress(monitor, sensor.type);
             }
@@ -603,7 +603,7 @@ void AnlyzeDeviceRegister(type_monitor_t *monitor, rt_device_t serial, u8 *data,
     }
     else if(LINE1OR2_TYPE == s_or_d)
     {
-        //LOG_E("line uuid = %x",line.uuid);//Justin debug
+        //LOG_E("line uuid = %x",line.uuid);
         if(NO == FindLine(monitor, line, &no))
         {
             line.addr = getAllocateAddress(monitor, line.type);

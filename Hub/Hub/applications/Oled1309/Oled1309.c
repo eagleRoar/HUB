@@ -32,6 +32,7 @@ type_page_t     pageSelect;
 u32             pageInfor           = 0x00000000;   //只支持最多四级目录
 time_t          backlightTime;
 u8              factory_mode        = NO;
+u8      next_flag   = NO;
 
 __attribute__((section(".ccmbss"))) u8 oled_task[1024*3];
 __attribute__((section(".ccmbss"))) struct rt_thread oled_thread;
@@ -108,7 +109,7 @@ void EnterBtnCallBack(u8 type)
     u8      info    = 0;
     if(SHORT_PRESS == type)
     {
-        //LOG_D("------------- short press");//Justin debug
+
         //唤醒屏幕
         wakeUpOledBackLight(&backlightTime);
         pageSelect.select = ON;
@@ -117,7 +118,7 @@ void EnterBtnCallBack(u8 type)
     }
     else if(LONG_PRESS == type)
     {
-        //LOG_D("------------- long press, pageinfo = %x",pageInfor);//Justin debug
+
         clear_screen();
         info = pageInfor;
 
@@ -171,6 +172,8 @@ void DowmBtnCallBack(u8 type)
         }
         //提示界面刷新
         reflash_flag = ON;
+
+        next_flag = YES;//仅仅是灌溉版首页需要使用
     }
 }
 
@@ -256,7 +259,7 @@ static void pageProgram(u8 page)
     switch (page)
     {
         case HOME_PAGE:
-            HomePage(&pageSelect, GetMonitor());//Justin debug 仅仅测试
+            HomePage(&pageSelect, GetMonitor());
 
             if(ON == pageSelect.select)
             {
@@ -363,15 +366,27 @@ static void pageProgram(u8 page)
 
         case SENSOR_STATE_PAGE:
             SensorStatePage_new(GetMonitor());
+            if(ON == pageSelect.select)
+            {
+                pageSelect.select = OFF;
+            }
             break;
 
         case DEVICE_STATE_PAGE:
             DeviceStatePage_new(GetMonitor());
+            if(ON == pageSelect.select)
+            {
+                pageSelect.select = OFF;
+            }
             break;
 
         case QRCODE_PAGE:
             qrcode();
             ST7567_UpdateScreen();
+            if(ON == pageSelect.select)
+            {
+                pageSelect.select = OFF;
+            }
             break;
 
         case APP_UPDATE_PAGE:
@@ -380,10 +395,18 @@ static void pageProgram(u8 page)
 
         case CO2_CALIBRATE_PAGE:
             co2CalibratePage(&pageSelect, &pageInfor);
+            if(ON == pageSelect.select)
+            {
+                pageSelect.select = OFF;
+            }
             break;
 
         case FA_SENSOR_PAGE:
             SensorStatePage_fac(GetMonitor(), 4);
+            if(ON == pageSelect.select)
+            {
+                pageSelect.select = OFF;
+            }
             break;
 
         case FA_DEVICE_PAGE:
@@ -396,6 +419,10 @@ static void pageProgram(u8 page)
 
         case FA_SD_PAGE:
             SDState_Fac();
+            if(ON == pageSelect.select)
+            {
+                pageSelect.select = OFF;
+            }
             break;
 
         case FA_TEST_PAGE:
@@ -451,7 +478,7 @@ void OledTaskEntry(void* parameter)
         //1.特殊功能
         if((KEY_ON == rt_pin_read(BUTTON_UP)) && (KEY_ON == rt_pin_read(BUTTON_DOWN)))
         {
-            if(timeFactory < (/*10000*/2000 / 50))//Justin debug 仅仅测试 后续要更改过来
+            if(timeFactory < (10000 / 50))
             {
                 timeFactory++;
             }
@@ -482,7 +509,7 @@ void OledTaskEntry(void* parameter)
         {
             if((SENSOR_STATE_PAGE == nowPage) ||
                (DEVICE_STATE_PAGE == nowPage) ||
-               (FA_SENSOR_PAGE == nowPage) ||
+               /*(FA_SENSOR_PAGE == nowPage) ||*/
                (FA_DEVICE_PAGE == nowPage) ||
                (FA_LINE_PAGE == nowPage) ||
                (FA_SD_PAGE == nowPage) ||

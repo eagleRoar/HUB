@@ -76,7 +76,8 @@ static char* GetIp(void)
 
 static void SetIp(char *ip)
 {
-    rt_memcpy(ethernetStruct->ip, ip, IP_SIZE);
+    strncpy(ethernetStruct->ip, ip, IP_SIZE - 1);
+    ethernetStruct->ip[IP_SIZE - 1] = '\0';
 }
 
 /******************UDP START***************************************/

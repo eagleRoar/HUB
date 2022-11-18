@@ -10,7 +10,6 @@
 #define ST7567_BUF_SIZE         1024
 #define ST7567_HARDWARE_SPI     0
 
-//Justin debug 修改以下引脚
 
 // CS: PE8
 #define ST7567_CS_PORT      GPIOE

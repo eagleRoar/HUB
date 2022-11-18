@@ -19,6 +19,7 @@
 #pragma pack(4)//因为cjson 不能使用1字节对齐
 
 #define     KEYVALUE_NAME_SIZE      25
+#define     KEYVALUE_VALUE_SIZE      25
 #define     CMD_NAME                "cmd"
 #define     CMD_NAME_SIZE           25
 #define     REC_ALLOT_ADDR          100
@@ -65,12 +66,13 @@ struct keyAndVauleU32{
 
 struct keyAndVauleChar16{
     char    name[KEYVALUE_NAME_SIZE];
-    char    value[17];
+    char    value[KEYVALUE_VALUE_SIZE];
 };
 
 struct cloudCmd{
     char            cmd[CMD_NAME_SIZE];         //接收命令
-    type_kv_c16     msgid;                      //相当于发送的包的序号
+    //type_kv_c16     msgid;                      //相当于发送的包的序号//Justin debug 仅仅测试
+    char            msgid[KEYVALUE_VALUE_SIZE];
     type_kv_c16     recipe_name;                //添加recipe name
     type_kv_u16     get_id;                     //设备定位Id
     type_kv_u16     get_port_id;                //设备设备端口设置Id
@@ -91,7 +93,7 @@ struct cloudCmd{
     u8              add_pool_func;              //增加设置报警的类型
     u8              chg_dev_id;                 //修改设备类型
     u8              recv_cloud_flag;            //接收到云服务器的标志
-    u8              recv_app_flag;            //接收到云服务器的标志
+    u8              recv_app_flag;              //接收到云服务器的标志
 };
 
 //cmd : getTempSetting
@@ -149,7 +151,7 @@ struct tankWarn{
 
 struct sysPara
 {
-    char ntpzone[8];            //"-7:00", //设备时区
+    char ntpzone[9];            //"-7:00", //设备时区
     u8 tempUnit;                //1, //0- °C 1-℉ 只对设备显示有效，APP 及主机用自身(不传此参数时不设置，暂时 不对设备进行修改）
     u8 ecUnit;                  //0, // 0-mS/cm 1-ppm 灌溉才有 只对设备显示有效，APP 及主机用自身(不传此参数时 不设置，暂时不对设备进行修改）
     u8 timeFormat;              //1, //1-12 2-24 只对设备显示有效，APP 及主机用自身(不传此参数时不设置，暂时不对设备进行修改）
@@ -224,7 +226,7 @@ struct stage{//日程设置
 
 struct recipe{//配方 限制10个
     u8      id;//该id为hub分配
-    char    name[RECIPE_NAMESZ + 1];
+    char    name[RECIPE_NAMESZ];
     u8      color;
     u16     dayCoolingTarget;
     u16     dayHeatingTarget;
@@ -283,7 +285,7 @@ struct sys_tank{
 };
 
 struct recipeInfor{
-    char            name[RECIPE_NAMESZ + 1];
+    char            name[RECIPE_NAMESZ];
     u8              week;
     u8              day;
 };
@@ -297,7 +299,7 @@ struct sysSet{
     proLine_t       line1Set;
     proLine_t       line2Set;
     tankWarn_t      tankWarnSet[TANK_LIST_MAX][TANK_WARN_ITEM_MAX];
-    cloudcmd_t      cloudCmd;
+//    cloudcmd_t      cloudCmd;//Justin debug 仅仅测试
     stage_t         stageSet;   //阶段(日历)
     sys_para_t      sysPara;
     sys_warn_t      sysWarn;
@@ -414,8 +416,8 @@ char *ReplySetSchedule(char *, cloudcmd_t);
 char *ReplyGetTempValue(char *,cloudcmd_t);
 char *ReplyGetCo2(char *,cloudcmd_t);
 char *ReplyGetHumi(char *,cloudcmd_t);
-char *ReplyGetDeviceList(char *, type_kv_c16);
-char *ReplyGetLine(char *, type_kv_c16, proLine_t,cloudcmd_t);
+char *ReplyGetDeviceList(char *, char *);
+char *ReplyGetLine(char *, char *, proLine_t,cloudcmd_t);
 char *ReplyFindLocation(char *, cloudcmd_t);
 char *ReplyGetPortSet(char *, cloudcmd_t);
 char *ReplySetSysTime(char *, cloudcmd_t );

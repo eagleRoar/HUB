@@ -60,7 +60,7 @@ int main(void)
     //灯光
     LedTaskInit();
 
-    initMonitor();
+//    initMonitor();//Justin debug
 
     //oled1309屏线程初始化
     OledTaskInit();
@@ -219,6 +219,24 @@ int main(void)
                 }
             }
 
+//            char name1[10],name2[10];
+//            strncpy(name1, "hello", 9);
+//            name1[9] = '\0';
+//            strncpy(name2, "hello", 10);
+//
+//            rt_kprintf("name1 : ");
+//            for(int i = 0; i < 10; i++)
+//            {
+//                rt_kprintf("%x ",name1[i]);
+//            }
+//            rt_kprintf("\r\n");
+//
+//            rt_kprintf("name2 : ");
+//            for(int i = 0; i < 10; i++)
+//            {
+//                rt_kprintf("%x ",name2[i]);
+//            }
+//            rt_kprintf("\r\n");
         }
 
         //10s

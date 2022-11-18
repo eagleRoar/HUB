@@ -18,8 +18,8 @@
 #define     ALLOCATE_ADDRESS_SIZE           256//100
 #define     HUB_NAMESZ                      13
 #define     MODULE_NAMESZ                   9
-#define     STORAGE_NAMESZ                  8
-#define     RECIPE_NAMESZ                   8
+#define     STORAGE_NAMESZ                  9
+#define     RECIPE_NAMESZ                   9
 #define     STORAGE_MAX                     12
 
 typedef     struct packageEth               type_package_t;

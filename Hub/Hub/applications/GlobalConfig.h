@@ -13,7 +13,7 @@
 #define HUB_ENVIRENMENT                 1
 #define HUB_IRRIGSTION                  2
 
-#define DEBUG_MODE                      0//1//                 //1.如果是debug mode 的话不需要偏移位置，否则偏移位置SD卡升级 2.修改link.lds
+#define DEBUG_MODE                      1//                 //1.如果是debug mode 的话不需要偏移位置，否则偏移位置SD卡升级 2.修改link.lds
 #define HUB_SELECT                      HUB_ENVIRENMENT//HUB_IRRIGSTION//
 #define BOOTLOADVISION                  "0.0.1"
 

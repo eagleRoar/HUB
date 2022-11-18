@@ -83,7 +83,7 @@ void sd_dfs_event_entry(void* parameter)
 
                             if(RT_EOK != TakeMonitorFromSD(GetMonitor()))
                             {
-                                LOG_E("TakeMonitorFromSD fail");
+                                LOG_E("TakeMonitorFromSD err");
                             }
 
                             if(RT_EOK != TackSysSetFromSD(GetSysSet()))
@@ -143,7 +143,7 @@ void sd_dfs_event_entry(void* parameter)
 
                         if(RT_EOK == SaveModule(GetMonitor()))
                         {
-                            LOG_I("SaveModule OK");
+                            LOG_W("------------------------SaveModule OK");
                         }
                         else
                         {
@@ -154,12 +154,21 @@ void sd_dfs_event_entry(void* parameter)
                     if(YES == GetSysSet()->saveFlag)
                     {
                         GetSysSet()->crc = usModbusRTU_CRC((u8 *)GetSysSet()+2, sizeof(sys_set_t) - 2);
-                        LOG_I("----------------sys_para save OK");
+                        //LOG_I("----------------sys_para save OK");
                         GetSysSet()->saveFlag = NO;
                         //存储系统设置
                         if(RT_EOK == SaveSysSet(GetSysSet()))
                         {
-                            LOG_I("saveSysSet OK");
+                            LOG_W("------------------------saveSysSet OK, size = %d, crc = %x",sizeof(sys_set_t),GetSysSet()->crc);
+                            //Justin debug 仅仅测试
+                            if(RT_EOK == TackSysSetFromSD(GetSysSet()))
+                            {
+                                LOG_W("------------read sys set ok");
+                            }
+                            else
+                            {
+                                LOG_E("------------read sys set err");
+                            }
                         }
                         else
                         {
@@ -170,12 +179,12 @@ void sd_dfs_event_entry(void* parameter)
                     if(YES == GetSysRecipt()->saveFlag)
                     {
                         GetSysRecipt()->crc = usModbusRTU_CRC((u8 *)GetSysRecipt()+2, sizeof(sys_recipe_t) - 2);
-                        LOG_I("----------------sys_recipe save OK");
+                        //LOG_I("----------------sys_recipe save OK");
                         GetSysRecipt()->saveFlag = NO;
 
                         if(RT_EOK == SaveSysRecipe(GetSysRecipt()))
                         {
-                            LOG_I("SaveSysRecipe OK");
+                            LOG_W("------------------------SaveSysRecipe OK");
                         }
                         else
                         {
@@ -186,12 +195,12 @@ void sd_dfs_event_entry(void* parameter)
                     if(YES == GetSysTank()->saveFlag)
                     {
                         GetSysTank()->crc = usModbusRTU_CRC((u8 *)GetSysTank() + 2, sizeof(sys_tank_t) - 2);
-                        LOG_I("----------------sys_tank save OK");
+                        //LOG_I("----------------sys_tank save OK");
                         GetSysTank()->saveFlag = NO;
 
                         if(RT_EOK == SaveSysTank(GetSysTank()))
                         {
-                            LOG_I("SaveSysTank OK");
+                            LOG_W("------------------------SaveSysTank OK");
                         }
                         else
                         {

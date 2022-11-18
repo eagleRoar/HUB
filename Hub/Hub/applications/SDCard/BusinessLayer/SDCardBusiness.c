@@ -194,6 +194,53 @@ rt_err_t SaveModule(type_monitor_t *monitor)
     return ret;
 }
 
+void printsensor1(sensor_t sen)//Justin debug 仅仅测试
+{
+    LOG_W("name = %s",sen.name);
+    rt_kprintf("name = : ");
+    for(int i = 0; i < MODULE_NAMESZ; i++)
+    {
+        rt_kprintf("%x ",sen.name[i]);
+    }
+    rt_kprintf("\r\n");
+    LOG_W("addr = %x",sen.addr);
+    LOG_W("type = %x",sen.type);
+    LOG_W("ctrl_addr = %x",sen.ctrl_addr);
+    LOG_W("conn_state = %x",sen.conn_state);
+    LOG_W("reg_state = %x",sen.reg_state);
+    LOG_W("save_state = %x",sen.save_state);
+    LOG_W("storage_size = %x",sen.storage_size);
+    for(int index = 0; index < SENSOR_VALUE_MAX; index++)
+    {
+        LOG_W("sto %d , name = %s",index,sen.__stora[index].name);
+        LOG_W("sto %d , func = %x",index,sen.__stora[index].func);
+        LOG_W("sto %d , value = %x",index,sen.__stora[index].value);
+    }
+}
+
+void printline1(line_t line)//Justin debug 仅仅测试
+{
+    LOG_W("name = %s",line.name);
+    for(int i = 0; i < MODULE_NAMESZ; i++)
+    {
+        rt_kprintf("%x ",line.name[i]);
+    }
+    rt_kprintf("\r\n");
+    LOG_W("type = %x",line.type);
+    LOG_W("uuid = %x",line.uuid);
+    LOG_W("addr = %x",line.addr);
+    LOG_W("ctrl_addr = %x",line.ctrl_addr);
+    LOG_W("d_state = %x",line.d_state);
+    LOG_W("d_value = %x",line.d_value);
+    LOG_W("save_state = %x",line.save_state);
+    LOG_W("conn_state = %x",line.conn_state);
+    LOG_W("manual = %x",line._manual.manual);
+    LOG_W("manual_on_time = %x",line._manual.manual_on_time);
+    LOG_W("manual_on_time_save = %x",line._manual.manual_on_time_save);
+
+}
+
+
 rt_err_t TakeMonitorFromSD(type_monitor_t *monitor)
 {
     u16         monitorSize     = sizeof(type_monitor_t);
@@ -201,7 +248,7 @@ rt_err_t TakeMonitorFromSD(type_monitor_t *monitor)
     rt_err_t    ret             = RT_ERROR;
     u16         deviceCrc       = 0;
 
-    LOG_D("TakeMonitorFromSD");
+    //LOG_D("TakeMonitorFromSD");
 
     if(RT_EOK == ReadSdData(MODULE_FILE, (u8 *)monitor, SD_INFOR_SIZE, monitorSize))
     {
@@ -230,6 +277,7 @@ rt_err_t TakeMonitorFromSD(type_monitor_t *monitor)
                 if(deviceCrc != monitor->sensor[index].crc)
                 {
                     LOG_E("sensor name %s crc err",monitor->sensor[index].name);
+                    printsensor1(monitor->sensor[index]);
                 }
             }
 
@@ -239,11 +287,11 @@ rt_err_t TakeMonitorFromSD(type_monitor_t *monitor)
                 if(deviceCrc != monitor->line[index].crc)
                 {
                     LOG_E("line name %s crc err",monitor->line[index].name);
+                    printline1(monitor->line[index]);
                 }
             }
 
-            rt_memset((u8 *)monitor, 0, monitorSize);
-            monitor->crc = usModbusRTU_CRC((u8 *)monitor, monitorSize - 2);
+            initMonitor();
             ret = RT_ERROR;
         }
     }
@@ -253,59 +301,6 @@ rt_err_t TakeMonitorFromSD(type_monitor_t *monitor)
     }
 
    return ret;
-}
-
-rt_err_t TackSysSetFromSD(sys_set_t *set)
-{
-    rt_err_t    ret             = RT_ERROR;
-    u16         setSize         = sizeof(sys_set_t);
-    u16         crc             = 0;
-
-    if(RT_EOK == ReadSdData(SYSSET_FILE, (u8 *)set, SD_INFOR_SIZE, setSize))
-    {
-        crc = usModbusRTU_CRC((u8 *)set + 2, setSize - 2);  //crc 在最后
-
-        if(crc == set->crc)
-        {
-            ret = RT_EOK;
-        }
-        else
-        {
-            rt_memset((u8 *)GetSysSet(), 0, setSize);
-            initCloudProtocol();
-            GetSysSet()->crc = usModbusRTU_CRC((u8 *)GetSysSet() + 2, setSize - 2);
-            if(RT_ERROR == WriteSdData(SYSSET_FILE, (u8 *)GetSysSet(), SD_INFOR_SIZE, setSize))
-            {
-                LOG_E("TackSysSetFromSD err");
-            }
-            ret = RT_ERROR;
-        }
-
-        //co2校准标志要置为初始状态
-        GetSysSet()->startCalFlg = NO;
-    }
-
-    return ret;
-}
-
-rt_err_t SaveSysSet(sys_set_t *set)
-{
-    rt_err_t    ret             = RT_EOK;
-    u16         sys_set_size    = sizeof(sys_set_t);
-
-    set->crc = usModbusRTU_CRC((u8 *)set + 2, sys_set_size - 2);
-
-    if(RT_EOK != WriteSdData(SYSSET_FILE, (u8 *)set, SD_INFOR_SIZE, sys_set_size))
-    {
-        LOG_E("SaveSysSet err");
-        ret = RT_ERROR;
-    }
-    else
-    {
-        LOG_D("save set ok");
-    }
-
-    return ret;
 }
 
 rt_err_t SaveSysRecipe(sys_recipe_t *recipe)

@@ -21,17 +21,30 @@
 #include "SDCard.h"
 
 char    data[80];
+
+extern u8      next_flag;
 extern void GetUpdataFileFromWeb(u8 *ret);
 extern  __attribute__((section(".ccmbss"))) struct sdCardState      sdCard;
 
 void HomePage(type_page_t *page, type_monitor_t *monitor)
 {
     char                time[22]    = "";
+#if (HUB_SELECT == HUB_ENVIRENMENT)
     char                name[5]     = "";
+    int                 data;
+#elif (HUB_SELECT == HUB_IRRIGSTION)
+    u8                  sensor_i    = 0;
+    u8                  addr        = 0;
+    u8                  port        = 0;
+    static u8           tank_index  = 0;
+    tank_t              *tank       = RT_NULL;
+    sensor_t            *sensor     = RT_NULL;
+    int                 data[3]     = {VALUE_NULL,VALUE_NULL,VALUE_NULL};
+#endif
     char                value[5]    = "";
     char                day_night[6] = "";
     type_sys_time       time_for;
-    int                 data;
+
 
     //1.显示时间
     getRealTimeForMat(&time_for);
@@ -60,6 +73,7 @@ void HomePage(type_page_t *page, type_monitor_t *monitor)
     ST7567_GotoXY(0, 0);
     ST7567_Puts(time, &Font_6x12, 0);
 
+#if (HUB_SELECT == HUB_ENVIRENMENT)
     //2.显示TEMP HUMI CO2
     rt_memcpy(name, "Temp", 4);
     name[4] = '\0';
@@ -139,7 +153,158 @@ void HomePage(type_page_t *page, type_monitor_t *monitor)
     //显示单位
     ST7567_GotoXY(8 + 8*11, 52);
     ST7567_Puts("ppm", &Font_6x12, 1);
+#elif (HUB_SELECT == HUB_IRRIGSTION)
+    //显示桶内的sensor
+//    if(0 == GetSysTank()->tank_size)
+//    {
+//        ST7567_GotoXY(30, 16);
+//        ST7567_Puts("BLH-I", &Font_12x24, 1);
+//    }
+//    else
+    {
+        //1.显示PH EC WT
+        if(YES == next_flag)
+        {
+            if(tank_index + 1 < GetSysTank()->tank_size)
+            {
+                tank_index++;
+            }
+            else
+            {
+                tank_index = 0;
+            }
 
+            //清除屏幕缓存
+            ST7567_GotoXY(4, 28);
+            ST7567_Puts("    ", &Font_8x16, 1);
+            ST7567_GotoXY(47, 28);
+            ST7567_Puts("    ", &Font_8x16, 1);
+            ST7567_GotoXY(90, 28);
+            ST7567_Puts("    ", &Font_8x16, 1);
+            next_flag = NO;
+        }
+
+        {
+            tank = &GetSysTank()->tank[tank_index];
+            for(sensor_i = 0; sensor_i < TANK_SENSOR_MAX; sensor_i++)
+            {
+                if(tank->sensorId[0][sensor_i] > 0xFF)
+                {
+                    addr = tank->sensorId[0][sensor_i] >> 8;
+                    port = tank->sensorId[0][sensor_i];
+                }
+                else
+                {
+                    addr = tank->sensorId[0][sensor_i];
+                    port = 0;
+                }
+
+                sensor = GetSensorByAddr(GetMonitor(), addr);
+
+                ST7567_GotoXY(15, 16);
+                ST7567_Puts("PH", &Font_6x12, 1);
+                ST7567_GotoXY(58, 16);
+                ST7567_Puts("EC", &Font_6x12, 1);
+                ST7567_GotoXY(100, 16);
+                ST7567_Puts("WT", &Font_6x12, 1);
+
+                if(RT_NULL != sensor)
+                {
+//                    if(CON_FAIL != sensor->conn_state)
+                    {
+                        if (PHEC_TYPE == sensor->type)
+                        {
+                            data[0] = sensor->__stora[1].value;
+                            data[1] = sensor->__stora[0].value;
+                            data[2] = sensor->__stora[2].value;
+
+                        }
+                    }
+                }
+            }
+
+            if(VALUE_NULL != data[0])
+            {
+                ST7567_GotoXY(4, 28);
+                rt_memcpy(value, "   ", 3);
+                if(data[0]/10 > 10)
+                {
+                    sprintf(value, "%3d", data[0]/10);
+                }
+                else
+                {
+                    sprintf(value, " %02d", data[0]/10);
+                }
+                value[3] = '\0';
+                ST7567_Puts(value, &Font_11x18, 1);
+                ST7567_DrawFilledCircle(25, 42, 1, 1);
+            }
+            else
+            {
+                ST7567_GotoXY(12, 28);
+                ST7567_Puts("--", &Font_8x16, 1);
+            }
+
+            if(VALUE_NULL != data[1])
+            {
+                ST7567_GotoXY(47, 28);
+                rt_memcpy(value, "   ", 3);
+                if(data[1]/10 > 10)
+                {
+                    sprintf(value, "%3d", data[1]/10);
+                }
+                else
+                {
+                    sprintf(value, " %02d", data[1]/10);
+                }
+                value[3] = '\0';
+                ST7567_Puts(value, &Font_11x18, 1);
+                ST7567_DrawFilledCircle(68, 42, 1, 1);
+            }
+            else
+            {
+                ST7567_GotoXY(55, 28);
+                ST7567_Puts("--", &Font_8x16, 1);
+            }
+
+            //显示单位
+            ST7567_GotoXY(51, 46);
+            ST7567_Puts("ms/cm", &Font_6x12, 1);
+
+            if(VALUE_NULL != data[2])
+            {
+                ST7567_GotoXY(90, 28);
+                rt_memcpy(value, "   ", 3);
+                if(data[2] > 10)
+                {
+                    sprintf(value, "%3d", data[2]);
+                }
+                else
+                {
+                    sprintf(value, " %02d", data[2]);
+                }
+                value[3] = '\0';
+                ST7567_Puts(value, &Font_11x18, 1);
+                ST7567_DrawFilledCircle(111, 42, 1, 1);
+            }
+            else
+            {
+                ST7567_GotoXY(98, 28);
+                ST7567_Puts("--", &Font_8x16, 1);
+            }
+
+            //显示单位
+            ST7567_DrawCircle(100, 48, 1, 1);
+            ST7567_GotoXY(102, 46);
+            ST7567_Puts("C", &Font_6x12, 1);
+
+            ST7567_DrawLine(43, 22, 43, 56, 1);
+            ST7567_DrawLine(86, 22, 86, 56, 1);
+        }
+
+        ST7567_DrawFilledTriangle(62, 60, 66, 60, 64, 62, 1);
+    }
+#endif
     //刷新界面
     ST7567_UpdateScreen();
 }
@@ -217,7 +382,6 @@ void SettingPage(type_page_t page, u8 canShow)
     }
     else
     {
-//        strcpy(data, getRealTime());
         getRealTimeForMat(&time_for);
         sprintf(time," %02d:%02d:%02d %02d/%02d      ",time_for.hour,time_for.minute,time_for.second,
                 time_for.month,time_for.day);
@@ -665,9 +829,6 @@ void UpdateAppProgram(type_page_t *page, u32 *info)
     u8              column      = 0;
     u8              downloadRes = RT_ERROR;
 
-    //1.清除界面
-//    clear_screen();
-
     //2.提示是否要下载
     ST7567_GotoXY(LINE_HIGHT, 0);
     ST7567_Puts("Update New APP?", &Font_8x16, 1);
@@ -858,6 +1019,13 @@ void SensorStatePage_fac(type_monitor_t *monitor, u8 canShow)
     u8                  line        = LINE_HIGHT;
     static u8           showInde    = 0;
     static u8           connect[SENSOR_MAX];
+    static u8           first_flag      = YES;
+
+    if(YES == first_flag)
+    {
+        rt_memcpy(connect, CON_NULL, SENSOR_MAX);
+        first_flag = NO;
+    }
 
     //1.特殊处理,如果是有断线的就清除
     for(u8 index = 0; index < SENSOR_MAX; index++)
@@ -865,7 +1033,7 @@ void SensorStatePage_fac(type_monitor_t *monitor, u8 canShow)
         if(connect[index] != monitor->sensor[index].conn_state)
         {
             //如果是上次状态是在线这次掉线，则删除
-            if((CON_SUCCESS == connect[index]) && (CON_FAIL == monitor->sensor[index].conn_state))
+            if(/*(CON_SUCCESS == connect[index]) && */(CON_FAIL == monitor->sensor[index].conn_state))
             {
                 deleteModule(monitor, monitor->sensor[index].addr);
             }
@@ -919,6 +1087,13 @@ void lineStatePage_fac(type_page_t *page, type_monitor_t *monitor, u8 canShow)
     u8                  line            = LINE_HIGHT;
     static u8           showInde        = 0;
     static u8           connect[LINE_MAX];
+    static u8           first_flag      = YES;
+
+    if(YES == first_flag)
+    {
+        rt_memcpy(connect, CON_NULL, LINE_MAX);
+        first_flag = NO;
+    }
 
     //1.特殊处理,如果是有断线的就清除
     for(u8 index = 0; index < LINE_MAX; index++)
@@ -926,7 +1101,7 @@ void lineStatePage_fac(type_page_t *page, type_monitor_t *monitor, u8 canShow)
         if(connect[index] != monitor->line[index].conn_state)
         {
             //如果是上次状态是在线这次掉线，则删除
-            if((CON_SUCCESS == connect[index]) && (CON_FAIL == monitor->line[index].conn_state))
+            if(/*(CON_SUCCESS == connect[index]) && */(CON_FAIL == monitor->line[index].conn_state))
             {
                 deleteModule(monitor, monitor->line[index].addr);
             }
@@ -1020,6 +1195,13 @@ void deviceStatePage_fac(type_page_t *page, type_monitor_t *monitor, u8 canShow)
     u8                  line            = LINE_HIGHT;
     static u8           showInde        = 0;
     static u8           connect[DEVICE_MAX];
+    static u8           first_flag      = YES;
+
+    if(YES == first_flag)
+    {
+        rt_memcpy(connect, CON_NULL, DEVICE_MAX);
+        first_flag = NO;
+    }
 
     //1.特殊处理,如果是有断线的就清除
     for(u8 index = 0; index < DEVICE_MAX; index++)
@@ -1027,7 +1209,7 @@ void deviceStatePage_fac(type_page_t *page, type_monitor_t *monitor, u8 canShow)
         if(connect[index] != monitor->device[index].conn_state)
         {
             //如果是上次状态是在线这次掉线，则删除
-            if((CON_SUCCESS == connect[index]) && (CON_FAIL == monitor->device[index].conn_state))
+            if(/*(CON_SUCCESS == connect[index]) && */(CON_FAIL == monitor->device[index].conn_state))
             {
                 deleteModule(monitor, monitor->device[index].addr);
             }

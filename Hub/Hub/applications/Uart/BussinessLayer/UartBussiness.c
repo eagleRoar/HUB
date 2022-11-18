@@ -177,7 +177,7 @@ u8 askLineHeart(type_monitor_t *monitor, rt_device_t serial)
 //        LOG_W("ask no %d line,data %x %x %x %x %x %x %x %x",ask_line,
 //                buffer[0],buffer[1],buffer[2],buffer[3],buffer[4],buffer[5],buffer[6],buffer[7]);
         lineConnectState[ask_line].send_count ++;
-//        if(lineConnectState[ask_line].send_count >= CONNRCT_MISS_MAX)//Justin debug
+//        if(lineConnectState[ask_line].send_count >= CONNRCT_MISS_MAX)
         {
             ask_line ++;
         }
@@ -390,7 +390,7 @@ u8 askDeviceHeart_new(type_monitor_t *monitor, rt_device_t serial, u8 event)
                 buffer[3] = 0x40;
                 buffer[4] = device->storage_size >> 8;
                 buffer[5] = device->storage_size;
-                LOG_I("ask ac_4");//Justin debug 仅仅测试
+                //LOG_I("ask ac_4");
             }
             else
             {
@@ -446,7 +446,7 @@ void replyStrorageType(type_monitor_t *monitor, u8 addr, u8 *data, u8 dataLen)
                (IO_4_TYPE == monitor->device[i].type))
             {
 
-                LOG_W("reply ac_4 port type");//Justin debug 仅仅测试
+                //LOG_W("reply ac_4 port type");
                 special[i] = YES;      //标志已经收到端口数据
                 if(dataLen/2 > TIMER_GROUP)
                 {
@@ -468,7 +468,7 @@ void replyStrorageType(type_monitor_t *monitor, u8 addr, u8 *data, u8 dataLen)
     }
 }
 
-void UpdateModuleConnect(type_monitor_t *monitor, u8 addr)//Justin debug 已经修改逻辑需要注意
+void UpdateModuleConnect(type_monitor_t *monitor, u8 addr)
 {
     sensor_t *sensor = RT_NULL;
     device_t *device = RT_NULL;
@@ -609,7 +609,7 @@ void AnlyzeModuleInfo(type_monitor_t *monitor, u8 *data, u8 dataLen)
         }
         UpdateModuleConnect(monitor, data[0]);
 
-//        if(RT_NULL != GetDeviceByAddr(monitor, data[0]))//Justin debug
+//        if(RT_NULL != GetDeviceByAddr(monitor, data[0]))
 //        {
 //            LOG_W("recv device name %s",GetDeviceByAddr(monitor, data[0])->name);
 //            for(u8 index = 0; index < dataLen; index++)

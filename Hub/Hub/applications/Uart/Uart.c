@@ -36,7 +36,7 @@ rt_device_t     uart2_serial;
 extern  __attribute__((section(".ccmbss"))) struct sdCardState      sdCard;
 extern  type_sys_time           sys_time;
 extern  sys_set_t               sys_set;
-
+extern  cloudcmd_t              cloudCmd;
 
 extern void warnProgram(type_monitor_t *, sys_set_t *);
 extern void pumpProgram(type_monitor_t *, sys_tank_t *);
@@ -92,11 +92,11 @@ static rt_err_t Uart2_input(rt_device_t dev, rt_size_t size)
     uart2_msg.dev = dev;
     uart2_msg.size = size;
     rt_device_read(uart2_msg.dev, 0, uart2_msg.data, uart2_msg.size);
-    for(int i = 0; i < uart2_msg.size; i++)
-    {
-        rt_kprintf("%x ",uart2_msg.data[i]);
-    }
-    rt_kprintf("\r\n");
+//    for(int i = 0; i < uart2_msg.size; i++)
+//    {
+//        rt_kprintf("%x ",uart2_msg.data[i]);
+//    }
+//    rt_kprintf("\r\n");
     if(2 > size)
     {
         return RT_ERROR;
@@ -214,7 +214,7 @@ void SensorUart2TaskEntry(void* parameter)
 #if (HUB_SELECT == HUB_ENVIRENMENT)
                 //特殊设备处理
                 getRegisterData(data, 13, 0x00000000,PAR_TYPE);
-                AnlyzeDeviceRegister(&monitor, uart1_serial ,data, 13, 0);//注册par
+                AnlyzeDeviceRegister(&monitor, uart1_serial ,data, 13, 0x18);//注册par
 #elif (HUB_SELECT == HUB_IRRIGSTION)
                 getRegisterData(data, 13, 0x00000001,PHEC_TYPE);
                 AnlyzeDeviceRegister(&monitor, uart1_serial ,data, 13, 0xE0);
@@ -258,7 +258,7 @@ void SensorUart2TaskEntry(void* parameter)
 
                 if(ON == uart2_msg.messageFlag)
                 {
-                    AnalyzeData(uart2_serial, &monitor, uart2_msg.data, uart2_msg.size);//Justin debug
+                    AnalyzeData(uart2_serial, &monitor, uart2_msg.data, uart2_msg.size);
                     uart2_msg.messageFlag = OFF;
                 }
                 else
@@ -420,8 +420,8 @@ void SensorUart2TaskEntry(void* parameter)
                     }
 #endif
                     timmerProgram(GetMonitor());
-                    findDeviceLocation(GetMonitor(), &sys_set.cloudCmd, uart2_serial);
-                    findLineLocation(GetMonitor(), &sys_set.cloudCmd, uart3_serial);
+                    findDeviceLocation(GetMonitor(), &cloudCmd, uart2_serial);
+                    findLineLocation(GetMonitor(), &cloudCmd, uart3_serial);
                     warnProgram(GetMonitor(), GetSysSet());             //监听告警信息
 
                     //co2 校准
@@ -474,6 +474,7 @@ void SensorUart2TaskInit(void)
 void initMonitor(void)
 {
     rt_memset((u8 *)&monitor, 0, sizeof(type_monitor_t));
+    monitor.crc = usModbusRTU_CRC((u8 *)&monitor, sizeof(type_monitor_t) - 2);
 }
 
 type_monitor_t *GetMonitor(void)

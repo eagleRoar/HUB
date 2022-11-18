@@ -32,8 +32,8 @@
 void InitSDCard(void);
 rt_err_t SaveModule(type_monitor_t *);
 rt_err_t TakeMonitorFromSD(type_monitor_t *);
-rt_err_t TackSysSetFromSD(sys_set_t *);
-rt_err_t SaveSysSet(sys_set_t *);
+//rt_err_t TackSysSetFromSD(sys_set_t *);
+//rt_err_t SaveSysSet(sys_set_t *);
 rt_err_t TackRecipeFromSD(sys_recipe_t *);
 rt_err_t SaveSysRecipe(sys_recipe_t *);
 rt_err_t TackSysTankFromSD(sys_tank_t *);

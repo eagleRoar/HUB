@@ -31,6 +31,7 @@ int                 tcp_sock                = 0;
 u8                  udpSendBuffer[30];
 
 extern rt_uint8_t GetEthDriverLinkStatus(void);             //获取网口连接状态
+extern      cloudcmd_t      cloudCmd;
 
 int getSockState(int sock)
 {
@@ -174,13 +175,13 @@ void UdpTaskEntry(void* parameter)
             if((OFF == eth->tcp.GetConnectTry()) &&
                (ON == eth->tcp.GetConnectStatus()))
             {
-                if(ON == GetSysSet()->cloudCmd.recv_flag)
+                if(ON == cloudCmd.recv_flag)
                 {
-                    if(YES == GetSysSet()->cloudCmd.recv_app_flag)
+                    if(YES == cloudCmd.recv_app_flag)
                     {
                         tcp_reply = ReplyDataToCloud1(RT_NULL, RT_NULL, &length, NO);
-                        LOG_W("length = %d",length);
-                        LOG_W("%.*s",length,tcp_reply + sizeof(eth_page_head));//Justin debug
+                        //LOG_W("length = %d",length);
+                        //LOG_W("%.*s",length,tcp_reply + sizeof(eth_page_head));
                         if(RT_NULL != tcp_reply)
                         {
                             if (RT_EOK != TcpSendMsg(&tcp_sock, tcp_reply, length + sizeof(eth_page_head)))
@@ -193,7 +194,7 @@ void UdpTaskEntry(void* parameter)
                             tcp_reply = RT_NULL;
                         }
 
-                        GetSysSet()->cloudCmd.recv_app_flag = NO;
+                        cloudCmd.recv_app_flag = NO;
                     }
                 }
 
