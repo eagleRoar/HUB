@@ -18,10 +18,10 @@ void printfSysSet(sys_set_t *set)
 {
     LOG_W("cmd = %s",cloudCmd.cmd);
     LOG_W("msgid = %s",cloudCmd.msgid);
-    LOG_W("recipe_name = %s",cloudCmd.recipe_name.value);
+    LOG_W("recipe_name = %s",cloudCmd.recipe_name);
 //    LOG_D("cmd = %s",set->cloudCmd.get_id.value);
 //    LOG_D("cmd = %s",set->cloudCmd.get_port_id.value);
-    LOG_W("sys_time = %s",cloudCmd.sys_time.value);
+    LOG_W("sys_time = %s",cloudCmd.sys_time);
 }
 
 rt_err_t TackSysSetFromSD(sys_set_t *set)

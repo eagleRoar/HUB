@@ -147,7 +147,7 @@ rt_err_t GetValueByC16(cJSON *temp, char *name, char *value, u8 length)
     type_kv_c16 data;
     rt_err_t    ret     = RT_ERROR;
 
-    if(length > 1 && length <= 16)
+    if(length > 1)
     {
         strncpy(data.name, name, KEYVALUE_NAME_SIZE);
         ret = GetValueC16(temp, &data);
@@ -324,7 +324,7 @@ void CmdFindLocation(char *data, cloudcmd_t *cmd)
     if(RT_NULL != temp)
     {
         GetValueByC16(temp, "msgid", cmd->msgid, KEYVALUE_VALUE_SIZE);
-        GetValueU16(temp, &cmd->get_id);
+        GetValueByU16(temp, "id", &cmd->get_id);
 
         cJSON_Delete(temp);
     }
@@ -342,7 +342,8 @@ void CmdGetPortSet(char *data, cloudcmd_t *cmd)
     if(RT_NULL != temp)
     {
         GetValueByC16(temp, "msgid", cmd->msgid, KEYVALUE_VALUE_SIZE);
-        GetValueU16(temp, &cmd->get_port_id);
+        //GetValueU16(temp, &cmd->get_port_id);
+        GetValueByU16(temp, "id", &cmd->get_port_id);;
 
         cJSON_Delete(temp);
     }
@@ -374,16 +375,17 @@ void CmdSetPortSet(char *data, cloudcmd_t *cmd)
     if(RT_NULL != temp)
     {
         GetValueByC16(temp, "msgid", cmd->msgid, KEYVALUE_VALUE_SIZE);
-        GetValueU16(temp, &cmd->get_port_id);
+        //GetValueU16(temp, &cmd->get_port_id);
+        GetValueByU16(temp, "id", &cmd->get_port_id);
 
-        if(cmd->get_port_id.value > 0xff)
+        if(cmd->get_port_id > 0xff)
         {
-            addr = cmd->get_port_id.value >> 8;
-            port = cmd->get_port_id.value;
+            addr = cmd->get_port_id >> 8;
+            port = cmd->get_port_id;
         }
         else
         {
-            addr = cmd->get_port_id.value;
+            addr = cmd->get_port_id;
             port = 0;
             //fatherFlg = 1;
         }
@@ -530,9 +532,9 @@ void CmdDeleteDevice(char *data, cloudcmd_t *cmd)
     if(RT_NULL != temp)
     {
         GetValueByC16(temp, "msgid", cmd->msgid, KEYVALUE_VALUE_SIZE);
-        GetValueU16(temp, &cmd->delete_id);
+        GetValueByU16(temp, "id", &cmd->delete_id);
 
-        deleteModule(GetMonitor(), cloudCmd.delete_id.value);
+        deleteModule(GetMonitor(), cloudCmd.delete_id);
 
         cJSON_Delete(temp);
     }
@@ -567,7 +569,7 @@ void CmdAddRecipe(char *data, cloudcmd_t *cmd)
     if(RT_NULL != temp)
     {
         GetValueByC16(temp, "msgid", cmd->msgid, KEYVALUE_VALUE_SIZE);
-        GetValueC16(temp, &cmd->recipe_name);
+        GetValueByC16(temp, "name", cmd->recipe_name, KEYVALUE_VALUE_SIZE);
 
         cJSON_Delete(temp);
     }
@@ -1021,7 +1023,6 @@ void CmdGetHubState(char *data, cloudcmd_t *cmd)
     if(RT_NULL != temp)
     {
         GetValueByC16(temp, "msgid", cmd->msgid, KEYVALUE_VALUE_SIZE);
-
         cJSON_Delete(temp);
     }
     else
@@ -1588,9 +1589,10 @@ void CmdSetSysTime(char *data, cloudcmd_t *cmd)
     if(RT_NULL != temp)
     {
         GetValueByC16(temp, "msgid", cmd->msgid, KEYVALUE_VALUE_SIZE);
-        GetValueC16(temp, &cmd->sys_time);
+        //GetValueC16(temp, &cmd->sys_time);
+        GetValueByC16(temp, "time", cmd->sys_time, KEYVALUE_VALUE_SIZE);
 
-        changeCharToDate(cmd->sys_time.value, &sys_time);
+        changeCharToDate(cmd->sys_time, &sys_time);
 
         cJSON_Delete(temp);
     }
@@ -2184,7 +2186,7 @@ char *ReplySetSysTime(char *cmd, cloudcmd_t cloud)
         cJSON_AddStringToObject(json, "cmd", cmd);
         cJSON_AddStringToObject(json, "msgid", cloud.msgid);
         cJSON_AddStringToObject(json, "sn", GetSnName(name, 12));
-        cJSON_AddStringToObject(json, cloud.sys_time.name, cloud.sys_time.value);
+        cJSON_AddStringToObject(json, "time", cloud.sys_time);
 
         cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
 
@@ -2345,15 +2347,14 @@ char *ReplyAddRecipe(char *cmd, cloudcmd_t cloud)
         rt_memset((u8 *)&recipe, 0, sizeof(recipe_t));
         cJSON_AddStringToObject(json, "cmd", cmd);
         cJSON_AddStringToObject(json, "msgid", cloud.msgid);
-        cJSON_AddStringToObject(json, cloud.recipe_name.name, cloud.recipe_name.value);
+        cJSON_AddStringToObject(json, "name", cloud.recipe_name);
 
         strncpy(id.name, "id", KEYVALUE_NAME_SIZE - 1);
         id.name[KEYVALUE_NAME_SIZE - 1] = '\0';
-        id.value = AllotRecipeId(cloud.recipe_name.value, GetSysRecipt());
+        id.value = AllotRecipeId(cloud.recipe_name, GetSysRecipt());
 
         recipe.id = id.value;
-        strncpy(recipe.name, cloud.recipe_name.value, RECIPE_NAMESZ - 1);
-        recipe.name[RECIPE_NAMESZ - 1] = '\0';
+        strncpy(recipe.name, cloud.recipe_name, RECIPE_NAMESZ);
         //设置默认值
         recipe.color = 1;
         recipe.dayCoolingTarget = COOLING_TARGET;
@@ -3944,10 +3945,10 @@ char *ReplyGetPortSet(char *cmd, cloudcmd_t cloud)
 
     if(RT_NULL != json)
     {
-        if(cloud.get_port_id.value > 0xFF)
+        if(cloud.get_port_id > 0xFF)
         {
-            addr = cloud.get_port_id.value >> 8;
-            port = cloud.get_port_id.value;
+            addr = cloud.get_port_id >> 8;
+            port = cloud.get_port_id;
             if(port >= DEVICE_PORT_MAX)
             {
                 LOG_E("port err");
@@ -3956,7 +3957,7 @@ char *ReplyGetPortSet(char *cmd, cloudcmd_t cloud)
         }
         else
         {
-            addr = cloud.get_port_id.value;
+            addr = cloud.get_port_id;
             port = 0;
             fatherFlg = 1;
         }

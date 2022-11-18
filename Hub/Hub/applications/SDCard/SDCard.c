@@ -160,15 +160,15 @@ void sd_dfs_event_entry(void* parameter)
                         if(RT_EOK == SaveSysSet(GetSysSet()))
                         {
                             LOG_W("------------------------saveSysSet OK, size = %d, crc = %x",sizeof(sys_set_t),GetSysSet()->crc);
-                            //Justin debug 仅仅测试
-                            if(RT_EOK == TackSysSetFromSD(GetSysSet()))
+
+                            /*if(RT_EOK == TackSysSetFromSD(GetSysSet()))
                             {
                                 LOG_W("------------read sys set ok");
                             }
                             else
                             {
                                 LOG_E("------------read sys set err");
-                            }
+                            }*/
                         }
                         else
                         {

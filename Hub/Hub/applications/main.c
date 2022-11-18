@@ -60,8 +60,6 @@ int main(void)
     //灯光
     LedTaskInit();
 
-//    initMonitor();//Justin debug
-
     //oled1309屏线程初始化
     OledTaskInit();
 

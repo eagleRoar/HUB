@@ -71,13 +71,12 @@ struct keyAndVauleChar16{
 
 struct cloudCmd{
     char            cmd[CMD_NAME_SIZE];         //接收命令
-    //type_kv_c16     msgid;                      //相当于发送的包的序号//Justin debug 仅仅测试
     char            msgid[KEYVALUE_VALUE_SIZE];
-    type_kv_c16     recipe_name;                //添加recipe name
-    type_kv_u16     get_id;                     //设备定位Id
-    type_kv_u16     get_port_id;                //设备设备端口设置Id
-    type_kv_c16     sys_time;                   //系统时间
-    type_kv_u16     delete_id;                  //删除设备id
+    char            recipe_name[KEYVALUE_VALUE_SIZE];                //添加recipe name
+    u16             get_id;                     //设备定位Id
+    u16             get_port_id;                //设备设备端口设置Id
+    char            sys_time[KEYVALUE_VALUE_SIZE];                   //系统时间
+    u16             delete_id;                  //删除设备id
     u8              recv_flag;                  //命令接收标志 处理完之后要置为OFF
     u8              recipe_id;                  //添加recipe id
     u16             set_port_id;
@@ -299,7 +298,6 @@ struct sysSet{
     proLine_t       line1Set;
     proLine_t       line2Set;
     tankWarn_t      tankWarnSet[TANK_LIST_MAX][TANK_WARN_ITEM_MAX];
-//    cloudcmd_t      cloudCmd;//Justin debug 仅仅测试
     stage_t         stageSet;   //阶段(日历)
     sys_para_t      sysPara;
     sys_warn_t      sysWarn;

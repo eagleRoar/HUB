@@ -69,7 +69,7 @@ void insertPumpToTank(type_monitor_t *monitor, sys_tank_t *tank_list, u16 id)
             {
                 if(0 == tank_list->tank[item].pumpId)
                 {
-//                    LOG_W("insertPumpToTank ......................");
+
                     tank_list->tank[item].tankNo = item + 1;
                     tank_list->tank[item].autoFillValveId = 0;
                     tank_list->tank[item].autoFillHeight = 10;
@@ -161,10 +161,10 @@ void printCloud(cloudcmd_t cmd)
 {
     LOG_I("--------------printCloud");
     LOG_D("msgid %s",cmd.msgid);
-    LOG_D(" %s",cmd.get_id.name);
-    LOG_D(" %s",cmd.get_port_id.name);
-    LOG_D(" %s",cmd.sys_time.name);
-    LOG_D(" %s",cmd.delete_id.name);
+    LOG_D(" %d",cmd.get_id);
+//    LOG_D(" %s",cmd.get_port_id.name);
+    LOG_D(" %s",cmd.sys_time);
+//    LOG_D(" %s",cmd.delete_id.name);
 }
 
 void initCloudSet(void)
@@ -172,21 +172,21 @@ void initCloudSet(void)
     cloudCmd.recv_flag = OFF;
 //    strncpy(cloudCmd.msgid., "msgid", KEYVALUE_NAME_SIZE - 1);
 //    cloudCmd.msgid.name[KEYVALUE_NAME_SIZE - 1] = '\0';
-    strncpy(cloudCmd.recipe_name.name, "name", KEYVALUE_NAME_SIZE - 1);
-    cloudCmd.recipe_name.name[KEYVALUE_NAME_SIZE - 1] = '\0';
-    strncpy(cloudCmd.get_id.name, "id", KEYVALUE_NAME_SIZE - 1);
-    cloudCmd.get_id.name[KEYVALUE_NAME_SIZE - 1] = '\0';
-    cloudCmd.get_id.value = 0;
-    strncpy(cloudCmd.get_port_id.name, "id", KEYVALUE_NAME_SIZE - 1);
-    cloudCmd.get_port_id.name[KEYVALUE_NAME_SIZE - 1] = '\0';
-    cloudCmd.get_port_id.value = 0;
-    strncpy(cloudCmd.sys_time.name, "time", KEYVALUE_NAME_SIZE - 1);
-    cloudCmd.sys_time.name[KEYVALUE_NAME_SIZE - 1] = '\0';
-    strncpy(cloudCmd.sys_time.value, " ",16);
-    cloudCmd.sys_time.value[16] = '\0';
-    strncpy(cloudCmd.delete_id.name, "id", KEYVALUE_NAME_SIZE - 1);
-    cloudCmd.delete_id.name[KEYVALUE_NAME_SIZE - 1] = '\0';
-    cloudCmd.delete_id.value = 0;
+//    strncpy(cloudCmd.recipe_name.name, "name", KEYVALUE_NAME_SIZE - 1);
+//    cloudCmd.recipe_name.name[KEYVALUE_NAME_SIZE - 1] = '\0';
+//    strncpy(cloudCmd.get_id.name, "id", KEYVALUE_NAME_SIZE - 1);
+//    cloudCmd.get_id.name[KEYVALUE_NAME_SIZE - 1] = '\0';
+//    cloudCmd.get_id.value = 0;
+//    strncpy(cloudCmd.get_port_id.name, "id", KEYVALUE_NAME_SIZE - 1);
+//    cloudCmd.get_port_id.name[KEYVALUE_NAME_SIZE - 1] = '\0';
+//    cloudCmd.get_port_id.value = 0;
+//    strncpy(cloudCmd.sys_time.name, "time", KEYVALUE_NAME_SIZE - 1);
+//    cloudCmd.sys_time.name[KEYVALUE_NAME_SIZE - 1] = '\0';
+//    strncpy(cloudCmd.sys_time.value, " ",16);
+//    cloudCmd.sys_time.value[16] = '\0';
+//    strncpy(cloudCmd.delete_id.name, "id", KEYVALUE_NAME_SIZE - 1);
+//    cloudCmd.delete_id.name[KEYVALUE_NAME_SIZE - 1] = '\0';
+//    cloudCmd.delete_id.value = 0;
     rt_memset(sys_set.offline, 0, sizeof(sys_set.offline));
     //printCloud(cloudCmd);
 }
@@ -196,21 +196,21 @@ void initCloudProtocol(void)
     cloudCmd.recv_flag = OFF;
 //    strncpy(cloudCmd.msgid.name, "msgid", KEYVALUE_NAME_SIZE - 1);
 //    cloudCmd.msgid.name[KEYVALUE_NAME_SIZE - 1] = '\0';
-    strncpy(cloudCmd.recipe_name.name, "name", KEYVALUE_NAME_SIZE - 1);
-    cloudCmd.recipe_name.name[KEYVALUE_NAME_SIZE - 1] = '\0';
-    strncpy(cloudCmd.get_id.name, "id", KEYVALUE_NAME_SIZE - 1);
-    cloudCmd.get_id.name[KEYVALUE_NAME_SIZE - 1] = '\0';
-    cloudCmd.get_id.value = 0;
-    strncpy(cloudCmd.get_port_id.name, "id", KEYVALUE_NAME_SIZE - 1);
-    cloudCmd.get_port_id.name[KEYVALUE_NAME_SIZE - 1] = '\0';
-    cloudCmd.get_port_id.value = 0;
-    strncpy(cloudCmd.sys_time.name, "time", KEYVALUE_NAME_SIZE - 1);
-    cloudCmd.sys_time.name[KEYVALUE_NAME_SIZE - 1] = '\0';
-    strncpy(cloudCmd.sys_time.value, " ",16);
-    cloudCmd.sys_time.value[16] = '\0';
-    strncpy(cloudCmd.delete_id.name, "id", KEYVALUE_NAME_SIZE - 1);
-    cloudCmd.delete_id.name[KEYVALUE_NAME_SIZE - 1] = '\0';
-    cloudCmd.delete_id.value = 0;
+//    strncpy(cloudCmd.recipe_name.name, "name", KEYVALUE_NAME_SIZE - 1);
+//    cloudCmd.recipe_name.name[KEYVALUE_NAME_SIZE - 1] = '\0';
+//    strncpy(cloudCmd.get_id.name, "id", KEYVALUE_NAME_SIZE - 1);
+//    cloudCmd.get_id.name[KEYVALUE_NAME_SIZE - 1] = '\0';
+//    cloudCmd.get_id.value = 0;
+//    strncpy(cloudCmd.get_port_id.name, "id", KEYVALUE_NAME_SIZE - 1);
+//    cloudCmd.get_port_id.name[KEYVALUE_NAME_SIZE - 1] = '\0';
+//    cloudCmd.get_port_id.value = 0;
+//    strncpy(cloudCmd.sys_time.name, "time", KEYVALUE_NAME_SIZE - 1);
+//    cloudCmd.sys_time.name[KEYVALUE_NAME_SIZE - 1] = '\0';
+//    strncpy(cloudCmd.sys_time.value, " ",16);
+//    cloudCmd.sys_time.value[16] = '\0';
+//    strncpy(cloudCmd.delete_id.name, "id", KEYVALUE_NAME_SIZE - 1);
+//    cloudCmd.delete_id.name[KEYVALUE_NAME_SIZE - 1] = '\0';
+//    cloudCmd.delete_id.value = 0;
     rt_memset(sys_set.offline, 0, sizeof(sys_set.offline));
     //printCloud(cloudCmd);
 
@@ -375,7 +375,7 @@ u8 *ReplyDataToCloud1(mqtt_client *client, u8 *cloudRes, u16 *len, u8 sendCloudF
 
     if(ON == cloudCmd.recv_flag)
     {
-        //LOG_D("-------------reply cmd %s",cloudCmd.cmd);
+        LOG_D("-------------reply cmd %s",cloudCmd.cmd);
         if(0 == rt_memcmp(CMD_SET_TEMP, cloudCmd.cmd, sizeof(CMD_SET_TEMP)) ||
            0 == rt_memcmp(CMD_GET_TEMP, cloudCmd.cmd, sizeof(CMD_GET_TEMP)))   //获取/设置温度参数
         {
@@ -654,6 +654,7 @@ void analyzeCloudData(char *data, u8 cloudFlg)
         cJSON * cmd = cJSON_GetObjectItem(json, CMD_NAME);
         if(NULL != cmd)
         {
+            LOG_W("recv cmd = %s",cmd->valuestring);
             if(0 == rt_memcmp(CMD_SET_TEMP, cmd->valuestring, strlen(CMD_SET_TEMP)))
             {
                 CmdSetTempValue(data, &cloudCmd);
@@ -782,7 +783,6 @@ void analyzeCloudData(char *data, u8 cloudFlg)
             else if(0 == rt_memcmp(CMD_SET_TANK_INFO, cmd->valuestring, strlen(CMD_SET_TANK_INFO)))
             {
                 CmdSetTank(data, &cloudCmd);
-                //LOG_D("id = %d",GetSysTank()->tank[0].autoFillValveId);
                 GetSysTank()->saveFlag = YES;
                 setCloudCmd(cmd->valuestring, ON, cloudFlg);
             }
@@ -937,35 +937,16 @@ void analyzeCloudData(char *data, u8 cloudFlg)
 void GetNowSysSet(proTempSet_t *tempSet, proCo2Set_t *co2Set, proHumiSet_t *humiSet,
         proLine_t *line1Set, proLine_t *line2Set, struct recipeInfor *info)
 {
-    struct tm       tm_test;
-    char            temp[5];
     u8              item = 0;
     u8              index = 0;
     time_t          starts;
     sys_set_t       *set = GetSysSet();
     sys_recipe_t    *recipe = GetSysRecipt();
     u8              usedCalFlg = OFF; // 如果为OFF 则使用系统设置 否则
+    type_sys_time   time;
 
-    rt_memset(temp, '0', 4);
-    strncpy(temp, &set->stageSet.starts[0], 4);
-    tm_test.tm_year = atoi(temp) - 1900;
-    rt_memset(temp, '0', 4);
-    strncpy(&temp[2], &set->stageSet.starts[4], 2);
-    tm_test.tm_mon = atoi(temp) - 1;
-    rt_memset(temp, '0', 4);
-    strncpy(&temp[2], &set->stageSet.starts[6], 2);
-    tm_test.tm_mday = atoi(temp);
-    rt_memset(temp, '0', 4);
-    strncpy(&temp[2], &set->stageSet.starts[8], 2);
-    tm_test.tm_hour = atoi(temp);
-    rt_memset(temp, '0', 4);
-    strncpy(&temp[2], &set->stageSet.starts[10], 2);
-    tm_test.tm_min = atoi(temp);
-    rt_memset(temp, '0', 4);
-    strncpy(&temp[2], &set->stageSet.starts[12], 2);
-    tm_test.tm_sec = atoi(temp);
-
-    starts = changeTmTotimet(&tm_test);
+    changeCharToDate(set->stageSet.starts, &time);
+    starts = changeDataToTimestamp(time.year, time.month, time.day, time.hour, time.minute, time.second);
 
     //如果不使能日历 或者 不处于日历的
     if(OFF == set->stageSet.en)
@@ -974,12 +955,11 @@ void GetNowSysSet(proTempSet_t *tempSet, proCo2Set_t *co2Set, proHumiSet_t *humi
     }
     else if(ON == set->stageSet.en)
     {
-        usedCalFlg = OFF;
-
         for(index = 0; index < STAGE_LIST_MAX; index++)
         {
             if((0 != set->stageSet._list[index].recipeId) && (0 != set->stageSet._list[index].duration_day))
             {
+
                 if((getTimeStamp() >= starts) && (getTimeStamp() <= starts + set->stageSet._list[index].duration_day * 24 * 60 * 60))
                 {
                     for(item = 0; item < recipe->recipe_size; item++)
@@ -1114,7 +1094,6 @@ void GetNowSysSet(proTempSet_t *tempSet, proCo2Set_t *co2Set, proHumiSet_t *humi
                 info->week = (getTimeStamp() - time) / (24 * 60 * 60) / 7;//天化为星期
                 info->day = (getTimeStamp() - time) / (24 * 60 * 60) % 7;
             }
-
         }
     }
 }

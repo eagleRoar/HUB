@@ -628,16 +628,16 @@ void findDeviceLocation(type_monitor_t *monitor, cloudcmd_t *cmd,rt_device_t ser
     u16 crc16Result = 0x0000;
     u8 addr = 0x00;
 
-    if(0 != cmd->get_id.value)
+    if(0 != cmd->get_id)
     {
         //无论是device还是指定的port口，都是device闪烁
-        if(cmd->get_id.value > 0xFF)
+        if(cmd->get_id > 0xFF)
         {
-            addr = (cmd->get_id.value >> 8) & 0x00FF;
+            addr = (cmd->get_id >> 8) & 0x00FF;
         }
         else
         {
-            addr = cmd->get_id.value;
+            addr = cmd->get_id;
         }
 
         for(i = 0; i < monitor->device_size; i++)
@@ -657,7 +657,7 @@ void findDeviceLocation(type_monitor_t *monitor, cloudcmd_t *cmd,rt_device_t ser
 
                 rt_device_write(serial, 0, buffer, 8);
 
-                cmd->get_id.value = 0;
+                cmd->get_id = 0;
             }
         }
     }
@@ -670,16 +670,16 @@ void findLineLocation(type_monitor_t *monitor, cloudcmd_t *cmd,rt_device_t seria
     u16 crc16Result = 0x0000;
     u8 addr = 0x00;
 
-    if(0 != cmd->get_id.value)
+    if(0 != cmd->get_id)
     {
         //无论是device还是指定的port口，都是device闪烁
-        if(cmd->get_id.value > 0xFF)
+        if(cmd->get_id > 0xFF)
         {
-            addr = (cmd->get_id.value >> 8) & 0x00FF;
+            addr = (cmd->get_id >> 8) & 0x00FF;
         }
         else
         {
-            addr = cmd->get_id.value;
+            addr = cmd->get_id;
         }
 
         for(i = 0; i < monitor->line_size; i++)
@@ -698,7 +698,7 @@ void findLineLocation(type_monitor_t *monitor, cloudcmd_t *cmd,rt_device_t seria
                 buffer[7] = (crc16Result>>8);                    //CRC16高位
 
                 rt_device_write(serial, 0, buffer, 8);
-                cmd->get_id.value = 0;
+                cmd->get_id = 0;
             }
         }
 

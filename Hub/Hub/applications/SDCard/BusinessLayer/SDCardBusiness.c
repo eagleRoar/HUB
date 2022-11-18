@@ -194,7 +194,7 @@ rt_err_t SaveModule(type_monitor_t *monitor)
     return ret;
 }
 
-void printsensor1(sensor_t sen)//Justin debug 仅仅测试
+void printsensor1(sensor_t sen)
 {
     LOG_W("name = %s",sen.name);
     rt_kprintf("name = : ");
@@ -218,7 +218,7 @@ void printsensor1(sensor_t sen)//Justin debug 仅仅测试
     }
 }
 
-void printline1(line_t line)//Justin debug 仅仅测试
+void printline1(line_t line)
 {
     LOG_W("name = %s",line.name);
     for(int i = 0; i < MODULE_NAMESZ; i++)

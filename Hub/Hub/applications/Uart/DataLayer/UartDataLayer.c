@@ -374,9 +374,9 @@ rt_err_t setDeviceDefault(device_t *module)
             }
             break;
         case IR_AIR_TYPE:
-            setDeviceDefaultPara(module, "IR_AIR_TYPE", 0x0100, S_TEMP, module->type, 1);
+            setDeviceDefaultPara(module, "IR_AIR", 0x0100, S_TEMP, module->type, 1);
             addr = module->addr;
-            setDeviceDefaultStora(module, 0 , "IR_AIR_TYPE", F_COOL, module->type, addr , MANUAL_NO_HAND, 0);
+            setDeviceDefaultStora(module, 0 , "IR_AIR", F_COOL, module->type, addr , MANUAL_NO_HAND, 0);
             break;
         default:
             ret = RT_ERROR;
