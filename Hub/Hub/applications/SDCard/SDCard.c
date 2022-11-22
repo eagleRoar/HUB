@@ -101,7 +101,6 @@ void sd_dfs_event_entry(void* parameter)
                                 LOG_E("TackSysTankFromSD err");
                             }
 
-                            //initHubinfo();
                             sdCard.readInfo = YES;
                         }
                         else //挂载失败

@@ -30,6 +30,9 @@ rt_err_t TackSysSetFromSD(sys_set_t *set)
     u16         setSize         = sizeof(sys_set_t);
     u16         crc             = 0;
 
+    //1.初始化参数
+    rt_memset((u8 *)set, 0, sizeof(sys_set_t));//Justin debug
+
     if(RT_EOK == ReadSdData(SYSSET_FILE, (u8 *)set, SD_INFOR_SIZE, setSize))
     {
         crc = usModbusRTU_CRC((u8 *)set + 2, setSize - 2);  //crc 在最后

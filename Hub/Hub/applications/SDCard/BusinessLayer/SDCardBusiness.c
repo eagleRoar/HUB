@@ -248,7 +248,9 @@ rt_err_t TakeMonitorFromSD(type_monitor_t *monitor)
     rt_err_t    ret             = RT_ERROR;
     u16         deviceCrc       = 0;
 
-    //LOG_D("TakeMonitorFromSD");
+
+    //1.初始化monitor
+    initMonitor();//Justin debug
 
     if(RT_EOK == ReadSdData(MODULE_FILE, (u8 *)monitor, SD_INFOR_SIZE, monitorSize))
     {
@@ -267,7 +269,8 @@ rt_err_t TakeMonitorFromSD(type_monitor_t *monitor)
                 deviceCrc = usModbusRTU_CRC((u8 *)&monitor->device[index] + 2, sizeof(device_t) - 2);
                 if(deviceCrc != monitor->device[index].crc)
                 {
-                    LOG_E("device name %s crc err",monitor->device[index].name);
+                    LOG_E("device name %s crc err, crc = %x, sd crc = %x",
+                            monitor->device[index].name,deviceCrc,monitor->device[index].crc);
                 }
             }
 
@@ -276,7 +279,8 @@ rt_err_t TakeMonitorFromSD(type_monitor_t *monitor)
                 deviceCrc = usModbusRTU_CRC((u8 *)&monitor->sensor[index] + 2, sizeof(sensor_t) - 2);
                 if(deviceCrc != monitor->sensor[index].crc)
                 {
-                    LOG_E("sensor name %s crc err",monitor->sensor[index].name);
+                    LOG_E("sensor name %s crc err, crc = %x, sd crc = %x",
+                            monitor->sensor[index].name,deviceCrc,monitor->sensor[index].crc);
                     printsensor1(monitor->sensor[index]);
                 }
             }
@@ -286,7 +290,8 @@ rt_err_t TakeMonitorFromSD(type_monitor_t *monitor)
                 deviceCrc = usModbusRTU_CRC((u8 *)&monitor->line[index] + 2, sizeof(line_t) - 2);
                 if(deviceCrc != monitor->line[index].crc)
                 {
-                    LOG_E("line name %s crc err",monitor->line[index].name);
+                    LOG_E("line name %s crc err, crc = %x, sd crc = %x",
+                            monitor->line[index].name,deviceCrc,monitor->line[index].crc);
                     printline1(monitor->line[index]);
                 }
             }
@@ -329,6 +334,8 @@ rt_err_t TackRecipeFromSD(sys_recipe_t *rec)
     u16         sysRecSize      = sizeof(sys_recipe_t);
     u16         crc             = 0;
 
+    rt_memset((u8 *)rec, 0, sizeof(sys_recipe_t));//Justin debug
+
     if(RT_EOK == ReadSdData(RECIPE_FILE, (u8 *)rec, SD_INFOR_SIZE, sysRecSize))
     {
         crc = usModbusRTU_CRC((u8 *)rec + 2, sysRecSize - 2);  //crc 在最后
@@ -340,6 +347,7 @@ rt_err_t TackRecipeFromSD(sys_recipe_t *rec)
         else
         {
             initSysRecipe();
+            rec->saveFlag = YES;
             ret = RT_ERROR;
         }
     }
@@ -372,6 +380,8 @@ rt_err_t TackSysTankFromSD(sys_tank_t *tank)
     rt_err_t    ret             = RT_ERROR;
     u16         sysTankSize     = sizeof(sys_tank_t);
     u16         crc             = 0;
+
+    rt_memset((u8 *)tank, 0, sizeof(sys_tank_t));//Justin debug
 
     if(RT_EOK == ReadSdData(TANK_FILE, (u8 *)tank, SD_INFOR_SIZE, sysTankSize))
     {

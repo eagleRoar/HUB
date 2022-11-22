@@ -559,6 +559,7 @@ int getSensorDataByFunc(type_monitor_t *monitor, u8 func)
     u8          port        = 0;
     u8          num         = 0;
     int         data        = 0;
+    int         temp_data   = 0;
     sensor_t    *sensor     = RT_NULL;
 
     //1.遍历全部，寻找符合条件的一个或者多个sensor 做平均，如果都没有就返回-9999
@@ -576,15 +577,24 @@ int getSensorDataByFunc(type_monitor_t *monitor, u8 func)
                     num++;
                     if(F_S_CO2 == sensor->__stora[port].func)
                     {
-                        sensor->__stora[port].value += GetSysSet()->co2Set.co2Corrected + GetSysSet()->co2Cal[index];
+                        if(sensor->__stora[port].value + GetSysSet()->co2Set.co2Corrected + GetSysSet()->co2Cal[index] >= 0)
+                        {
+//                            sensor->__stora[port].value += GetSysSet()->co2Set.co2Corrected + GetSysSet()->co2Cal[index];
+                            temp_data = sensor->__stora[port].value + GetSysSet()->co2Set.co2Corrected + GetSysSet()->co2Cal[index];
+//                            LOG_I("%d %d",sensor->__stora[port].value,temp_data);//Justin debug
+                        }
                     }
-
-                    if(F_S_WL == sensor->__stora[port].func)
+                    else if(F_S_WL == sensor->__stora[port].func)
                     {
-                        sensor->__stora[port].value /= 10;
+//                        sensor->__stora[port].value /= 10;
+                        temp_data = sensor->__stora[port].value / 10;
+                    }
+                    else
+                    {
+                        temp_data = sensor->__stora[port].value;
                     }
 
-                    data += sensor->__stora[port].value;
+                    data += temp_data;//sensor->__stora[port].value;
                 }
             }
         }

@@ -83,6 +83,8 @@ void AddRecipe(recipe_t *rec, sys_recipe_t *sys_rec)
             sys_rec->recipe_size++;
         }
     }
+
+    LOG_D("sys_rec->recipe_size = %d",sys_rec->recipe_size);//Justin debug
 }
 
 rt_err_t deleteRecipe(u8 id, sys_recipe_t *list, sys_set_t *sys_set)
@@ -112,11 +114,8 @@ rt_err_t deleteRecipe(u8 id, sys_recipe_t *list, sys_set_t *sys_set)
             {
                 if(list->recipe_size > 0)
                 {
-                    for(u8 item = index; item < list->recipe_size - 1; item++)
-                    {
-                        rt_memcpy((u8 *)&list->recipe[index], (u8 *)&list->recipe[index + 1], sizeof(recipe_t));
-                        rt_memset((u8 *)&list->recipe[index + 1], 0, sizeof(recipe_t));
-                    }
+                    rt_memcpy((u8 *)&list->recipe[index], (u8 *)&list->recipe[index + 1], sizeof(recipe_t) * (list->recipe_size - 1 - index));
+                    rt_memset((u8 *)&list->recipe[list->recipe_size - 1], 0, sizeof(recipe_t));
                 }
             }
 

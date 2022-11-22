@@ -163,8 +163,6 @@ int main(void)
         //1s event
         if(ON == Timer1sTouch)
         {
-            //LedProgram();
-
             //分辨白天黑夜
             if(DAY_BY_TIME == GetSysSet()->sysPara.dayNightMode)//按时间分辨
             {
@@ -217,24 +215,6 @@ int main(void)
                 }
             }
 
-//            char name1[10],name2[10];
-//            strncpy(name1, "hello", 9);
-//            name1[9] = '\0';
-//            strncpy(name2, "hello", 10);
-//
-//            rt_kprintf("name1 : ");
-//            for(int i = 0; i < 10; i++)
-//            {
-//                rt_kprintf("%x ",name1[i]);
-//            }
-//            rt_kprintf("\r\n");
-//
-//            rt_kprintf("name2 : ");
-//            for(int i = 0; i < 10; i++)
-//            {
-//                rt_kprintf("%x ",name2[i]);
-//            }
-//            rt_kprintf("\r\n");
         }
 
         //10s
@@ -275,6 +255,13 @@ int main(void)
 
                 }
             }
+
+//            LOG_I("sensor_t size = %d",sizeof(sensor_t));
+            //Justin debug
+//            for(int i = 0; i < GetSysRecipt()->recipe_size; i++)
+//            {
+//                LOG_I("recipe num %d, id = %d, name = %s", i, GetSysRecipt()->recipe[i].id,GetSysRecipt()->recipe[i].name);
+//            }
         }
 
         rt_thread_mdelay(20);

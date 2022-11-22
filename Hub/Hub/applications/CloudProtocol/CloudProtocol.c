@@ -170,49 +170,13 @@ void printCloud(cloudcmd_t cmd)
 void initCloudSet(void)
 {
     cloudCmd.recv_flag = OFF;
-//    strncpy(cloudCmd.msgid., "msgid", KEYVALUE_NAME_SIZE - 1);
-//    cloudCmd.msgid.name[KEYVALUE_NAME_SIZE - 1] = '\0';
-//    strncpy(cloudCmd.recipe_name.name, "name", KEYVALUE_NAME_SIZE - 1);
-//    cloudCmd.recipe_name.name[KEYVALUE_NAME_SIZE - 1] = '\0';
-//    strncpy(cloudCmd.get_id.name, "id", KEYVALUE_NAME_SIZE - 1);
-//    cloudCmd.get_id.name[KEYVALUE_NAME_SIZE - 1] = '\0';
-//    cloudCmd.get_id.value = 0;
-//    strncpy(cloudCmd.get_port_id.name, "id", KEYVALUE_NAME_SIZE - 1);
-//    cloudCmd.get_port_id.name[KEYVALUE_NAME_SIZE - 1] = '\0';
-//    cloudCmd.get_port_id.value = 0;
-//    strncpy(cloudCmd.sys_time.name, "time", KEYVALUE_NAME_SIZE - 1);
-//    cloudCmd.sys_time.name[KEYVALUE_NAME_SIZE - 1] = '\0';
-//    strncpy(cloudCmd.sys_time.value, " ",16);
-//    cloudCmd.sys_time.value[16] = '\0';
-//    strncpy(cloudCmd.delete_id.name, "id", KEYVALUE_NAME_SIZE - 1);
-//    cloudCmd.delete_id.name[KEYVALUE_NAME_SIZE - 1] = '\0';
-//    cloudCmd.delete_id.value = 0;
     rt_memset(sys_set.offline, 0, sizeof(sys_set.offline));
-    //printCloud(cloudCmd);
 }
 
 void initCloudProtocol(void)
 {
     cloudCmd.recv_flag = OFF;
-//    strncpy(cloudCmd.msgid.name, "msgid", KEYVALUE_NAME_SIZE - 1);
-//    cloudCmd.msgid.name[KEYVALUE_NAME_SIZE - 1] = '\0';
-//    strncpy(cloudCmd.recipe_name.name, "name", KEYVALUE_NAME_SIZE - 1);
-//    cloudCmd.recipe_name.name[KEYVALUE_NAME_SIZE - 1] = '\0';
-//    strncpy(cloudCmd.get_id.name, "id", KEYVALUE_NAME_SIZE - 1);
-//    cloudCmd.get_id.name[KEYVALUE_NAME_SIZE - 1] = '\0';
-//    cloudCmd.get_id.value = 0;
-//    strncpy(cloudCmd.get_port_id.name, "id", KEYVALUE_NAME_SIZE - 1);
-//    cloudCmd.get_port_id.name[KEYVALUE_NAME_SIZE - 1] = '\0';
-//    cloudCmd.get_port_id.value = 0;
-//    strncpy(cloudCmd.sys_time.name, "time", KEYVALUE_NAME_SIZE - 1);
-//    cloudCmd.sys_time.name[KEYVALUE_NAME_SIZE - 1] = '\0';
-//    strncpy(cloudCmd.sys_time.value, " ",16);
-//    cloudCmd.sys_time.value[16] = '\0';
-//    strncpy(cloudCmd.delete_id.name, "id", KEYVALUE_NAME_SIZE - 1);
-//    cloudCmd.delete_id.name[KEYVALUE_NAME_SIZE - 1] = '\0';
-//    cloudCmd.delete_id.value = 0;
     rt_memset(sys_set.offline, 0, sizeof(sys_set.offline));
-    //printCloud(cloudCmd);
 
     rt_memset(&sys_set.tempSet, 0, sizeof(proTempSet_t));
     rt_memset(&sys_set.co2Set, 0, sizeof(proCo2Set_t));
@@ -2192,7 +2156,7 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
             {
                 if(getTimeStamp() > co2WarnTime + set->sysWarn.co2Timeoutseconds)
                 {
-                    if(ON == set->sysWarn.humidTimeoutEn)
+                    if(ON == set->sysWarn.co2TimeoutEn)
                     {
                         set->warn[WARN_CO2_TIMEOUT - 1] = ON;
                         set->warn_value[WARN_CO2_TIMEOUT - 1] = data;
@@ -2432,7 +2396,7 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
                 set->warn[WARN_CO2_HIGHT - 1] = OFF;
             }
 
-            if(data < set->co2Set.nightCo2Target)
+            if(data > set->co2Set.nightCo2Target)
             {
                 co2State = ON;
             }
@@ -2455,7 +2419,7 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
             {
                 if(getTimeStamp() > co2WarnTime + set->sysWarn.co2Timeoutseconds)
                 {
-                    if(ON == set->sysWarn.humidTimeoutEn)
+                    if(ON == set->sysWarn.co2TimeoutEn)
                     {
                         set->warn[WARN_CO2_TIMEOUT - 1] = ON;
                         set->warn_value[WARN_CO2_TIMEOUT - 1] = data;
@@ -3347,6 +3311,7 @@ void sendwarnningInfo(void)
                                 {
                                     if(length > 0)
                                     {
+                                        //LOG_E("--------------------------length = %d",length);//Justin debug
                                         rt_memcpy(buf + 4, &length, 2);
                                         if (RT_EOK != TcpSendMsg(&tcp_sock, buf, length + sizeof(eth_page_head)))
                                         {
@@ -3354,6 +3319,7 @@ void sendwarnningInfo(void)
                                             eth->tcp.SetConnectStatus(OFF);
                                             eth->tcp.SetConnectTry(ON);
                                         }
+                                        LOG_W("send to app: %x %x %x %x %x %x",length,buf + sizeof(eth_page_head));
                                         LOG_W("send to app: %.*s",length,buf + sizeof(eth_page_head));
                                     }
                                 }
@@ -3377,7 +3343,7 @@ void sendwarnningInfo(void)
                                 {
                                     if(length > 0)
                                     {
-                                        rt_memcpy(buf + 4, length, 2);
+                                        rt_memcpy(buf + 4, &length, 2);
                                         if (RT_EOK != TcpSendMsg(&tcp_sock, buf, length + sizeof(eth_page_head)))
                                         {
                                             LOG_E("send tcp err 2");
