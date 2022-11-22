@@ -25,7 +25,7 @@
 typedef     struct packageEth               type_package_t;
 
 typedef     struct hub                      hub_t;
-typedef     struct monitor                  type_monitor_t;
+//typedef     struct monitor                  type_monitor_t;
 typedef     struct sensor                   sensor_t;
 typedef     struct timer                    type_timmer_t;
 typedef     struct cycle                    type_cycle_t;
@@ -59,8 +59,6 @@ typedef     struct eth_heart                eth_heart_t;
 #define     POWER_VALUE                     80
 #define     AUTO_DIMMING                    1200
 #define     MANUAL_TIME_DEFAULT             10
-
-typedef     void (*FAC_FUNC)(type_monitor_t *);
 
 struct hub{
     u16 crc;
@@ -311,7 +309,9 @@ struct allocate
 };
 
 /** 一下结构顺序不能打乱 否则存取SD卡的GetMonitorFromSdCard相关逻辑要改 **/
-struct monitor
+
+#pragma pack(1)//Justin debug
+typedef struct monitor
 {
     /* 以下为统一分配 */
     struct allocate     allocateStr;
@@ -322,7 +322,10 @@ struct monitor
     device_t            device[DEVICE_MAX];
     line_t              line[LINE_MAX];
     u16                 crc;
-};
+}type_monitor_t;
+#pragma pack()
+
+typedef     void (*FAC_FUNC)(type_monitor_t *);
 
 /**************************************报头 Start*****************************************/
 #define     CHECKID                 0xAABB                      //标识,0xAABB

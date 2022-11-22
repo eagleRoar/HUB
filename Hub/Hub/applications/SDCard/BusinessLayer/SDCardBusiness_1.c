@@ -31,7 +31,7 @@ rt_err_t TackSysSetFromSD(sys_set_t *set)
     u16         crc             = 0;
 
     //1.初始化参数
-    rt_memset((u8 *)set, 0, sizeof(sys_set_t));//Justin debug
+    rt_memset((u8 *)set, 0, sizeof(sys_set_t));
 
     if(RT_EOK == ReadSdData(SYSSET_FILE, (u8 *)set, SD_INFOR_SIZE, setSize))
     {
