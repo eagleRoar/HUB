@@ -509,7 +509,7 @@ void OledTaskEntry(void* parameter)
         {
             if((SENSOR_STATE_PAGE == nowPage) ||
                (DEVICE_STATE_PAGE == nowPage) ||
-               /*(FA_SENSOR_PAGE == nowPage) ||*/
+               (FA_SENSOR_PAGE == nowPage) ||
                (FA_DEVICE_PAGE == nowPage) ||
                (FA_LINE_PAGE == nowPage) ||
                (FA_SD_PAGE == nowPage) ||

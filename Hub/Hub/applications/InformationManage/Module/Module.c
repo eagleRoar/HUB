@@ -579,14 +579,11 @@ int getSensorDataByFunc(type_monitor_t *monitor, u8 func)
                     {
                         if(sensor->__stora[port].value + GetSysSet()->co2Set.co2Corrected + GetSysSet()->co2Cal[index] >= 0)
                         {
-//                            sensor->__stora[port].value += GetSysSet()->co2Set.co2Corrected + GetSysSet()->co2Cal[index];
                             temp_data = sensor->__stora[port].value + GetSysSet()->co2Set.co2Corrected + GetSysSet()->co2Cal[index];
-//                            LOG_I("%d %d",sensor->__stora[port].value,temp_data);//Justin debug
                         }
                     }
                     else if(F_S_WL == sensor->__stora[port].func)
                     {
-//                        sensor->__stora[port].value /= 10;
                         temp_data = sensor->__stora[port].value / 10;
                     }
                     else

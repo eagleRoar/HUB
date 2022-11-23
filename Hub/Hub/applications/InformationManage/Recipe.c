@@ -84,7 +84,6 @@ void AddRecipe(recipe_t *rec, sys_recipe_t *sys_rec)
         }
     }
 
-    LOG_D("sys_rec->recipe_size = %d",sys_rec->recipe_size);//Justin debug
 }
 
 rt_err_t deleteRecipe(u8 id, sys_recipe_t *list, sys_set_t *sys_set)

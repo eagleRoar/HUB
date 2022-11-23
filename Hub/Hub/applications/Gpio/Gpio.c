@@ -10,6 +10,7 @@
 
 #include "Gpio.h"
 #include "Uart.h"
+#include "Oled1309.h"
 
 static u8 alarm_flag = NO;
 

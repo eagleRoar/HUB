@@ -310,7 +310,7 @@ struct allocate
 
 /** 一下结构顺序不能打乱 否则存取SD卡的GetMonitorFromSdCard相关逻辑要改 **/
 
-#pragma pack(1)//Justin debug
+#pragma pack(1)
 typedef struct monitor
 {
     /* 以下为统一分配 */

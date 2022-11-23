@@ -250,7 +250,7 @@ rt_err_t TakeMonitorFromSD(type_monitor_t *monitor)
 
 
     //1.初始化monitor
-    initMonitor();//Justin debug
+    initMonitor();
 
     if(RT_EOK == ReadSdData(MODULE_FILE, (u8 *)monitor, SD_INFOR_SIZE, monitorSize))
     {
@@ -334,7 +334,7 @@ rt_err_t TackRecipeFromSD(sys_recipe_t *rec)
     u16         sysRecSize      = sizeof(sys_recipe_t);
     u16         crc             = 0;
 
-    rt_memset((u8 *)rec, 0, sizeof(sys_recipe_t));//Justin debug
+    rt_memset((u8 *)rec, 0, sizeof(sys_recipe_t));
 
     if(RT_EOK == ReadSdData(RECIPE_FILE, (u8 *)rec, SD_INFOR_SIZE, sysRecSize))
     {
@@ -381,7 +381,7 @@ rt_err_t TackSysTankFromSD(sys_tank_t *tank)
     u16         sysTankSize     = sizeof(sys_tank_t);
     u16         crc             = 0;
 
-    rt_memset((u8 *)tank, 0, sizeof(sys_tank_t));//Justin debug
+    rt_memset((u8 *)tank, 0, sizeof(sys_tank_t));
 
     if(RT_EOK == ReadSdData(TANK_FILE, (u8 *)tank, SD_INFOR_SIZE, sysTankSize))
     {

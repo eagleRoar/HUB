@@ -256,12 +256,6 @@ int main(void)
                 }
             }
 
-//            LOG_I("sensor_t size = %d",sizeof(sensor_t));
-            //Justin debug
-//            for(int i = 0; i < GetSysRecipt()->recipe_size; i++)
-//            {
-//                LOG_I("recipe num %d, id = %d, name = %s", i, GetSysRecipt()->recipe[i].id,GetSysRecipt()->recipe[i].name);
-//            }
         }
 
         rt_thread_mdelay(20);

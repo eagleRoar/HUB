@@ -12,6 +12,7 @@
 #include "UartBussiness.h"
 #include "InformationMonitor.h"
 #include "Module.h"
+#include "Uart.h"
 
 void setDeviceDefaultPara(device_t *module, char *name, u16 ctrl_addr, u8 main_type, u8 type, u8 storage_size)
 {
@@ -544,80 +545,101 @@ void AnlyzeDeviceRegister(type_monitor_t *monitor, rt_device_t serial, u8 *data,
 
     if(SENSOR_TYPE == s_or_d)//Justin debug 这个方式应该改为通过uart口识别
     {
-        if(NO == FindSensor(monitor, sensor, &no))
+        //1.该判断为了避免sensor device line类型插到错误的接口
+        if(serial == rt_device_find(DEVICE_UART1))
         {
-            if((PHEC_TYPE != sensor.type) &&
-               (WATERlEVEL_TYPE != sensor.type) &&
-               (PAR_TYPE != sensor.type))
+            if(NO == FindSensor(monitor, sensor, &no))
             {
-                sensor.addr = getAllocateAddress(monitor, sensor.type);
+                if((PHEC_TYPE != sensor.type) &&
+                   (WATERlEVEL_TYPE != sensor.type) &&
+                   (PAR_TYPE != sensor.type))
+                {
+                    sensor.addr = getAllocateAddress(monitor, sensor.type);
+                }
+                else
+                {
+                    sensor.addr = specialAddr;
+                }
+                if(RT_EOK == setSensorDefault(&sensor))
+                {
+                    InsertSensorToTable(monitor, sensor, no);
+                }
+                else
+                {
+                    LOG_E("The sensor is not supported");
+                }
             }
             else
             {
-                sensor.addr = specialAddr;
+                LOG_D("sensor name %s have exist",GetSensorByType(monitor, sensor.type)->name);
             }
-            if(RT_EOK == setSensorDefault(&sensor))
+            /* 发送注册回复 */
+            //特殊处理 如果是PAR 不用回复
+            if((PAR_TYPE != sensor.type) &&
+               (PHEC_TYPE != sensor.type) &&
+               (WATERlEVEL_TYPE != sensor.type))
             {
-                InsertSensorToTable(monitor, sensor, no);
-            }
-            else
-            {
-                LOG_E("The sensor is not supported");
+                senRegisterAnswer(monitor, serial, sensor.uuid);
             }
         }
         else
         {
-            LOG_D("sensor name %s have exist",GetSensorByType(monitor, sensor.type)->name);
-        }
-        /* 发送注册回复 */
-        //特殊处理 如果是PAR 不用回复
-        if((PAR_TYPE != sensor.type) &&
-           (PHEC_TYPE != sensor.type) &&
-           (WATERlEVEL_TYPE != sensor.type))
-        {
-            senRegisterAnswer(monitor, serial, sensor.uuid);
+            LOG_E("The 485 line is wrong");
         }
     }
     else if(DEVICE_TYPE == s_or_d)
     {
-        if(NO == FindDevice(monitor, device, &no))
+        if(serial == rt_device_find(DEVICE_UART2))
         {
-            device.addr = getAllocateAddress(monitor, device.type);
-            if(RT_EOK == setDeviceDefault(&device))
+            if(NO == FindDevice(monitor, device, &no))
             {
-                InsertDeviceToTable(monitor, device, no);
+                device.addr = getAllocateAddress(monitor, device.type);
+                if(RT_EOK == setDeviceDefault(&device))
+                {
+                    InsertDeviceToTable(monitor, device, no);
+                }
+                else
+                {
+                    LOG_E("The device is not supported");
+                }
             }
             else
             {
-                LOG_E("The device is not supported");
+
+                LOG_D("device have exist, type = %x, really addr = %d",
+                        data[8],data[7]);
             }
+            /* 发送注册回复 */
+            devRegisterAnswer(monitor, serial, device.uuid);
         }
         else
         {
-
-            LOG_D("device have exist, type = %x, really addr = %d",
-                    data[8],data[7]);
+            LOG_E("The 485 line is wrong");
         }
-        /* 发送注册回复 */
-        devRegisterAnswer(monitor, serial, device.uuid);
     }
     else if(LINE1OR2_TYPE == s_or_d)
     {
         //LOG_E("line uuid = %x",line.uuid);
-        if(NO == FindLine(monitor, line, &no))
+        if(serial == rt_device_find(DEVICE_UART3))
         {
-            line.addr = getAllocateAddress(monitor, line.type);
-            setLineDefault(&line);
-            InsertLineToTable(monitor, line, no);
+            if(NO == FindLine(monitor, line, &no))
+            {
+                line.addr = getAllocateAddress(monitor, line.type);
+                setLineDefault(&line);
+                InsertLineToTable(monitor, line, no);
+            }
+            else
+            {
+                LOG_D("line have exist");
+            }
+
+            lineAnswer(monitor, serial, line.uuid);
         }
         else
         {
-            LOG_D("line have exist");
+            LOG_E("The 485 line is wrong");
         }
-
-        lineAnswer(monitor, serial, line.uuid);
     }
-
 }
 
 void senRegisterAnswer(type_monitor_t *monitor, rt_device_t serial, u32 uuid)

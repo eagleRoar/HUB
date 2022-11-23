@@ -83,6 +83,8 @@ void HomePage(type_page_t *page, type_monitor_t *monitor)
     data = getSensorDataByFunc(monitor, F_S_TEMP);
     if(VALUE_NULL == data)
     {
+        ST7567_GotoXY(0, 32);
+        ST7567_Puts("    ", &Font_8x16, 1);
         rt_memcpy(value, "--", 2);
         ST7567_GotoXY(8, 32);
         ST7567_Puts(value, &Font_8x16, 1);
@@ -111,6 +113,8 @@ void HomePage(type_page_t *page, type_monitor_t *monitor)
     data = getSensorDataByFunc(monitor, F_S_HUMI);
     if(VALUE_NULL == data)
     {
+        ST7567_GotoXY(8 + 8*5, 32);
+        ST7567_Puts("    ", &Font_8x16, 1);
         rt_memcpy(value, "--", 2);
         ST7567_GotoXY(8 + 8*5, 32);
         ST7567_Puts(value, &Font_8x16, 1);
@@ -138,6 +142,8 @@ void HomePage(type_page_t *page, type_monitor_t *monitor)
     data = getSensorDataByFunc(monitor, F_S_CO2);
     if(VALUE_NULL == data)
     {
+        ST7567_GotoXY(8 + 8*9 + 4, 32);
+        ST7567_Puts("      ", &Font_8x16, 1);
         rt_memcpy(value, "--", 2);
         ST7567_GotoXY(8 + 8*11, 32);
         ST7567_Puts(value, &Font_8x16, 1);
@@ -210,7 +216,7 @@ void HomePage(type_page_t *page, type_monitor_t *monitor)
 
                 if(RT_NULL != sensor)
                 {
-//                    if(CON_FAIL != sensor->conn_state)
+                    if(CON_FAIL != sensor->conn_state)
                     {
                         if (PHEC_TYPE == sensor->type)
                         {
@@ -219,6 +225,23 @@ void HomePage(type_page_t *page, type_monitor_t *monitor)
                             data[2] = sensor->__stora[2].value;
 
                         }
+                    }
+                    else
+                    {
+                        //清除屏幕缓存
+                        ST7567_GotoXY(4, 28);
+                        ST7567_Puts("    ", &Font_8x16, 1);
+                        ST7567_GotoXY(47, 28);
+                        ST7567_Puts("    ", &Font_8x16, 1);
+                        ST7567_GotoXY(90, 28);
+                        ST7567_Puts("    ", &Font_8x16, 1);
+
+                        ST7567_GotoXY(12, 28);
+                        ST7567_Puts("--", &Font_8x16, 1);
+                        ST7567_GotoXY(55, 28);
+                        ST7567_Puts("--", &Font_8x16, 1);
+                        ST7567_GotoXY(98, 28);
+                        ST7567_Puts("--", &Font_8x16, 1);
                     }
                 }
             }

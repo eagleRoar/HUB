@@ -217,7 +217,7 @@ void initCloudProtocol(void)
     sys_set.line1Set.mode = 1;
     sys_set.line1Set.hidDelay = 3;// HID 延时时间 3-180min HID 模式才有
     sys_set.line1Set.tempStartDimming = 300;// 灯光自动调光温度点 0℃-60.0℃/32℉-140℉
-    sys_set.line1Set.tempOffDimming = 300;// 灯光自动关闭温度点 0℃-60.0℃/32℉-140℉
+    sys_set.line1Set.tempOffDimming = 320;// 灯光自动关闭温度点 0℃-60.0℃/32℉-140℉
     sys_set.line1Set.sunriseSunSet = 10;// 0-180min/0 表示关闭状态 日升日落
     sys_set.line1Set.firstRuncycleTime = 0;
 
@@ -3311,7 +3311,7 @@ void sendwarnningInfo(void)
                                 {
                                     if(length > 0)
                                     {
-                                        //LOG_E("--------------------------length = %d",length);//Justin debug
+
                                         rt_memcpy(buf + 4, &length, 2);
                                         if (RT_EOK != TcpSendMsg(&tcp_sock, buf, length + sizeof(eth_page_head)))
                                         {
