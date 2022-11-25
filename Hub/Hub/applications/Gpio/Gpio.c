@@ -144,7 +144,9 @@ void LedTaskEntry(void* parameter)
         {
             if(NO == getFactoryMode())
             {
+#if(HUB_SELECT == HUB_ENVIRENMENT)
                 AlarmLedProgram();
+#endif
             }
         }
 

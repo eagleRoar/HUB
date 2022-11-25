@@ -3049,110 +3049,106 @@ void autoBindPumpTotank(type_monitor_t *monitor, sys_tank_t *tank_list)
     }
 }
 
-//co2定标,处于ppm 420环境中
-void co2Calibrate(type_monitor_t *monitor, int *data, u8 *do_cal_flg, u8 *saveFlg)
+//默认在420ppm 环境中校准
+void co2Calibrate(type_monitor_t *monitor, int *data, u8 *do_cal_flg, u8 *saveFlg, CAl_CO2_CB cb)
 {
-    u8              index                   = 0;        //
+    u8              index                   = 0;
     u8              port                    = 0;
     sensor_t        *sensor                 = RT_NULL;
-    static u8       cal_flag[SENSOR_MAX]    = {0};      //标记是否校准完成
-    static u8       cal_cnt[SENSOR_MAX]     = {0};      //计算校准的计数
-    static time_t   start_time[SENSOR_MAX]  = {0};      //开始校准时间
-    static int      cal_data[SENSOR_MAX][10];
-    static u8       do_cal_pre              = 0xFF;
-    static u8       haveCo2[SENSOR_MAX]     = {0};      //标记是否有co2
+    static u8       cal_flag[SENSOR_MAX];      //标记是否校准完成
+    static u8       cal_cnt[SENSOR_MAX];
+    static u8       start                   = NO;
+    static time_t   start_time              = 0;
+    static int      STAND_CO2               = 420;
+    static int      data1[SENSOR_MAX];
 
-    if(do_cal_pre != *do_cal_flg)
+
+    //1.是否开始校准
+    if(start != *do_cal_flg)
     {
-        if(YES == *do_cal_flg)
+        start = *do_cal_flg;
+
+        if(YES == start)
         {
-            for(index = 0; index < monitor->sensor_size; index++)
-            {
-                start_time[index] = getTimeStamp();
-                cal_flag[index] = CAL_INCAL;
-            }
+            start_time = getTimeStamp();
+            rt_memset(data1, 0, SENSOR_MAX);
+            rt_memset(cal_cnt, 0, SENSOR_MAX);
+            rt_memset(cal_flag, CAL_NO, SENSOR_MAX);
         }
-        do_cal_pre = *do_cal_flg;
     }
 
-    //校准逻辑:
-    //1分钟内数值趋于稳定的时候取10组进行平均
-    for(index = 0; index < monitor->sensor_size; index++)
+    LOG_E("-----------------time goes %d",getTimeStamp() - start_time);//Justin debug
+
+    //2.60秒内完成采集与平均
+    if(getTimeStamp() <= start_time + 60)
     {
-        sensor = &monitor->sensor[index];
-        for(port = 0; port < SENSOR_VALUE_MAX; port++)
+        //遍历全部sensor 中的CO2
+        for(index = 0; index < monitor->sensor_size; index++)
         {
-            if(sensor->__stora[port].func == F_S_CO2)
+            sensor = &GetMonitor()->sensor[index];
+
+            for(port = 0; port < sensor->storage_size; port++)
             {
-                if(CAL_INCAL == cal_flag[index])
+                if(F_S_CO2 == sensor->__stora[port].func)
                 {
-                    //2.如果在1分钟之内,能够稳定的取到10组数据
-                    if(getTimeStamp() < start_time[index] + 60)
+                    //3.如果10组是稳定的,那么就平均,否则重新采集
+                    if(CAL_YES != cal_flag[index])
                     {
-                        //3.标记当前采集的第几组数据
-                        if(cal_cnt[index] < 9)
+                        LOG_D("value = %d",sensor->__stora[port].value);//Justin debug
+                        if(cal_cnt[index] < 10)
                         {
-                            cal_cnt[index]++;
-                            cal_data[index][cal_cnt[index]] = sensor->__stora[port].value;
-                            //3.1如果出现异常,重新采集10组
-                            if(abs(cal_data[index][cal_cnt[index]] - 420) > 300)
+                            //4.判断是否符合条件
+                            if(abs(sensor->__stora[port].value - STAND_CO2) <= 300)//Justin debug 仅仅测试
                             {
+                                LOG_W("co2Calibrate 1");//Justin debug
+                                data1[index] += sensor->__stora[port].value;
+                                cal_cnt[index]++;
+                                cal_flag[index] = CAL_FAIL;
+                            }
+                            else
+                            {
+                                LOG_W("co2Calibrate 2, data = %d",abs(sensor->__stora[port].value - STAND_CO2));//Justin debug
+                                data1[index] = 0;
                                 cal_cnt[index] = 0;
+                                cal_flag[index] = CAL_FAIL;
                             }
                         }
                         else
                         {
-                            //4.采集完毕进行平均
-                            for(int group = 0; group < 10; group++)
-                            {
-                                data[index] += cal_data[index][group];
-                            }
-                            data[index] /= 10;
-
-                            if(data[index] >= 420)
-                            {
-                                data[index] = 420 - data[index];
-                            }
-                            else
-                            {
-                                data[index] = data[index] - 420;
-                            }
-
+                            //5.采集完毕
+                            data1[index] /= cal_cnt[index];
+                            data1[index] = STAND_CO2 - data1[index];
                             cal_flag[index] = CAL_YES;
-                            cal_cnt[index] = 0;
+                            data[index] = data1[index];
                         }
                     }
-                    else
-                    {
-                        cal_flag[index] = CAL_YES;
-                        cal_cnt[index] = 0;
-                    }
                 }
-                haveCo2[index] = YES;
+            }
+        }
+    }
+    else
+    {
+        *do_cal_flg = NO;
+        start = NO;
+        *saveFlg = YES;
+
+        //6.判断是否是全部采集完成
+        for(index = 0; index < monitor->sensor_size; index++)
+        {
+            if(CAL_FAIL == cal_flag[index])
+            {
+                cb(NO);
+                return;
             }
         }
 
-        if(YES != haveCo2[index])
-        {
-            cal_flag[index] = CAL_YES;
-            cal_cnt[index] = 0;
-            data[index] = 0;
-        }
-    }
+        cb(YES);
 
-    for(index = 0; index < monitor->sensor_size; index++)
-    {
-        if(CAL_YES != cal_flag[index])
+        //Justin debug
+        for(index = 0; index < monitor->sensor_size; index++)
         {
-            break;
+            LOG_W("num %d, data = %d",index,data[index]);
         }
-    }
-
-    if(index == monitor->sensor_size)
-    {
-        *do_cal_flg = NO;
-        do_cal_pre = NO;
-        *saveFlg = YES;
     }
 }
 

@@ -40,6 +40,7 @@ extern  cloudcmd_t              cloudCmd;
 
 extern void warnProgram(type_monitor_t *, sys_set_t *);
 extern void pumpProgram(type_monitor_t *, sys_tank_t *);
+extern void co2CalibraterResPage(u8);
 
 /**
  * @brief  : 接收回调函数
@@ -84,6 +85,18 @@ static rt_err_t Uart2_input(rt_device_t dev, rt_size_t size)
     u16 crc16 = 0x0000;
 
     /* 必须要等待从sd卡读取到的monitor 才能执行以下功能 */
+
+    //Justin debug 接收红外数据
+//    if(IR_AIR_TYPE == GetDeviceByAddr(GetMonitor(), uart2_msg.data[0])->type)
+//    {
+//        LOG_W("recv data：");
+//        for(int i = 0; i < uart2_msg.size; i++)
+//        {
+//            rt_kprintf("%x ",uart2_msg.data[i]);
+//        }
+//        rt_kprintf("\r\n");
+//    }
+
     if (NO == sdCard.readInfo)
     {
         return RT_ERROR;
@@ -92,11 +105,7 @@ static rt_err_t Uart2_input(rt_device_t dev, rt_size_t size)
     uart2_msg.dev = dev;
     uart2_msg.size = size;
     rt_device_read(uart2_msg.dev, 0, uart2_msg.data, uart2_msg.size);
-//    for(int i = 0; i < uart2_msg.size; i++)
-//    {
-//        rt_kprintf("%x ",uart2_msg.data[i]);
-//    }
-//    rt_kprintf("\r\n");
+
     if(2 > size)
     {
         return RT_ERROR;
@@ -424,10 +433,11 @@ void SensorUart2TaskEntry(void* parameter)
                     findLineLocation(GetMonitor(), &cloudCmd, uart3_serial);
                     warnProgram(GetMonitor(), GetSysSet());             //监听告警信息
 
+
                     //co2 校准
                     if(YES == GetSysSet()->startCalFlg)
                     {
-                        co2Calibrate(GetMonitor(), GetSysSet()->co2Cal, &GetSysSet()->startCalFlg, &GetSysSet()->saveFlag);
+                        co2Calibrate(GetMonitor(), GetSysSet()->co2Cal, &GetSysSet()->startCalFlg, &GetSysSet()->saveFlag, co2CalibraterResPage);
                     }
                 }
             }
@@ -439,6 +449,8 @@ void SensorUart2TaskEntry(void* parameter)
 
                 //非法地址处理
                 deleteModule(GetMonitor(), 0);
+
+                //co2CalibraterResPage(0);//Justin debug
             }
 
             /* 60s 事件 */

@@ -194,7 +194,7 @@ static void pageSetting(u8 page)
             break;
         case SETTING_PAGE:
 #if(HUB_SELECT == HUB_ENVIRENMENT)
-            pageSelectSet(YES, 1, 5);
+            pageSelectSet(YES, 1, 6);
 #elif(HUB_SELECT == HUB_IRRIGSTION)
             pageSelectSet(YES, 1, 4);
 #endif
@@ -291,14 +291,19 @@ static void pageProgram(u8 page)
                 else if(3 == pageSelect.cusor)
                 {
                     pageInfor <<= 8;
-                    pageInfor |= QRCODE_PAGE;
+                    pageInfor |= LINE_STATE_PAGE;
                 }
                 else if(4 == pageSelect.cusor)
                 {
                     pageInfor <<= 8;
-                    pageInfor |= APP_UPDATE_PAGE;
+                    pageInfor |= QRCODE_PAGE;
                 }
                 else if(5 == pageSelect.cusor)
+                {
+                    pageInfor <<= 8;
+                    pageInfor |= APP_UPDATE_PAGE;
+                }
+                else if(6 == pageSelect.cusor)
                 {
                     pageInfor <<= 8;
                     pageInfor |= CO2_CALIBRATE_PAGE;
@@ -374,6 +379,14 @@ static void pageProgram(u8 page)
 
         case DEVICE_STATE_PAGE:
             DeviceStatePage_new(GetMonitor());
+            if(ON == pageSelect.select)
+            {
+                pageSelect.select = OFF;
+            }
+            break;
+
+        case LINE_STATE_PAGE:
+            LineStatePage_new(GetMonitor());
             if(ON == pageSelect.select)
             {
                 pageSelect.select = OFF;
@@ -497,7 +510,7 @@ void OledTaskEntry(void* parameter)
         if(ON == Timer1sTouch)
         {
             monitorBackLight(backlightTime);
-            if((HOME_PAGE == nowPage) || (SETTING_PAGE == nowPage) || (CO2_CALIBRATE_PAGE == nowPage))
+            if((HOME_PAGE == nowPage) || (SETTING_PAGE == nowPage) /*|| (CO2_CALIBRATE_PAGE == nowPage)*/)
             {
                 //需要刷新
                 reflash_flag = ON;

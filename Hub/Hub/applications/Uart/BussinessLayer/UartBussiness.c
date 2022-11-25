@@ -423,7 +423,11 @@ u8 askDeviceHeart_new(type_monitor_t *monitor, rt_device_t serial, u8 event)
         buffer[7] = (crc16Result>>8);                        //CRC16高位
 
         rt_device_write(serial, 0, buffer, 8);
-        //LOG_I("ask name %s",monitor->device[ask_device].name);
+
+//        if(IR_AIR_TYPE == monitor->device[ask_device].type)//Justin debug 仅仅测试
+//        {
+//            LOG_I("ask name %s, times = %d",monitor->device[ask_device].name,devConnectState[ask_device].send_count);
+//        }
 
         devConnectState[ask_device].send_count ++;
 //        if(devConnectState[ask_device].send_count >= CONNRCT_MISS_MAX)

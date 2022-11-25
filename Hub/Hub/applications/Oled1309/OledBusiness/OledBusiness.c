@@ -25,6 +25,7 @@ char    data[80];
 extern u8      next_flag;
 extern void GetUpdataFileFromWeb(u8 *ret);
 extern  __attribute__((section(".ccmbss"))) struct sdCardState      sdCard;
+extern type_page_t     pageSelect;
 
 void HomePage(type_page_t *page, type_monitor_t *monitor)
 {
@@ -340,7 +341,7 @@ void SettingPage(type_page_t page, u8 canShow)
     char                temp1[4];
     type_sys_time       time_for;
 #if(HUB_SELECT == HUB_ENVIRENMENT)
-    char                show[5][16] = {"Sensor State", "Device State", "QR Code", "Update App", "Co2 Calibrate"};
+    char                show[6][16] = {"Sensor State", "Device State", "Line State", "QR Code", "Update App", "Co2 Calibrate"};
 #elif (HUB_SELECT == HUB_IRRIGSTION)
     char                show[4][16] = {"Device State", "QR Code", "Update App", "Co2 Calibrate"};
 #endif
@@ -793,6 +794,90 @@ void DeviceStatePage_new(type_monitor_t *monitor)
     ST7567_UpdateScreen();
 }
 
+void LineStatePage_new(type_monitor_t *monitor)
+{
+#define     CAN_SHOW        4
+
+    u8              line        = LINE_HIGHT;
+    u8              column      = 0;
+    char            name[9]     = " ";
+    u8              num         = 0;
+    u8              showNum     = monitor->line_size;
+    static u8       showInde    = CAN_SHOW - 1;//4表示一个界面显示4行
+    static u8       start       = 0;
+
+    //1.清除界面
+    clear_screen();
+
+    //2.显示状态
+    if(showNum < CAN_SHOW)
+    {
+        num = showNum;
+    }
+    else
+    {
+        num = CAN_SHOW;
+    }
+
+    if(0 == num)
+    {
+        ST7567_GotoXY(LINE_HIGHT, 0);
+        ST7567_Puts("NO LINE", &Font_12x24, 0);
+    }
+    else
+    {
+        for(u8 index = 0; index < num; index++)
+        {
+            line = LINE_HIGHT;
+            column = index * 16;
+            if(CON_FAIL == monitor->line[index + start].conn_state)
+            {
+                ST7567_GotoXY(line, column);
+                rt_memcpy(name, monitor->line[index + start].name, 8);
+                name[8] = '\0';
+                ST7567_Puts(name, &Font_8x16, 1);
+
+                line = 8 * 8 + 8;
+                ST7567_GotoXY(line, column);
+                ST7567_Puts("offline", &Font_8x16, 0);
+            }
+            else
+            {
+                ST7567_GotoXY(line, column);
+                rt_memcpy(name, monitor->line[index + start].name, 8);
+                name[8] = '\0';
+                ST7567_Puts(name, &Font_8x16, 1);
+
+                line = 8 * 8 + 8;
+                ST7567_GotoXY(line, column);
+                ST7567_Puts("online", &Font_8x16, 1);
+            }
+        }
+    }
+
+    //3.计算循环播放
+    if(showNum > CAN_SHOW)
+    {
+        if(showInde + 1 < showNum)
+        {
+            showInde++;
+            start = showInde + 1 - CAN_SHOW;
+        }
+        else
+        {
+            showInde = CAN_SHOW - 1;
+            start = 0;
+        }
+    }
+    else
+    {
+        start = 0;
+        showInde = CAN_SHOW - 1;
+    }
+    //4.刷新界面
+    ST7567_UpdateScreen();
+}
+
 void qrcode(void)
 {
 #define DEFAULT_QR_VERSION 6
@@ -982,6 +1067,37 @@ void co2CalibratePage(type_page_t *page, u32 *info)
 
     //3
     ST7567_UpdateScreen();
+}
+
+void co2CalibraterResPage(u8 flag)
+{
+   if(NO == flag)
+   {
+       //失败
+       ST7567_GotoXY(LINE_HIGHT, 0);
+       ST7567_Puts("Calibrate fail ", &Font_8x16, 1);
+       ST7567_GotoXY(LINE_HIGHT, 16);
+       ST7567_Puts("                ", &Font_8x16, 1);
+       ST7567_GotoXY(LINE_HIGHT, 16*2);
+       ST7567_Puts("                ", &Font_8x16, 1);
+       ST7567_GotoXY(LINE_HIGHT, 16*3);
+       ST7567_Puts("                ", &Font_8x16, 1);
+   }
+   else if(YES == flag)
+   {
+       //成功
+       ST7567_GotoXY(LINE_HIGHT, 0);
+       ST7567_Puts("Calibrate OK  ", &Font_8x16, 1);
+       ST7567_GotoXY(LINE_HIGHT, 16);
+       ST7567_Puts("                ", &Font_8x16, 1);
+       ST7567_GotoXY(LINE_HIGHT, 16*2);
+       ST7567_Puts("                ", &Font_8x16, 1);
+       ST7567_GotoXY(LINE_HIGHT, 16*3);
+       ST7567_Puts("                ", &Font_8x16, 1);
+   }
+
+   ST7567_UpdateScreen();
+   pageSelect.cusor = 1;//避免客户直接点击YES 又再次校准
 }
 
 void factoryPage(type_page_t page, u8 canShow)

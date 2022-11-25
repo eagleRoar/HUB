@@ -543,7 +543,7 @@ void AnlyzeDeviceRegister(type_monitor_t *monitor, rt_device_t serial, u8 *data,
 
     s_or_d = getSOrD(data[8]);
 
-    if(SENSOR_TYPE == s_or_d)//Justin debug 这个方式应该改为通过uart口识别
+    if(SENSOR_TYPE == s_or_d)
     {
         //1.该判断为了避免sensor device line类型插到错误的接口
         if(serial == rt_device_find(DEVICE_UART1))

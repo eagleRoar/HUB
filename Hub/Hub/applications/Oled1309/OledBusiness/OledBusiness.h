@@ -17,6 +17,7 @@ void SensorStatePage(u8g2_t *, type_page_t);
 void DeviceStatePage(u8g2_t *, type_page_t);
 void SensorStatePage_new(type_monitor_t *);
 void DeviceStatePage_new(type_monitor_t *);
+void LineStatePage_new(type_monitor_t *);
 void qrcode(void);
 void SettingPage(type_page_t, u8);
 void UpdateAppProgram(type_page_t *,u32 *);

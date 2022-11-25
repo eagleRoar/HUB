@@ -610,6 +610,26 @@ int getSensorDataByFunc(type_monitor_t *monitor, u8 func)
     return data;
 }
 
+int getSensorSizeByFunc(type_monitor_t *monitor, u8 func)
+{
+    u8      size        = 0;
+    u8      index       = 0;
+    u8      port        = 0;
+
+    for(index = 0; index < monitor->sensor_size; index++)
+    {
+        for(port = 0; port < monitor->sensor[index].storage_size; port++)
+        {
+            if(func == monitor->sensor[index].__stora[port].func)
+            {
+                size++;
+            }
+        }
+    }
+
+    return size;
+}
+
 //如果30 度 那么temp = 300
 void changeIrAirCode(u16 temp, u16 *ret)
 {
