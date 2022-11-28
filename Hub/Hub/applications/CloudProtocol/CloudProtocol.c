@@ -3050,7 +3050,7 @@ void autoBindPumpTotank(type_monitor_t *monitor, sys_tank_t *tank_list)
 }
 
 //默认在420ppm 环境中校准
-void co2Calibrate(type_monitor_t *monitor, int *data, u8 *do_cal_flg, u8 *saveFlg, CAl_CO2_CB cb)
+void co2Calibrate(type_monitor_t *monitor, int *data, u8 *do_cal_flg, u8 *saveFlg, PAGE_CB cb)
 {
     u8              index                   = 0;
     u8              port                    = 0;
@@ -3077,7 +3077,7 @@ void co2Calibrate(type_monitor_t *monitor, int *data, u8 *do_cal_flg, u8 *saveFl
         }
     }
 
-    LOG_E("-----------------time goes %d",getTimeStamp() - start_time);//Justin debug
+    //LOG_E("-----------------time goes %d",getTimeStamp() - start_time);
 
     //2.60秒内完成采集与平均
     if(getTimeStamp() <= start_time + 60)
@@ -3094,20 +3094,20 @@ void co2Calibrate(type_monitor_t *monitor, int *data, u8 *do_cal_flg, u8 *saveFl
                     //3.如果10组是稳定的,那么就平均,否则重新采集
                     if(CAL_YES != cal_flag[index])
                     {
-                        LOG_D("value = %d",sensor->__stora[port].value);//Justin debug
+                        //LOG_D("value = %d",sensor->__stora[port].value);
                         if(cal_cnt[index] < 10)
                         {
                             //4.判断是否符合条件
-                            if(abs(sensor->__stora[port].value - STAND_CO2) <= 300)//Justin debug 仅仅测试
+                            if(abs(sensor->__stora[port].value - STAND_CO2) <= 300)
                             {
-                                LOG_W("co2Calibrate 1");//Justin debug
+                                //LOG_W("co2Calibrate 1");
                                 data1[index] += sensor->__stora[port].value;
                                 cal_cnt[index]++;
                                 cal_flag[index] = CAL_FAIL;
                             }
                             else
                             {
-                                LOG_W("co2Calibrate 2, data = %d",abs(sensor->__stora[port].value - STAND_CO2));//Justin debug
+                                //LOG_W("co2Calibrate 2, data = %d",abs(sensor->__stora[port].value - STAND_CO2));
                                 data1[index] = 0;
                                 cal_cnt[index] = 0;
                                 cal_flag[index] = CAL_FAIL;
@@ -3144,11 +3144,10 @@ void co2Calibrate(type_monitor_t *monitor, int *data, u8 *do_cal_flg, u8 *saveFl
 
         cb(YES);
 
-        //Justin debug
-        for(index = 0; index < monitor->sensor_size; index++)
+        /*for(index = 0; index < monitor->sensor_size; index++)
         {
             LOG_W("num %d, data = %d",index,data[index]);
-        }
+        }*/
     }
 }
 

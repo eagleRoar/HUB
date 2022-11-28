@@ -69,9 +69,9 @@ void GpioInit(void)
 //    rt_pin_write(BLE_NRST_PIN, PIN_HIGH);
 
     //Button 设置
-    rt_pin_mode(BUTTON_DOWN, PIN_MODE_INPUT);
-    rt_pin_mode(BUTTON_ENTER, PIN_MODE_INPUT);
-    rt_pin_mode(BUTTON_UP, PIN_MODE_INPUT);
+    rt_pin_mode(BUTTON_DOWN, PIN_MODE_INPUT_PULLUP);//Justin debug 仅仅测试
+    rt_pin_mode(BUTTON_ENTER, PIN_MODE_INPUT_PULLUP);//Justin debug 仅仅测试
+    rt_pin_mode(BUTTON_UP, PIN_MODE_INPUT_PULLUP);//Justin debug 仅仅测试
 }
 
 int sd_card_is_vaild(void)

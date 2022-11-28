@@ -17,7 +17,7 @@
 
 #pragma pack(4)//因为cjson 不能使用1字节对齐
 
-typedef void(*CAl_CO2_CB)(u8);
+typedef void(*PAGE_CB)(u8);
 
 void initCloudSet(void);
 void initCloudProtocol(void);
@@ -47,7 +47,7 @@ void initHubinfo(void);
 struct sysSet *GetSysSet(void);
 void autoBindPumpTotank(type_monitor_t *, struct sys_tank *);
 u8 *ReplyDataToCloud1(mqtt_client *, u8 *,u16 *, u8);
-void co2Calibrate(type_monitor_t *monitor, int *data, u8 *do_cal_flg, u8 *saveFlg, CAl_CO2_CB cb);
+void co2Calibrate(type_monitor_t *monitor, int *data, u8 *do_cal_flg, u8 *saveFlg, PAGE_CB cb);
 void sendwarnningInfo(void);
 void sendOfflinewarnning(type_monitor_t *);
 #endif /* APPLICATIONS_CLOUDPROTOCOL_CLOUDPROTOCOL_H_ */

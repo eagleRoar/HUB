@@ -34,4 +34,7 @@ void openDryFac(type_monitor_t *);
 void closeDryFac(type_monitor_t *);
 void deviceStatePage_fac(type_page_t *, type_monitor_t *, u8);
 void lineStageClose_Fa(type_monitor_t *);
+void PhEcCalibratePage(type_page_t *);
+void PhCalibratePage(type_page_t *);
+void EcCalibratePage(type_page_t *);
 #endif /* APPLICATIONS_OLED1309_OLEDBUSINESS_OLEDBUSINESS_H_ */

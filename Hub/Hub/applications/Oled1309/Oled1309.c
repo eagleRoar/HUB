@@ -223,6 +223,18 @@ static void pageSetting(u8 page)
             pageSelectSet(NO, 1, 2);
             break;
 
+        case PHEC_CALIBRATE_PAGE:
+            pageSelectSet(NO, 1, 2);
+            break;
+
+        case EC_CALIBRATE_PAGE:
+            pageSelectSet(NO, 1, 2);
+            break;
+
+        case PH_CALIBRATE_PAGE:
+            pageSelectSet(NO, 1, 2);
+            break;
+
         case FA_SENSOR_PAGE:
             pageSelectSet(NO, 0, 0);
             break;
@@ -327,7 +339,7 @@ static void pageProgram(u8 page)
                 else if(4 == pageSelect.cusor)
                 {
                     pageInfor <<= 8;
-                    pageInfor |= CO2_CALIBRATE_PAGE;
+                    pageInfor |= PHEC_CALIBRATE_PAGE;
                 }
 #endif
                 pageSelect.select = OFF;
@@ -408,6 +420,41 @@ static void pageProgram(u8 page)
 
         case CO2_CALIBRATE_PAGE:
             co2CalibratePage(&pageSelect, &pageInfor);
+            if(ON == pageSelect.select)
+            {
+                pageSelect.select = OFF;
+            }
+            break;
+
+        case PHEC_CALIBRATE_PAGE:
+            PhEcCalibratePage(&pageSelect);
+            if(ON == pageSelect.select)
+            {
+                if(1 == pageSelect.cusor)
+                {
+                    pageInfor <<= 8;
+                    pageInfor |= PH_CALIBRATE_PAGE;
+                }
+                else if(2 == pageSelect.cusor)
+                {
+                    pageInfor <<= 8;
+                    pageInfor |= EC_CALIBRATE_PAGE;
+                }
+
+                pageSelect.select = OFF;
+            }
+            break;
+
+        case PH_CALIBRATE_PAGE:
+            PhCalibratePage(&pageSelect);
+            if(ON == pageSelect.select)
+            {
+                pageSelect.select = OFF;
+            }
+            break;
+
+        case EC_CALIBRATE_PAGE:
+            EcCalibratePage(&pageSelect);
             if(ON == pageSelect.select)
             {
                 pageSelect.select = OFF;

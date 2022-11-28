@@ -61,6 +61,16 @@ u8 askSensorStorage(type_monitor_t *monitor, rt_device_t serial)
 
         rt_device_write(serial, 0, buffer, 8);
 
+//        if(0xE0 == buffer[0])
+//        {
+//
+//        for(u8 i = 0; i < 8; i++)
+//        {
+//            rt_kprintf("%x ",buffer[i]);
+//        }
+//        rt_kprintf("\r\n");
+//        }
+
         senConnectState[ask_sensor].send_count ++;
 
         senConnectState[ask_sensor].send_count ++;
@@ -424,7 +434,7 @@ u8 askDeviceHeart_new(type_monitor_t *monitor, rt_device_t serial, u8 event)
 
         rt_device_write(serial, 0, buffer, 8);
 
-//        if(IR_AIR_TYPE == monitor->device[ask_device].type)//Justin debug 仅仅测试
+//        if(IR_AIR_TYPE == monitor->device[ask_device].type)
 //        {
 //            LOG_I("ask name %s, times = %d",monitor->device[ask_device].name,devConnectState[ask_device].send_count);
 //        }

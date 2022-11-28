@@ -20,8 +20,8 @@ static void Buttonprogram(u8 period)
 #define     BTN_COOL_TIME       2
     u8                  index       = 0;
     u16                 short_max   = 0;
-    static u8           btn_cooling[BUTTON_MAX] = {0};        //按键冷却时间避免长按的时候判断了长按和短按
-    static u8           on_set_pre[BUTTON_MAX] = {0};
+    static u8           btn_cooling[BUTTON_MAX] = {0,0,0};        //按键冷却时间避免长按的时候判断了长按和短按
+    static u8           on_set_pre[BUTTON_MAX] = {0,0,0};
 
     if(on_set_pre[index] != buttonList[index].on_set)
     {

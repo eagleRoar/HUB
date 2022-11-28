@@ -343,7 +343,7 @@ void SettingPage(type_page_t page, u8 canShow)
 #if(HUB_SELECT == HUB_ENVIRENMENT)
     char                show[6][16] = {"Sensor State", "Device State", "Line State", "QR Code", "Update App", "Co2 Calibrate"};
 #elif (HUB_SELECT == HUB_IRRIGSTION)
-    char                show[4][16] = {"Device State", "QR Code", "Update App", "Co2 Calibrate"};
+    char                show[4][16] = {"Device State", "QR Code", "Update App", "PHEC Calibrate"};
 #endif
     type_sys_time       sys_time;
     u8                  line        = LINE_HIGHT;
@@ -1066,6 +1066,43 @@ void co2CalibratePage(type_page_t *page, u32 *info)
     }
 
     //3
+    ST7567_UpdateScreen();
+}
+
+void PhEcCalibratePage(type_page_t *page)
+{
+
+    //1.
+    ST7567_GotoXY(LINE_HIGHT, 0);
+    ST7567_Puts("PH Calibrate", &Font_8x16, 1 == page->cusor ? 0 : 1);
+    ST7567_GotoXY(LINE_HIGHT, 16);
+    ST7567_Puts("EC Calibrate", &Font_8x16, 2 == page->cusor ? 0 : 1);
+
+    //2
+    ST7567_UpdateScreen();
+}
+
+void PhCalibratePage(type_page_t *page)
+{
+    //1.
+    ST7567_GotoXY(LINE_HIGHT, 0);
+    ST7567_Puts("PH 7.0", &Font_8x16, 1);
+    ST7567_GotoXY(LINE_HIGHT, 32);
+    ST7567_Puts("PH 4.0", &Font_8x16, 1);
+
+    //2
+    ST7567_UpdateScreen();
+}
+
+void EcCalibratePage(type_page_t *page)
+{
+    //1.
+    ST7567_GotoXY(LINE_HIGHT, 0);
+    ST7567_Puts("EC 0.0", &Font_8x16, 1);
+    ST7567_GotoXY(LINE_HIGHT, 32);
+    ST7567_Puts("EC 1.41", &Font_8x16, 1);
+
+    //2
     ST7567_UpdateScreen();
 }
 

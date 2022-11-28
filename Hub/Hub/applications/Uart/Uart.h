@@ -30,6 +30,14 @@ struct rx_msg
     u8 data[UART_MSG_SIZE];                 //保存串口数据
 };
 
+typedef struct phec_cal
+{
+    u8 cal_flag;
+    time_t time;
+    PAGE_CB cb;
+}phec_cal_t;
+
+
 void SensorUart2TaskEntry(void* parameter);
 void SensorUart2TaskInit(void);
 type_monitor_t *GetMonitor(void);

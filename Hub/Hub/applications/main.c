@@ -214,7 +214,6 @@ int main(void)
                     printDevice(GetMonitor()->device[index]);
                 }
             }
-
         }
 
         //10s

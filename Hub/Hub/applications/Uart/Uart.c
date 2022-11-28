@@ -62,6 +62,14 @@ static rt_err_t Uart1_input(rt_device_t dev, rt_size_t size)
     uart1_msg.dev = dev;
     uart1_msg.size = size;
     rt_device_read(uart1_msg.dev, 0, uart1_msg.data, uart1_msg.size);
+
+    /*LOG_W("recv data：");
+    for(int i = 0; i < uart1_msg.size; i++)
+    {
+        rt_kprintf("%x ",uart1_msg.data[i]);
+    }
+    rt_kprintf("\r\n");*/
+
     if(2 > size)
     {
         return RT_ERROR;
@@ -86,7 +94,6 @@ static rt_err_t Uart2_input(rt_device_t dev, rt_size_t size)
 
     /* 必须要等待从sd卡读取到的monitor 才能执行以下功能 */
 
-    //Justin debug 接收红外数据
 //    if(IR_AIR_TYPE == GetDeviceByAddr(GetMonitor(), uart2_msg.data[0])->type)
 //    {
 //        LOG_W("recv data：");
@@ -449,8 +456,6 @@ void SensorUart2TaskEntry(void* parameter)
 
                 //非法地址处理
                 deleteModule(GetMonitor(), 0);
-
-                //co2CalibraterResPage(0);//Justin debug
             }
 
             /* 60s 事件 */
