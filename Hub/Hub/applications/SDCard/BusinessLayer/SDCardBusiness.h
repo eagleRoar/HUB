@@ -18,6 +18,7 @@
 #define         MODULE_DIR              "/moduleInfo"                                               //模块相关信息文件夹
 //#define         SETTING_DIR             "/master"
 #define         DOWNLOAD_FILE           "download/downloadFile.bin"                                 //APP升级包文件
+
 #define         MODULE_FILE             "moduleInfo/module.bin"                                     //模块信息文件
 #define         SYSSET_FILE             "moduleInfo/sys_set.bin"                                    //模块信息文件
 #define         RECIPE_FILE             "moduleInfo/recipe.bin"                                     //配方信息文件

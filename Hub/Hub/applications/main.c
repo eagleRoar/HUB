@@ -60,11 +60,11 @@ int main(void)
     //灯光
     LedTaskInit();
 
-    //oled1309屏线程初始化
-    OledTaskInit();
-
     //按键线程初始化
     ButtonTaskInit();
+
+    //oled1309屏线程初始化
+    OledTaskInit();
 
     //等待网络部分初始化完成 */
     do {

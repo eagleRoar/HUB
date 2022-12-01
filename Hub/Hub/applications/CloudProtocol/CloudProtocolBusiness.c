@@ -1953,38 +1953,38 @@ char *SendHubReport(char *cmd, sys_set_t *set)
                                     {
                                         if(0 == tank_id)
                                         {
-                                            valueTemp[0] = GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].value;
+                                            valueTemp[0] = getSensorDataByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id], stora);
                                         }
                                         else
                                         {
-                                            valueTemp[1] = GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].value;
+                                            valueTemp[1] = getSensorDataByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id], stora);
                                         }
                                     }
                                     else if(F_S_PH == GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].func)
                                     {
                                         if(0 == tank_id)
                                         {
-                                            valueTemp[2] = GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].value;
+                                            valueTemp[2] = getSensorDataByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id], stora);
                                         }
                                         else
                                         {
-                                            valueTemp[3] = GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].value;
+                                            valueTemp[3] = getSensorDataByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id], stora);
                                         }
                                     }
                                     else if(F_S_WT == GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].func)
                                     {
                                         if(0 == tank_id)
                                         {
-                                            valueTemp[4] = GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].value;
+                                            valueTemp[4] = getSensorDataByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id], stora);
                                         }
                                         else
                                         {
-                                            valueTemp[5] = GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].value;
+                                            valueTemp[5] = getSensorDataByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id], stora);
                                         }
                                     }
                                     else if(F_S_WL == GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].func)
                                     {
-                                        valueTemp[6] = GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].value;
+                                        valueTemp[6] = getSensorDataByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id], stora);
                                     }
                                 }
                             }
@@ -2530,7 +2530,7 @@ char *ReplyGetTank(char *cmd, cloudcmd_t cloud)
                                 cJSON_AddNumberToObject(sen_item, "mid", tank->sensorId[0][item]);
                                 cJSON_AddStringToObject(sen_item, "name","EC");
                                 cJSON_AddNumberToObject(sen_item, "value",
-                                        GetSensorByAddr(GetMonitor(), tank->sensorId[0][item])->__stora[stora].value);
+                                        getSensorDataByAddr(GetMonitor(), tank->sensorId[0][item], stora));
 
                                 cJSON_AddItemToArray(list, sen_item);
                             }
@@ -2542,7 +2542,7 @@ char *ReplyGetTank(char *cmd, cloudcmd_t cloud)
                                 cJSON_AddNumberToObject(sen_item, "mid", tank->sensorId[0][item]);
                                 cJSON_AddStringToObject(sen_item, "name","pH");
                                 cJSON_AddNumberToObject(sen_item, "value",
-                                        GetSensorByAddr(GetMonitor(), tank->sensorId[0][item])->__stora[stora].value);
+                                        getSensorDataByAddr(GetMonitor(), tank->sensorId[0][item], stora));
 
                                 cJSON_AddItemToArray(list, sen_item);
                             }
@@ -2554,7 +2554,7 @@ char *ReplyGetTank(char *cmd, cloudcmd_t cloud)
                                 cJSON_AddNumberToObject(sen_item, "mid", tank->sensorId[0][item]);
                                 cJSON_AddStringToObject(sen_item, "name","Temp");
                                 cJSON_AddNumberToObject(sen_item, "value",
-                                        GetSensorByAddr(GetMonitor(), tank->sensorId[0][item])->__stora[stora].value);
+                                        getSensorDataByAddr(GetMonitor(), tank->sensorId[0][item], stora));
 
                                 cJSON_AddItemToArray(list, sen_item);
                             }
@@ -2566,7 +2566,7 @@ char *ReplyGetTank(char *cmd, cloudcmd_t cloud)
                                 cJSON_AddNumberToObject(sen_item, "mid", tank->sensorId[0][item]);
                                 cJSON_AddStringToObject(sen_item, "name","WaterLv");
                                 cJSON_AddNumberToObject(sen_item, "value",
-                                        GetSensorByAddr(GetMonitor(), tank->sensorId[0][item])->__stora[stora].value);
+                                        getSensorDataByAddr(GetMonitor(), tank->sensorId[0][item], stora));
 
                                 cJSON_AddItemToArray(list, sen_item);
                             }
@@ -2594,7 +2594,8 @@ char *ReplyGetTank(char *cmd, cloudcmd_t cloud)
                                 cJSON_AddNumberToObject(sen_item, "mid", tank->sensorId[1][item]);
                                 cJSON_AddStringToObject(sen_item, "name","EC");
                                 cJSON_AddNumberToObject(sen_item, "value",
-                                        GetSensorByAddr(GetMonitor(), tank->sensorId[1][item])->__stora[stora].value);
+                                        getSensorDataByAddr(GetMonitor(), tank->sensorId[1][item], stora));
+
 
                                 cJSON_AddItemToArray(list, sen_item);
                             }
@@ -2606,7 +2607,7 @@ char *ReplyGetTank(char *cmd, cloudcmd_t cloud)
                                 cJSON_AddNumberToObject(sen_item, "mid", tank->sensorId[1][item]);
                                 cJSON_AddStringToObject(sen_item, "name","pH");
                                 cJSON_AddNumberToObject(sen_item, "value",
-                                        GetSensorByAddr(GetMonitor(), tank->sensorId[1][item])->__stora[stora].value);
+                                        getSensorDataByAddr(GetMonitor(), tank->sensorId[1][item], stora));
 
                                 cJSON_AddItemToArray(list, sen_item);
                             }
@@ -2618,7 +2619,7 @@ char *ReplyGetTank(char *cmd, cloudcmd_t cloud)
                                 cJSON_AddNumberToObject(sen_item, "mid", tank->sensorId[1][item]);
                                 cJSON_AddStringToObject(sen_item, "name","Temp");
                                 cJSON_AddNumberToObject(sen_item, "value",
-                                        GetSensorByAddr(GetMonitor(), tank->sensorId[1][item])->__stora[stora].value);
+                                        getSensorDataByAddr(GetMonitor(), tank->sensorId[1][item], stora));
 
                                 cJSON_AddItemToArray(list, sen_item);
                             }
@@ -2630,7 +2631,7 @@ char *ReplyGetTank(char *cmd, cloudcmd_t cloud)
                                 cJSON_AddNumberToObject(sen_item, "mid", tank->sensorId[1][item]);
                                 cJSON_AddStringToObject(sen_item, "name","WaterLv");
                                 cJSON_AddNumberToObject(sen_item, "value",
-                                        GetSensorByAddr(GetMonitor(), tank->sensorId[1][item])->__stora[stora].value);
+                                        getSensorDataByAddr(GetMonitor(), tank->sensorId[1][item], stora));
 
                                 cJSON_AddItemToArray(list, sen_item);
                             }
@@ -3053,53 +3054,56 @@ char *ReplyGetPumpSensorList(char *cmd, cloudcmd_t cloud)
                     //3.
                     for(sen_no = 0; sen_no < TANK_SENSOR_MAX; sen_no++)
                     {
-                        if(F_S_EC == sensor.__stora[sen_no].func)
+                        if(CON_FAIL != sensor.conn_state)//如果不在线的不上传
                         {
-                            item = cJSON_CreateObject();
+                            if(F_S_EC == sensor.__stora[sen_no].func)
+                            {
+                                item = cJSON_CreateObject();
 
-                            cJSON_AddNumberToObject(item, "id", sensor.addr);
-                            cJSON_AddNumberToObject(item, "mid", sensor.addr);
-                            cJSON_AddStringToObject(item, "name", "EC");
-                            cJSON_AddNumberToObject(item, "value", sensor.__stora[sen_no].value);
-                            cJSON_AddNumberToObject(item, "tankNo", tankNo);
-                            cJSON_AddNumberToObject(item, "type", type);
-                            cJSON_AddItemToArray(list, item);
-                        }
-                        else if(F_S_PH == sensor.__stora[sen_no].func)
-                        {
-                            item = cJSON_CreateObject();
+                                cJSON_AddNumberToObject(item, "id", sensor.addr);
+                                cJSON_AddNumberToObject(item, "mid", sensor.addr);
+                                cJSON_AddStringToObject(item, "name", "EC");
+                                cJSON_AddNumberToObject(item, "value", getSensorDataByAddr(GetMonitor(), sensor.addr, sen_no));
+                                cJSON_AddNumberToObject(item, "tankNo", tankNo);
+                                cJSON_AddNumberToObject(item, "type", type);
+                                cJSON_AddItemToArray(list, item);
+                            }
+                            else if(F_S_PH == sensor.__stora[sen_no].func)
+                            {
+                                item = cJSON_CreateObject();
 
-                            cJSON_AddNumberToObject(item, "id", sensor.addr);
-                            cJSON_AddNumberToObject(item, "mid", sensor.addr);
-                            cJSON_AddStringToObject(item, "name", "pH");
-                            cJSON_AddNumberToObject(item, "value", sensor.__stora[sen_no].value);
-                            cJSON_AddNumberToObject(item, "tankNo", tankNo);
-                            cJSON_AddNumberToObject(item, "type", type);
-                            cJSON_AddItemToArray(list, item);
-                        }
-                        else if(F_S_WT == sensor.__stora[sen_no].func)
-                        {
-                            item = cJSON_CreateObject();
+                                cJSON_AddNumberToObject(item, "id", sensor.addr);
+                                cJSON_AddNumberToObject(item, "mid", sensor.addr);
+                                cJSON_AddStringToObject(item, "name", "pH");
+                                cJSON_AddNumberToObject(item, "value", getSensorDataByAddr(GetMonitor(), sensor.addr, sen_no));
+                                cJSON_AddNumberToObject(item, "tankNo", tankNo);
+                                cJSON_AddNumberToObject(item, "type", type);
+                                cJSON_AddItemToArray(list, item);
+                            }
+                            else if(F_S_WT == sensor.__stora[sen_no].func)
+                            {
+                                item = cJSON_CreateObject();
 
-                            cJSON_AddNumberToObject(item, "id", sensor.addr);
-                            cJSON_AddNumberToObject(item, "mid", sensor.addr);
-                            cJSON_AddStringToObject(item, "name", "Temp");
-                            cJSON_AddNumberToObject(item, "value", sensor.__stora[sen_no].value);
-                            cJSON_AddNumberToObject(item, "tankNo", tankNo);
-                            cJSON_AddNumberToObject(item, "type", type);
-                            cJSON_AddItemToArray(list, item);
-                        }
-                        else if(F_S_WL == sensor.__stora[sen_no].func)
-                        {
-                            item = cJSON_CreateObject();
+                                cJSON_AddNumberToObject(item, "id", sensor.addr);
+                                cJSON_AddNumberToObject(item, "mid", sensor.addr);
+                                cJSON_AddStringToObject(item, "name", "Temp");
+                                cJSON_AddNumberToObject(item, "value", getSensorDataByAddr(GetMonitor(), sensor.addr, sen_no));
+                                cJSON_AddNumberToObject(item, "tankNo", tankNo);
+                                cJSON_AddNumberToObject(item, "type", type);
+                                cJSON_AddItemToArray(list, item);
+                            }
+                            else if(F_S_WL == sensor.__stora[sen_no].func)
+                            {
+                                item = cJSON_CreateObject();
 
-                            cJSON_AddNumberToObject(item, "id", sensor.addr);
-                            cJSON_AddNumberToObject(item, "mid", sensor.addr);
-                            cJSON_AddStringToObject(item, "name", "WaterLv");
-                            cJSON_AddNumberToObject(item, "value", sensor.__stora[sen_no].value);
-                            cJSON_AddNumberToObject(item, "tankNo", tankNo);
-                            cJSON_AddNumberToObject(item, "type", type);
-                            cJSON_AddItemToArray(list, item);
+                                cJSON_AddNumberToObject(item, "id", sensor.addr);
+                                cJSON_AddNumberToObject(item, "mid", sensor.addr);
+                                cJSON_AddStringToObject(item, "name", "WaterLv");
+                                cJSON_AddNumberToObject(item, "value", getSensorDataByAddr(GetMonitor(), sensor.addr, sen_no));
+                                cJSON_AddNumberToObject(item, "tankNo", tankNo);
+                                cJSON_AddNumberToObject(item, "type", type);
+                                cJSON_AddItemToArray(list, item);
+                            }
                         }
                     }
                 }
@@ -3560,23 +3564,23 @@ char *ReplyGetHubState(char *cmd, cloudcmd_t cloud)
                                     {
                                         if(0 == tank_id)
                                         {
-                                            valueTemp[0] = GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].value;
+                                            valueTemp[0] = getSensorDataByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id], stora);
                                         }
                                         else
                                         {
-                                            valueTemp[1] = GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].value;
+                                            valueTemp[1] = getSensorDataByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id], stora);
                                         }
                                     }
                                     else if(F_S_PH == GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].func)
                                     {
                                         if(0 == tank_id)
                                         {
-                                            valueTemp[2] = GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].value;
+                                            valueTemp[2] = getSensorDataByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id], stora);
 
                                         }
                                         else
                                         {
-                                            valueTemp[3] = GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].value;
+                                            valueTemp[3] = getSensorDataByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id], stora);
 
                                         }
                                     }
@@ -3584,17 +3588,16 @@ char *ReplyGetHubState(char *cmd, cloudcmd_t cloud)
                                     {
                                         if(0 == tank_id)
                                         {
-                                            valueTemp[4] = GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].value;
+                                            valueTemp[4] = getSensorDataByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id], stora);
                                         }
                                         else
                                         {
-                                            valueTemp[5] = GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].value;
+                                            valueTemp[5] = getSensorDataByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id], stora);
                                         }
                                     }
                                     else if(F_S_WL == GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].func)
                                     {
-                                        valueTemp[6] = GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].value;
-
+                                        valueTemp[6] = getSensorDataByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id], stora);
                                     }
                                 }
                             }

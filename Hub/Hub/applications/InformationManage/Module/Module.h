@@ -37,4 +37,5 @@ void CtrlAllDeviceByFunc(type_monitor_t *, u8, u8, u8);
 int getSensorDataByFunc(type_monitor_t *, u8);
 int getSensorSizeByFunc(type_monitor_t *, u8);
 void changeIrAirCode(u16 , u16 *);
+int getSensorDataByAddr(type_monitor_t *, u8, u8);
 #endif /* APPLICATIONS_INFORMATIONMANAGE_MODULE_MODULE_H_ */

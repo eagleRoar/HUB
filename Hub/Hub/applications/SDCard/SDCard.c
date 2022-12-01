@@ -46,6 +46,15 @@ int SDCardTaskInit(void)
     return ret;
 }
 
+void printSysTank(void)
+{
+    LOG_I("systank size = %d",GetSysTank()->tank_size);
+    for(int i = 0; i < GetSysTank()->tank_size; i++)
+    {
+        LOG_I("%d , sensor = %d %d",i,GetSysTank()->tank[i].sensorId[0][0],GetSysTank()->tank[i].sensorId[0][1]);
+    }
+}
+
 void sd_dfs_event_entry(void* parameter)
 {
     rt_device_t             dev;
@@ -99,6 +108,11 @@ void sd_dfs_event_entry(void* parameter)
                             if(RT_EOK != TackSysTankFromSD(GetSysTank()))
                             {
                                 LOG_E("TackSysTankFromSD err");
+                            }
+                            else
+                            {
+                                LOG_W("-----------------------------------------------------getsystank ok");
+//                                printSysTank();
                             }
 
                             sdCard.readInfo = YES;

@@ -61,6 +61,7 @@ FA_DEVICE_PAGE,
 FA_LINE_PAGE,
 FA_SD_PAGE,
 FA_TEST_PAGE,
+TEST_PAGE,//测试界面 显示一些值
 };
 
 //二级界面

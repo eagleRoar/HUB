@@ -109,7 +109,6 @@ void EnterBtnCallBack(u8 type)
     u8      info    = 0;
     if(SHORT_PRESS == type)
     {
-
         //唤醒屏幕
         wakeUpOledBackLight(&backlightTime);
         pageSelect.select = ON;
@@ -228,11 +227,11 @@ static void pageSetting(u8 page)
             break;
 
         case EC_CALIBRATE_PAGE:
-            pageSelectSet(NO, 1, 2);
+            pageSelectSet(NO, 1, 3);
             break;
 
         case PH_CALIBRATE_PAGE:
-            pageSelectSet(NO, 1, 2);
+            pageSelectSet(NO, 1, 3);
             break;
 
         case FA_SENSOR_PAGE:
@@ -446,7 +445,7 @@ static void pageProgram(u8 page)
             break;
 
         case PH_CALIBRATE_PAGE:
-            PhCalibratePage(&pageSelect);
+            PhCalibratePage(&pageSelect, getPhCal());
             if(ON == pageSelect.select)
             {
                 pageSelect.select = OFF;
@@ -454,7 +453,7 @@ static void pageProgram(u8 page)
             break;
 
         case EC_CALIBRATE_PAGE:
-            EcCalibratePage(&pageSelect);
+            ecCalibratePage(&pageSelect, getEcCal());
             if(ON == pageSelect.select)
             {
                 pageSelect.select = OFF;
@@ -489,6 +488,11 @@ static void pageProgram(u8 page)
             testFacPage(&pageSelect, GetMonitor(), 4);
 
             break;
+
+        case TEST_PAGE:
+            testPage();
+            break;
+
         default:
             break;
     }
@@ -573,7 +577,9 @@ void OledTaskEntry(void* parameter)
                (FA_DEVICE_PAGE == nowPage) ||
                (FA_LINE_PAGE == nowPage) ||
                (FA_SD_PAGE == nowPage) ||
-               (FA_TEST_PAGE == nowPage))
+               (FA_TEST_PAGE == nowPage) ||
+               (PH_CALIBRATE_PAGE == nowPage) ||
+               (EC_CALIBRATE_PAGE == nowPage))
             {
                 //需要刷新
                 reflash_flag = ON;

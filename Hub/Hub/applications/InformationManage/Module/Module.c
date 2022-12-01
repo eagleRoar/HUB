@@ -610,6 +610,81 @@ int getSensorDataByFunc(type_monitor_t *monitor, u8 func)
     return data;
 }
 
+int getSensorDataByAddr(type_monitor_t *monitor, u8 addr, u8 port)
+{
+    u8          index       = 0;
+    int         data        = 0;
+    sensor_t    *sensor     = RT_NULL;
+    float       a           = 1.0;
+    float       b           = 0;
+
+    //1.遍历全部，寻找符合条件的一个或者多个sensor 做平均，如果都没有就返回-9999
+    for(index = 0; index < monitor->sensor_size; index++)
+    {
+        sensor = &monitor->sensor[index];
+        if(addr == sensor->addr)
+        {
+            //1.1 如果是失联的设备不加入平均
+            if(CON_FAIL != sensor->conn_state)
+            {
+                if(F_S_CO2 == sensor->__stora[port].func)
+                {
+                    if(sensor->__stora[port].value + GetSysSet()->co2Set.co2Corrected + GetSysSet()->co2Cal[index] >= 0)
+                    {
+                        data = sensor->__stora[port].value + GetSysSet()->co2Set.co2Corrected + GetSysSet()->co2Cal[index];
+                    }
+                    else
+                    {
+                        data = 0;
+                    }
+                }
+                else if(F_S_WL == sensor->__stora[port].func)
+                {
+                    data = (sensor->__stora[port].value) / 10;
+                }
+                else if(F_S_PH == sensor->__stora[port].func)
+                {
+                    for(u8 i = 0; i < monitor->sensor_size; i++)
+                    {
+                        if(sensor->uuid == GetSysSet()->ph[i].uuid)
+                        {
+                            a = GetSysSet()->ph[i].ph_a;
+                            b = GetSysSet()->ph[i].ph_b;
+                            break;
+                        }
+                    }
+
+                    data = sensor->__stora[port].value * a + b;
+                }
+                else if(F_S_EC == sensor->__stora[port].func)
+                {
+                    for(u8 i = 0; i < monitor->sensor_size; i++)
+                    {
+                        if(sensor->uuid == GetSysSet()->ec[i].uuid)
+                        {
+                            a = GetSysSet()->ec[i].ec_a;
+                            b = GetSysSet()->ec[i].ec_b;
+                            break;
+                        }
+                    }
+
+                    data = sensor->__stora[port].value * a + b;
+                }
+                else
+                {
+                    data = sensor->__stora[port].value;
+                }
+            }
+            else
+            {
+                data = VALUE_NULL;
+            }
+        }
+    }
+
+    return data;
+}
+
 int getSensorSizeByFunc(type_monitor_t *monitor, u8 func)
 {
     u8      size        = 0;

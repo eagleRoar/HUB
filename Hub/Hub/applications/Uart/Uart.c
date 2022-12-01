@@ -22,6 +22,7 @@
 #include "Recipe.h"
 #include "TcpProgram.h"
 #include "Oled1309.h"
+#include "OledBusiness.h"
 
 __attribute__((section(".ccmbss"))) type_monitor_t monitor;
 __attribute__((section(".ccmbss"))) u8 uart_task[1024 * 6];
@@ -41,6 +42,32 @@ extern  cloudcmd_t              cloudCmd;
 extern void warnProgram(type_monitor_t *, sys_set_t *);
 extern void pumpProgram(type_monitor_t *, sys_tank_t *);
 extern void co2CalibraterResPage(u8);
+
+ph_cal_t ph_cal;
+ec_cal_t ec_cal;
+
+void initPhEcCal(void)
+{
+    ph_cal.cal_7_flag = CAL_NO;
+    ph_cal.cal_4_flag = CAL_NO;
+    ph_cal.time = 0;
+    ph_cal.cb = PhCalCallBackPage;
+
+    ec_cal.cal_0_flag = CAL_NO;
+    ec_cal.cal_141_flag = CAL_NO;
+    ec_cal.time = 0;
+    ec_cal.cb = EcCalCallBackPage;
+}
+
+ph_cal_t *getPhCal(void)
+{
+    return &ph_cal;
+}
+
+ec_cal_t *getEcCal(void)
+{
+    return &ec_cal;
+}
 
 /**
  * @brief  : 接收回调函数
@@ -217,6 +244,7 @@ void SensorUart2TaskEntry(void* parameter)
 
     initOfflineFlag();      //初始化离线报警flag
     setDeviceEvent(EV_ASK_PORT_TYPE);       //设置询问AC_4端口事件
+    initPhEcCal();
     while (1)
     {
         time1S = TimerTask(&time1S, 1000/UART_PERIOD, &Timer1sTouch);                       //1s定时任务
@@ -440,11 +468,21 @@ void SensorUart2TaskEntry(void* parameter)
                     findLineLocation(GetMonitor(), &cloudCmd, uart3_serial);
                     warnProgram(GetMonitor(), GetSysSet());             //监听告警信息
 
-
                     //co2 校准
                     if(YES == GetSysSet()->startCalFlg)
                     {
                         co2Calibrate(GetMonitor(), GetSysSet()->co2Cal, &GetSysSet()->startCalFlg, &GetSysSet()->saveFlag, co2CalibraterResPage);
+                    }
+
+                    //phec 校准
+                    if((CAL_INCAL == getPhCal()->cal_7_flag) || (CAL_INCAL == getPhCal()->cal_4_flag))
+                    {
+                        phCalibrate(GetMonitor(), getPhCal(), GetSysSet());
+                    }
+
+                    if((CAL_INCAL == getEcCal()->cal_0_flag) || (CAL_INCAL == getEcCal()->cal_141_flag))
+                    {
+                        ecCalibrate(GetMonitor(), getEcCal(), GetSysSet());
                     }
                 }
             }

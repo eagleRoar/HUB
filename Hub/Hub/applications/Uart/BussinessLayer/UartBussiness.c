@@ -61,15 +61,11 @@ u8 askSensorStorage(type_monitor_t *monitor, rt_device_t serial)
 
         rt_device_write(serial, 0, buffer, 8);
 
-//        if(0xE0 == buffer[0])
-//        {
-//
-//        for(u8 i = 0; i < 8; i++)
-//        {
-//            rt_kprintf("%x ",buffer[i]);
-//        }
-//        rt_kprintf("\r\n");
-//        }
+        /*for(u8 i = 0; i < 8; i++)
+        {
+            rt_kprintf("%x ",buffer[i]);
+        }
+        rt_kprintf("\r\n");*/
 
         senConnectState[ask_sensor].send_count ++;
 
@@ -434,6 +430,13 @@ u8 askDeviceHeart_new(type_monitor_t *monitor, rt_device_t serial, u8 event)
 
         rt_device_write(serial, 0, buffer, 8);
 
+//        LOG_W("ask :");
+//        for(int i = 0; i < 8; i++)
+//        {
+//            rt_kprintf("%x ",buffer[i]);
+//        }
+//        rt_kprintf("\r\n");
+
 //        if(IR_AIR_TYPE == monitor->device[ask_device].type)
 //        {
 //            LOG_I("ask name %s, times = %d",monitor->device[ask_device].name,devConnectState[ask_device].send_count);
@@ -474,9 +477,11 @@ void replyStrorageType(type_monitor_t *monitor, u8 addr, u8 *data, u8 dataLen)
                     monitor->device[i].port[storage].func =
                             GetFuncByType(monitor->device[i].port[storage].type);
                 }
+
                 LOG_I("recv ac_4 port %x %x %x %x",monitor->device[i].port[0].type,
                         monitor->device[i].port[1].type,monitor->device[i].port[2].type,
                         monitor->device[i].port[3].type);
+                saveModuleFlag = YES;
             }
         }
     }

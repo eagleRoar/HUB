@@ -221,9 +221,12 @@ void HomePage(type_page_t *page, type_monitor_t *monitor)
                     {
                         if (PHEC_TYPE == sensor->type)
                         {
-                            data[0] = sensor->__stora[1].value;
-                            data[1] = sensor->__stora[0].value;
-                            data[2] = sensor->__stora[2].value;
+                            //data[0] = sensor->__stora[1].value;
+                            data[0] = getSensorDataByAddr(GetMonitor(), addr, 1);
+                            //data[1] = sensor->__stora[0].value;
+                            data[1] = getSensorDataByAddr(GetMonitor(), addr, 0);
+                            //data[2] = sensor->__stora[2].value;
+                            data[2] = getSensorDataByAddr(GetMonitor(), addr, 2);
 
                         }
                     }
@@ -1082,27 +1085,227 @@ void PhEcCalibratePage(type_page_t *page)
     ST7567_UpdateScreen();
 }
 
-void PhCalibratePage(type_page_t *page)
+void PhCalibratePage(type_page_t *page, ph_cal_t *ph)
 {
+    char data[7] = "";
+    char data1[7] = "";
+    char show[16] = "";
+
     //1.
     ST7567_GotoXY(LINE_HIGHT, 0);
-    ST7567_Puts("PH 7.0", &Font_8x16, 1);
-    ST7567_GotoXY(LINE_HIGHT, 32);
-    ST7567_Puts("PH 4.0", &Font_8x16, 1);
+    if(CAL_INCAL == ph->cal_7_flag)
+    {
+        strncpy(data, "Cal..." ,7);
+    }
+    else
+    {
+        strncpy(data, "OK" ,7);
+    }
 
-    //2
+    if(CAL_INCAL == ph->cal_4_flag)
+    {
+        strncpy(data1, "Cal..." ,7);
+    }
+    else
+    {
+        strncpy(data1, "OK" ,7);
+    }
+
+    sprintf(show,"%6s %6s","PH7.0 ",data);
+    ST7567_GotoXY(LINE_HIGHT, 0);
+    ST7567_Puts(show, &Font_6x12, 1);
+    sprintf(show,"%6s %6s","PH4.0 ",data1);
+    ST7567_GotoXY(LINE_HIGHT, 32);
+    ST7567_Puts(show, &Font_6x12, 1);
+
+    //2.显示按钮
+    ST7567_GotoXY(LINE_HIGHT*11, 0);
+    ST7567_Puts("Start", &Font_8x16, 1 == page->cusor ? 0 : 1);
+    ST7567_GotoXY(LINE_HIGHT*11, 32);
+    ST7567_Puts("Start", &Font_8x16, 2 == page->cusor ? 0 : 1);
+    ST7567_GotoXY(LINE_HIGHT*11, 48);
+    ST7567_Puts("Reset", &Font_8x16, 3 == page->cusor ? 0 : 1);
+    //显示按钮框
+    ST7567_DrawRectangle(LINE_HIGHT*11, 0, LINE_HIGHT*5, 16, 1);
+    ST7567_DrawRectangle(LINE_HIGHT*11, 32, LINE_HIGHT*5, 16, 1);
+    ST7567_DrawRectangle(LINE_HIGHT*11, 48, LINE_HIGHT*5, 16, 1);
+
+
+    for(int i = 0; i < GetMonitor()->sensor_size; i++)
+    {
+        if(PHEC_TYPE == GetMonitor()->sensor[i].type)
+        {
+            if(CON_FAIL != GetMonitor()->sensor[i].conn_state)
+            {
+                for(int port = 0; port < GetMonitor()->sensor[i].storage_size; port++)
+                {
+                    if(F_S_PH == GetMonitor()->sensor[i].__stora[port].func)
+                    {
+                        if(1 == page->cusor)
+                        {
+                            sprintf(show, "%.1f", (float)GetMonitor()->sensor[i].__stora[port].value / 100);
+                            ST7567_GotoXY(LINE_HIGHT, 16);
+                            ST7567_Puts(show, &Font_6x12, 1);
+                            ST7567_GotoXY(LINE_HIGHT, 48);
+                            ST7567_Puts("-- ", &Font_6x12, 1);
+                        }
+                        else if(2 == page->cusor)
+                        {
+                            ST7567_GotoXY(LINE_HIGHT, 16);
+                            ST7567_Puts("-- ", &Font_6x12, 1);
+                            sprintf(show, "%.1f", (float)GetMonitor()->sensor[i].__stora[port].value / 100);
+                            ST7567_GotoXY(LINE_HIGHT, 48);
+                            ST7567_Puts(show, &Font_6x12, 1);
+                        }
+                        else if(3 == page->cusor)
+                        {
+                            ST7567_GotoXY(LINE_HIGHT, 16);
+                            ST7567_Puts("-- ", &Font_6x12, 1);
+                            ST7567_GotoXY(LINE_HIGHT, 48);
+                            ST7567_Puts("-- ", &Font_6x12, 1);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    //3.按键点击事件处理
+    if(YES == page->select)
+    {
+        if((1 == page->cusor) && (CAL_INCAL != ph->cal_4_flag))
+        {
+            ph->cal_7_flag = CAL_INCAL;
+            ph->time = getTimeStamp();
+        }
+        else if((2 == page->cusor) && (CAL_INCAL != ph->cal_7_flag))
+        {
+            ph->cal_4_flag = CAL_INCAL;
+            ph->time = getTimeStamp();
+        }
+        else if(3 == page->cusor)
+        {
+            ph->cal_7_flag = CAL_NO;
+            ph->cal_4_flag = CAL_NO;
+            resetSysSetPhCal();
+            GetSysSet()->saveFlag = YES;
+        }
+        page->select = NO;
+    }
+
+    //4.
     ST7567_UpdateScreen();
 }
 
-void EcCalibratePage(type_page_t *page)
+void ecCalibratePage(type_page_t *page, ec_cal_t *ec)
 {
+    char data[7] = "";
+    char data1[7] = "";
+    char show[16] = "";
+
     //1.
     ST7567_GotoXY(LINE_HIGHT, 0);
-    ST7567_Puts("EC 0.0", &Font_8x16, 1);
-    ST7567_GotoXY(LINE_HIGHT, 32);
-    ST7567_Puts("EC 1.41", &Font_8x16, 1);
+    if(CAL_INCAL == ec->cal_0_flag)
+    {
+        strncpy(data, "Cal..." ,7);
+    }
+    else
+    {
+        strncpy(data, "OK" ,7);
+    }
 
-    //2
+    if(CAL_INCAL == ec->cal_141_flag)
+    {
+        strncpy(data1, "Cal..." ,7);
+    }
+    else
+    {
+        strncpy(data1, "OK" ,7);
+    }
+
+    sprintf(show,"%6s %6s","EC0.0 ",data);
+    ST7567_GotoXY(LINE_HIGHT, 0);
+    ST7567_Puts(show, &Font_6x12, 1);
+    sprintf(show,"%6s %6s","EC1.41",data1);
+    ST7567_GotoXY(LINE_HIGHT, 32);
+    ST7567_Puts(show, &Font_6x12, 1);
+
+    //2.显示按钮
+    ST7567_GotoXY(LINE_HIGHT*11, 0);
+    ST7567_Puts("Start", &Font_8x16, 1 == page->cusor ? 0 : 1);
+    ST7567_GotoXY(LINE_HIGHT*11, 32);
+    ST7567_Puts("Start", &Font_8x16, 2 == page->cusor ? 0 : 1);
+    ST7567_GotoXY(LINE_HIGHT*11, 48);
+    ST7567_Puts("Reset", &Font_8x16, 3 == page->cusor ? 0 : 1);
+
+    //显示按钮框
+    ST7567_DrawRectangle(LINE_HIGHT*11, 0, LINE_HIGHT*5, 16, 1);
+    ST7567_DrawRectangle(LINE_HIGHT*11, 32, LINE_HIGHT*5, 16, 1);
+    ST7567_DrawRectangle(LINE_HIGHT*11, 48, LINE_HIGHT*5, 16, 1);
+
+    for(int i = 0; i < GetMonitor()->sensor_size; i++)
+    {
+        if(PHEC_TYPE == GetMonitor()->sensor[i].type)
+        {
+            if(CON_FAIL != GetMonitor()->sensor[i].conn_state)
+            {
+                for(int port = 0; port < GetMonitor()->sensor[i].storage_size; port++)
+                {
+                    if(F_S_EC == GetMonitor()->sensor[i].__stora[port].func)
+                    {
+                        if(1 == page->cusor)
+                        {
+                            sprintf(show, "%.1f ms/cm", (float)GetMonitor()->sensor[i].__stora[port].value / 100);
+                            ST7567_GotoXY(LINE_HIGHT, 16);
+                            ST7567_Puts(show, &Font_6x12, 1);
+                            ST7567_GotoXY(LINE_HIGHT, 48);
+                            ST7567_Puts("--  ms/cm", &Font_6x12, 1);
+                        }
+                        else if(2 == page->cusor)
+                        {
+                            ST7567_GotoXY(LINE_HIGHT, 16);
+                            ST7567_Puts("--  ms/cm", &Font_6x12, 1);
+                            sprintf(show, "%.1f ms/cm", (float)GetMonitor()->sensor[i].__stora[port].value / 100);
+                            ST7567_GotoXY(LINE_HIGHT, 48);
+                            ST7567_Puts(show, &Font_6x12, 1);
+                        }
+                        else if(3 == page->cusor)
+                        {
+                            ST7567_GotoXY(LINE_HIGHT, 16);
+                            ST7567_Puts("--  ms/cm", &Font_6x12, 1);
+                            ST7567_GotoXY(LINE_HIGHT, 48);
+                            ST7567_Puts("--  ms/cm", &Font_6x12, 1);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    //3.按键点击事件处理
+    if(YES == page->select)
+    {
+        if((1 == page->cusor) && (CAL_INCAL != ec->cal_141_flag))
+        {
+            ec->cal_0_flag = CAL_INCAL;
+            ec->time = getTimeStamp();
+        }
+        else if((2 == page->cusor) && (CAL_INCAL != ec->cal_0_flag))
+        {
+            ec->cal_141_flag = CAL_INCAL;
+            ec->time = getTimeStamp();
+        }
+        else if(3 == page->cusor)
+        {
+            ec->cal_0_flag = CAL_NO;
+            ec->cal_141_flag = CAL_NO;
+            resetSysSetEcCal();
+            GetSysSet()->saveFlag = YES;
+        }
+        page->select = NO;
+    }
+
+    //4.
     ST7567_UpdateScreen();
 }
 
@@ -1627,4 +1830,96 @@ void openDryFac(type_monitor_t *monitor)
 void closeDryFac(type_monitor_t *monitor)
 {
     rt_pin_write(ALARM_OUT, 0);
+}
+
+void PhCalCallBackPage(u8 flag)
+{
+    char data[7] = "";
+    char data1[7] = "";
+    char show[16] = "";
+
+    //1.清除缓存数据
+    //clear_screen();
+
+    //2.显示
+    if(1 == flag)
+    {
+        strncpy(data, "Cal...", 7);
+        strncpy(data1, "OK", 7);
+    }
+    else if(2 == flag)
+    {
+        strncpy(data, "OK", 7);
+        strncpy(data1, "Cal...", 7);
+    }
+    else if(3 == flag)
+    {
+        strncpy(data, "OK", 7);
+        strncpy(data1, "OK", 7);
+    }
+
+    sprintf(show,"%s   %6s","PH 7.0",data);
+    show[15] = '\0';
+    ST7567_GotoXY(LINE_HIGHT, 0);
+    ST7567_Puts(show, &Font_8x16, 1);
+
+    sprintf(show,"%s   %6s","PH 4.0",data1);
+    show[15] = '\0';
+    ST7567_GotoXY(LINE_HIGHT, 32);
+    ST7567_Puts(show, &Font_8x16, 1);
+
+    //2.刷新界面
+    ST7567_UpdateScreen();
+}
+
+void EcCalCallBackPage(u8 flag)
+{
+    char data[7] = "";
+    char data1[7] = "";
+    char show[16] = "";
+
+    //1.清除缓存数据
+    //clear_screen();
+
+    //2.显示
+    if(1 == flag)
+    {
+        strncpy(data, "Cal...", 7);
+        strncpy(data1, "OK", 7);
+    }
+    else if(2 == flag)
+    {
+        strncpy(data, "OK", 7);
+        strncpy(data1, "Cal...", 7);
+    }
+    else if(3 == flag)
+    {
+        strncpy(data, "OK", 7);
+        strncpy(data1, "OK", 7);
+    }
+
+    sprintf(show,"%s   %6s","EC 0.0",data);
+    show[15] = '\0';
+    ST7567_GotoXY(LINE_HIGHT, 0);
+    ST7567_Puts(show, &Font_8x16, 1);
+
+    sprintf(show,"%s  %6s","EC 1.41",data1);
+    show[15] = '\0';
+    ST7567_GotoXY(LINE_HIGHT, 32);
+    ST7567_Puts(show, &Font_8x16, 1);
+
+    //2.刷新界面
+    ST7567_UpdateScreen();
+}
+
+void testPage(void)
+{
+    char show[16];
+
+    sprintf(show,"btn enter %d",rt_pin_read(BUTTON_ENTER));
+
+    ST7567_GotoXY(LINE_HIGHT, 32);
+    ST7567_Puts(show, &Font_8x16, 1);
+
+    ST7567_UpdateScreen();
 }

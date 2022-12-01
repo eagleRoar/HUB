@@ -306,6 +306,16 @@ struct sysSet{
     u8              offline[DEVICE_MAX];
     u16             warn_value[WARN_MAX];//该值主要为了显示使用 数据
     int             co2Cal[SENSOR_MAX];   //co2校准值
+    struct phCal{
+        float ph_a;
+        float ph_b;
+        u32 uuid;
+    }ph[SENSOR_MAX];
+    struct ecCal{
+        float ec_a;
+        float ec_b;
+        u32 uuid;
+    }ec[SENSOR_MAX];
     u8              startCalFlg;
     hub_t           hub_info;
     u8              saveFlag;

@@ -129,10 +129,10 @@ char *GetModelByType(u8 type, char *name, u8 len)
             strncpy(name, "LDA", len);
             break;
         case PUMP_TYPE:
-            strncpy(name, "BIS", len);
+            strncpy(name, "BIS-P", len);
             break;
         case VALVE_TYPE:
-            strncpy(name, "BVS", len);
+            strncpy(name, "BIS-V", len);
             break;
         case AC_4_TYPE:
             strncpy(name, "BSS-4", len);

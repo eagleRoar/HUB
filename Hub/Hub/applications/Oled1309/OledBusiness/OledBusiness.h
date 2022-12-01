@@ -11,6 +11,7 @@
 #define APPLICATIONS_OLED1309_OLEDBUSINESS_OLEDBUSINESS_H_
 
 #include "Gpio.h"
+#include "u8g2.h"
 
 void HomePage(type_page_t *, type_monitor_t *);
 void SensorStatePage(u8g2_t *, type_page_t);
@@ -35,6 +36,8 @@ void closeDryFac(type_monitor_t *);
 void deviceStatePage_fac(type_page_t *, type_monitor_t *, u8);
 void lineStageClose_Fa(type_monitor_t *);
 void PhEcCalibratePage(type_page_t *);
-void PhCalibratePage(type_page_t *);
+
 void EcCalibratePage(type_page_t *);
+void PhCalCallBackPage(u8);
+void EcCalCallBackPage(u8);
 #endif /* APPLICATIONS_OLED1309_OLEDBUSINESS_OLEDBUSINESS_H_ */
