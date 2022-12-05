@@ -1277,7 +1277,7 @@ void timmerProgram(type_monitor_t *monitor)
 
 }
 
-void dimmingLineCtrl(type_monitor_t *monitor, u8 *stage, u16 ppfd)//Justin debug
+void dimmingLineCtrl(type_monitor_t *monitor, u8 *stage, u16 ppfd)
 {
     //stage 范围在10 - 115之间，一档为5 %
     int         par         = 0;
@@ -1286,7 +1286,6 @@ void dimmingLineCtrl(type_monitor_t *monitor, u8 *stage, u16 ppfd)//Justin debug
     par = getSensorDataByFunc(monitor, F_S_PAR);
     if(VALUE_NULL != par)
     {
-        //升光
         if(par + 50 <= ppfd)
         {
             if(*stage <= 115 - STAGE_VALUE)
@@ -1294,7 +1293,7 @@ void dimmingLineCtrl(type_monitor_t *monitor, u8 *stage, u16 ppfd)//Justin debug
                 *stage += STAGE_VALUE;
             }
         }
-        else if(par > ppfd + 50)//Justin debug 考虑降光
+        else if(par > ppfd + 50)
         {
             if(*stage > STAGE_VALUE)
             {
@@ -3026,9 +3025,12 @@ void pumpProgram(type_monitor_t *monitor, sys_tank_t *tank_list)
                     port = 0;
                 }
 
-                if(ON == GetDeviceByAddr(GetMonitor(), addr)->port[port].ctrl.d_state)
+                if(RT_NULL != GetDeviceByAddr(GetMonitor(), addr))
                 {
-                    break;
+                    if(ON == GetDeviceByAddr(GetMonitor(), addr)->port[port].ctrl.d_state)
+                    {
+                        break;
+                    }
                 }
             }
 
@@ -3357,7 +3359,6 @@ void sendwarnningInfo(void)
                                             eth->tcp.SetConnectStatus(OFF);
                                             eth->tcp.SetConnectTry(ON);
                                         }
-                                        LOG_W("send to app: %x %x %x %x %x %x",length,buf + sizeof(eth_page_head));
                                         LOG_W("send to app: %.*s",length,buf + sizeof(eth_page_head));
                                     }
                                 }

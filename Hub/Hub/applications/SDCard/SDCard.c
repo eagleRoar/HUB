@@ -21,6 +21,8 @@ __attribute__((section(".ccmbss"))) char sd_thread_stack[1024*3];
 __attribute__((section(".ccmbss"))) struct rt_thread sd_thread;
 __attribute__((section(".ccmbss"))) struct sdCardState      sdCard;
 
+static rt_mutex_t dynamic_mutex = RT_NULL;
+
 extern u8 saveModuleFlag;
 extern int rt_hw_sdio_init(void);
 
@@ -36,6 +38,8 @@ extern int rt_hw_sdio_init(void);
 int SDCardTaskInit(void)
 {
     rt_err_t ret = RT_EOK;
+
+    dynamic_mutex = rt_mutex_create("dmutex", RT_IPC_FLAG_FIFO);
 
     rt_thread_init(&sd_thread, SD_CARD_TASK, sd_dfs_event_entry, RT_NULL, &sd_thread_stack[0], sizeof(sd_thread_stack), SDCARD_PRIORITY, 10);
     if(RT_ERROR == rt_thread_startup(&sd_thread))
@@ -85,6 +89,8 @@ void sd_dfs_event_entry(void* parameter)
                     {
                         if (dfs_mount("sd0", "/", "elm", 0, 0) == 0)//SD挂载在根目录下
                         {
+                            rt_mutex_take(dynamic_mutex, RT_WAITING_FOREVER);//互斥锁上锁
+
                             sdCard.mount = YES;
                             sdCard.init = YES;
 
@@ -112,10 +118,10 @@ void sd_dfs_event_entry(void* parameter)
                             else
                             {
                                 LOG_W("-----------------------------------------------------getsystank ok");
-//                                printSysTank();
                             }
 
                             sdCard.readInfo = YES;
+                            rt_mutex_release(dynamic_mutex);//互斥锁解锁
                         }
                         else //挂载失败
                         {
