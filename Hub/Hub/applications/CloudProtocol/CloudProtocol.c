@@ -1988,6 +1988,7 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
     u8              co2State    = OFF;
     u8              tempState   = OFF;
     u8              humiState   = OFF;
+    u8              tankState[TANK_LIST_MAX]    = {OFF,OFF,OFF,OFF};
     u16             ec          = 0;
     u16             ph          = 0;
     u16             wt          = 0;
@@ -1996,9 +1997,11 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
     static u8       co2State_pre    = OFF;
     static u8       tempState_pre   = OFF;
     static u8       humiState_pre   = OFF;
+    static u8       tankState_pre[TANK_LIST_MAX]    = {OFF,OFF,OFF,OFF};
     static time_t   co2WarnTime;
     static time_t   tempWarnTime;
     static time_t   humiWarnTime;
+    static time_t   tankAutoValve[TANK_LIST_MAX];
 
     rt_memset(set->warn, 0, WARN_MAX);
 
@@ -2592,13 +2595,13 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
     //ph ec
     for(u8 tank = 0; tank < GetSysTank()->tank_size; tank++)
     {
-        for(u8 item1 = 0; item1 < 2;item1++)
+//        for(u8 item1 = 0; item1 < 2;item1++)
         {
             for(u8 item2 = 0; item2 < TANK_SENSOR_MAX; item2++)
             {
-                if(GetSysTank()->tank[tank].sensorId[item1][item2] != 0)
+                if(GetSysTank()->tank[tank].sensorId[0][item2] != 0)
                 {
-                    sensor = GetSensorByAddr(monitor, GetSysTank()->tank[tank].sensorId[item1][item2]);
+                    sensor = GetSensorByAddr(monitor, GetSysTank()->tank[tank].sensorId[0][item2]);
 
                     for(u8 sto = 0; sto < sensor->storage_size; sto++)
                     {
@@ -2731,6 +2734,57 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
                 }
             }
         }
+
+        //自动补水超时报警
+        if(VALUE_NULL == wl)
+        {
+            tankState[tank] = OFF;
+        }
+        else
+        {
+            if(wl < GetSysTank()->tank[tank].autoFillHeight)
+            {
+                tankState[tank] = ON;
+            }
+            else
+            {
+                tankState[tank] = OFF;
+            }
+        }
+
+        if(tankState_pre[tank] != tankState[tank])
+        {
+            tankState_pre[tank] = tankState[tank];
+            if(tankState[tank] == ON)
+            {
+                tankAutoValve[tank] = getTimeStamp();
+            }
+        }
+
+        if(ON == tankState[tank])
+        {
+            if(ON == set->sysWarn.autoFillTimeout)
+            {
+                if(getTimeStamp() > GetSysTank()->tank[tank].poolTimeout + tankAutoValve[tank])
+                {
+                    set->warn[WARN_AUTOFILL_TIMEOUT - 1] = ON;
+                    set->warn_value[WARN_AUTOFILL_TIMEOUT - 1] = wl;
+                    break;
+                }
+                else
+                {
+                    set->warn[WARN_AUTOFILL_TIMEOUT - 1] = OFF;
+                }
+            }
+            else
+            {
+                set->warn[WARN_AUTOFILL_TIMEOUT - 1] = OFF;
+            }
+        }
+        else
+        {
+            set->warn[WARN_AUTOFILL_TIMEOUT - 1] = OFF;
+        }
     }
 
     rt_memcpy(sys_warn, set->warn, WARN_MAX);
@@ -2812,6 +2866,36 @@ void pumpDoing(u8 addr, u8 port)
                     device->port[port].ctrl.d_value = 0;
                 }
             }
+        }
+    }
+}
+
+
+void autoValveClose(type_monitor_t *monitor, sys_tank_t *tank_list)
+{
+    static u16 autoValue[TANK_LIST_MAX];
+
+    for(int i = 0; i < tank_list->tank_size; i++)
+    {
+        if(autoValue[i] != tank_list->tank[i].autoFillValveId)
+        {
+            u8 addr = 0;
+            u8 port = 0;
+
+            if(autoValue[i] > 0xFF)
+            {
+                addr = autoValue[i] >> 8;
+                port = autoValue[i];
+            }
+            else
+            {
+                addr = autoValue[i];
+                port = 0;
+            }
+
+            GetDeviceByAddr(monitor, addr)->port[port].ctrl.d_state = OFF;
+
+            autoValue[i] = tank_list->tank[i].autoFillValveId;
         }
     }
 }

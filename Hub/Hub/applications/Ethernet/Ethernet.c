@@ -180,8 +180,8 @@ void UdpTaskEntry(void* parameter)
                     if(YES == cloudCmd.recv_app_flag)
                     {
                         tcp_reply = ReplyDataToCloud1(RT_NULL, RT_NULL, &length, NO);
-                        //LOG_W("length = %d",length);
-                        //LOG_W("%.*s",length,tcp_reply + sizeof(eth_page_head));
+                        LOG_W("length = %d",length);
+                        LOG_W("%.*s",length,tcp_reply + sizeof(eth_page_head));
                         if(RT_NULL != tcp_reply)
                         {
                             if (RT_EOK != TcpSendMsg(&tcp_sock, tcp_reply, length + sizeof(eth_page_head)))

@@ -1131,7 +1131,7 @@ void CmdSetWarn(char *data, cloudcmd_t *cmd, sys_set_t *set)
         if(RT_NULL != pool)
         {
             poolNum = cJSON_GetArraySize(pool);
-            //rt_memset(set->sysWarn.poolTimeout, 0, TANK_LIST_MAX * sizeof(u16));
+
             for(u8 index = 0; index < poolNum; index++)
             {
                 item = cJSON_GetArrayItem(pool, index);
@@ -4433,6 +4433,10 @@ u8 getColorFromTankList(u16 address, sys_tank_t *list)
     for(no = 0; no < list->tank_size; no++)
     {
         if(address == list->tank[no].pumpId)
+        {
+            color = list->tank[no].color;
+        }
+        else if(address == list->tank[no].autoFillValveId)
         {
             color = list->tank[no].color;
         }

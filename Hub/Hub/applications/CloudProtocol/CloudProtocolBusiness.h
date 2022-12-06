@@ -90,7 +90,7 @@ struct cloudCmd{
     u8              del_recipe_id;              //删除配方id
     u8              add_pool_no;                //增加设置报警的no
     u8              add_pool_func;              //增加设置报警的类型
-    u8              chg_dev_id;                 //修改设备类型
+    u16             chg_dev_id;                 //修改设备类型
     u8              recv_cloud_flag;            //接收到云服务器的标志
     u8              recv_app_flag;              //接收到云服务器的标志
 };
@@ -207,7 +207,6 @@ struct sysWarn
     u16 tempTimeoutseconds; //600, // temp 超时秒数
     u8 humidTimeoutEn;      //1,   //humid 超时报警 1-on 2-off
     u16 humidTimeoutseconds;// 600, // humid 超时秒数
-//    u16 poolTimeout[TANK_LIST_MAX];
 };
 
 /****************************以下是灌溉部分的内容*****/

@@ -52,6 +52,7 @@ void sendwarnningInfo(void);
 void sendOfflinewarnning(type_monitor_t *);
 void resetSysSetPhCal(void);
 void resetSysSetEcCal(void);
+//void autoValveClose(type_monitor_t *, sys_tank_t *);
 //void phCalibrate(type_monitor_t *, ph_cal_t *, sys_set_t *);
 //void ecCalibrate(type_monitor_t *, ec_cal_t *, sys_set_t *);
 #endif /* APPLICATIONS_CLOUDPROTOCOL_CLOUDPROTOCOL_H_ */
