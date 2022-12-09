@@ -68,8 +68,17 @@ void HomePage(type_page_t *page, type_monitor_t *monitor)
         day_night[5] = '\0';
     }
 
-    sprintf(time," %02d:%02d:%02d %02d/%02d %5s ",time_for.hour,time_for.minute,time_for.second,
+    if(NIGHT_TIME == GetSysSet()->dayOrNight)
+    {
+        sprintf(time," %02d:%02d:%02d %02d/%02d %5s ",time_for.hour,time_for.minute,time_for.second,
             time_for.month,time_for.day,day_night);
+    }
+    else if(DAY_TIME == GetSysSet()->dayOrNight)
+    {
+        sprintf(time," %02d:%02d:%02d %02d/%02d %3s   ",time_for.hour,time_for.minute,time_for.second,
+            time_for.month,time_for.day,day_night);
+    }
+
     time[21] = '\0';
     ST7567_GotoXY(0, 0);
     ST7567_Puts(time, &Font_6x12, 0);
@@ -82,7 +91,7 @@ void HomePage(type_page_t *page, type_monitor_t *monitor)
     ST7567_Puts(name, &Font_6x12, 1);
 
     data = getSensorDataByFunc(monitor, F_S_TEMP);
-    if(VALUE_NULL == data)
+    if((VALUE_NULL == data) || (YES != sdCard.readInfo))
     {
         ST7567_GotoXY(0, 32);
         ST7567_Puts("    ", &Font_8x16, 1);
@@ -112,7 +121,7 @@ void HomePage(type_page_t *page, type_monitor_t *monitor)
     ST7567_Puts(name, &Font_6x12, 1);
 
     data = getSensorDataByFunc(monitor, F_S_HUMI);
-    if(VALUE_NULL == data)
+    if((VALUE_NULL == data) || (YES != sdCard.readInfo))
     {
         ST7567_GotoXY(8 + 8*5, 32);
         ST7567_Puts("    ", &Font_8x16, 1);
@@ -141,7 +150,7 @@ void HomePage(type_page_t *page, type_monitor_t *monitor)
     ST7567_Puts(name, &Font_6x12, 1);
 
     data = getSensorDataByFunc(monitor, F_S_CO2);
-    if(VALUE_NULL == data)
+    if((VALUE_NULL == data) || (YES != sdCard.readInfo))
     {
         ST7567_GotoXY(8 + 8*9 + 4, 32);
         ST7567_Puts("      ", &Font_8x16, 1);
@@ -344,9 +353,9 @@ void SettingPage(type_page_t page, u8 canShow)
     char                temp1[4];
     type_sys_time       time_for;
 #if(HUB_SELECT == HUB_ENVIRENMENT)
-    char                show[6][16] = {"Sensor State", "Device State", "Line State", "QR Code", "Update App", "Co2 Calibrate"};
+    char                show[6][16] = {"Sensor List", "Device List", "Light List", "QR Code", "Update Firmware", "CO2 Calibration"};
 #elif (HUB_SELECT == HUB_IRRIGSTION)
-    char                show[4][16] = {"Device State", "QR Code", "Update App", "PHEC Calibrate"};
+    char                show[4][16] = {"Device List", "QR Code", "Update App", "PHEC Calibrate"};
 #endif
     type_sys_time       sys_time;
     u8                  line        = LINE_HIGHT;
@@ -462,6 +471,7 @@ void SensorStatePage_new(type_monitor_t *monitor)
     u8              line        = LINE_HIGHT;
     u8              column      = 0;
     char            name[5]     = " ";
+    char            name1[16]   = " ";
     float           num;
     int             data;
     sys_set_t       *set        = GetSysSet();
@@ -472,14 +482,17 @@ void SensorStatePage_new(type_monitor_t *monitor)
     clear_screen();
 
     //2.轮流显示当前的sensor
-
     if(monitor->sensor_size > 0)
     {
         //2.1 先显示固定位置的名称
-        ST7567_GotoXY(LINE_HIGHT, 0);
+        if(F_S_LIGHT != showList[showInde])
+        {
+            ST7567_GotoXY(LINE_HIGHT, 0);
+        }
+
         if(F_S_CO2 == showList[showInde])
         {
-            strcpy(name, "Co2");
+            strcpy(name, "CO2");
         }
         else if(F_S_TEMP == showList[showInde])
         {
@@ -487,18 +500,18 @@ void SensorStatePage_new(type_monitor_t *monitor)
         }
         else if(F_S_HUMI == showList[showInde])
         {
-            strcpy(name, "humi");
-        }
-        else if(F_S_LIGHT == showList[showInde])
-        {
-            strcpy(name, "Ligh");
+            strcpy(name, "Humi");
         }
         else if(F_S_PAR == showList[showInde])
         {
-            strcpy(name, "par");
+            strcpy(name, "PAR");
         }
         name[4] = '\0';
-        ST7567_Puts(name, &Font_12x24, 1);
+
+        if(F_S_LIGHT != showList[showInde])
+        {
+            ST7567_Puts(name, &Font_12x24, 1);
+        }
 
         line = LINE_HIGHT + 4 * 12 + 8;
         column = 24 - 16;
@@ -532,7 +545,26 @@ void SensorStatePage_new(type_monitor_t *monitor)
             }
         }
         name[4] = '\0';
-        ST7567_Puts(name, &Font_8x16, 1);
+
+        if(F_S_LIGHT != showList[showInde])
+        {
+            ST7567_Puts(name, &Font_8x16, 1);
+        }
+        else
+        {
+            ST7567_GotoXY(LINE_HIGHT, 0);
+            ST7567_Puts("Photocell", &Font_8x16, 1);
+            ST7567_GotoXY(LINE_HIGHT, 16);
+            if(VALUE_NULL == data)
+            {
+                ST7567_Puts("Intensity --", &Font_8x16, 1);
+            }
+            else
+            {
+                sprintf(name1, "%s %d","Intensity",data);
+                ST7567_Puts(name1, &Font_8x16, 1);
+            }
+        }
 
         //2.2 显示单位
         if(F_S_CO2 == showList[showInde])
@@ -545,15 +577,15 @@ void SensorStatePage_new(type_monitor_t *monitor)
 
             column = 32;
             ST7567_GotoXY(line, column);
-            ST7567_Puts("ppm", &Font_8x16, 1);
+            ST7567_Puts("ppm", &Font_6x12, 1);
 
             //显示目标值
             line = LINE_HIGHT;
             column = 32;
             ST7567_GotoXY(line, column);
-            ST7567_Puts("co2 tgt", &Font_6x12, 1);
+            ST7567_Puts("CO2   tgt:", &Font_6x12, 1);
 
-            line = LINE_HIGHT + 4 * 12 + 8;
+            line = LINE_HIGHT + /*4 * 12 + 8*/6 * 10;
             ST7567_GotoXY(line, column);
             if(DAY_TIME == set->dayOrNight)
             {
@@ -566,7 +598,7 @@ void SensorStatePage_new(type_monitor_t *monitor)
                 sprintf(name, "%.1f", num);
             }
             name[4] = '\0';
-            ST7567_Puts(name, &Font_8x16, 1);
+            ST7567_Puts(name, &Font_6x12, 1);
         }
         else if(F_S_HUMI == showList[showInde])
         {
@@ -578,19 +610,19 @@ void SensorStatePage_new(type_monitor_t *monitor)
 
             column = 32;
             ST7567_GotoXY(line, column);
-            ST7567_Puts("%", &Font_8x16, 1);
+            ST7567_Puts("%", &Font_6x12, 1);
 
             column += 16;
             ST7567_GotoXY(line, column);
-            ST7567_Puts("%", &Font_8x16, 1);
+            ST7567_Puts("%", &Font_6x12, 1);
 
             //显示目标值
             line = LINE_HIGHT;
             column = 32;
             ST7567_GotoXY(line, column);
-            ST7567_Puts("humi tgt", &Font_6x12, 1);
+            ST7567_Puts("Humi  tgt:", &Font_6x12, 1);
 
-            line = LINE_HIGHT + 4 * 12 + 8;
+            line = LINE_HIGHT + 6 * 10;
             ST7567_GotoXY(line, column);
             if(DAY_TIME == set->dayOrNight)
             {
@@ -605,14 +637,14 @@ void SensorStatePage_new(type_monitor_t *monitor)
                 sprintf(name, "%.1f", num);
             }
             name[4] = '\0';
-            ST7567_Puts(name, &Font_8x16, 1);
+            ST7567_Puts(name, &Font_6x12, 1);
 
             line = LINE_HIGHT;
             column = 48;
             ST7567_GotoXY(line, column);
-            ST7567_Puts("dehu tgt", &Font_6x12, 1);
+            ST7567_Puts("Dehum tgt:", &Font_6x12, 1);
 
-            line = LINE_HIGHT + 4 * 12 + 8;
+            line = LINE_HIGHT + 6 * 10;
             ST7567_GotoXY(line, column);
             if(DAY_TIME == set->dayOrNight)
             {
@@ -627,7 +659,7 @@ void SensorStatePage_new(type_monitor_t *monitor)
                 sprintf(name, "%.1f", num);
             }
             name[4] = '\0';
-            ST7567_Puts(name, &Font_8x16, 1);
+            ST7567_Puts(name, &Font_6x12, 1);
         }
         else if(F_S_TEMP == showList[showInde])
         {
@@ -640,20 +672,20 @@ void SensorStatePage_new(type_monitor_t *monitor)
             column = 32;
             ST7567_DrawCircle(line, column, 1, 1);
             ST7567_GotoXY(line + 3, column);
-            ST7567_Puts("C", &Font_8x16, 1);
+            ST7567_Puts("C", &Font_6x12, 1);
 
             column += 16;
             ST7567_DrawCircle(line, column, 1, 1);
             ST7567_GotoXY(line + 3, column);
-            ST7567_Puts("C", &Font_8x16, 1);
+            ST7567_Puts("C", &Font_6x12, 1);
 
             //显示目标值
             line = LINE_HIGHT;
             column = 32;
             ST7567_GotoXY(line, column);
-            ST7567_Puts("heat tgt", &Font_6x12, 1);
+            ST7567_Puts("Heat  tgt:", &Font_6x12, 1);
 
-            line = LINE_HIGHT + 4 * 12 + 8;
+            line = LINE_HIGHT + 6 * 10;
             ST7567_GotoXY(line, column);
             if(DAY_TIME == set->dayOrNight)
             {
@@ -668,14 +700,14 @@ void SensorStatePage_new(type_monitor_t *monitor)
                 sprintf(name, "%.1f", num);
             }
             name[4] = '\0';
-            ST7567_Puts(name, &Font_8x16, 1);
+            ST7567_Puts(name, &Font_6x12, 1);
 
             line = LINE_HIGHT;
             column = 48;
             ST7567_GotoXY(line, column);
-            ST7567_Puts("cool tgt", &Font_6x12, 1);
+            ST7567_Puts("Cool  tgt:", &Font_6x12, 1);
 
-            line = LINE_HIGHT + 4 * 12 + 8;
+            line = LINE_HIGHT + 6 * 10;
             ST7567_GotoXY(line, column);
             if(DAY_TIME == set->dayOrNight)
             {
@@ -690,7 +722,7 @@ void SensorStatePage_new(type_monitor_t *monitor)
                 sprintf(name, "%.1f", num);
             }
             name[4] = '\0';
-            ST7567_Puts(name, &Font_8x16, 1);
+            ST7567_Puts(name, &Font_6x12, 1);
         }
         else if(F_S_PAR == showList[showInde])
         {
@@ -729,70 +761,79 @@ void DeviceStatePage_new(type_monitor_t *monitor)
     clear_screen();
 
     //2.显示状态
-    if(showNum < CAN_SHOW)
-    {
-        num = showNum;
-    }
-    else
-    {
-        num = CAN_SHOW;
-    }
-
-    if(0 == num)
+    if(YES != sdCard.readInfo)
     {
         ST7567_GotoXY(LINE_HIGHT, 0);
-        ST7567_Puts("NO DEVICE", &Font_12x24, 0);
+        ST7567_Puts("SD is not init", &Font_8x16, 0);
     }
     else
     {
-        for(u8 index = 0; index < num; index++)
+        if(showNum < CAN_SHOW)
         {
-            line = LINE_HIGHT;
-            column = index * 16;
-            if(CON_FAIL == monitor->device[index + start].conn_state)
-            {
-                ST7567_GotoXY(line, column);
-                rt_memcpy(name, monitor->device[index + start].name, 8);
-                name[8] = '\0';
-                ST7567_Puts(name, &Font_8x16, 1);
-
-                line = 8 * 8 + 8;
-                ST7567_GotoXY(line, column);
-                ST7567_Puts("offline", &Font_8x16, 0);
-            }
-            else
-            {
-                ST7567_GotoXY(line, column);
-                rt_memcpy(name, monitor->device[index + start].name, 8);
-                name[8] = '\0';
-                ST7567_Puts(name, &Font_8x16, 1);
-
-                line = 8 * 8 + 8;
-                ST7567_GotoXY(line, column);
-                ST7567_Puts("online", &Font_8x16, 1);
-            }
-        }
-    }
-
-    //3.计算循环播放
-    if(showNum > CAN_SHOW)
-    {
-        if(showInde + 1 < showNum)
-        {
-            showInde++;
-            start = showInde + 1 - CAN_SHOW;
+            num = showNum;
         }
         else
         {
-            showInde = CAN_SHOW - 1;
+            num = CAN_SHOW;
+        }
+
+        if(0 == num)
+        {
+            ST7567_GotoXY(LINE_HIGHT, 0);
+            ST7567_Puts("None", &Font_12x24, 0);
+        }
+        else
+        {
+            for(u8 index = 0; index < num; index++)
+            {
+                line = LINE_HIGHT;
+                column = index * 16;
+                if(CON_FAIL == monitor->device[index + start].conn_state)
+                {
+                    ST7567_GotoXY(line, column);
+                    rt_memcpy(name, monitor->device[index + start].name, 8);
+                    name[8] = '\0';
+                    ST7567_Puts(name, &Font_8x16, 1);
+
+                    line = 8 * 8 + 8;
+                    ST7567_GotoXY(line, column);
+                    ST7567_Puts("offline", &Font_8x16, 0);
+                }
+                else
+                {
+                    ST7567_GotoXY(line, column);
+                    rt_memcpy(name, monitor->device[index + start].name, 8);
+                    name[8] = '\0';
+                    ST7567_Puts(name, &Font_8x16, 1);
+
+                    line = 8 * 8 + 8;
+                    ST7567_GotoXY(line, column);
+                    ST7567_Puts("online", &Font_8x16, 1);
+                }
+            }
+        }
+
+        //3.计算循环播放
+        if(showNum > CAN_SHOW)
+        {
+            if(showInde + 1 < showNum)
+            {
+                showInde++;
+                start = showInde + 1 - CAN_SHOW;
+            }
+            else
+            {
+                showInde = CAN_SHOW - 1;
+                start = 0;
+            }
+        }
+        else
+        {
             start = 0;
+            showInde = CAN_SHOW - 1;
         }
     }
-    else
-    {
-        start = 0;
-        showInde = CAN_SHOW - 1;
-    }
+
     //4.刷新界面
     ST7567_UpdateScreen();
 }
@@ -812,70 +853,78 @@ void LineStatePage_new(type_monitor_t *monitor)
     //1.清除界面
     clear_screen();
 
-    //2.显示状态
-    if(showNum < CAN_SHOW)
-    {
-        num = showNum;
-    }
-    else
-    {
-        num = CAN_SHOW;
-    }
-
-    if(0 == num)
+    if(YES != sdCard.readInfo)
     {
         ST7567_GotoXY(LINE_HIGHT, 0);
-        ST7567_Puts("NO LINE", &Font_12x24, 0);
+        ST7567_Puts("SD is not init", &Font_8x16, 0);
     }
     else
     {
-        for(u8 index = 0; index < num; index++)
+        //2.显示状态
+        if(showNum < CAN_SHOW)
         {
-            line = LINE_HIGHT;
-            column = index * 16;
-            if(CON_FAIL == monitor->line[index + start].conn_state)
-            {
-                ST7567_GotoXY(line, column);
-                rt_memcpy(name, monitor->line[index + start].name, 8);
-                name[8] = '\0';
-                ST7567_Puts(name, &Font_8x16, 1);
-
-                line = 8 * 8 + 8;
-                ST7567_GotoXY(line, column);
-                ST7567_Puts("offline", &Font_8x16, 0);
-            }
-            else
-            {
-                ST7567_GotoXY(line, column);
-                rt_memcpy(name, monitor->line[index + start].name, 8);
-                name[8] = '\0';
-                ST7567_Puts(name, &Font_8x16, 1);
-
-                line = 8 * 8 + 8;
-                ST7567_GotoXY(line, column);
-                ST7567_Puts("online", &Font_8x16, 1);
-            }
-        }
-    }
-
-    //3.计算循环播放
-    if(showNum > CAN_SHOW)
-    {
-        if(showInde + 1 < showNum)
-        {
-            showInde++;
-            start = showInde + 1 - CAN_SHOW;
+            num = showNum;
         }
         else
         {
-            showInde = CAN_SHOW - 1;
-            start = 0;
+            num = CAN_SHOW;
         }
-    }
-    else
-    {
-        start = 0;
-        showInde = CAN_SHOW - 1;
+
+        if(0 == num)
+        {
+            ST7567_GotoXY(LINE_HIGHT, 0);
+            ST7567_Puts("None", &Font_12x24, 0);
+        }
+        else
+        {
+            for(u8 index = 0; index < num; index++)
+            {
+                line = LINE_HIGHT;
+                column = index * 16;
+                if(CON_FAIL == monitor->line[index + start].conn_state)
+                {
+                    ST7567_GotoXY(line, column);
+                    rt_memcpy(name, monitor->line[index + start].name, 8);
+                    name[8] = '\0';
+                    ST7567_Puts(name, &Font_8x16, 1);
+
+                    line = 8 * 8 + 8;
+                    ST7567_GotoXY(line, column);
+                    ST7567_Puts("offline", &Font_8x16, 0);
+                }
+                else
+                {
+                    ST7567_GotoXY(line, column);
+                    rt_memcpy(name, monitor->line[index + start].name, 8);
+                    name[8] = '\0';
+                    ST7567_Puts(name, &Font_8x16, 1);
+
+                    line = 8 * 8 + 8;
+                    ST7567_GotoXY(line, column);
+                    ST7567_Puts("online", &Font_8x16, 1);
+                }
+            }
+        }
+
+        //3.计算循环播放
+        if(showNum > CAN_SHOW)
+        {
+            if(showInde + 1 < showNum)
+            {
+                showInde++;
+                start = showInde + 1 - CAN_SHOW;
+            }
+            else
+            {
+                showInde = CAN_SHOW - 1;
+                start = 0;
+            }
+        }
+        else
+        {
+            start = 0;
+            showInde = CAN_SHOW - 1;
+        }
     }
     //4.刷新界面
     ST7567_UpdateScreen();
@@ -945,7 +994,7 @@ void UpdateAppProgram(type_page_t *page, u32 *info)
     ST7567_Puts("Update New APP?", &Font_8x16, 1);
 
     //3.确定是否升级
-    line = 40;
+    line = 28;
     column = 32;
     ST7567_GotoXY(line, column);
     if(1 == page->cusor)
@@ -1024,11 +1073,11 @@ void co2CalibratePage(type_page_t *page, u32 *info)
     {
         //1.
         ST7567_GotoXY(LINE_HIGHT, 0);
-        ST7567_Puts("Start Co2 Cali-", &Font_8x16, 1);
+        ST7567_Puts("Start CO2 Cali-", &Font_8x16, 1);
         ST7567_GotoXY(LINE_HIGHT, 16);
         ST7567_Puts("bration", &Font_8x16, 1);
         //2.
-        ST7567_GotoXY(40, 16 * 2);
+        ST7567_GotoXY(28, 16 * 2);
         ST7567_Puts("No", &Font_12x24, (1 == page->cusor) ? 0 : 1);
         ST7567_GotoXY(64, 16 * 2);
         ST7567_Puts("Yes", &Font_12x24, (2 == page->cusor) ? 0 : 1);

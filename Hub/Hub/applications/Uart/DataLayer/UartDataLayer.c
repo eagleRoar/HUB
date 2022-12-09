@@ -241,7 +241,7 @@ rt_err_t setSensorDefault(sensor_t *module)
     switch (module->type)
     {
         case BHS_TYPE:
-            setSensorDefaultPara(module, "Bhs", 0x0010, module->type, 4);
+            setSensorDefaultPara(module, "BLS-4", 0x0010, module->type, 4);
             strncpy(sen_stora[0].name, "Co2", STORAGE_NAMESZ);
             strncpy(sen_stora[1].name, "Humi", STORAGE_NAMESZ);
             strncpy(sen_stora[2].name, "Temp", STORAGE_NAMESZ);
@@ -257,13 +257,13 @@ rt_err_t setSensorDefault(sensor_t *module)
             setSensorDefuleStora(module, sen_stora[0], sen_stora[1], sen_stora[2], sen_stora[3]);
             break;
         case PAR_TYPE:
-            setSensorDefaultPara(module, "Par", 0x0000, module->type, 1);
+            setSensorDefaultPara(module, "BLS-PAR", 0x0000, module->type, 1);
             strncpy(module->__stora[0].name, "Par", STORAGE_NAMESZ);
             module->__stora[0].value = 0;
             module->__stora[0].func = F_S_PAR;
             break;
         case PHEC_TYPE:
-            setSensorDefaultPara(module, "PhEc", 0x0000, module->type, 3);
+            setSensorDefaultPara(module, "BSB-I", 0x0000, module->type, 3);
             strncpy(module->__stora[0].name, "Ec", STORAGE_NAMESZ);
             strncpy(module->__stora[1].name, "Ph", STORAGE_NAMESZ);
             strncpy(module->__stora[2].name, "Wt", STORAGE_NAMESZ);
@@ -275,7 +275,7 @@ rt_err_t setSensorDefault(sensor_t *module)
             module->__stora[2].func = F_S_WT;
             break;
         case WATERlEVEL_TYPE:
-            setSensorDefaultPara(module, "Wl", 0x0004, module->type, 1);
+            setSensorDefaultPara(module, "BLS-WL", 0x0004, module->type, 1);
             strncpy(module->__stora[0].name, "Wl", STORAGE_NAMESZ);
             module->__stora[0].value = 0;
             module->__stora[0].func = F_S_WL;
@@ -296,47 +296,47 @@ rt_err_t setDeviceDefault(device_t *module)
     switch (module->type) {
 
         case CO2_UP_TYPE:
-            setDeviceDefaultPara(module, "Co2_U", 0x0040, S_CO2, module->type, 1);
+            setDeviceDefaultPara(module, "BCS-PU", 0x0040, S_CO2, module->type, 1);
             addr = module->addr;
             setDeviceDefaultStora(module, 0 ,"Co2_U", F_Co2_UP, module->type, addr , MANUAL_NO_HAND, 0);
             break;
         case CO2_DOWN_TYPE:
-            setDeviceDefaultPara(module, "Co2_D", 0x0040, S_CO2, module->type, 1);
+            setDeviceDefaultPara(module, "BCS-PD", 0x0040, S_CO2, module->type, 1);
             addr = module->addr;
             setDeviceDefaultStora(module, 0 ,"Co2_D", F_Co2_DOWN, module->type, addr , MANUAL_NO_HAND, 0);
             break;
         case HEAT_TYPE:
-            setDeviceDefaultPara(module, "Heat", 0x0040, S_TEMP, module->type, 1);
+            setDeviceDefaultPara(module, "BTS-H", 0x0040, S_TEMP, module->type, 1);
             addr = module->addr;
             setDeviceDefaultStora(module, 0 ,"Heat", F_HEAT, module->type, addr , MANUAL_NO_HAND, 0);
             break;
         case HUMI_TYPE:
-            setDeviceDefaultPara(module, "Humi", 0x0040, S_HUMI, module->type, 1);
+            setDeviceDefaultPara(module, "BHS-H", 0x0040, S_HUMI, module->type, 1);
             addr = module->addr;
             setDeviceDefaultStora(module, 0 , "Humi", F_HUMI, module->type, addr , MANUAL_NO_HAND, 0);
             break;
         case DEHUMI_TYPE:
-            setDeviceDefaultPara(module, "Dehumi", 0x0040, S_HUMI, module->type, 1);
+            setDeviceDefaultPara(module, "BHS-D", 0x0040, S_HUMI, module->type, 1);
             addr = module->addr;
             setDeviceDefaultStora(module, 0 , "Dehumi", F_DEHUMI, module->type, addr , MANUAL_NO_HAND, 0);
             break;
         case COOL_TYPE:
-            setDeviceDefaultPara(module, "Cool", 0x0040, S_TEMP, module->type, 1);
+            setDeviceDefaultPara(module, "BTS-C", 0x0040, S_TEMP, module->type, 1);
             addr = module->addr;
             setDeviceDefaultStora(module, 0 , "Cool", F_COOL, module->type, addr , MANUAL_NO_HAND, 0);
             break;
         case HVAC_6_TYPE:
-            setDeviceDefaultPara(module, "Hvac_6", 0x0401, S_TEMP, module->type, 1);
+            setDeviceDefaultPara(module, "BTS-1", 0x0401, S_TEMP, module->type, 1);
             addr = module->addr;
             setDeviceDefaultStora(module, 0 , "Hvac", F_COOL, module->type, addr, MANUAL_NO_HAND, 0);
             break;
         case TIMER_TYPE:
-            setDeviceDefaultPara(module, "Timer", 0x0040, S_TIMER, module->type, 1);
+            setDeviceDefaultPara(module, "BPS", 0x0040, S_TIMER, module->type, 1);
             addr = module->addr;
             setDeviceDefaultStora(module, 0 , "Timer", F_TIMER, module->type, addr , MANUAL_NO_HAND, 0);
             break;
         case AC_4_TYPE:
-            setDeviceDefaultPara(module, "AC4", 0x0401, S_AC_4, module->type, 4);
+            setDeviceDefaultPara(module, "BSS-4", 0x0401, S_AC_4, module->type, 4);
             for(u8 index = 0; index < module->storage_size; index++)
             {
                 strcpy(name," ");
@@ -346,12 +346,12 @@ rt_err_t setDeviceDefault(device_t *module)
             }
             break;
         case PUMP_TYPE:
-            setDeviceDefaultPara(module, "Pump", 0x0040, S_PUMP, module->type, 1);
+            setDeviceDefaultPara(module, "BIS-P", 0x0040, S_PUMP, module->type, 1);
             addr = module->addr;
             setDeviceDefaultStora(module, 0 , "Pump", F_PUMP, module->type, addr , MANUAL_NO_HAND, 0);
             break;
         case IO_12_TYPE:
-            setDeviceDefaultPara(module, "IO12", 0x0401, S_IO_12, module->type, 12);
+            setDeviceDefaultPara(module, "BDC-12", 0x0401, S_IO_12, module->type, 12);
             for(u8 index = 0; index < module->storage_size; index++)
             {
                 module->port[index].type = VALVE_TYPE;//目前暂定都是阀
@@ -363,7 +363,7 @@ rt_err_t setDeviceDefault(device_t *module)
             }
             break;
         case IO_4_TYPE:
-            setDeviceDefaultPara(module, "IO4", 0x0401, S_IO_4, module->type, 4);
+            setDeviceDefaultPara(module, "BDC-4", 0x0401, S_IO_4, module->type, 4);
             for(u8 index = 0; index < module->storage_size; index++)
             {
                 module->port[index].type = VALVE_TYPE;//目前暂定都是阀
@@ -375,7 +375,7 @@ rt_err_t setDeviceDefault(device_t *module)
             }
             break;
         case IR_AIR_TYPE:
-            setDeviceDefaultPara(module, "IR_AIR", 0x0100, S_TEMP, module->type, 1);
+            setDeviceDefaultPara(module, "BTS-AR", 0x0100, S_TEMP, module->type, 1);
             addr = module->addr;
             setDeviceDefaultStora(module, 0 , "IR_AIR", F_COOL, module->type, addr , MANUAL_NO_HAND, 0);
             break;

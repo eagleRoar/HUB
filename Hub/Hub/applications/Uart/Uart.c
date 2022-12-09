@@ -120,17 +120,14 @@ static rt_err_t Uart2_input(rt_device_t dev, rt_size_t size)
 {
     u16 crc16 = 0x0000;
 
-    /* 必须要等待从sd卡读取到的monitor 才能执行以下功能 */
+    /* 必须要等待从sd卡读取到的monitor 才能执行以下功能   */
 
-//    if(IR_AIR_TYPE == GetDeviceByAddr(GetMonitor(), uart2_msg.data[0])->type)
-//    {
 //        LOG_W("recv data：");
 //        for(int i = 0; i < uart2_msg.size; i++)
 //        {
 //            rt_kprintf("%x ",uart2_msg.data[i]);
 //        }
 //        rt_kprintf("\r\n");
-//    }
 
     if (NO == sdCard.readInfo)
     {

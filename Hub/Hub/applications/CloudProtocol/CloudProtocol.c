@@ -2002,8 +2002,14 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
     static time_t   tempWarnTime;
     static time_t   humiWarnTime;
     static time_t   tankAutoValve[TANK_LIST_MAX];
-
-    rt_memset(set->warn, 0, WARN_MAX);
+    static u8       humiStateLow_pre    = OFF;
+    static u8       humiStateHigh_pre   = OFF;
+    static u8       tempStateLow_pre    = OFF;
+    static u8       tempStateHigh_pre   = OFF;
+    static u8       co2StateLow_pre     = OFF;
+    static u8       co2StateHigh_pre    = OFF;
+    static u8       vpdStateLow_pre     = OFF;
+    static u8       vpdStateHigh_pre    = OFF;
 
     //白天
     if(DAY_TIME == set->dayOrNight)
@@ -2018,16 +2024,33 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
                 {
                     set->warn[WARN_TEMP_LOW - 1] = ON;
                     set->warn_value[WARN_TEMP_LOW - 1] = data;
+                    tempStateLow_pre = ON;
                 }
                 else if(data >= set->sysWarn.dayTempMax)
                 {
                     set->warn[WARN_TEMP_HIGHT - 1] = ON;
                     set->warn_value[WARN_TEMP_HIGHT - 1] = data;
+                    tempStateHigh_pre = ON;
                 }
                 else
                 {
-                    set->warn[WARN_TEMP_LOW - 1] = OFF;
-                    set->warn[WARN_TEMP_HIGHT - 1] = OFF;
+                    if(ON == tempStateLow_pre)
+                    {
+                        if(data > set->sysWarn.dayTempMin + 20)
+                        {
+                            set->warn[WARN_TEMP_LOW - 1] = OFF;
+                            tempStateLow_pre = OFF;
+                        }
+                    }
+
+                    if(ON == tempStateHigh_pre)
+                    {
+                        if(data + 20 < set->sysWarn.dayTempMax)
+                        {
+                            set->warn[WARN_TEMP_HIGHT - 1] = OFF;
+                            tempStateHigh_pre = OFF;
+                        }
+                    }
                 }
             }
             else
@@ -2088,16 +2111,34 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
                 {
                     set->warn[WARN_HUMI_LOW - 1] = ON;
                     set->warn_value[WARN_HUMI_LOW - 1] = data;
+                    humiStateLow_pre = ON;
                 }
                 else if(data >= set->sysWarn.dayhumidMax)
                 {
                     set->warn[WARN_HUMI_HIGHT - 1] = ON;
                     set->warn_value[WARN_HUMI_HIGHT - 1] = data;
+                    humiStateHigh_pre = ON;
                 }
                 else
                 {
-                    set->warn[WARN_HUMI_LOW - 1] = OFF;
-                    set->warn[WARN_HUMI_HIGHT - 1] = OFF;
+                    //如果出现报警，需要解除报警的条件需要做振荡过滤
+                    if(ON == humiStateLow_pre)
+                    {
+                        if(data > set->sysWarn.dayhumidMin + 20)
+                        {
+                            set->warn[WARN_HUMI_LOW - 1] = OFF;
+                            humiStateLow_pre = OFF;
+                        }
+                    }
+
+                    if(ON == humiStateHigh_pre)
+                    {
+                        if(data + 20 < set->sysWarn.dayhumidMax)
+                        {
+                            set->warn[WARN_HUMI_HIGHT - 1] = OFF;
+                            humiStateHigh_pre = ON;
+                        }
+                    }
                 }
             }
             else
@@ -2160,16 +2201,33 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
                 {
                     set->warn[WARN_CO2_LOW - 1] = ON;
                     set->warn_value[WARN_CO2_LOW - 1] = data;
+                    co2StateLow_pre = ON;
                 }
                 else if(data >= set->sysWarn.dayCo2Max)
                 {
                     set->warn[WARN_CO2_HIGHT - 1] = ON;
                     set->warn_value[WARN_CO2_HIGHT - 1] = data;
+                    co2StateHigh_pre = ON;
                 }
                 else
                 {
-                    set->warn[WARN_CO2_LOW - 1] = OFF;
-                    set->warn[WARN_CO2_HIGHT - 1] = OFF;
+                    if(ON == co2StateLow_pre)
+                    {
+                        if(data > set->sysWarn.dayCo2Min + 50)
+                        {
+                            set->warn[WARN_CO2_LOW - 1] = OFF;
+                            co2StateLow_pre = OFF;
+                        }
+                    }
+
+                    if(ON == co2StateHigh_pre)
+                    {
+                        if(data + 50 < set->sysWarn.dayCo2Max)
+                        {
+                            set->warn[WARN_CO2_HIGHT - 1] = OFF;
+                            co2StateHigh_pre = OFF;
+                        }
+                    }
                 }
             }
             else
@@ -2227,16 +2285,33 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
                 {
                     set->warn[WARN_VPD_LOW - 1] = ON;
                     set->warn_value[WARN_VPD_LOW - 1] = getVpd();
+                    vpdStateLow_pre = ON;
                 }
                 else if(getVpd() >= set->sysWarn.dayVpdMax)
                 {
                     set->warn[WARN_VPD_HIGHT - 1] = ON;
                     set->warn_value[WARN_VPD_HIGHT - 1] = getVpd();
+                    vpdStateHigh_pre = ON;
                 }
                 else
                 {
-                    set->warn[WARN_VPD_LOW - 1] = OFF;
-                    set->warn[WARN_VPD_HIGHT - 1] = OFF;
+                    if(ON == vpdStateLow_pre)
+                    {
+                        if(getVpd() > set->sysWarn.dayVpdMin + 10)
+                        {
+                            set->warn[WARN_VPD_LOW - 1] = OFF;
+                            vpdStateLow_pre = OFF;
+                        }
+                    }
+
+                    if(ON == vpdStateHigh_pre)
+                    {
+                        if(getVpd() + 10 < set->sysWarn.dayVpdMax)
+                        {
+                            set->warn[WARN_VPD_HIGHT - 1] = OFF;
+                            vpdStateHigh_pre = OFF;
+                        }
+                    }
                 }
             }
         }
@@ -2287,16 +2362,33 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
                 {
                     set->warn[WARN_TEMP_LOW - 1] = ON;
                     set->warn_value[WARN_TEMP_LOW - 1] = data;
+                    tempStateLow_pre = ON;
                 }
                 else if(data >= set->sysWarn.nightTempMax)
                 {
                     set->warn[WARN_TEMP_HIGHT - 1] = ON;
                     set->warn_value[WARN_TEMP_HIGHT - 1] = data;
+                    tempStateHigh_pre = ON;
                 }
                 else
                 {
-                    set->warn[WARN_TEMP_LOW - 1] = OFF;
-                    set->warn[WARN_TEMP_HIGHT - 1] = OFF;
+                    if(ON == tempStateLow_pre)
+                    {
+                        if(data > set->sysWarn.nightTempMin + 20)
+                        {
+                            set->warn[WARN_TEMP_LOW - 1] = OFF;
+                            tempStateLow_pre = OFF;
+                        }
+                    }
+
+                    if(ON == tempStateHigh_pre)
+                    {
+                        if(data + 20 < set->sysWarn.nightTempMax)
+                        {
+                            set->warn[WARN_TEMP_HIGHT - 1] = OFF;
+                            tempStateHigh_pre = OFF;
+                        }
+                    }
                 }
             }
             else
@@ -2356,16 +2448,33 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
                 {
                     set->warn[WARN_HUMI_LOW - 1] = ON;
                     set->warn_value[WARN_HUMI_LOW - 1] = data;
+                    humiStateLow_pre = ON;
                 }
                 else if(data >= set->sysWarn.nighthumidMax)
                 {
                     set->warn[WARN_HUMI_HIGHT - 1] = ON;
                     set->warn_value[WARN_HUMI_HIGHT - 1] = data;
+                    humiStateHigh_pre = ON;
                 }
                 else
                 {
-                    set->warn[WARN_HUMI_LOW - 1] = OFF;
-                    set->warn[WARN_HUMI_HIGHT - 1] = OFF;
+                    if(ON == humiStateLow_pre)
+                    {
+                        if(data > set->sysWarn.nighthumidMin + 20)
+                        {
+                            set->warn[WARN_HUMI_LOW - 1] = OFF;
+                            humiStateLow_pre = OFF;
+                        }
+                    }
+
+                    if(ON == humiStateHigh_pre)
+                    {
+                        if(data + 20 < set->sysWarn.nighthumidMax)
+                        {
+                            set->warn[WARN_HUMI_HIGHT - 1] = OFF;
+                            humiStateHigh_pre = OFF;
+                        }
+                    }
                 }
             }
 
@@ -2423,16 +2532,33 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
                 {
                     set->warn[WARN_CO2_LOW - 1] = ON;
                     set->warn_value[WARN_CO2_LOW - 1] = data;
+                    co2StateLow_pre = ON;
                 }
                 else if(data >= set->sysWarn.nightCo2Max)
                 {
                     set->warn[WARN_CO2_HIGHT - 1] = ON;
                     set->warn_value[WARN_CO2_HIGHT - 1] = data;
+                    co2StateHigh_pre = ON;
                 }
                 else
                 {
-                    set->warn[WARN_CO2_LOW - 1] = OFF;
-                    set->warn[WARN_CO2_HIGHT - 1] = OFF;
+                    if(ON == co2StateLow_pre)
+                    {
+                        if(data > set->sysWarn.nightCo2Min + 50)
+                        {
+                            set->warn[WARN_CO2_LOW - 1] = OFF;
+                            co2StateLow_pre = OFF;
+                        }
+                    }
+
+                    if(ON == co2StateHigh_pre)
+                    {
+                        if(data + 50 < set->sysWarn.nightCo2Max)
+                        {
+                            set->warn[WARN_CO2_HIGHT - 1] = OFF;
+                            co2StateHigh_pre = OFF;
+                        }
+                    }
                 }
             }
             else
@@ -2490,16 +2616,33 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
                 {
                     set->warn[WARN_VPD_LOW - 1] = ON;
                     set->warn_value[WARN_VPD_LOW - 1] = getVpd();
+                    vpdStateLow_pre = ON;
                 }
                 else if(getVpd() >= set->sysWarn.nightVpdMax)
                 {
                     set->warn[WARN_VPD_HIGHT - 1] = ON;
                     set->warn_value[WARN_VPD_HIGHT - 1] = getVpd();
+                    vpdStateHigh_pre = ON;
                 }
                 else
                 {
-                    set->warn[WARN_VPD_LOW - 1] = OFF;
-                    set->warn[WARN_VPD_HIGHT - 1] = OFF;
+                    if(ON == vpdStateLow_pre)
+                    {
+                        if(getVpd() > set->sysWarn.nightVpdMin + 10)
+                        {
+                            set->warn[WARN_VPD_LOW - 1] = OFF;
+                            vpdStateLow_pre = OFF;
+                        }
+                    }
+
+                    if(ON == vpdStateHigh_pre)
+                    {
+                        if(getVpd() + 10 < set->sysWarn.nightVpdMax)
+                        {
+                            set->warn[WARN_VPD_HIGHT - 1] = OFF;
+                            vpdStateHigh_pre = OFF;
+                        }
+                    }
                 }
             }
         }

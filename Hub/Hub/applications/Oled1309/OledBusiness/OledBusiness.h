@@ -40,4 +40,5 @@ void PhEcCalibratePage(type_page_t *);
 void EcCalibratePage(type_page_t *);
 void PhCalCallBackPage(u8);
 void EcCalCallBackPage(u8);
+void testPage(void);
 #endif /* APPLICATIONS_OLED1309_OLEDBUSINESS_OLEDBUSINESS_H_ */

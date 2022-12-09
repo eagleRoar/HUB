@@ -622,7 +622,7 @@ void AnlyzeModuleInfo(type_monitor_t *monitor, u8 *data, u8 dataLen)
     if(YES == FindModuleByAddr(monitor, data[0]))
     {
         AnlyzeStorage(monitor, data[0], data[1],&data[3], data[2]);
-        if(READ_MUTI == data[1])
+        if((READ_MUTI == data[1]) && !(2 == data[2] && 0 == data[3] && 0 == data[4]))
         {
             replyStrorageType(monitor, data[0], &data[3], data[2]);
         }
