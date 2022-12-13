@@ -146,6 +146,15 @@ char *GetModelByType(u8 type, char *name, u8 len)
         case IR_AIR_TYPE:
             strncpy(name, "BTS-AR", len);
             break;
+        case SOIL_T_H_TYPE:
+            strncpy(name, "BLS-MM", len);
+            break;
+        case SMOG_TYPE:
+            strncpy(name, "BLS-SD", len);
+            break;
+        case LEAKAGE_TYPE:
+            strncpy(name, "BLS-WD", len);
+            break;
         default:
             break;
     }
@@ -279,6 +288,30 @@ rt_err_t setSensorDefault(sensor_t *module)
             strncpy(module->__stora[0].name, "Wl", STORAGE_NAMESZ);
             module->__stora[0].value = 0;
             module->__stora[0].func = F_S_WL;
+            break;
+        case SOIL_T_H_TYPE:     //土壤温湿度
+            setSensorDefaultPara(module, "BLS-MM", 0x0010, module->type, 3);
+            strncpy(module->__stora[0].name, "Soil_W", STORAGE_NAMESZ);
+            module->__stora[0].value = 0;
+            module->__stora[0].func = F_S_SW;
+            strncpy(module->__stora[1].name, "Soil_T", STORAGE_NAMESZ);
+            module->__stora[1].value = 0;
+            module->__stora[1].func = F_S_ST;
+            strncpy(module->__stora[2].name, "Soil_EC", STORAGE_NAMESZ);
+            module->__stora[2].value = 0;
+            module->__stora[2].func = F_S_SEC;
+            break;
+        case SMOG_TYPE:
+            setSensorDefaultPara(module, "BLS-SD", 0x0010, module->type, 1);
+            strncpy(module->__stora[0].name, "Smog", STORAGE_NAMESZ);
+            module->__stora[0].value = 0;
+            module->__stora[0].func = F_S_SM;
+            break;
+        case LEAKAGE_TYPE:
+            setSensorDefaultPara(module, "BLS-WD", 0x0010, module->type, 1);
+            strncpy(module->__stora[0].name, "Smog", STORAGE_NAMESZ);
+            module->__stora[0].value = 0;
+            module->__stora[0].func = F_S_LK;
             break;
         default:
             ret = RT_ERROR;
@@ -491,6 +524,9 @@ u8 getSOrD(u8 type)
         case PAR_TYPE:
         case PHEC_TYPE:
         case WATERlEVEL_TYPE:
+        case SOIL_T_H_TYPE:
+        case SMOG_TYPE:
+        case LEAKAGE_TYPE:
             ret = SENSOR_TYPE;
             break;
         case CO2_UP_TYPE:

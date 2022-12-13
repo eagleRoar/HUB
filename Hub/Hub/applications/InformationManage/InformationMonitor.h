@@ -348,6 +348,9 @@ typedef     void (*FAC_FUNC)(type_monitor_t *);
 #define     PHEC_TYPE       0x05
 #define     PAR_TYPE        0x08
 #define     WATERlEVEL_TYPE 0x0A
+#define     SOIL_T_H_TYPE   0x0D        //土壤温湿度
+#define     SMOG_TYPE       0x16        //烟雾传感器
+#define     LEAKAGE_TYPE    0x17        //漏水传感器
 #define     CO2_UP_TYPE     0x41
 #define     HEAT_TYPE       0x42
 #define     HUMI_TYPE       0x43
@@ -413,7 +416,12 @@ enum{
     F_S_EC,
     F_S_WT,
     F_S_WL,
-    F_S_PAR
+    F_S_PAR,
+    F_S_SW,     //土壤含水率
+    F_S_ST,     //土壤温度
+    F_S_SEC,    //土壤电导率
+    F_S_SM,     //烟雾传感器
+    F_S_LK,     //漏水传感器
 };
 
 /*设备工作状态 0-Off 1-On 2-PPM UP 3-FUZZY LOGIC
