@@ -202,6 +202,78 @@ u8 GetFuncByType(u8 type)
     return ret;
 }
 
+char* GetTankSensorNameByType(u8 func)
+{
+    char ret[16] = "";
+
+    switch (func) {
+        case F_S_WL:
+            strncpy(ret, "WaterLv", 2);
+            break;
+        case F_S_WT:
+            strncpy(ret, "Temp", 2);
+            break;
+        case F_S_PH:
+            strncpy(ret, "pH", 2);
+            break;
+        case F_S_EC:
+            strncpy(ret, "EC", 2);
+            break;
+        case F_S_SW:
+            strncpy(ret, "Medium Moist", 2);
+            break;
+        case F_S_SEC:
+            strncpy(ret, "Medium EC", 2);
+            break;
+        case F_S_ST:
+            strncpy(ret, "Medium Temp", 2);
+            break;
+
+        default:
+            strncpy(ret, "  ", 2);
+            break;
+
+    }
+
+    return ret;
+}
+
+char* GetTankSensorSByType(u8 func)
+{
+    char ret[3] = "";
+
+    switch (func) {
+        case F_S_WL:
+            strncpy(ret, "wl", 2);
+            break;
+        case F_S_WT:
+            strncpy(ret, "wt", 2);
+            break;
+        case F_S_PH:
+            strncpy(ret, "ph", 2);
+            break;
+        case F_S_EC:
+            strncpy(ret, "ec", 2);
+            break;
+        case F_S_SW:
+            strncpy(ret, "mm", 2);
+            break;
+        case F_S_SEC:
+            strncpy(ret, "me", 2);
+            break;
+        case F_S_ST:
+            strncpy(ret, "mt", 2);
+            break;
+
+        default:
+            strncpy(ret, "  ", 2);
+            break;
+
+    }
+
+    return ret;
+}
+
 char *GetFunNameByType(u8 type, char *name, u8 len)
 {
     switch (type)

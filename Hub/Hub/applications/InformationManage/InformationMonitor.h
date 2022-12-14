@@ -292,7 +292,13 @@ enum
     WARN_CO2_TIMEOUT,
     WARN_TEMP_TIMEOUT,
     WARN_HUMI_TIMEOUT,
-    WARN_AUTOFILL_TIMEOUT
+    WARN_AUTOFILL_TIMEOUT,
+    WARN_SOIL_W_HIGHT,      //29:基质湿度高报警
+    WARN_SOIL_W_LOW,        //30:基质湿度低报警
+    WARN_SOIL_EC_HIGHT,     //31:基质 EC 高报警
+    WARN_SOIL_EC_LOW,       //32:基质 EC 低报警
+    WARN_SOIL_T_HIGHT,      //33:基质 Temp 高报警
+    WARN_SOIL_T_LOW         //34:基质 Temp 低报警
 };
 
 //询问uart 事件

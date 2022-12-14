@@ -36,4 +36,6 @@ u8 getSOrD(u8);
 void lineAnswer(type_monitor_t *, rt_device_t , u32);
 u8 GetFuncByType(u8);
 void getRegisterData(u8* , u8 , u32 ,u8 );
+char* GetTankSensorSByType(u8);
+char* GetTankSensorNameByType(u8);
 #endif /* APPLICATIONS_UART_DATALAYER_UARTDATALAYER_H_ */

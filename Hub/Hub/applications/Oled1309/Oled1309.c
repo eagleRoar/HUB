@@ -37,6 +37,9 @@ u8      next_flag   = NO;
 __attribute__((section(".ccmbss"))) u8 oled_task[1024*3];
 __attribute__((section(".ccmbss"))) struct rt_thread oled_thread;
 
+extern void PhCalibratePage(type_page_t *, ph_cal_t *);
+extern void ecCalibratePage(type_page_t *, ec_cal_t *);
+
 #define SSD1309_8080_PIN_D0                    64  // PE0
 #define SSD1309_8080_PIN_D1                    65  // PE1
 #define SSD1309_8080_PIN_D2                    66  // PE2

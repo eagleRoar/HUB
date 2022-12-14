@@ -14,7 +14,7 @@
 #include "module.h"
 #include "cJSON.h"
 #include "mqtt_client.h"
-#include<math.h>
+#include "math.h"
 #include "Ethernet.h"
 #include "Recipe.h"
 #include "UartBussiness.h"
@@ -179,6 +179,7 @@ void initCloudProtocol(void)
     cloudCmd.recv_flag = OFF;
     rt_memset(sys_set.offline, 0, sizeof(sys_set.offline));
 
+#if (HUB_SELECT == HUB_ENVIRENMENT)
     rt_memset(&sys_set.tempSet, 0, sizeof(proTempSet_t));
     rt_memset(&sys_set.co2Set, 0, sizeof(proCo2Set_t));
     rt_memset(&sys_set.humiSet, 0, sizeof(proHumiSet_t));
@@ -222,13 +223,12 @@ void initCloudProtocol(void)
     sys_set.line1Set.sunriseSunSet = 10;// 0-180min/0 表示关闭状态 日升日落
     sys_set.line1Set.firstRuncycleTime = 0;
 
-    strcpy(sys_set.sysPara.ntpzone, "+00:00");
+    rt_memcpy(&sys_set.line2Set, &sys_set.line1Set, sizeof(proLine_t));
+
     sys_set.sysPara.timeFormat = TIME_STYLE_24H;
-    sys_set.sysPara.dayNightMode = DAY_BY_TIME;
     sys_set.sysPara.photocellSensitivity = 100;
     sys_set.sysPara.dayTime = 480;  //8 * 60
     sys_set.sysPara.nightTime = 1200;   //20 * 60
-    sys_set.sysPara.maintain = OFF;     //非维护状态
 
     sys_set.dayOrNight = DAY_TIME;
 
@@ -263,21 +263,24 @@ void initCloudProtocol(void)
     sys_set.sysWarn.nightVpdMax = 300;
     sys_set.sysWarn.nightVpdEn = ON;
 
-    sys_set.sysWarn.phEn = ON;
-    sys_set.sysWarn.ecEn = ON;
-    sys_set.sysWarn.wtEn = ON;
-    sys_set.sysWarn.wlEn = ON;
-    sys_set.sysWarn.offlineEn = ON;
     sys_set.sysWarn.lightEn = ON;
-    sys_set.sysWarn.smokeEn = ON;
-    sys_set.sysWarn.waterEn = ON;
-    sys_set.sysWarn.autoFillTimeout = ON;
     sys_set.sysWarn.co2TimeoutEn = ON;
     sys_set.sysWarn.co2Timeoutseconds = 600;
     sys_set.sysWarn.tempTimeoutEn = ON;
     sys_set.sysWarn.tempTimeoutseconds = 600;
     sys_set.sysWarn.humidTimeoutEn = ON;
     sys_set.sysWarn.humidTimeoutseconds = 600;
+
+    sys_set.sysPara.dayNightMode = DAY_BY_TIME;
+#elif (HUB_SELECT == HUB_IRRIGSTION)
+    sys_set.sysWarn.phEn = ON;
+    sys_set.sysWarn.ecEn = ON;
+    sys_set.sysWarn.wtEn = ON;
+    sys_set.sysWarn.wlEn = ON;
+    sys_set.sysWarn.mmEn = ON;
+    sys_set.sysWarn.meEn = ON;
+    sys_set.sysWarn.mtEn = ON;
+    sys_set.sysWarn.autoFillTimeout = ON;
 
     for(u8 index = 0; index < TANK_LIST_MAX; index++)
     {
@@ -293,7 +296,15 @@ void initCloudProtocol(void)
         sys_set.tankWarnSet[index][3].func = F_S_WL;
         sys_set.tankWarnSet[index][3].max  = 100;
         sys_set.tankWarnSet[index][3].min  = 10;
-
+        sys_set.tankWarnSet[index][4].func = F_S_SW;
+        sys_set.tankWarnSet[index][4].max  = 900;
+        sys_set.tankWarnSet[index][4].min  = 100;
+        sys_set.tankWarnSet[index][5].func = F_S_SEC;
+        sys_set.tankWarnSet[index][5].max  = 100;
+        sys_set.tankWarnSet[index][5].min  = 8;
+        sys_set.tankWarnSet[index][6].func = F_S_ST;
+        sys_set.tankWarnSet[index][6].max  = 300;
+        sys_set.tankWarnSet[index][6].min  = 100;
     }
 
     for(u8 index = 0; index < SENSOR_MAX; index++)
@@ -306,8 +317,13 @@ void initCloudProtocol(void)
         sys_set.ec[index].ec_a = 1.0;
         sys_set.ec[index].ec_b = 0;
     }
+#endif
+    sys_set.sysWarn.offlineEn = ON;
+    sys_set.sysWarn.smokeEn = ON;
+    sys_set.sysWarn.waterEn = ON;
 
-    rt_memcpy(&sys_set.line2Set, &sys_set.line1Set, sizeof(proLine_t));
+    sys_set.sysPara.maintain = OFF;     //非维护状态
+    strcpy(sys_set.sysPara.ntpzone, "+00:00");
 
     initHubinfo();
 }
@@ -533,7 +549,6 @@ u8 *ReplyDataToCloud1(mqtt_client *client, u8 *cloudRes, u16 *len, u8 sendCloudF
         }
         else if(0 == rt_memcmp(CMD_SET_POOL_ALARM, cloudCmd.cmd, sizeof(CMD_SET_POOL_ALARM)))//设置水桶报警
         {
-            //str = ReplySetPoolAlarm(CMD_SET_POOL_ALARM, cloudCmd);
             str = ReplyGetPoolAlarm(CMD_SET_POOL_ALARM, cloudCmd);
         }
         else if(0 == rt_memcmp(CMD_GET_POOL_ALARM, cloudCmd.cmd, sizeof(CMD_GET_POOL_ALARM)))//获取水桶报警
@@ -1985,23 +2000,18 @@ u16 getVpd(void)
 void warnProgram(type_monitor_t *monitor, sys_set_t *set)
 {
     sensor_t        *sensor;
+
+#if(HUB_SELECT == HUB_ENVIRENMENT)
     u8              co2State    = OFF;
     u8              tempState   = OFF;
     u8              humiState   = OFF;
-    u8              tankState[TANK_LIST_MAX]    = {OFF,OFF,OFF,OFF};
-    u16             ec          = 0;
-    u16             ph          = 0;
-    u16             wt          = 0;
-    u16             wl          = 0;
     int             data        = 0;
     static u8       co2State_pre    = OFF;
     static u8       tempState_pre   = OFF;
     static u8       humiState_pre   = OFF;
-    static u8       tankState_pre[TANK_LIST_MAX]    = {OFF,OFF,OFF,OFF};
     static time_t   co2WarnTime;
     static time_t   tempWarnTime;
     static time_t   humiWarnTime;
-    static time_t   tankAutoValve[TANK_LIST_MAX];
     static u8       humiStateLow_pre    = OFF;
     static u8       humiStateHigh_pre   = OFF;
     static u8       tempStateLow_pre    = OFF;
@@ -2010,7 +2020,23 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
     static u8       co2StateHigh_pre    = OFF;
     static u8       vpdStateLow_pre     = OFF;
     static u8       vpdStateHigh_pre    = OFF;
+#elif(HUB_SELECT == HUB_IRRIGSTION)
+    u8              tankState[TANK_LIST_MAX]    = {OFF,OFF,OFF,OFF};
+    u16             ec          = 0;
+    u16             ph          = 0;
+    u16             wt          = 0;
+    u16             wl          = 0;
+    u16             sw          = 0;    //基质湿度
+    u16             sec         = 0;    //基质EC
+    u16             st          = 0;    //基质温度
+    static time_t   tankAutoValve[TANK_LIST_MAX];
+    static u8       tankState_pre[TANK_LIST_MAX]    = {OFF,OFF,OFF,OFF};
+#endif
+    static int      smog_Pre    = 0;
+    static int      leakage_Pre = 0;
 
+
+#if(HUB_SELECT == HUB_ENVIRENMENT)
     //白天
     if(DAY_TIME == set->dayOrNight)
     {
@@ -2734,6 +2760,7 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
             }
         }
     }
+#elif(HUB_SELECT == HUB_IRRIGSTION)
 
     //ph ec
     for(u8 tank = 0; tank < GetSysTank()->tank_size; tank++)
@@ -2763,6 +2790,18 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
                         else if(F_S_WL == sensor->__stora[sto].func)
                         {
                             wl = getSensorDataByAddr(monitor, sensor->addr, sto);
+                        }
+                        else if(F_S_SW == sensor->__stora[sto].func)
+                        {
+                            sw = getSensorDataByAddr(monitor, sensor->addr, sto);
+                        }
+                        else if(F_S_SEC == sensor->__stora[sto].func)
+                        {
+                            sec = getSensorDataByAddr(monitor, sensor->addr, sto);
+                        }
+                        else if(F_S_ST == sensor->__stora[sto].func)
+                        {
+                            st = getSensorDataByAddr(monitor, sensor->addr, sto);
                         }
                     }
                 }
@@ -2876,6 +2915,84 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
                     set->warn[WARN_WL_HIGHT - 1] = OFF;
                 }
             }
+            else if(F_S_SW == set->tankWarnSet[tank][item1].func)
+            {
+                if(ON == set->sysWarn.mmEn)
+                {
+                    if(sw < set->tankWarnSet[tank][item1].min)
+                    {
+                        set->warn[WARN_SOIL_W_LOW - 1] = ON;
+                        set->warn_value[WARN_SOIL_W_LOW - 1] = sw;
+                    }
+                    else if(sw > set->tankWarnSet[tank][item1].max)
+                    {
+                        set->warn[WARN_SOIL_W_HIGHT - 1] = ON;
+                        set->warn_value[WARN_SOIL_W_HIGHT - 1] = sw;
+                    }
+                    else
+                    {
+                        set->warn[WARN_SOIL_W_LOW - 1] = OFF;
+                        set->warn[WARN_SOIL_W_HIGHT - 1] = OFF;
+                    }
+                }
+                else
+                {
+                    set->warn[WARN_SOIL_W_LOW - 1] = OFF;
+                    set->warn[WARN_SOIL_W_HIGHT - 1] = OFF;
+                }
+            }
+            else if(F_S_SEC == set->tankWarnSet[tank][item1].func)
+            {
+                if(ON == set->sysWarn.meEn)
+                {
+                    if(sec < set->tankWarnSet[tank][item1].min)
+                    {
+                        set->warn[WARN_SOIL_EC_LOW - 1] = ON;
+                        set->warn_value[WARN_SOIL_EC_LOW - 1] = sec;
+                    }
+                    else if(sec > set->tankWarnSet[tank][item1].max)
+                    {
+                        set->warn[WARN_SOIL_EC_HIGHT - 1] = ON;
+                        set->warn_value[WARN_SOIL_EC_HIGHT - 1] = sec;
+                    }
+                    else
+                    {
+                        set->warn[WARN_SOIL_EC_LOW - 1] = OFF;
+                        set->warn[WARN_SOIL_EC_HIGHT - 1] = OFF;
+                    }
+                }
+                else
+                {
+                    set->warn[WARN_SOIL_EC_LOW - 1] = OFF;
+                    set->warn[WARN_SOIL_EC_HIGHT - 1] = OFF;
+                }
+            }
+            else if(F_S_ST == set->tankWarnSet[tank][item1].func)
+            {
+                if(ON == set->sysWarn.mtEn)
+                {
+                    if(st < set->tankWarnSet[tank][item1].min)
+                    {
+                        set->warn[WARN_SOIL_T_LOW - 1] = ON;
+                        set->warn_value[WARN_SOIL_T_LOW - 1] = st;
+                    }
+                    else if(st > set->tankWarnSet[tank][item1].max)
+                    {
+                        set->warn[WARN_SOIL_T_HIGHT - 1] = ON;
+                        set->warn_value[WARN_SOIL_T_HIGHT - 1] = st;
+                    }
+                    else
+                    {
+                        set->warn[WARN_SOIL_T_LOW - 1] = OFF;
+                        set->warn[WARN_SOIL_T_HIGHT - 1] = OFF;
+                    }
+                }
+                else
+                {
+                    set->warn[WARN_SOIL_T_LOW - 1] = OFF;
+                    set->warn[WARN_SOIL_T_HIGHT - 1] = OFF;
+                }
+            }
         }
 
         //自动补水超时报警
@@ -2928,6 +3045,59 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
         {
             set->warn[WARN_AUTOFILL_TIMEOUT - 1] = OFF;
         }
+    }
+#endif
+
+    //烟感//Justin debug 此处待验证
+    if(ON == set->sysWarn.smokeEn)
+    {
+        int value = getSensorDataByFunc(monitor, F_S_SM);
+        if(VALUE_NULL != value)
+        {
+            if(smog_Pre != value)
+            {
+                smog_Pre = value;
+
+                if(0x0100 == value)
+                {
+                    set->warn[WARN_SMOKE - 1] = ON;
+                }
+                else
+                {
+                    set->warn[WARN_SMOKE - 1] = OFF;
+                }
+            }
+        }
+    }
+    else
+    {
+        set->warn[WARN_SMOKE - 1] = OFF;
+    }
+
+    //漏水//Justin debug 此处待验证
+    if(ON == set->sysWarn.waterEn)
+    {
+        int value = getSensorDataByFunc(monitor, F_S_LK);
+        if(VALUE_NULL != value)
+        {
+            if(leakage_Pre != value)
+            {
+                leakage_Pre = value;
+
+                if(0x0100 == value)
+                {
+                    set->warn[WARN_WATER - 1] = ON;
+                }
+                else
+                {
+                    set->warn[WARN_WATER - 1] = OFF;
+                }
+            }
+        }
+    }
+    else
+    {
+        set->warn[WARN_WATER - 1] = OFF;
     }
 
     rt_memcpy(sys_warn, set->warn, WARN_MAX);
@@ -3524,7 +3694,8 @@ void sendwarnningInfo(void)
                             ((item + 1) == WARN_CO2_TIMEOUT)||
                             ((item + 1) == WARN_TEMP_TIMEOUT)||
                             ((item + 1) == WARN_HUMI_TIMEOUT)||
-                            ((item + 1) == WARN_SMOKE))
+                            ((item + 1) == WARN_SMOKE) ||
+                            ((item + 1) == WARN_WATER))
                         {
                             SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT_WARN, item, GetSysSet()->warn_value[item], RT_NULL, RT_NULL, YES, 0);
                         }
@@ -3537,6 +3708,7 @@ void sendwarnningInfo(void)
                             ((item + 1) == WARN_WT_LOW)||
                             ((item + 1) == WARN_WL_HIGHT)||
                             ((item + 1) == WARN_WL_LOW)||
+                            ((item + 1) == WARN_SMOKE) ||
                             ((item + 1) == WARN_WATER)||
                             ((item + 1) == WARN_AUTOFILL_TIMEOUT))
                         {
@@ -3571,7 +3743,8 @@ void sendwarnningInfo(void)
                                 ((item + 1) == WARN_CO2_TIMEOUT)||
                                 ((item + 1) == WARN_TEMP_TIMEOUT)||
                                 ((item + 1) == WARN_HUMI_TIMEOUT)||
-                                ((item + 1) == WARN_SMOKE))
+                                ((item + 1) == WARN_SMOKE)||
+                                ((item + 1) == WARN_WATER))
                             {
                                 if(RT_EOK == SendDataToCloud(RT_NULL, CMD_HUB_REPORT_WARN, item,
                                         GetSysSet()->warn_value[item], (u8 *)buf + sizeof(eth_page_head), &length, NO, 0))
@@ -3600,6 +3773,7 @@ void sendwarnningInfo(void)
                                 ((item + 1) == WARN_WT_LOW)||
                                 ((item + 1) == WARN_WL_HIGHT)||
                                 ((item + 1) == WARN_WL_LOW)||
+                                ((item + 1) == WARN_SMOKE) ||
                                 ((item + 1) == WARN_WATER)||
                                 ((item + 1) == WARN_AUTOFILL_TIMEOUT))
                             {

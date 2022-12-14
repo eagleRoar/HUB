@@ -160,7 +160,7 @@ void LedTaskEntry(void* parameter)
         rt_thread_mdelay(100);
     }
 }
-
+#if(HUB_SELECT == HUB_ENVIRENMENT)
 //报警逻辑: 如果是有标志报警的话就一直报 否则关闭
 void AlarmLedProgram(void)
 {
@@ -182,16 +182,19 @@ void AlarmLedProgram(void)
         rt_pin_write(ALARM_OUT, OFF);
     }
 }
+#endif
 
 void LedProgram(void)
 {
     type_monitor_t  *monitor        = RT_NULL;
     static u8       sensor_s        = 0;
     static u8       device_s        = 0;
-    static u8       line_s          = 0;
     static u8       sensor_cnt      = 0;
     static u8       device_cnt      = 0;
+#if(HUB_SELECT == HUB_ENVIRENMENT)
+    static u8       line_s          = 0;
     static u8       line_cnt        = 0;
+#endif
 
     monitor = GetMonitor();
 
