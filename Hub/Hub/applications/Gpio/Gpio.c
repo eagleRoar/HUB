@@ -72,6 +72,8 @@ void GpioInit(void)
     rt_pin_mode(BUTTON_DOWN, PIN_MODE_INPUT_PULLUP);
     rt_pin_mode(BUTTON_ENTER, PIN_MODE_INPUT_PULLUP);
     rt_pin_mode(BUTTON_UP, PIN_MODE_INPUT_PULLUP);
+
+    rt_pin_mode(SD_CTL_PIN, PIN_MODE_OUTPUT);
 }
 
 int sd_card_is_vaild(void)
