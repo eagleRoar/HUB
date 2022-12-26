@@ -50,9 +50,7 @@ u8 *ReplyDataToCloud1(mqtt_client *, u8 *,u16 *, u8);
 void co2Calibrate(type_monitor_t *monitor, int *data, u8 *do_cal_flg, u8 *saveFlg, PAGE_CB cb);
 void sendwarnningInfo(void);
 void sendOfflinewarnning(type_monitor_t *);
-void resetSysSetPhCal(void);
-void resetSysSetEcCal(void);
+void resetSysSetPhCal(u32);
+void resetSysSetEcCal(u32);
 //void autoValveClose(type_monitor_t *, sys_tank_t *);
-//void phCalibrate(type_monitor_t *, ph_cal_t *, sys_set_t *);
-//void ecCalibrate(type_monitor_t *, ec_cal_t *, sys_set_t *);
 #endif /* APPLICATIONS_CLOUDPROTOCOL_CLOUDPROTOCOL_H_ */

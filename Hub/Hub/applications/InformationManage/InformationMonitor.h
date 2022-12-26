@@ -48,7 +48,7 @@ typedef     struct eth_heart                eth_heart_t;
 #define     LINE_MAX                        2
 #define     SENSOR_VALUE_MAX                4
 #define     TIMER_GROUP                     12
-#define     WARN_MAX                        28
+#define     WARN_MAX                        34
 
 //默认值
 #define     COOLING_TARGET                  320
@@ -109,7 +109,7 @@ struct cycle
     u16     startAt;                                // 开启时间点 8:00 8*60=480
     int     duration;                               //持续时间 秒
     int     pauseTime;                              //停止时间 秒
-    u8      times;
+    u16     times;
 };
 struct timer
 {
@@ -178,6 +178,15 @@ struct device{
         u8      hvacMode;            //1-conventional 模式 2-HEAT PUM 模式 O 模式 3-HEAT PUM 模式 B 模式
     }_hvac;
 };
+
+typedef struct phec_sensor{
+    u8 addr[SENSOR_MAX];
+    u8 num;
+}phec_sensor_t;
+
+typedef struct ec_sensor{
+    u8 addr[SENSOR_MAX];
+}ec_sensor_t;
 
 enum{
     HVAC_NULL,
@@ -283,8 +292,8 @@ enum
     WARN_WT_LOW,
     WARN_WL_HIGHT,
     WARN_WL_LOW,
-    WARN_WATER,
-    WARN_SMOKE,
+    WARN_WATER,             //漏水
+    WARN_SMOKE,             //烟雾
     WARN_LINE_STATE,        //灯光状态异常 回复数据为ppfd 即当前显示的亮度
     WARN_LINE_AUTO_T,       //回复的值为当前的温度值
     WARN_LINE_AUTO_OFF,     //回复的值为当前的温度值
@@ -355,6 +364,7 @@ typedef     void (*FAC_FUNC)(type_monitor_t *);
 #define     PAR_TYPE        0x08
 #define     WATERlEVEL_TYPE 0x0A
 #define     SOIL_T_H_TYPE   0x0D        //土壤温湿度
+#define     O2_TYPE         0x0E        //氧气传感器
 #define     SMOG_TYPE       0x16        //烟雾传感器
 #define     LEAKAGE_TYPE    0x17        //漏水传感器
 #define     CO2_UP_TYPE     0x41
@@ -428,6 +438,7 @@ enum{
     F_S_SEC,    //土壤电导率
     F_S_SM,     //烟雾传感器
     F_S_LK,     //漏水传感器
+    F_S_O2,     //氧气传感器
 };
 
 /*设备工作状态 0-Off 1-On 2-PPM UP 3-FUZZY LOGIC

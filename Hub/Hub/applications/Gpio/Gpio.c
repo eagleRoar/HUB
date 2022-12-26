@@ -169,8 +169,7 @@ void AlarmLedProgram(void)
     if((ON == GetSysSet()->sysWarn.dayCo2Buzz && DAY_TIME == GetSysSet()->dayOrNight) ||
        (ON == GetSysSet()->sysWarn.nightCo2Buzz && NIGHT_TIME == GetSysSet()->dayOrNight))
     {
-        if((ON == GetSysSet()->warn[WARN_CO2_LOW - 1]) ||
-           (ON == GetSysSet()->warn[WARN_CO2_HIGHT - 1]))
+        if(ON == GetSysSet()->warn[WARN_CO2_HIGHT - 1])
         {
             rt_pin_write(ALARM_OUT, ON);
         }

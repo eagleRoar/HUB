@@ -13,7 +13,7 @@
 #include "Module.h"
 #include "InformationMonitor.h"
 
-
+static type_ctrl_t ctrl_pre[DEVICE_MAX][DEVICE_PORT_MAX];
 type_connect_t      senConnectState[SENSOR_MAX];
 type_connect_t      devConnectState[DEVICE_MAX];
 type_connect_t      lineConnectState[LINE_MAX];
@@ -24,12 +24,23 @@ u8                  special[DEVICE_MAX]           ={0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 u8                  deviceEvent         = 0;
 
 extern u8 saveModuleFlag;
+extern rt_mutex_t dynamic_mutex;
 
 void initConnectState(void)
 {
     rt_memset(senConnectState, 0, sizeof(type_connect_t) * SENSOR_MAX);
     rt_memset(devConnectState, 0, sizeof(type_connect_t) * DEVICE_MAX);
     rt_memset(lineConnectState, 0, sizeof(type_connect_t) * LINE_MAX);
+}
+
+void initCtrlPre(void)
+{
+    rt_memset(ctrl_pre, 0, sizeof(ctrl_pre));
+}
+
+type_ctrl_t getCtrlPre(u8 index, u8 port)
+{
+    return ctrl_pre[index][port];
 }
 
 u8 askSensorStorage(type_monitor_t *monitor, rt_device_t serial)
@@ -94,13 +105,13 @@ u8 askLineHeart(type_monitor_t *monitor, rt_device_t serial)
     static u8       state_pre[LINE_MAX]         = {0,0};
     static time_t   protectTime[LINE_MAX]       = {0,0};
 
-    if(ask_line >= monitor->line_size)
+    if(ask_line >= LINE_MAX)
     {
        //一个循环结束
         ask_line = 0;
     }
 
-    if(0 < monitor->line_size)
+    if(0 != monitor->line[ask_line].uuid)
     {
         buffer[0] = monitor->line[ask_line].addr;
         buffer[1] = WRITE_SINGLE;
@@ -189,6 +200,10 @@ u8 askLineHeart(type_monitor_t *monitor, rt_device_t serial)
         }
         lineConnectState[ask_line].send_state = ON;
     }
+    else
+    {
+        ask_line ++;
+    }
 
     ret = YES;
     return ret;
@@ -210,6 +225,8 @@ u8 askDeviceHeart_new(type_monitor_t *monitor, rt_device_t serial, u8 event)
     static u8       manual_state[DEVICE_MAX][DEVICE_PORT_MAX]   ={0};
     static u8       state_pre[DEVICE_MAX][DEVICE_PORT_MAX]      ={0};
     static time_t   protectTime[DEVICE_MAX][DEVICE_PORT_MAX]        ={0};
+
+    rt_mutex_take(dynamic_mutex, RT_WAITING_FOREVER);       //互斥锁上锁
 
     if(ask_device >= monitor->device_size)
     {
@@ -356,9 +373,11 @@ u8 askDeviceHeart_new(type_monitor_t *monitor, rt_device_t serial, u8 event)
         {
             device->port[port].ctrl.d_state = OFF;
             control[ask_device][port].d_state = OFF;
-            //LOG_D("in maintain, all device off");
         }
 
+        //该全局变量是为了上传给app
+        ctrl_pre[ask_device][port].d_state = device->port[port].ctrl.d_state;
+        ctrl_pre[ask_device][port].d_value = device->port[port].ctrl.d_value;
     }
 
     if(monitor->device_size > 0)
@@ -449,6 +468,8 @@ u8 askDeviceHeart_new(type_monitor_t *monitor, rt_device_t serial, u8 event)
         }
         devConnectState[ask_device].send_state = ON;
     }
+
+    rt_mutex_release(dynamic_mutex);        //互斥锁解锁
 
     return ret;
 }

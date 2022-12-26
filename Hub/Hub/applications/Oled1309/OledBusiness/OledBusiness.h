@@ -21,8 +21,8 @@ void DeviceStatePage_new(type_monitor_t *);
 void LineStatePage_new(type_monitor_t *);
 void qrcode(void);
 void SettingPage(type_page_t, u8);
-void UpdateAppProgram(type_page_t *,u32 *);
-void co2CalibratePage(type_page_t *, u32 *);
+void UpdateAppProgram(type_page_t *,u64 *);
+void co2CalibratePage(type_page_t *, u64 *);
 void factoryPage(type_page_t, u8);
 void SensorStatePage_fac(type_monitor_t *, u8 );
 void lineStatePage_fac(type_page_t *, type_monitor_t *, u8);
@@ -37,8 +37,8 @@ void deviceStatePage_fac(type_page_t *, type_monitor_t *, u8);
 void lineStageClose_Fa(type_monitor_t *);
 void PhEcCalibratePage(type_page_t *);
 
-void EcCalibratePage(type_page_t *);
 void PhCalCallBackPage(u8);
 void EcCalCallBackPage(u8);
 void testPage(void);
+void phecOnlinePage(u64 *, type_page_t *, type_monitor_t *, u8);
 #endif /* APPLICATIONS_OLED1309_OLEDBUSINESS_OLEDBUSINESS_H_ */

@@ -155,6 +155,9 @@ char *GetModelByType(u8 type, char *name, u8 len)
         case LEAKAGE_TYPE:
             strncpy(name, "BLS-WD", len);
             break;
+        case O2_TYPE:
+            strncpy(name, "BLS-O2", len);
+            break;
         default:
             break;
     }
@@ -204,7 +207,7 @@ u8 GetFuncByType(u8 type)
 
 char* GetTankSensorNameByType(u8 func)
 {
-    char ret[16] = "";
+    static char ret[16] = "";
 
     switch (func) {
         case F_S_WL:
@@ -220,13 +223,13 @@ char* GetTankSensorNameByType(u8 func)
             strncpy(ret, "EC", 2);
             break;
         case F_S_SW:
-            strncpy(ret, "Medium Moist", 2);
+            strncpy(ret, "Medium Moist", 12);
             break;
         case F_S_SEC:
-            strncpy(ret, "Medium EC", 2);
+            strncpy(ret, "Medium EC", 9);
             break;
         case F_S_ST:
-            strncpy(ret, "Medium Temp", 2);
+            strncpy(ret, "Medium Temp", 11);
             break;
 
         default:
@@ -362,7 +365,7 @@ rt_err_t setSensorDefault(sensor_t *module)
             module->__stora[0].func = F_S_WL;
             break;
         case SOIL_T_H_TYPE:     //土壤温湿度
-            setSensorDefaultPara(module, "BLS-MM", 0x0010, module->type, 3);
+            setSensorDefaultPara(module, "BLS-MM", 0x0000, module->type, 3);
             strncpy(module->__stora[0].name, "Soil_W", STORAGE_NAMESZ);
             module->__stora[0].value = 0;
             module->__stora[0].func = F_S_SW;
@@ -375,15 +378,21 @@ rt_err_t setSensorDefault(sensor_t *module)
             break;
         case SMOG_TYPE:
             setSensorDefaultPara(module, "BLS-SD", 0x0010, module->type, 1);
-            strncpy(module->__stora[0].name, "Smog", STORAGE_NAMESZ);
+            strncpy(module->__stora[0].name, "Water", STORAGE_NAMESZ);
             module->__stora[0].value = 0;
             module->__stora[0].func = F_S_SM;
             break;
         case LEAKAGE_TYPE:
             setSensorDefaultPara(module, "BLS-WD", 0x0010, module->type, 1);
-            strncpy(module->__stora[0].name, "Smog", STORAGE_NAMESZ);
+            strncpy(module->__stora[0].name, "Smoke", STORAGE_NAMESZ);
             module->__stora[0].value = 0;
             module->__stora[0].func = F_S_LK;
+            break;
+        case O2_TYPE:
+            setSensorDefaultPara(module, "BLS-O2", 0x0010, module->type, 1);//寄存器为0x0010
+            strncpy(module->__stora[0].name, "O2", STORAGE_NAMESZ);
+            module->__stora[0].value = 0;
+            module->__stora[0].func = F_S_O2;
             break;
         default:
             ret = RT_ERROR;
@@ -456,7 +465,7 @@ rt_err_t setDeviceDefault(device_t *module)
             setDeviceDefaultStora(module, 0 , "Pump", F_PUMP, module->type, addr , MANUAL_NO_HAND, 0);
             break;
         case IO_12_TYPE:
-            setDeviceDefaultPara(module, "BDC-12", 0x0401, S_IO_12, module->type, 12);
+            setDeviceDefaultPara(module, "BCB-12", 0x0401, S_IO_12, module->type, 12);
             for(u8 index = 0; index < module->storage_size; index++)
             {
                 module->port[index].type = VALVE_TYPE;//目前暂定都是阀
@@ -564,7 +573,8 @@ u8 getAllocateAddress(type_monitor_t *monitor, u8 type)
             if((monitor->allocateStr.address[i] != i) &&
                 (i != 0xFA) && (i != 0xFE) &&
                 !((i <= 0xEF) && (i >= 0xE0))
-                && (i >= 2) && (i != 0xFF) && (i != 0x18))//0xFA 是注册的代码 0xFE是PHEC通用 0x18是par特殊
+                && (i >= 2) && (i != 0xFF) && (i != 0x18) &&
+                (i != 0xFD))//0xFA 是注册的代码 0xFE是PHEC通用 0x18是par特殊, 0xFD为广播地址
             {
                 monitor->allocateStr.address[i] = i;
                 return i;
@@ -577,7 +587,8 @@ u8 getAllocateAddress(type_monitor_t *monitor, u8 type)
             if((monitor->allocateStr.address[i] != i) &&
                 (i != 0xFA) && (i != 0xFE) &&
                 !((i <= 0xEF) && (i >= 0xE0))
-                && (i >= 2) && (i != 0xFF) && (i != 0x18))//0xFA 是注册的代码 0xFE是PHEC通用 0x18是par特殊
+                && (i >= 2) && (i != 0xFF) && (i != 0x18) &&
+                (i != 0xFD))//0xFA 是注册的代码 0xFE是PHEC通用 0x18是par特殊
             {
                 monitor->allocateStr.address[i] = i;
                 return i;
@@ -599,6 +610,7 @@ u8 getSOrD(u8 type)
         case SOIL_T_H_TYPE:
         case SMOG_TYPE:
         case LEAKAGE_TYPE:
+        case O2_TYPE:
             ret = SENSOR_TYPE;
             break;
         case CO2_UP_TYPE:
@@ -660,7 +672,8 @@ void AnlyzeDeviceRegister(type_monitor_t *monitor, rt_device_t serial, u8 *data,
             {
                 if((PHEC_TYPE != sensor.type) &&
                    (WATERlEVEL_TYPE != sensor.type) &&
-                   (PAR_TYPE != sensor.type))
+                   (PAR_TYPE != sensor.type) &&
+                   (SOIL_T_H_TYPE != sensor.type))
                 {
                     sensor.addr = getAllocateAddress(monitor, sensor.type);
                 }
@@ -727,7 +740,6 @@ void AnlyzeDeviceRegister(type_monitor_t *monitor, rt_device_t serial, u8 *data,
     }
     else if(LINE1OR2_TYPE == s_or_d)
     {
-        //LOG_E("line uuid = %x",line.uuid);
         if(serial == rt_device_find(DEVICE_UART3))
         {
             if(NO == FindLine(monitor, line, &no))

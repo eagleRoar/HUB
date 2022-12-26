@@ -16,8 +16,57 @@
 #include "CloudProtocolBusiness.h"
 #include "UartDataLayer.h"
 
+phec_sensor_t phec_sensor;
+
+extern rt_mutex_t dynamic_mutex;
 extern void printLine(line_t);
 extern void GetNowSysSet(proTempSet_t *, proCo2Set_t *, proHumiSet_t *, proLine_t *, proLine_t *, struct recipeInfor *);
+
+//获取phec sensor
+//注意:如果有多线程使用该函数的时候需要使用锁
+phec_sensor_t* getPhEcList(type_monitor_t *monitor, u8 isOnline)
+{
+    u8 index    = 0;
+
+    rt_mutex_take(dynamic_mutex, RT_WAITING_FOREVER);//互斥锁上锁
+
+    rt_memset((u8 *)&phec_sensor, 0x00, sizeof(phec_sensor_t));
+
+    for(index = 0; index < monitor->sensor_size; index++)
+    {
+        if(PHEC_TYPE == monitor->sensor[index].type)
+        {
+            if(phec_sensor.num < SENSOR_MAX)
+            {
+                if(YES == isOnline)
+                {
+                    if(CON_FAIL != monitor->sensor[index].conn_state)
+                    {
+                        phec_sensor.addr[phec_sensor.num] = monitor->sensor[index].addr;
+                        phec_sensor.num++;
+                    }
+                }
+                else if(ON == isOnline)
+                {
+                    if(CON_FAIL == monitor->sensor[index].conn_state)
+                    {
+                        phec_sensor.addr[phec_sensor.num] = monitor->sensor[index].addr;
+                        phec_sensor.num++;
+                    }
+                }
+                else
+                {
+                    phec_sensor.addr[phec_sensor.num] = monitor->sensor[index].addr;
+                    phec_sensor.num++;
+                }
+            }
+        }
+    }
+
+    rt_mutex_release(dynamic_mutex);//互斥锁解锁
+
+    return &phec_sensor;
+}
 
 //删除设备
 void deleteModule(type_monitor_t *monitor, u8 addr)
@@ -71,26 +120,16 @@ void deleteModule(type_monitor_t *monitor, u8 addr)
 
     for(index = 0; index < monitor->line_size; index++)
     {
-        if(addr == monitor->line[index].addr)
+        if(0 != addr)
         {
-            monitor->allocateStr.address[addr] = 0x00;
-
-            break;
-        }
-    }
-
-    if(index != monitor->line_size)
-    {
-        if(index < (monitor->line_size - 1))
-        {
-            for(; index < monitor->line_size - 1; index++)
+            if(addr == monitor->line[index].addr)
             {
-                rt_memcpy((u8 *)&monitor->line[index], (u8 *)&monitor->line[index + 1], sizeof(line_t));
+                monitor->allocateStr.address[addr] = 0x00;
+                rt_memset((u8 *)&monitor->line[index], 0, sizeof(line_t));
+                monitor->line_size -= 1;
+                break;
             }
         }
-        //最后
-//        rt_memset((u8 *)&monitor->line[monitor->line_size - 1], 0, sizeof(line_t));
-        monitor->line_size -= 1;
     }
 
     //删除sensor
@@ -223,15 +262,31 @@ u8 FindLine(type_monitor_t *monitor, line_t module, u8 *no)
     u8          index       = 0;
     u8          ret         = NO;
 
-    *no = monitor->line_size;
-    for (index = 0; index < monitor->line_size; index++)
+    //查询是否有存在
+    for(index = 0; index < LINE_MAX; index++)
     {
-        if (monitor->line[index].uuid == module.uuid)
+        if(monitor->line[index].uuid == module.uuid)
         {
             *no = index;
             ret = YES;
+            return  ret;
         }
     }
+
+    if(monitor->line_size < LINE_MAX)
+    {
+        for(index = 0; index < LINE_MAX; index++)
+        {
+            if(0 == monitor->line[index].uuid)
+            {
+                *no = index;
+                ret = NO;
+                monitor->line_size ++;
+                break;
+            }
+        }
+    }
+
     return ret;
 }
 
@@ -424,6 +479,21 @@ sensor_t *GetSensorByAddr(type_monitor_t *monitor, u8 addr)
     for(index = 0; index < monitor->sensor_size; index++)
     {
         if(addr == monitor->sensor[index].addr)
+        {
+            return &(monitor->sensor[index]);
+        }
+    }
+
+    return RT_NULL;
+}
+
+sensor_t *GetSensorByuuid(type_monitor_t *monitor, u32 uuid)
+{
+    u8      index       = 0;
+
+    for(index = 0; index < monitor->sensor_size; index++)
+    {
+        if(uuid == monitor->sensor[index].uuid)
         {
             return &(monitor->sensor[index]);
         }

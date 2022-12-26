@@ -51,4 +51,6 @@ void setDeviceEvent(u8);
 u8 getDeviceEvent(void);
 rt_err_t changeCharToDate(char*, type_sys_time *);
 rt_err_t changeDataToChar(char*, type_sys_time *);
+void initCtrlPre(void);
+type_ctrl_t getCtrlPre(u8 , u8);
 #endif /* APPLICATIONS_UART_BUSSINESSLAYER_UARTBUSSINESS_H_ */

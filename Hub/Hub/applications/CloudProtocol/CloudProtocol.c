@@ -30,6 +30,8 @@ extern struct ethDeviceStruct *eth;
 extern int tcp_sock;
 extern void getRealTimeForMat(type_sys_time *);
 extern const u8    HEAD_CODE[4];
+extern phcal_data_t phdataTemp[SENSOR_MAX];
+extern eccal_data_t ecdataTemp[SENSOR_MAX];
 
 //特殊说明 传入的tm 的格式是year 需要减去1900 month需要减去1 范围0-11
 struct tm* getTimeStampByDate(time_t *t)
@@ -329,23 +331,29 @@ void initCloudProtocol(void)
 }
 
 //清除ph校准参数
-void resetSysSetPhCal(void)
+void resetSysSetPhCal(u32 uuid)
 {
     for(u8 index = 0; index < SENSOR_MAX; index++)
     {
-        sys_set.ph[index].uuid = 0;
-        sys_set.ph[index].ph_a = 1.0;
-        sys_set.ph[index].ph_b = 0;
+        if(uuid == sys_set.ph[index].uuid)
+        {
+            sys_set.ph[index].uuid = 0;
+            sys_set.ph[index].ph_a = 1.0;
+            sys_set.ph[index].ph_b = 0;
+        }
     }
 }
 
-void resetSysSetEcCal(void)
+void resetSysSetEcCal(u32 uuid)
 {
     for(u8 index = 0; index < SENSOR_MAX; index++)
     {
-        sys_set.ec[index].uuid = 0;
-        sys_set.ec[index].ec_a = 1.0;
-        sys_set.ec[index].ec_b = 0;
+        if(uuid == sys_set.ec[index].uuid)
+        {
+            sys_set.ec[index].uuid = 0;
+            sys_set.ec[index].ec_a = 1.0;
+            sys_set.ec[index].ec_b = 0;
+        }
     }
 }
 
@@ -3048,7 +3056,7 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
     }
 #endif
 
-    //烟感//Justin debug 此处待验证
+    //烟感
     if(ON == set->sysWarn.smokeEn)
     {
         int value = getSensorDataByFunc(monitor, F_S_SM);
@@ -3058,7 +3066,7 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
             {
                 smog_Pre = value;
 
-                if(0x0100 == value)
+                if(0x01 == value)
                 {
                     set->warn[WARN_SMOKE - 1] = ON;
                 }
@@ -3074,7 +3082,7 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
         set->warn[WARN_SMOKE - 1] = OFF;
     }
 
-    //漏水//Justin debug 此处待验证
+    //漏水
     if(ON == set->sysWarn.waterEn)
     {
         int value = getSensorDataByFunc(monitor, F_S_LK);
@@ -3084,7 +3092,7 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
             {
                 leakage_Pre = value;
 
-                if(0x0100 == value)
+                if(0x01 == value)
                 {
                     set->warn[WARN_WATER - 1] = ON;
                 }
@@ -3710,7 +3718,13 @@ void sendwarnningInfo(void)
                             ((item + 1) == WARN_WL_LOW)||
                             ((item + 1) == WARN_SMOKE) ||
                             ((item + 1) == WARN_WATER)||
-                            ((item + 1) == WARN_AUTOFILL_TIMEOUT))
+                            ((item + 1) == WARN_AUTOFILL_TIMEOUT) ||
+                            ((item + 1) == WARN_SOIL_W_HIGHT) ||
+                            ((item + 1) == WARN_SOIL_W_LOW)||
+                            ((item + 1) == WARN_SOIL_T_HIGHT) ||
+                            ((item + 1) == WARN_SOIL_T_LOW)||
+                            ((item + 1) == WARN_SOIL_EC_HIGHT) ||
+                            ((item + 1) == WARN_SOIL_EC_LOW))
                         {
                             SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT_WARN, item, GetSysSet()->warn_value[item], RT_NULL, RT_NULL, YES, 0);
                         }
@@ -3775,7 +3789,13 @@ void sendwarnningInfo(void)
                                 ((item + 1) == WARN_WL_LOW)||
                                 ((item + 1) == WARN_SMOKE) ||
                                 ((item + 1) == WARN_WATER)||
-                                ((item + 1) == WARN_AUTOFILL_TIMEOUT))
+                                ((item + 1) == WARN_AUTOFILL_TIMEOUT)||
+                                ((item + 1) == WARN_SOIL_W_HIGHT) ||
+                                ((item + 1) == WARN_SOIL_W_LOW)||
+                                ((item + 1) == WARN_SOIL_T_HIGHT) ||
+                                ((item + 1) == WARN_SOIL_T_LOW)||
+                                ((item + 1) == WARN_SOIL_EC_HIGHT) ||
+                                ((item + 1) == WARN_SOIL_EC_LOW))
                             {
                                 //rt_memset(package.data, ' ', SEND_ETH_BUFFSZ);
                                 if(RT_EOK == SendDataToCloud(RT_NULL, CMD_HUB_REPORT_WARN, item,
@@ -3815,152 +3835,217 @@ void sendwarnningInfo(void)
  * @param set
  * 逻辑:在线的ph参加校正
  */
-void phCalibrate(type_monitor_t *monitor, ph_cal_t *ph, sys_set_t *set)
+void phCalibrate1(sensor_t *sensor, type_monitor_t *monitor, ph_cal_t *ph, sys_set_t *set)
 {
-    u8              index               = 0;
-    u8              port                = 0;
-    sensor_t        sensor;
-    static int      data_ph_7[SENSOR_MAX];
-    static int      data_ph_4[SENSOR_MAX];
+    u8                  index       = 0;
+    u8                  port        = 0;
+    u8                  item        = 0;
+    phcal_data_t        *data       = RT_NULL;
 
-    if(getTimeStamp() < (ph->time + 100))
+    //1.获取当前已经存在的数据存储模块
+    for(index = 0; index < SENSOR_MAX; index++)
     {
-        for(index = 0; index < monitor->sensor_size; index++)
+        if(sensor->uuid == phdataTemp[index].uuid)
         {
-            sensor = monitor->sensor[index];
-            for(port = 0; port < sensor.storage_size; port++)
+            data = &phdataTemp[index];
+            break;
+        }
+    }
+
+    if(index == SENSOR_MAX)
+    {
+        for(index = 0; index < SENSOR_MAX; index++)
+        {
+            if(0 == phdataTemp[index].uuid)
             {
-                if(F_S_PH == sensor.__stora[port].func)
+                phdataTemp[index].uuid = sensor->uuid;
+                data = &phdataTemp[index];
+                break;
+            }
+        }
+    }
+
+    //2.计算
+    if(RT_NULL != data)
+    {
+        if(getTimeStamp() < (ph->time + 100))
+        {
+            for(port = 0; port < sensor->storage_size; port++)
+            {
+                if(F_S_PH == sensor->__stora[port].func)
                 {
-                    if(CON_FAIL == sensor.conn_state)
+                    if(CON_FAIL == sensor->conn_state)
                     {
-                        data_ph_7[index] = VALUE_NULL;
-                        data_ph_4[index] = VALUE_NULL;
+                        data->data_ph_7 = VALUE_NULL;
+                        data->data_ph_4 = VALUE_NULL;
                     }
                     else
                     {
                         if(CAL_INCAL == ph->cal_7_flag)
                         {
-                            data_ph_7[index] = sensor.__stora[port].value;
+                            data->data_ph_7 = sensor->__stora[port].value;
                         }
                         else if(CAL_INCAL == ph->cal_4_flag)
                         {
-                            data_ph_4[index] = sensor.__stora[port].value;
+                            data->data_ph_4 = sensor->__stora[port].value;
                         }
                     }
                 }
             }
         }
-    }
-    else
-    {
-
-        if(CAL_INCAL == ph->cal_7_flag)
+        else
         {
-            ph->cal_7_flag = CAL_YES;
-        }
+            if(CAL_INCAL == ph->cal_7_flag)
+            {
+                ph->cal_7_flag = CAL_YES;
+            }
 
-        if(CAL_INCAL == ph->cal_4_flag)
-        {
-            ph->cal_4_flag = CAL_YES;
-        }
+            if(CAL_INCAL == ph->cal_4_flag)
+            {
+                ph->cal_4_flag = CAL_YES;
+            }
 
-        for(index = 0; index < monitor->sensor_size; index++)
-        {
-            if(data_ph_7[index] != data_ph_4[index])
+            if(data->data_ph_7 != data->data_ph_4)
             {
                 if((CAL_YES == ph->cal_4_flag) && (CAL_YES == ph->cal_7_flag))
                 {
-                    set->ph[index].uuid = monitor->sensor[index].uuid;
-                    set->ph[index].ph_a = 300 / (float) (data_ph_7[index] - data_ph_4[index]);
-                    set->ph[index].ph_b = 700 - set->ph[index].ph_a * data_ph_7[index];  //计算偏移值
-                }
-            }
-        }
+                    //将结果存储起来
+                    for(item = 0; item < SENSOR_MAX; item++)
+                    {
+                        if(set->ph[item].uuid == sensor->uuid)
+                        {
+                            set->ph[item].ph_a = 300 / (float) (data->data_ph_7 - data->data_ph_4);
+                            set->ph[item].ph_b = 700 - set->ph[item].ph_a * data->data_ph_7;  //计算偏移值
+                            break;
+                        }
+                    }
 
-        /*for(int i = 0; i < monitor->sensor_size; i++)
-        {
-            printf("ph %d, ph_a = %f, ph_b = %f\r\n",
-                    i,set->ph[i].ph_a, set->ph[i].ph_b);
-            LOG_I("data_ph_7 = %d, data_ph_4 = %d",data_ph_7[i],data_ph_4[i]);
-        }*/
-        set->saveFlag = YES;
+                    if(item == SENSOR_MAX)
+                    {
+                        for(item = 0; item < SENSOR_MAX; item++)
+                        {
+                            if(RT_NULL == GetSensorByuuid(monitor, set->ph[item].uuid))
+                            {
+                                set->ph[item].uuid = sensor->uuid;
+                                set->ph[item].ph_a = 300 / (float) (data->data_ph_7 - data->data_ph_4);
+                                set->ph[item].ph_b = 700 - set->ph[item].ph_a * data->data_ph_7;  //计算偏移值
+                                break;
+                            }
+                        }
+                    }
+                }
+
+            }
+
+            set->saveFlag = YES;
+        }
     }
 }
 
-
-void ecCalibrate(type_monitor_t *monitor, ec_cal_t *ec, sys_set_t *set)
+void ecCalibrate1(sensor_t *sensor, type_monitor_t *monitor, ec_cal_t *ec, sys_set_t *set)
 {
-    u8              index               = 0;
-    u8              port                = 0;
-    sensor_t        sensor;
-    static int      data_ec_0[SENSOR_MAX];
-    static int      data_ec_141[SENSOR_MAX];
+    u8                  index       = 0;
+    u8                  port        = 0;
+    u8                  item        = 0;
+    eccal_data_t        *data       = RT_NULL;
 
-    if(getTimeStamp() < (ec->time + 30))
+    //1.获取当前已经存在的数据存储模块
+    for(index = 0; index < SENSOR_MAX; index++)
     {
-        for(index = 0; index < monitor->sensor_size; index++)
+        if(sensor->uuid == ecdataTemp[index].uuid)
         {
-            sensor = monitor->sensor[index];
+            data = &ecdataTemp[index];
+            break;
+        }
+    }
 
-            for(port = 0; port < sensor.storage_size; port++)
+    if(index == SENSOR_MAX)
+    {
+        for(index = 0; index < SENSOR_MAX; index++)
+        {
+            if(0 == ecdataTemp[index].uuid)
             {
-                if(F_S_EC == sensor.__stora[port].func)
+                ecdataTemp[index].uuid = sensor->uuid;
+                data = &ecdataTemp[index];
+                break;
+            }
+        }
+    }
+
+    //2.计算
+    if(RT_NULL != data)
+    {
+        if(getTimeStamp() < (ec->time + 30))
+        {
+            for(port = 0; port < sensor->storage_size; port++)
+            {
+                if(F_S_EC == sensor->__stora[port].func)
                 {
-                    if(CON_FAIL == sensor.conn_state)
+                    if(CON_FAIL == sensor->conn_state)
                     {
-                        data_ec_0[index] = VALUE_NULL;
-                        data_ec_141[index] = VALUE_NULL;
+                        data->data_ec_0 = VALUE_NULL;
+                        data->data_ec_141 = VALUE_NULL;
                     }
                     else
                     {
                         if(CAL_INCAL == ec->cal_0_flag)
                         {
-                            data_ec_0[index] = sensor.__stora[port].value;
+                            data->data_ec_0 = sensor->__stora[port].value;
                         }
                         else if(CAL_INCAL == ec->cal_141_flag)
                         {
-                            data_ec_141[index] = sensor.__stora[port].value;
+                            data->data_ec_141 = sensor->__stora[port].value;
                         }
                     }
                 }
             }
         }
-    }
-    else
-    {
-//        ec->cb(3);
-
-        if(CAL_INCAL == ec->cal_0_flag)
+        else
         {
-            ec->cal_0_flag = CAL_YES;
-        }
+            if(CAL_INCAL == ec->cal_0_flag)
+            {
+                ec->cal_0_flag = CAL_YES;
+            }
 
-        if(CAL_INCAL == ec->cal_141_flag)
-        {
-            ec->cal_141_flag = CAL_YES;
-        }
+            if(CAL_INCAL == ec->cal_141_flag)
+            {
+                ec->cal_141_flag = CAL_YES;
+            }
 
-        for(index = 0; index < monitor->sensor_size; index++)
-        {
-            if(data_ec_0[index] != data_ec_141[index])
+            if(data->data_ec_0 != data->data_ec_141)
             {
                 if((CAL_YES == ec->cal_0_flag) && (CAL_YES == ec->cal_141_flag))
                 {
-                    set->ec[index].uuid = monitor->sensor[index].uuid;
-                    set->ec[index].ec_a = 141 / (float) (data_ec_141[index] - data_ec_0[index]);
-                    set->ec[index].ec_b = -1 * (141 * data_ec_0[index]) / (data_ec_141[index] - data_ec_0[index]);
+                    //将结果存储起来
+                    for(item = 0; item < SENSOR_MAX; item++)
+                    {
+                        if(set->ec[item].uuid == sensor->uuid)
+                        {
+                            set->ec[item].ec_a = 141 / (float) (data->data_ec_141 - data->data_ec_0);
+                            set->ec[item].ec_b = -1 * (141 * data->data_ec_0) / (data->data_ec_141 - data->data_ec_0);
+                            break;
+                        }
+                    }
+
+                    if(item == SENSOR_MAX)
+                    {
+                        for(item = 0; item < SENSOR_MAX; item++)
+                        {
+                            if(RT_NULL == GetSensorByuuid(monitor, set->ec[item].uuid))
+                            {
+                                set->ec[item].uuid = sensor->uuid;
+                                set->ec[item].ec_a = 141 / (float) (data->data_ec_141 - data->data_ec_0);
+                                set->ec[item].ec_b = -1 * (141 * data->data_ec_0) / (data->data_ec_141 - data->data_ec_0);
+                                break;
+                            }
+                        }
+                    }
                 }
+
             }
+
+            set->saveFlag = YES;
         }
-
-        /*for(int i = 0; i < monitor->sensor_size; i++)
-        {
-            printf("ph %d, ph_a = %f, ph_b = %f\r\n",
-                    i,set->ec[i].ec_a, set->ec[i].ec_b);
-            LOG_I("data_ec_0 = %d, data_ec_7 = %d",data_ec_0[i],data_ec_141[i]);
-        }*/
-
-        set->saveFlag = YES;
     }
 }
+

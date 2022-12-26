@@ -465,7 +465,7 @@ void CmdSetPortSet(char *data, cloudcmd_t *cmd)
 #endif
                     GetValueByInt(temp, "duration", &device->port[port].cycle.duration);
                     GetValueByInt(temp, "pauseTime", &device->port[port].cycle.pauseTime);
-                    GetValueByU8(temp, "times", &device->port[port].cycle.times);
+                    GetValueByU16(temp, "times", &device->port[port].cycle.times);
                 }
             }
         }
@@ -3111,7 +3111,8 @@ char *ReplyGetPumpSensorList(char *cmd, cloudcmd_t cloud)
                 type = 0;
                 sensor = GetMonitor()->sensor[index];
                 if(PHEC_TYPE == sensor.type ||
-                   WATERlEVEL_TYPE == sensor.type)
+                   WATERlEVEL_TYPE == sensor.type ||
+                   SOIL_T_H_TYPE == sensor.type)
                 {
                     //2.遍历 sysTank 里面的sensor
                     for(u8 no = 0; no < TANK_LIST_MAX; no++)
@@ -4318,7 +4319,7 @@ char *ReplyGetDeviceList(char *cmd, char *msgid)
                         {
                             if(HVAC_6_TYPE == module->port[0].type)
                             {
-                                if(((module->port[0].ctrl.d_state << 8) + module->port[0].ctrl.d_value) > 0)
+                                if(((getCtrlPre(index, 0).d_state << 8) + getCtrlPre(index, 0).d_value) > 0)
                                 {
                                     work_state = ON;
                                 }
@@ -4329,7 +4330,7 @@ char *ReplyGetDeviceList(char *cmd, char *msgid)
                             }
                             else if(IR_AIR_TYPE == module->port[0].type)
                             {
-                                if(0 == (module->port[0].ctrl.d_state & 0x80))
+                                if(0 == (getCtrlPre(index, 0).d_state & 0x80))
                                 {
                                     work_state = OFF;
                                 }
@@ -4340,7 +4341,7 @@ char *ReplyGetDeviceList(char *cmd, char *msgid)
                             }
                             else
                             {
-                                work_state = module->port[0].ctrl.d_state;
+                                work_state = getCtrlPre(index, 0).d_state;
                             }
                         }
                         else if(MANUAL_HAND_ON == module->port[0].manual.manual)
@@ -4411,7 +4412,8 @@ char *ReplyGetDeviceList(char *cmd, char *msgid)
                                     {
                                         if(HVAC_6_TYPE == module->port[storage].type)
                                         {
-                                            if(((module->port[storage].ctrl.d_state << 8) + module->port[storage].ctrl.d_value) > 0)
+                                            if(((getCtrlPre(index, storage).d_state << 8) + getCtrlPre(index, storage).d_value) > 0)
+//                                            if(((module->port[storage].ctrl.d_state << 8) + module->port[storage].ctrl.d_value) > 0)
                                             {
                                                 work_state = ON;
                                             }
@@ -4422,7 +4424,7 @@ char *ReplyGetDeviceList(char *cmd, char *msgid)
                                         }
                                         else
                                         {
-                                            work_state = module->port[storage].ctrl.d_state;
+                                            work_state = getCtrlPre(index, storage).d_state;
                                         }
                                     }
                                     else if(MANUAL_HAND_ON == module->port[storage].manual.manual)
@@ -4480,35 +4482,38 @@ char *ReplyGetDeviceList(char *cmd, char *msgid)
                 }
             }
 
-            for(line_no = 0; line_no < GetMonitor()->line_size; line_no++)
+            for(line_no = 0; line_no < LINE_MAX; line_no++)
             {
                 line = GetMonitor()->line[line_no];
 
-                line_i = cJSON_CreateObject();
-
-                if(RT_NULL != line_i)
+                if(0x00 != line.uuid)
                 {
-                    cJSON_AddStringToObject(line_i, "name", line.name);
-                    cJSON_AddNumberToObject(line_i, "id", line.addr);
-                    cJSON_AddNumberToObject(line_i, "mainType", 4);
-                    cJSON_AddNumberToObject(line_i, "type", line.type);
-                    cJSON_AddNumberToObject(line_i, "lineNo", line_no + 1);
-                    cJSON_AddNumberToObject(line_i, "manual", line._manual.manual);
+                    line_i = cJSON_CreateObject();
 
-                    if(CON_FAIL == line.conn_state)
+                    if(RT_NULL != line_i)
                     {
-                        cJSON_AddNumberToObject(line_i, "online", 0);
-                        cJSON_AddNumberToObject(line_i, "workingStatus", OFF);
-                    }
-                    else
-                    {
-                        cJSON_AddNumberToObject(line_i, "online", 1);
-                        cJSON_AddNumberToObject(line_i, "workingStatus", line.d_state);
-                    }
-                    cJSON_AddNumberToObject(line_i, "lightType", GetSysSet()->line1Set.lightsType);
-                    cJSON_AddNumberToObject(line_i, "lightPower", line.d_value);
+                        cJSON_AddStringToObject(line_i, "name", line.name);
+                        cJSON_AddNumberToObject(line_i, "id", line.addr);
+                        cJSON_AddNumberToObject(line_i, "mainType", 4);
+                        cJSON_AddNumberToObject(line_i, "type", line.type);
+                        cJSON_AddNumberToObject(line_i, "lineNo", line_no + 1);
+                        cJSON_AddNumberToObject(line_i, "manual", line._manual.manual);
 
-                    cJSON_AddItemToArray(list, line_i);
+                        if(CON_FAIL == line.conn_state)
+                        {
+                            cJSON_AddNumberToObject(line_i, "online", 0);
+                            cJSON_AddNumberToObject(line_i, "workingStatus", OFF);
+                        }
+                        else
+                        {
+                            cJSON_AddNumberToObject(line_i, "online", 1);
+                            cJSON_AddNumberToObject(line_i, "workingStatus", line.d_state);
+                        }
+                        cJSON_AddNumberToObject(line_i, "lightType", GetSysSet()->line1Set.lightsType);
+                        cJSON_AddNumberToObject(line_i, "lightPower", line.d_value);
+
+                        cJSON_AddItemToArray(list, line_i);
+                    }
                 }
             }
 

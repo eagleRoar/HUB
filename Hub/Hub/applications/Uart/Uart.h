@@ -32,19 +32,33 @@ struct rx_msg
 
 typedef struct ph_cal
 {
-    u8 cal_7_flag;
-    u8 cal_4_flag;
-    time_t time;
-    PAGE_CB cb;
+    u8      cal_7_flag;
+    u8      cal_4_flag;
+    time_t  time;
+    u32     uuid;
 }ph_cal_t;
 
 typedef struct ec_cal
 {
-    u8 cal_0_flag;
-    u8 cal_141_flag;
-    time_t time;
-    PAGE_CB cb;
+    u8      cal_0_flag;
+    u8      cal_141_flag;
+    time_t  time;
+    u32     uuid;
 }ec_cal_t;
+
+typedef struct ph_cal_data
+{
+    int data_ph_7;
+    int data_ph_4;
+    u32 uuid;
+}phcal_data_t;
+
+typedef struct ec_cal_data
+{
+    int data_ec_0;
+    int data_ec_141;
+    u32 uuid;
+}eccal_data_t;
 
 void SensorUart2TaskEntry(void* parameter);
 void SensorUart2TaskInit(void);
@@ -52,4 +66,8 @@ type_monitor_t *GetMonitor(void);
 void initMonitor(void);
 ph_cal_t *getPhCal(void);
 ec_cal_t *getEcCal(void);
+ph_cal_t *getPhCalByuuid(u32);
+ec_cal_t *getEcCalByuuid(u32);
+void setPhCalWithUUID(u32);
+void setEcCalWithUUID(u32);
 #endif /* APPLICATIONS_UART_H_ */

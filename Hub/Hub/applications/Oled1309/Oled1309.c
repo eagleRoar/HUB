@@ -23,13 +23,14 @@ extern "C" {
 #include "ascii_fonts.h"
 #include "ST7567.h"
 #include "qrcode.h"
+#include "Module.h"
 
 #define  GO_RIGHT  1
 #define  GO_LEFT   2
 
 u8              reflash_flag        = OFF;
 type_page_t     pageSelect;
-u32             pageInfor           = 0x00000000;   //只支持最多四级目录
+u64             pageInfor           = 0x00000000;   //只支持最多四级目录
 time_t          backlightTime;
 u8              factory_mode        = NO;
 u8      next_flag   = NO;
@@ -38,7 +39,8 @@ __attribute__((section(".ccmbss"))) u8 oled_task[1024*3];
 __attribute__((section(".ccmbss"))) struct rt_thread oled_thread;
 
 extern void PhCalibratePage(type_page_t *, ph_cal_t *);
-extern void ecCalibratePage(type_page_t *, ec_cal_t *);
+extern void EcCalibratePage(type_page_t *, ec_cal_t *);
+extern u32 now_phec_uuid;
 
 #define SSD1309_8080_PIN_D0                    64  // PE0
 #define SSD1309_8080_PIN_D1                    65  // PE1
@@ -189,6 +191,8 @@ void pageSelectSet(u8 show,u8 home, u8 max)
 
 static void pageSetting(u8 page)
 {
+    phec_sensor_t *phec;
+
     switch (page)
     {
         case HOME_PAGE:
@@ -223,6 +227,16 @@ static void pageSetting(u8 page)
 
         case CO2_CALIBRATE_PAGE:
             pageSelectSet(NO, 1, 2);
+            break;
+
+        case PH_ONLINE_PAGE:
+            phec = getPhEcList(GetMonitor(), YES);
+            pageSelectSet(NO, 1, phec->num);
+            break;
+
+        case EC_ONLINE_PAGE:
+            phec = getPhEcList(GetMonitor(), YES);
+            pageSelectSet(NO, 1, phec->num);
             break;
 
         case PHEC_CALIBRATE_PAGE:
@@ -435,20 +449,39 @@ static void pageProgram(u8 page)
                 if(1 == pageSelect.cusor)
                 {
                     pageInfor <<= 8;
-                    pageInfor |= PH_CALIBRATE_PAGE;
+                    pageInfor |= PH_ONLINE_PAGE;
                 }
                 else if(2 == pageSelect.cusor)
                 {
                     pageInfor <<= 8;
-                    pageInfor |= EC_CALIBRATE_PAGE;
+                    pageInfor |= EC_ONLINE_PAGE;
                 }
 
                 pageSelect.select = OFF;
             }
             break;
 
+        case PH_ONLINE_PAGE:
+
+            phecOnlinePage(&pageInfor, &pageSelect, GetMonitor(), F_S_PH);
+            if(ON == pageSelect.select)
+            {
+                pageSelect.select = OFF;
+            }
+            break;
+
+        case EC_ONLINE_PAGE:
+
+            phecOnlinePage(&pageInfor, &pageSelect, GetMonitor(), F_S_EC);
+            if(ON == pageSelect.select)
+            {
+                pageSelect.select = OFF;
+            }
+            break;
+
         case PH_CALIBRATE_PAGE:
-            PhCalibratePage(&pageSelect, getPhCal());
+
+            PhCalibratePage(&pageSelect, getPhCalByuuid(now_phec_uuid));
             if(ON == pageSelect.select)
             {
                 pageSelect.select = OFF;
@@ -456,7 +489,7 @@ static void pageProgram(u8 page)
             break;
 
         case EC_CALIBRATE_PAGE:
-            ecCalibratePage(&pageSelect, getEcCal());
+            EcCalibratePage(&pageSelect, getEcCalByuuid(now_phec_uuid));
             if(ON == pageSelect.select)
             {
                 pageSelect.select = OFF;
@@ -574,6 +607,7 @@ void OledTaskEntry(void* parameter)
         //3s event
         if(ON == Timer3sTouch)
         {
+
             if((SENSOR_STATE_PAGE == nowPage) ||
                (DEVICE_STATE_PAGE == nowPage) ||
                (FA_SENSOR_PAGE == nowPage) ||

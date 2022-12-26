@@ -40,6 +40,7 @@ int main(void)
     u8              res                 = 0;
     static u8       sensor_size         = 0;
     static u8       device_size         = 0;
+    static u8       line_size           = 0;
     static u8       cnt                 = 0;
     static u8       start_warn_flg      = NO;
     static u8       Timer100msTouch     = OFF;
@@ -180,18 +181,15 @@ int main(void)
             }
             else if(DAY_BY_PHOTOCELL == GetSysSet()->sysPara.dayNightMode)//按灯光分辨
             {
-                for(u8 index = 0; index < GetSensorByType(GetMonitor(), BHS_TYPE)->storage_size; index++)
+                if(VALUE_NULL != getSensorDataByFunc(GetMonitor(), F_S_LIGHT))
                 {
-                    if(F_S_LIGHT == GetSensorByType(GetMonitor(), BHS_TYPE)->__stora[index].func)
+                    if(getSensorDataByFunc(GetMonitor(), F_S_LIGHT) > GetSysSet()->sysPara.photocellSensitivity)
                     {
-                        if(GetSensorByType(GetMonitor(), BHS_TYPE)->__stora[index].value > GetSysSet()->sysPara.photocellSensitivity)
-                        {
-                            GetSysSet()->dayOrNight = DAY_TIME;
-                        }
-                        else
-                        {
-                            GetSysSet()->dayOrNight = NIGHT_TIME;
-                        }
+                        GetSysSet()->dayOrNight = DAY_TIME;
+                    }
+                    else
+                    {
+                        GetSysSet()->dayOrNight = NIGHT_TIME;
                     }
                 }
             }
@@ -212,6 +210,15 @@ int main(void)
                 for(int index = 0; index < device_size; index++)
                 {
                     printDevice(GetMonitor()->device[index]);
+                }
+            }
+            if(line_size != GetMonitor()->line_size)
+            {
+                line_size = GetMonitor()->line_size;
+
+                for(int index = 0; index < line_size; index++)
+                {
+                    printLine(GetMonitor()->line[index]);
                 }
             }
 

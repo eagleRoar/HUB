@@ -21,6 +21,7 @@
 #include "SDCard.h"
 
 char    data[80];
+u32     now_phec_uuid = 0;
 
 extern u8      next_flag;
 extern void GetUpdataFileFromWeb(u8 *ret);
@@ -355,7 +356,7 @@ void SettingPage(type_page_t page, u8 canShow)
 #if(HUB_SELECT == HUB_ENVIRENMENT)
     char                show[6][16] = {"Sensor List", "Device List", "Light List", "QR Code", "Update Firmware", "CO2 Calibration"};
 #elif (HUB_SELECT == HUB_IRRIGSTION)
-    char                show[4][16] = {"Device List", "QR Code", "Update App", "PHEC Calibrate"};
+    char                show[4][16] = {"Device List", "QR Code", "Update Firmware", "Sensor Calibrate"};
 #endif
     type_sys_time       sys_time;
     u8                  line        = LINE_HIGHT;
@@ -983,7 +984,7 @@ void qrcode(void)
     }
 }
 
-void UpdateAppProgram(type_page_t *page, u32 *info)
+void UpdateAppProgram(type_page_t *page, u64 *info)
 {
     u8              line        = LINE_HIGHT;
     u8              column      = 0;
@@ -1067,7 +1068,7 @@ void UpdateAppProgram(type_page_t *page, u32 *info)
     ST7567_UpdateScreen();
 }
 
-void co2CalibratePage(type_page_t *page, u32 *info)
+void co2CalibratePage(type_page_t *page, u64 *info)
 {
     if(NO == GetSysSet()->startCalFlg)
     {
@@ -1123,10 +1124,9 @@ void co2CalibratePage(type_page_t *page, u32 *info)
 
 void PhEcCalibratePage(type_page_t *page)
 {
-
     //1.
     ST7567_GotoXY(LINE_HIGHT, 0);
-    ST7567_Puts("PH Calibrate", &Font_8x16, 1 == page->cusor ? 0 : 1);
+    ST7567_Puts("pH Calibrate", &Font_8x16, 1 == page->cusor ? 0 : 1);
     ST7567_GotoXY(LINE_HIGHT, 16);
     ST7567_Puts("EC Calibrate", &Font_8x16, 2 == page->cusor ? 0 : 1);
 
@@ -1139,6 +1139,7 @@ void PhCalibratePage(type_page_t *page, ph_cal_t *ph)
     char data[7] = "";
     char data1[7] = "";
     char show[16] = "";
+    sensor_t    *sensor = RT_NULL;
 
     //1.
     ST7567_GotoXY(LINE_HIGHT, 0);
@@ -1179,42 +1180,33 @@ void PhCalibratePage(type_page_t *page, ph_cal_t *ph)
     ST7567_DrawRectangle(LINE_HIGHT*11, 32, LINE_HIGHT*5, 16, 1);
     ST7567_DrawRectangle(LINE_HIGHT*11, 48, LINE_HIGHT*5, 16, 1);
 
-
-    for(int i = 0; i < GetMonitor()->sensor_size; i++)
+    sensor = GetSensorByuuid(GetMonitor(), ph->uuid);
+    for(int port = 0; port < sensor->storage_size; port++)
     {
-        if(PHEC_TYPE == GetMonitor()->sensor[i].type)
+        if(F_S_PH == sensor->__stora[port].func)
         {
-            if(CON_FAIL != GetMonitor()->sensor[i].conn_state)
+            if(1 == page->cusor)
             {
-                for(int port = 0; port < GetMonitor()->sensor[i].storage_size; port++)
-                {
-                    if(F_S_PH == GetMonitor()->sensor[i].__stora[port].func)
-                    {
-                        if(1 == page->cusor)
-                        {
-                            sprintf(show, "%.1f", (float)GetMonitor()->sensor[i].__stora[port].value / 100);
-                            ST7567_GotoXY(LINE_HIGHT, 16);
-                            ST7567_Puts(show, &Font_6x12, 1);
-                            ST7567_GotoXY(LINE_HIGHT, 48);
-                            ST7567_Puts("-- ", &Font_6x12, 1);
-                        }
-                        else if(2 == page->cusor)
-                        {
-                            ST7567_GotoXY(LINE_HIGHT, 16);
-                            ST7567_Puts("-- ", &Font_6x12, 1);
-                            sprintf(show, "%.1f", (float)GetMonitor()->sensor[i].__stora[port].value / 100);
-                            ST7567_GotoXY(LINE_HIGHT, 48);
-                            ST7567_Puts(show, &Font_6x12, 1);
-                        }
-                        else if(3 == page->cusor)
-                        {
-                            ST7567_GotoXY(LINE_HIGHT, 16);
-                            ST7567_Puts("-- ", &Font_6x12, 1);
-                            ST7567_GotoXY(LINE_HIGHT, 48);
-                            ST7567_Puts("-- ", &Font_6x12, 1);
-                        }
-                    }
-                }
+                sprintf(show, "%.2f", (float)getSensorDataByAddr(GetMonitor(), sensor->addr, port) / 100);
+                ST7567_GotoXY(LINE_HIGHT, 16);
+                ST7567_Puts(show, &Font_6x12, 1);
+                ST7567_GotoXY(LINE_HIGHT, 48);
+                ST7567_Puts("-- ", &Font_6x12, 1);
+            }
+            else if(2 == page->cusor)
+            {
+                ST7567_GotoXY(LINE_HIGHT, 16);
+                ST7567_Puts("-- ", &Font_6x12, 1);
+                sprintf(show, "%.2f", (float)getSensorDataByAddr(GetMonitor(), sensor->addr, port) / 100);
+                ST7567_GotoXY(LINE_HIGHT, 48);
+                ST7567_Puts(show, &Font_6x12, 1);
+            }
+            else if(3 == page->cusor)
+            {
+                ST7567_GotoXY(LINE_HIGHT, 16);
+                ST7567_Puts("-- ", &Font_6x12, 1);
+                ST7567_GotoXY(LINE_HIGHT, 48);
+                ST7567_Puts("-- ", &Font_6x12, 1);
             }
         }
     }
@@ -1236,7 +1228,7 @@ void PhCalibratePage(type_page_t *page, ph_cal_t *ph)
         {
             ph->cal_7_flag = CAL_NO;
             ph->cal_4_flag = CAL_NO;
-            resetSysSetPhCal();
+            resetSysSetPhCal(ph->uuid);
             GetSysSet()->saveFlag = YES;
         }
         page->select = NO;
@@ -1246,11 +1238,12 @@ void PhCalibratePage(type_page_t *page, ph_cal_t *ph)
     ST7567_UpdateScreen();
 }
 
-void ecCalibratePage(type_page_t *page, ec_cal_t *ec)
+void EcCalibratePage(type_page_t *page, ec_cal_t *ec)
 {
     char data[7] = "";
     char data1[7] = "";
     char show[16] = "";
+    sensor_t    *sensor = RT_NULL;
 
     //1.
     ST7567_GotoXY(LINE_HIGHT, 0);
@@ -1292,41 +1285,33 @@ void ecCalibratePage(type_page_t *page, ec_cal_t *ec)
     ST7567_DrawRectangle(LINE_HIGHT*11, 32, LINE_HIGHT*5, 16, 1);
     ST7567_DrawRectangle(LINE_HIGHT*11, 48, LINE_HIGHT*5, 16, 1);
 
-    for(int i = 0; i < GetMonitor()->sensor_size; i++)
+    sensor = GetSensorByuuid(GetMonitor(), ec->uuid);
+    for(int port = 0; port < sensor->storage_size; port++)
     {
-        if(PHEC_TYPE == GetMonitor()->sensor[i].type)
+        if(F_S_EC == sensor->__stora[port].func)
         {
-            if(CON_FAIL != GetMonitor()->sensor[i].conn_state)
+            if(1 == page->cusor)
             {
-                for(int port = 0; port < GetMonitor()->sensor[i].storage_size; port++)
-                {
-                    if(F_S_EC == GetMonitor()->sensor[i].__stora[port].func)
-                    {
-                        if(1 == page->cusor)
-                        {
-                            sprintf(show, "%.1f ms/cm", (float)GetMonitor()->sensor[i].__stora[port].value / 100);
-                            ST7567_GotoXY(LINE_HIGHT, 16);
-                            ST7567_Puts(show, &Font_6x12, 1);
-                            ST7567_GotoXY(LINE_HIGHT, 48);
-                            ST7567_Puts("--  ms/cm", &Font_6x12, 1);
-                        }
-                        else if(2 == page->cusor)
-                        {
-                            ST7567_GotoXY(LINE_HIGHT, 16);
-                            ST7567_Puts("--  ms/cm", &Font_6x12, 1);
-                            sprintf(show, "%.1f ms/cm", (float)GetMonitor()->sensor[i].__stora[port].value / 100);
-                            ST7567_GotoXY(LINE_HIGHT, 48);
-                            ST7567_Puts(show, &Font_6x12, 1);
-                        }
-                        else if(3 == page->cusor)
-                        {
-                            ST7567_GotoXY(LINE_HIGHT, 16);
-                            ST7567_Puts("--  ms/cm", &Font_6x12, 1);
-                            ST7567_GotoXY(LINE_HIGHT, 48);
-                            ST7567_Puts("--  ms/cm", &Font_6x12, 1);
-                        }
-                    }
-                }
+                sprintf(show, "%.2f ms/cm", (float)getSensorDataByAddr(GetMonitor(), sensor->addr, port) / 100);
+                ST7567_GotoXY(LINE_HIGHT, 16);
+                ST7567_Puts(show, &Font_6x12, 1);
+                ST7567_GotoXY(LINE_HIGHT, 48);
+                ST7567_Puts("--  ms/cm", &Font_6x12, 1);
+            }
+            else if(2 == page->cusor)
+            {
+                ST7567_GotoXY(LINE_HIGHT, 16);
+                ST7567_Puts("--  ms/cm", &Font_6x12, 1);
+                sprintf(show, "%.2f ms/cm", (float)getSensorDataByAddr(GetMonitor(), sensor->addr, port) / 100);
+                ST7567_GotoXY(LINE_HIGHT, 48);
+                ST7567_Puts(show, &Font_6x12, 1);
+            }
+            else if(3 == page->cusor)
+            {
+                ST7567_GotoXY(LINE_HIGHT, 16);
+                ST7567_Puts("--  ms/cm", &Font_6x12, 1);
+                ST7567_GotoXY(LINE_HIGHT, 48);
+                ST7567_Puts("--  ms/cm", &Font_6x12, 1);
             }
         }
     }
@@ -1348,13 +1333,130 @@ void ecCalibratePage(type_page_t *page, ec_cal_t *ec)
         {
             ec->cal_0_flag = CAL_NO;
             ec->cal_141_flag = CAL_NO;
-            resetSysSetEcCal();
+            resetSysSetEcCal(ec->uuid);
             GetSysSet()->saveFlag = YES;
         }
         page->select = NO;
     }
 
     //4.
+    ST7567_UpdateScreen();
+}
+
+void phecOnlinePage(u64 *pageInfo, type_page_t *page, type_monitor_t *monitor, u8 func)
+{
+    u8                      canshow     = 4;
+    phec_sensor_t           *phec;
+    char                    show[17]    = "";
+    u8                      port        = 0;
+    static u8               show_home   = 1;
+    static u8               show_end    = 4;
+
+    //1.清除界面
+    clear_screen();
+
+    //2.显示状态
+    if(YES != sdCard.readInfo)
+    {
+        ST7567_GotoXY(LINE_HIGHT, 0);
+        ST7567_Puts("SD is not init", &Font_8x16, 0);
+    }
+    else
+    {
+        if(page->cusor_max > canshow)
+        {
+            //2.1 如果当前的光标比显示的底部值还大的话，那么底部值增加
+            if(page->cusor > show_end)
+            {
+                //2.2.2 显示的底部值已经触底
+                if(page->cusor_max == page->cusor)
+                {
+                    show_end = page->cusor_max;
+                    show_home = show_end - (canshow - 1);
+                }
+                else
+                {
+                    //2.2.3 如果底部值还有增加的余地的话
+                    if(show_end < page->cusor_max)
+                    {
+                        show_end++;
+                        if(show_end > (canshow - 1))
+                        {
+                            show_home = show_end - (canshow - 1);
+                        }
+                    }
+                }
+            }
+            else if(page->cusor < show_home)
+            {
+                if(page->cusor_home == page->cusor)
+                {
+                    show_home = page->cusor_home;
+                    show_end = show_home + (canshow - 1);
+                }
+                else
+                {
+                    if(show_home > 1)
+                    {
+                        show_home--;
+                        show_end = show_home + (canshow - 1);
+                    }
+                }
+            }
+        }
+        else
+        {
+            show_home = page->cusor_home;
+            show_end = page->cusor_max;
+        }
+
+        //3.获取当前的PhEC
+        phec = getPhEcList(monitor, YES);
+        for(u8 index = show_home; index <= show_end; index++)
+        {
+            if(index <= page->cusor_max)
+            {
+                ST7567_GotoXY(8, 16 * (index - show_home));
+                for(int i = 0; i < GetSensorByAddr(monitor, phec->addr[index - 1])->storage_size; i++)
+                {
+                    if(func == GetSensorByAddr(monitor, phec->addr[index - 1])->__stora[i].func)
+                    {
+                        port = i;
+                    }
+                }
+                sprintf(show, "addr:%3d val:%2.2f",phec->addr[index - 1],(float)getSensorDataByAddr(monitor, phec->addr[index - 1], port)/100);
+
+                ST7567_Puts(show, &Font_7x10, index == page->cusor ? 0 : 1);
+            }
+        }
+
+        //4.判断点击事件
+        if(ON == page->select)
+        {
+            if(F_S_PH == func)
+            {
+                *pageInfo <<= 8;
+                *pageInfo |= PH_CALIBRATE_PAGE;
+
+                setPhCalWithUUID(GetSensorByAddr(monitor, phec->addr[page->cusor - 1])->uuid);
+                now_phec_uuid = GetSensorByAddr(monitor, phec->addr[page->cusor - 1])->uuid;
+
+            }
+            else if(F_S_EC == func)
+            {
+                *pageInfo <<= 8;
+                *pageInfo |= EC_CALIBRATE_PAGE;
+
+                setEcCalWithUUID(GetSensorByAddr(monitor, phec->addr[page->cusor - 1])->uuid);
+                now_phec_uuid = GetSensorByAddr(monitor, phec->addr[page->cusor - 1])->uuid;
+
+            }
+
+            page->select = OFF;
+        }
+    }
+
+    //5.刷新界面
     ST7567_UpdateScreen();
 }
 
@@ -1461,7 +1563,7 @@ void SensorStatePage_fac(type_monitor_t *monitor, u8 canShow)
         if(connect[index] != monitor->sensor[index].conn_state)
         {
             //如果是上次状态是在线这次掉线，则删除
-            if(/*(CON_SUCCESS == connect[index]) && */(CON_FAIL == monitor->sensor[index].conn_state))
+            if(CON_FAIL == monitor->sensor[index].conn_state)
             {
                 deleteModule(monitor, monitor->sensor[index].addr);
             }

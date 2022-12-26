@@ -21,7 +21,7 @@ __attribute__((section(".ccmbss"))) char sd_thread_stack[1024*3];
 __attribute__((section(".ccmbss"))) struct rt_thread sd_thread;
 __attribute__((section(".ccmbss"))) struct sdCardState      sdCard;
 
-static rt_mutex_t dynamic_mutex = RT_NULL;
+rt_mutex_t dynamic_mutex = RT_NULL;
 
 extern u8 saveModuleFlag;
 extern int rt_hw_sdio_init(void);

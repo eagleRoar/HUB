@@ -43,32 +43,101 @@ extern void warnProgram(type_monitor_t *, sys_set_t *);
 extern void pumpProgram(type_monitor_t *, sys_tank_t *);
 extern void co2CalibraterResPage(u8);
 extern void autoValveClose(type_monitor_t *, sys_tank_t *);
+extern void phCalibrate1(sensor_t *, type_monitor_t *, ph_cal_t *ph, sys_set_t *);
+extern void ecCalibrate1(sensor_t *, type_monitor_t *, ec_cal_t *, sys_set_t *);
 
-ph_cal_t ph_cal;
-ec_cal_t ec_cal;
+ph_cal_t ph_cal[SENSOR_MAX];
+ec_cal_t ec_cal[SENSOR_MAX];
+phcal_data_t phdataTemp[SENSOR_MAX];
+eccal_data_t ecdataTemp[SENSOR_MAX];
 
 void initPhEcCal(void)
 {
-    ph_cal.cal_7_flag = CAL_NO;
-    ph_cal.cal_4_flag = CAL_NO;
-    ph_cal.time = 0;
-    ph_cal.cb = PhCalCallBackPage;
-
-    ec_cal.cal_0_flag = CAL_NO;
-    ec_cal.cal_141_flag = CAL_NO;
-    ec_cal.time = 0;
-    ec_cal.cb = EcCalCallBackPage;
+    rt_memset((u8 *)ph_cal, 0, sizeof(ph_cal_t) * SENSOR_MAX);
+    rt_memset((u8 *)ec_cal, 0, sizeof(ec_cal_t) * SENSOR_MAX);
+    rt_memset((u8 *)phdataTemp, 0, sizeof(phcal_data_t) * SENSOR_MAX);
+    rt_memset((u8 *)ecdataTemp, 0, sizeof(eccal_data_t) * SENSOR_MAX);
 }
 
-ph_cal_t *getPhCal(void)
+//
+void setPhCalWithUUID(u32 uuid)
 {
-    return &ph_cal;
+    u8 index = 0;
+
+    for(index = 0; index < SENSOR_MAX; index++)
+    {
+        if(ph_cal[index].uuid == uuid)
+        {
+            break;
+        }
+    }
+
+    if(index == SENSOR_MAX)
+    {
+        //当前没有存储该uuid
+        for(index = 0; index < SENSOR_MAX; index++)
+        {
+            if(0 == ph_cal[index].uuid)
+            {
+                ph_cal[index].uuid = uuid;
+                break;
+            }
+        }
+    }
 }
 
-ec_cal_t *getEcCal(void)
+void setEcCalWithUUID(u32 uuid)
 {
-    return &ec_cal;
+    u8 index = 0;
+
+    for(index = 0; index < SENSOR_MAX; index++)
+    {
+        if(ec_cal[index].uuid == uuid)
+        {
+            break;
+        }
+    }
+
+    if(index == SENSOR_MAX)
+    {
+        //当前没有存储该uuid
+        for(index = 0; index < SENSOR_MAX; index++)
+        {
+            if(0 == ec_cal[index].uuid)
+            {
+                ec_cal[index].uuid = uuid;
+                break;
+            }
+        }
+    }
 }
+
+ph_cal_t *getPhCalByuuid(u32 uuid)
+{
+    for(int i = 0; i < SENSOR_MAX; i++)
+    {
+        if(uuid == ph_cal[i].uuid)
+        {
+            return &ph_cal[i];
+        }
+    }
+
+    return RT_NULL;
+}
+
+ec_cal_t *getEcCalByuuid(u32 uuid)
+{
+    for(int i = 0; i < SENSOR_MAX; i++)
+    {
+        if(uuid == ec_cal[i].uuid)
+        {
+            return &ec_cal[i];
+        }
+    }
+
+    return RT_NULL;
+}
+
 
 /**
  * @brief  : 接收回调函数
@@ -82,7 +151,7 @@ static rt_err_t Uart1_input(rt_device_t dev, rt_size_t size)
     u16 crc16 = 0x0000;
 
     /* 必须要等待从sd卡读取到的monitor 才能执行以下功能 */
-    if (NO == sdCard.readInfo)
+    if (YES != sdCard.readInfo)
     {
         return RT_ERROR;
     }
@@ -91,12 +160,11 @@ static rt_err_t Uart1_input(rt_device_t dev, rt_size_t size)
     uart1_msg.size = size;
     rt_device_read(uart1_msg.dev, 0, uart1_msg.data, uart1_msg.size);
 
-    /*LOG_W("recv data：");
-    for(int i = 0; i < uart1_msg.size; i++)
-    {
-        rt_kprintf("%x ",uart1_msg.data[i]);
-    }
-    rt_kprintf("\r\n");*/
+//    for(int i = 0; i < uart1_msg.size; i++)
+//    {
+//        rt_kprintf("%x ",uart1_msg.data[i]);
+//    }
+//    rt_kprintf("\r\n");
 
     if(2 > size)
     {
@@ -122,14 +190,7 @@ static rt_err_t Uart2_input(rt_device_t dev, rt_size_t size)
 
     /* 必须要等待从sd卡读取到的monitor 才能执行以下功能   */
 
-//        LOG_W("recv data：");
-//        for(int i = 0; i < uart2_msg.size; i++)
-//        {
-//            rt_kprintf("%x ",uart2_msg.data[i]);
-//        }
-//        rt_kprintf("\r\n");
-
-    if (NO == sdCard.readInfo)
+    if (YES != sdCard.readInfo)
     {
         return RT_ERROR;
     }
@@ -161,7 +222,7 @@ static rt_err_t Uart3_input(rt_device_t dev, rt_size_t size)
     u16 crc16 = 0x0000;
 
     /* 必须要等待从sd卡读取到的monitor 才能执行以下功能 */
-    if (NO == sdCard.readInfo)
+    if (YES != sdCard.readInfo)
     {
         return RT_ERROR;
     }
@@ -169,11 +230,7 @@ static rt_err_t Uart3_input(rt_device_t dev, rt_size_t size)
     uart3_msg.dev = dev;
     uart3_msg.size = size;
     rt_device_read(uart3_msg.dev, 0, uart3_msg.data, uart3_msg.size);
-//    for(int i = 0; i < uart3_msg.size; i++)
-//    {
-//        rt_kprintf("%x ",uart3_msg.data[i]);
-//    }
-//    rt_kprintf("\r\n");
+
     if(2 > size)
     {
         return RT_ERROR;
@@ -226,6 +283,7 @@ void SensorUart2TaskEntry(void* parameter)
 
     rt_memset((u8 *)&sys_time_pre, 0, sizeof(type_sys_time));
     initConnectState();
+    initCtrlPre();
 
     /* 查找串口设备 */
     uart1_serial = rt_device_find(DEVICE_UART1);
@@ -276,6 +334,15 @@ void SensorUart2TaskEntry(void* parameter)
                 getRegisterData(data, 13, 0x00000008,WATERlEVEL_TYPE);
                 AnlyzeDeviceRegister(&monitor, uart1_serial ,data, 13, 0xE7);
 
+                getRegisterData(data, 13, 0x00000009, SOIL_T_H_TYPE);
+                AnlyzeDeviceRegister(&monitor, uart1_serial ,data, 13, 0xE8);
+                getRegisterData(data, 13, 0x0000000a, SOIL_T_H_TYPE);
+                AnlyzeDeviceRegister(&monitor, uart1_serial ,data, 13, 0xE9);
+                getRegisterData(data, 13, 0x0000000b, SOIL_T_H_TYPE);
+                AnlyzeDeviceRegister(&monitor, uart1_serial ,data, 13, 0xEA);
+                getRegisterData(data, 13, 0x0000000c, SOIL_T_H_TYPE);
+                AnlyzeDeviceRegister(&monitor, uart1_serial ,data, 13, 0xEB);
+
 #endif
                 specailFlag = 1;
             }
@@ -300,6 +367,7 @@ void SensorUart2TaskEntry(void* parameter)
 
                 if(ON == uart2_msg.messageFlag)
                 {
+
                     AnalyzeData(uart2_serial, &monitor, uart2_msg.data, uart2_msg.size);
                     uart2_msg.messageFlag = OFF;
                 }
@@ -474,14 +542,29 @@ void SensorUart2TaskEntry(void* parameter)
                     }
 
                     //phec 校准
-                    if((CAL_INCAL == getPhCal()->cal_7_flag) || (CAL_INCAL == getPhCal()->cal_4_flag))
+                    for(u8 phec_i = 0; phec_i < getPhEcList(GetMonitor(), YES)->num; phec_i++)
                     {
-                        phCalibrate(GetMonitor(), getPhCal(), GetSysSet());
-                    }
+                        ph_cal_t *ph = RT_NULL;
+                        ph = getPhCalByuuid(GetSensorByAddr(GetMonitor(), getPhEcList(GetMonitor(), YES)->addr[phec_i])->uuid);
+                        if(RT_NULL != ph)
+                        {
+                            if((CAL_INCAL == ph->cal_7_flag) || (CAL_INCAL == ph->cal_4_flag))
+                            {
+                                phCalibrate1(GetSensorByAddr(GetMonitor(), getPhEcList(GetMonitor(), YES)->addr[phec_i]),
+                                        GetMonitor(),ph, GetSysSet());
+                            }
+                        }
 
-                    if((CAL_INCAL == getEcCal()->cal_0_flag) || (CAL_INCAL == getEcCal()->cal_141_flag))
-                    {
-                        ecCalibrate(GetMonitor(), getEcCal(), GetSysSet());
+                        ec_cal_t *ec = RT_NULL;
+                        ec = getEcCalByuuid(GetSensorByAddr(GetMonitor(), getPhEcList(GetMonitor(), YES)->addr[phec_i])->uuid);
+                        if(RT_NULL != ec)
+                        {
+                            if((CAL_INCAL == ec->cal_0_flag) || (CAL_INCAL == ec->cal_141_flag))
+                            {
+                                ecCalibrate1(GetSensorByAddr(GetMonitor(), getPhEcList(GetMonitor(), YES)->addr[phec_i]),
+                                        GetMonitor(),ec, GetSysSet());
+                            }
+                        }
                     }
                 }
             }

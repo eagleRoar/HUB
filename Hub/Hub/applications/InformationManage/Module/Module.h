@@ -38,4 +38,6 @@ int getSensorDataByFunc(type_monitor_t *, u8);
 int getSensorSizeByFunc(type_monitor_t *, u8);
 void changeIrAirCode(u16 , u16 *);
 int getSensorDataByAddr(type_monitor_t *, u8, u8);
+phec_sensor_t* getPhEcList(type_monitor_t *, u8);
+sensor_t *GetSensorByuuid(type_monitor_t *, u32);
 #endif /* APPLICATIONS_INFORMATIONMANAGE_MODULE_MODULE_H_ */
