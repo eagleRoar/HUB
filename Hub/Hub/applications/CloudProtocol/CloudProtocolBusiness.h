@@ -200,6 +200,7 @@ struct sysWarn
     u8 humidTimeoutEn;      //1,   //humid 超时报警 1-on 2-off
     u16 humidTimeoutseconds;// 600, // humid 超时秒数
     u8 lightEn;             //1, //灯光警告 1-on 2-off
+    u8 o2ProtectionEn;      //氧气低保护
 #elif(HUB_SELECT == HUB_IRRIGSTION)
     u8 phEn;                //1,// 0-off 1-on
     u8 ecEn;                //1,// 0-off 1-on
@@ -273,6 +274,9 @@ struct tank{
     u16     highEcProtection;               //EC 高停止值
     u16     lowPhProtection;                //PH 低停止值
     u16     highPhProtection;               //PH 高停止值
+    u8      phMonitorOnly;                  //1-On 0-off 默认监视
+    u8      ecMonitorOnly;                  //1-On 0-off 默认监视
+    u8      wlMonitorOnly;                  //水位监视 1-On 0-off 默认监视
     u16     pumpId;                         //水泵Id
     u16     valve[VALVE_MAX];               //关联的阀的ID
     u8      sensorId[2][TANK_SENSOR_MAX];   //桶内存在两个sensor 一个是测试桶内的 一个测试管道的

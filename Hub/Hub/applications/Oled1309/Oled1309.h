@@ -21,6 +21,7 @@ struct pageSelect
     u8  cusor_home;
     u8  cusor_max;
     u8  cusor;
+    u8  showMore;   //显示更多
     u8  select;
 };
 

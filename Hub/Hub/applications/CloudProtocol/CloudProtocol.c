@@ -82,6 +82,9 @@ void insertPumpToTank(type_monitor_t *monitor, sys_tank_t *tank_list, u16 id)
                     tank_list->tank[item].color = 1;
                     tank_list->tank[item].pumpId = id;
                     tank_list->tank[item].poolTimeout = 100;
+                    tank_list->tank[item].phMonitorOnly = ON;
+                    tank_list->tank[item].ecMonitorOnly = ON;
+                    tank_list->tank[item].wlMonitorOnly = ON;
                     tank_list->tank_size++;
                     //保存到SD卡
                     tank_list->saveFlag = YES;
@@ -272,6 +275,7 @@ void initCloudProtocol(void)
     sys_set.sysWarn.tempTimeoutseconds = 600;
     sys_set.sysWarn.humidTimeoutEn = ON;
     sys_set.sysWarn.humidTimeoutseconds = 600;
+    sys_set.sysWarn.o2ProtectionEn = ON;
 
     sys_set.sysPara.dayNightMode = DAY_BY_TIME;
 #elif (HUB_SELECT == HUB_IRRIGSTION)
@@ -1887,7 +1891,11 @@ void co2Program(type_monitor_t *monitor, u16 mPeriod)
                          (ON == co2Set.coolingLock && (ON == GetDeviceByType(monitor, COOL_TYPE)->port[0].ctrl.d_state
                           || GetDeviceByType(monitor, HVAC_6_TYPE)->port[0].ctrl.d_value & 0x08))))
                     {
-                        CtrlAllDeviceByFunc(monitor, F_Co2_UP, ON, 0);
+                        if((VALUE_NULL == getSensorDataByFunc(monitor, F_S_O2)) ||
+                           (getSensorDataByFunc(monitor, F_S_O2) >= 180))//Justin debug待测试
+                        {
+                            CtrlAllDeviceByFunc(monitor, F_Co2_UP, ON, 0);
+                        }
                     }
                     else
                     {
@@ -1909,7 +1917,11 @@ void co2Program(type_monitor_t *monitor, u16 mPeriod)
                          (ON == co2Set.coolingLock && (ON == GetDeviceByType(monitor, COOL_TYPE)->port[0].ctrl.d_state
                           || GetDeviceByType(monitor, HVAC_6_TYPE)->port[0].ctrl.d_value & 0x08))))
                     {
-                        CtrlAllDeviceByFunc(monitor, F_Co2_UP, ON, 0);
+                        if((VALUE_NULL == getSensorDataByFunc(monitor, F_S_O2)) ||
+                           (getSensorDataByFunc(monitor, F_S_O2) >= 180))//Justin debug待测试
+                        {
+                            CtrlAllDeviceByFunc(monitor, F_Co2_UP, ON, 0);
+                        }
                     }
                     else
                     {
@@ -2007,7 +2019,6 @@ u16 getVpd(void)
 
 void warnProgram(type_monitor_t *monitor, sys_set_t *set)
 {
-    sensor_t        *sensor;
 
 #if(HUB_SELECT == HUB_ENVIRENMENT)
     u8              co2State    = OFF;
@@ -2029,6 +2040,7 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
     static u8       vpdStateLow_pre     = OFF;
     static u8       vpdStateHigh_pre    = OFF;
 #elif(HUB_SELECT == HUB_IRRIGSTION)
+    sensor_t        *sensor;
     u8              tankState[TANK_LIST_MAX]    = {OFF,OFF,OFF,OFF};
     u16             ec          = 0;
     u16             ph          = 0;
@@ -2768,6 +2780,29 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
             }
         }
     }
+
+    //O2低氧
+    data = getSensorDataByFunc(monitor, F_S_O2);
+    if(VALUE_NULL != data)//Justin debug 未测试
+    {
+        //氧气低于18%要报警
+        if(ON == set->sysWarn.o2ProtectionEn)
+        {
+            if(data < 180)
+            {
+                set->warn[WARN_O2_LOW - 1] = ON;
+                set->warn_value[WARN_O2_LOW - 1] = data;
+            }
+        }
+        else
+        {
+            if(data > (180 + 20))
+            {
+                set->warn[WARN_O2_LOW - 1] = OFF;
+                set->warn_value[WARN_O2_LOW - 1] = 0;
+            }
+        }
+    }
 #elif(HUB_SELECT == HUB_IRRIGSTION)
 
     //ph ec
@@ -3371,10 +3406,10 @@ void pumpProgram(type_monitor_t *monitor, sys_tank_t *tank_list)
                     port = 0;
                 }
                 pumpDoing(addr, port);
-                if(wl < tank_list->tank[tank].autoFillHeight ||
-                   ph < tank_list->tank[tank].lowPhProtection ||
-                   ph > tank_list->tank[tank].highPhProtection ||
-                   ec > tank_list->tank[tank].highEcProtection)
+                if(((wl < tank_list->tank[tank].autoFillHeight) && (ON != tank_list->tank[tank].wlMonitorOnly)) ||
+                   ((ph < tank_list->tank[tank].lowPhProtection) && (ON != tank_list->tank[tank].phMonitorOnly)) ||
+                   ((ph > tank_list->tank[tank].highPhProtection) && (ON != tank_list->tank[tank].phMonitorOnly)) ||
+                   ((ec > tank_list->tank[tank].highEcProtection) && (ON != tank_list->tank[tank].ecMonitorOnly)))
                 {
                     GetDeviceByAddr(GetMonitor(), addr)->port[port].ctrl.d_state = OFF;
                 }
@@ -3405,10 +3440,10 @@ void pumpProgram(type_monitor_t *monitor, sys_tank_t *tank_list)
 
             pumpDoing(addr, port);
 
-            if(wl < tank_list->tank[tank].autoFillHeight ||
-               ph < tank_list->tank[tank].lowPhProtection ||
-               ph > tank_list->tank[tank].highPhProtection ||
-               ec > tank_list->tank[tank].highEcProtection)
+            if(((wl < tank_list->tank[tank].autoFillHeight) && (ON != tank_list->tank[tank].wlMonitorOnly)) ||
+               ((ph < tank_list->tank[tank].lowPhProtection) && (ON != tank_list->tank[tank].phMonitorOnly)) ||
+               ((ph > tank_list->tank[tank].highPhProtection) && (ON != tank_list->tank[tank].phMonitorOnly)) ||
+               ((ec > tank_list->tank[tank].highEcProtection) && (ON != tank_list->tank[tank].ecMonitorOnly)))
             {
                 GetDeviceByAddr(GetMonitor(), addr)->port[port].ctrl.d_state = OFF;
             }

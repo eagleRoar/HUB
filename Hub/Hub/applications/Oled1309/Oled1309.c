@@ -138,10 +138,31 @@ void EnterBtnCallBack(u8 type)
 }
 void UpBtnCallBack(u8 type)
 {
+    u8 nowPage      = 0;
+
     if(SHORT_PRESS == type)
     {
         //唤醒屏幕
         wakeUpOledBackLight(&backlightTime);
+
+        nowPage = pageInfor & 0x000000FF;
+#if(HUB_SELECT == HUB_IRRIGSTION)
+        if(HOME_PAGE == nowPage)
+        {
+            pageSelect.showMore = ON;
+        }
+        else
+        {
+            if(pageSelect.cusor > pageSelect.cusor_home)
+            {
+                pageSelect.cusor--;
+            }
+            else
+            {
+                pageSelect.cusor = pageSelect.cusor_max;
+            }
+        }
+#elif(HUB_SELECT == HUB_ENVIRENMENT)
         if(pageSelect.cusor > pageSelect.cusor_home)
         {
             pageSelect.cusor--;
@@ -150,6 +171,7 @@ void UpBtnCallBack(u8 type)
         {
             pageSelect.cusor = pageSelect.cusor_max;
         }
+#endif
         //提示界面刷新
         reflash_flag = ON;
     }
@@ -202,7 +224,7 @@ static void pageSetting(u8 page)
 #if(HUB_SELECT == HUB_ENVIRENMENT)
             pageSelectSet(YES, 1, 6);
 #elif(HUB_SELECT == HUB_IRRIGSTION)
-            pageSelectSet(YES, 1, 4);
+            pageSelectSet(YES, 1, 5);
 #endif
             break;
         case FACTORY_PAGE:
@@ -210,7 +232,11 @@ static void pageSetting(u8 page)
             break;
 
         case SENSOR_STATE_PAGE:
+#if (HUB_SELECT == HUB_ENVIRENMENT)
             pageSelectSet(NO, 0, 0);
+#elif(HUB_SELECT == HUB_IRRIGSTION)
+            pageSelectSet(NO, 1, GetMonitor()->sensor_size);
+#endif
             break;
 
         case DEVICE_STATE_PAGE:
@@ -337,22 +363,28 @@ static void pageProgram(u8 page)
                     pageInfor |= CO2_CALIBRATE_PAGE;
                 }
 #elif (HUB_SELECT == HUB_IRRIGSTION)
+
                 if(1 == pageSelect.cusor)
                 {
                     pageInfor <<= 8;
-                    pageInfor |= DEVICE_STATE_PAGE;
+                    pageInfor |= SENSOR_STATE_PAGE;
                 }
                 else if(2 == pageSelect.cusor)
                 {
                     pageInfor <<= 8;
-                    pageInfor |= QRCODE_PAGE;
+                    pageInfor |= DEVICE_STATE_PAGE;
                 }
                 else if(3 == pageSelect.cusor)
                 {
                     pageInfor <<= 8;
-                    pageInfor |= APP_UPDATE_PAGE;
+                    pageInfor |= QRCODE_PAGE;
                 }
                 else if(4 == pageSelect.cusor)
+                {
+                    pageInfor <<= 8;
+                    pageInfor |= APP_UPDATE_PAGE;
+                }
+                else if(5 == pageSelect.cusor)
                 {
                     pageInfor <<= 8;
                     pageInfor |= PHEC_CALIBRATE_PAGE;
@@ -398,7 +430,11 @@ static void pageProgram(u8 page)
             break;
 
         case SENSOR_STATE_PAGE:
-            SensorStatePage_new(GetMonitor());
+#if (HUB_SELECT == HUB_ENVIRENMENT)
+                SensorStatePage_new(GetMonitor());
+#elif (HUB_SELECT == HUB_IRRIGSTION)
+                SensorList(&pageInfor, &pageSelect, GetMonitor());
+#endif
             if(ON == pageSelect.select)
             {
                 pageSelect.select = OFF;

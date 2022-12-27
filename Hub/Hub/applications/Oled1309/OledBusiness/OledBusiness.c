@@ -28,28 +28,44 @@ extern void GetUpdataFileFromWeb(u8 *ret);
 extern  __attribute__((section(".ccmbss"))) struct sdCardState      sdCard;
 extern type_page_t     pageSelect;
 
+void cleanHomePage(void)
+{
+    //清除屏幕缓存
+    for(u8 i = 1; i < 4; i++)
+    {
+        ST7567_GotoXY(0, 16 * i);
+        ST7567_Puts("                ", &Font_8x16, 1);
+    }
+}
+
 void HomePage(type_page_t *page, type_monitor_t *monitor)
 {
     char                time[22]    = "";
 #if (HUB_SELECT == HUB_ENVIRENMENT)
     char                name[5]     = "";
     int                 data;
+    char                day_night[6] = "";
 #elif (HUB_SELECT == HUB_IRRIGSTION)
     u8                  sensor_i    = 0;
     u8                  addr        = 0;
     u8                  port        = 0;
-    static u8           tank_index  = 0;
     tank_t              *tank       = RT_NULL;
     sensor_t            *sensor     = RT_NULL;
-    int                 data[3]     = {VALUE_NULL,VALUE_NULL,VALUE_NULL};
+    int                 data[6]     = {VALUE_NULL,VALUE_NULL,VALUE_NULL,VALUE_NULL,VALUE_NULL,VALUE_NULL};
+    static u8           tank_index  = 0;
+    static u8           tankSizePre = 0;
+    static u8           pagePart    = 0;
+    static u8           pagePartPre = 0;
 #endif
     char                value[5]    = "";
-    char                day_night[6] = "";
     type_sys_time       time_for;
 
 
     //1.显示时间
     getRealTimeForMat(&time_for);
+
+#if (HUB_SELECT == HUB_ENVIRENMENT)
+
     if(TIME_STYLE_12H == GetSysSet()->sysPara.timeFormat)
     {
         if((time_for.hour > 12) || (12 == time_for.hour && time_for.second > 0))
@@ -84,7 +100,6 @@ void HomePage(type_page_t *page, type_monitor_t *monitor)
     ST7567_GotoXY(0, 0);
     ST7567_Puts(time, &Font_6x12, 0);
 
-#if (HUB_SELECT == HUB_ENVIRENMENT)
     //2.显示TEMP HUMI CO2
     rt_memcpy(name, "Temp", 4);
     name[4] = '\0';
@@ -171,59 +186,157 @@ void HomePage(type_page_t *page, type_monitor_t *monitor)
     ST7567_GotoXY(8 + 8*11, 52);
     ST7567_Puts("ppm", &Font_6x12, 1);
 #elif (HUB_SELECT == HUB_IRRIGSTION)
-    //显示桶内的sensor
-//    if(0 == GetSysTank()->tank_size)
-//    {
-//        ST7567_GotoXY(30, 16);
-//        ST7567_Puts("BLH-I", &Font_12x24, 1);
-//    }
-//    else
-    {
-        //1.显示PH EC WT
-        if(YES == next_flag)
-        {
-            if(tank_index + 1 < GetSysTank()->tank_size)
-            {
-                tank_index++;
-            }
-            else
-            {
-                tank_index = 0;
-            }
 
-            //清除屏幕缓存
-            ST7567_GotoXY(4, 28);
-            ST7567_Puts("    ", &Font_8x16, 1);
-            ST7567_GotoXY(47, 28);
-            ST7567_Puts("    ", &Font_8x16, 1);
-            ST7567_GotoXY(90, 28);
-            ST7567_Puts("    ", &Font_8x16, 1);
-            next_flag = NO;
+    sprintf(time," %02d:%02d:%02d               ",time_for.hour,time_for.minute,time_for.second);
+    time[21] = '\0';
+    ST7567_GotoXY(0, 0);
+    ST7567_Puts(time, &Font_6x12, 0);
+
+    if(YES == sdCard.readInfo)
+    {
+        if(tankSizePre != GetSysTank()->tank_size)
+        {
+            tankSizePre = GetSysTank()->tank_size;
+
+            clear_screen();
         }
 
+        //显示桶内的sensor
+        if(0 == GetSysTank()->tank_size)
         {
-            tank = &GetSysTank()->tank[tank_index];
-            for(sensor_i = 0; sensor_i < TANK_SENSOR_MAX; sensor_i++)
+            ST7567_GotoXY(30, 16);
+            ST7567_Puts("NONE", &Font_12x24, 1);
+        }
+        else
+        {
+            //1.显示PH EC WT
+            if(YES == next_flag)
             {
-                if(tank->sensorId[0][sensor_i] > 0xFF)
+                if(tank_index + 1 < GetSysTank()->tank_size)
                 {
-                    addr = tank->sensorId[0][sensor_i] >> 8;
-                    port = tank->sensorId[0][sensor_i];
+                    tank_index++;
                 }
                 else
                 {
-                    addr = tank->sensorId[0][sensor_i];
-                    port = 0;
+                    tank_index = 0;
+                }
+
+                //清除屏幕缓存
+                ST7567_GotoXY(4, 28);
+                ST7567_Puts("    ", &Font_8x16, 1);
+                ST7567_GotoXY(47, 28);
+                ST7567_Puts("    ", &Font_8x16, 1);
+                ST7567_GotoXY(90, 28);
+                ST7567_Puts("    ", &Font_8x16, 1);
+
+                pagePart = 0;
+                next_flag = NO;
+            }
+
+            tank = &GetSysTank()->tank[tank_index];
+
+            //显示泵名
+            if(tank->pumpId > 0xFF)
+            {
+                addr = tank->pumpId >> 8;
+                port = tank->pumpId;
+            }
+            else
+            {
+                addr = tank->pumpId;
+                port = 0;
+            }
+            sprintf(time," %02d:%02d:%02d       %5s",time_for.hour,time_for.minute,time_for.second,
+                    GetDeviceByAddr(monitor, addr)->port[port].name);
+            time[21] = '\0';
+            ST7567_GotoXY(0, 0);
+            ST7567_Puts(time, &Font_6x12, 0);
+
+            if(ON == page->showMore)
+            {
+                if(pagePart < 3)
+                {
+                    pagePart++;
+                }
+                else
+                {
+                    pagePart = 0;
+                }
+
+                page->showMore = OFF;
+            }
+
+            //更换界面的时候清除缓存
+            if(pagePartPre != pagePart)
+            {
+                pagePartPre = pagePart;
+
+                cleanHomePage();
+            }
+
+            for(sensor_i = 0; sensor_i < TANK_SENSOR_MAX; sensor_i++)
+            {
+                if((0 == pagePart) || (2 == pagePart) || (3 == pagePart))//Justin debug 询问一下基质寄存器是否是在桶内
+                {
+                    if(tank->sensorId[0][sensor_i] > 0xFF)
+                    {
+                        addr = tank->sensorId[0][sensor_i] >> 8;
+                    }
+                    else
+                    {
+                        addr = tank->sensorId[0][sensor_i];
+                    }
+                }
+                else if(1 == pagePart)
+                {
+                    if(tank->sensorId[1][sensor_i] > 0xFF)
+                    {
+                        addr = tank->sensorId[1][sensor_i] >> 8;
+                    }
+                    else
+                    {
+                        addr = tank->sensorId[1][sensor_i];
+                    }
                 }
 
                 sensor = GetSensorByAddr(GetMonitor(), addr);
 
-                ST7567_GotoXY(15, 16);
-                ST7567_Puts("PH", &Font_6x12, 1);
-                ST7567_GotoXY(58, 16);
-                ST7567_Puts("EC", &Font_6x12, 1);
-                ST7567_GotoXY(100, 16);
-                ST7567_Puts("WT", &Font_6x12, 1);
+                //显示静态显示
+                if((0 == pagePart) || (1 == pagePart))
+                {
+                    ST7567_GotoXY(15, 16);
+                    ST7567_Puts("PH", &Font_6x12, 1);
+                    ST7567_GotoXY(58, 16);
+                    ST7567_Puts("EC", &Font_6x12, 1);
+                    ST7567_GotoXY(100, 16);
+                    ST7567_Puts("WT", &Font_6x12, 1);
+                }
+                else if(2 == pagePart)
+                {
+                    ST7567_GotoXY(58, 16);
+                    ST7567_Puts("M ", &Font_6x12, 1);
+                    ST7567_GotoXY(100, 16);
+                    ST7567_Puts("T ", &Font_6x12, 1);
+
+                    ST7567_GotoXY(6, 28);
+                    ST7567_Puts("Soil", &Font_8x16, 1);
+
+                    ST7567_GotoXY(58, 46);
+                    ST7567_Puts("% ", &Font_6x12, 1);
+                    ST7567_DrawCircle(100, 48, 1, 1);
+                    ST7567_GotoXY(102, 46);
+                    ST7567_Puts("C", &Font_6x12, 1);
+                }
+                else if(3 == pagePart)
+                {
+                    ST7567_GotoXY(4, 28);
+                    ST7567_Puts("Water", &Font_7x10, 1);
+                    ST7567_GotoXY(4, 38);
+                    ST7567_Puts("level", &Font_7x10, 1);
+
+                    ST7567_GotoXY(112, 34);
+                    ST7567_Puts("m", &Font_7x10, 1);
+                }
 
                 if(RT_NULL != sensor)
                 {
@@ -231,13 +344,18 @@ void HomePage(type_page_t *page, type_monitor_t *monitor)
                     {
                         if (PHEC_TYPE == sensor->type)
                         {
-                            //data[0] = sensor->__stora[1].value;
                             data[0] = getSensorDataByAddr(GetMonitor(), addr, 1);
-                            //data[1] = sensor->__stora[0].value;
                             data[1] = getSensorDataByAddr(GetMonitor(), addr, 0);
-                            //data[2] = sensor->__stora[2].value;
                             data[2] = getSensorDataByAddr(GetMonitor(), addr, 2);
-
+                        }
+                        else if(SOIL_T_H_TYPE == sensor->type)
+                        {
+                            data[3] = getSensorDataByAddr(GetMonitor(), addr, 0);
+                            data[4] = getSensorDataByAddr(GetMonitor(), addr, 1);
+                        }
+                        else if(WATERlEVEL_TYPE == sensor->type)
+                        {
+                            data[5] = getSensorDataByAddr(GetMonitor(), addr, 0);
                         }
                     }
                     else
@@ -260,86 +378,183 @@ void HomePage(type_page_t *page, type_monitor_t *monitor)
                 }
             }
 
-            if(VALUE_NULL != data[0])
+            if((0 == pagePart) || (1 == pagePart))
             {
-                ST7567_GotoXY(4, 28);
-                rt_memcpy(value, "   ", 3);
-                if(data[0]/10 > 10)
+                if(VALUE_NULL != data[0])
                 {
-                    sprintf(value, "%3d", data[0]/10);
+                    ST7567_GotoXY(4, 28);
+                    rt_memcpy(value, "   ", 3);
+                    if(data[0]/10 > 10)
+                    {
+                        sprintf(value, "%3d", data[0]/10);
+                    }
+                    else
+                    {
+                        sprintf(value, " %02d", data[0]/10);
+                    }
+                    value[3] = '\0';
+                    ST7567_Puts(value, &Font_11x18, 1);
+                    ST7567_DrawRectangle(25, 42, 1, 1, 1);
                 }
                 else
                 {
-                    sprintf(value, " %02d", data[0]/10);
+                    ST7567_GotoXY(12, 28);
+                    ST7567_Puts("--", &Font_8x16, 1);
                 }
-                value[3] = '\0';
-                ST7567_Puts(value, &Font_11x18, 1);
-                ST7567_DrawFilledCircle(25, 42, 1, 1);
-            }
-            else
-            {
-                ST7567_GotoXY(12, 28);
-                ST7567_Puts("--", &Font_8x16, 1);
-            }
 
-            if(VALUE_NULL != data[1])
-            {
-                ST7567_GotoXY(47, 28);
-                rt_memcpy(value, "   ", 3);
-                if(data[1]/10 > 10)
+                if(VALUE_NULL != data[1])
                 {
-                    sprintf(value, "%3d", data[1]/10);
+                    ST7567_GotoXY(47, 28);
+                    rt_memcpy(value, "   ", 3);
+                    if(data[1]/10 > 10)
+                    {
+                        sprintf(value, "%3d", data[1]/10);
+                    }
+                    else
+                    {
+                        sprintf(value, " %02d", data[1]/10);
+                    }
+                    value[3] = '\0';
+                    ST7567_Puts(value, &Font_11x18, 1);
+                    ST7567_DrawRectangle(68, 42, 1, 1, 1);
                 }
                 else
                 {
-                    sprintf(value, " %02d", data[1]/10);
+                    ST7567_GotoXY(55, 28);
+                    ST7567_Puts("--", &Font_8x16, 1);
                 }
-                value[3] = '\0';
-                ST7567_Puts(value, &Font_11x18, 1);
-                ST7567_DrawFilledCircle(68, 42, 1, 1);
-            }
-            else
-            {
-                ST7567_GotoXY(55, 28);
-                ST7567_Puts("--", &Font_8x16, 1);
-            }
 
-            //显示单位
-            ST7567_GotoXY(51, 46);
-            ST7567_Puts("ms/cm", &Font_6x12, 1);
+                //显示单位
+                ST7567_GotoXY(51, 46);
+                ST7567_Puts("ms/cm", &Font_6x12, 1);
 
-            if(VALUE_NULL != data[2])
-            {
-                ST7567_GotoXY(90, 28);
-                rt_memcpy(value, "   ", 3);
-                if(data[2] > 10)
+                if(VALUE_NULL != data[2])
                 {
-                    sprintf(value, "%3d", data[2]);
+                    ST7567_GotoXY(90, 28);
+                    rt_memcpy(value, "   ", 3);
+                    if(data[2] > 10)
+                    {
+                        sprintf(value, "%3d", data[2]);
+                    }
+                    else
+                    {
+                        sprintf(value, " %02d", data[2]);
+                    }
+                    value[3] = '\0';
+                    ST7567_Puts(value, &Font_11x18, 1);
+                    ST7567_DrawRectangle(111, 42, 1, 1, 1);
                 }
                 else
                 {
-                    sprintf(value, " %02d", data[2]);
+                    ST7567_GotoXY(98, 28);
+                    ST7567_Puts("--", &Font_8x16, 1);
                 }
-                value[3] = '\0';
-                ST7567_Puts(value, &Font_11x18, 1);
-                ST7567_DrawFilledCircle(111, 42, 1, 1);
+
+                //显示单位
+                ST7567_DrawCircle(100, 48, 1, 1);
+                ST7567_GotoXY(102, 46);
+                ST7567_Puts("C", &Font_6x12, 1);
+
             }
-            else
+            else if(2 == pagePart)
             {
-                ST7567_GotoXY(98, 28);
-                ST7567_Puts("--", &Font_8x16, 1);
+                if(VALUE_NULL != data[3])
+                {
+                    ST7567_GotoXY(47, 28);
+                    rt_memcpy(value, "   ", 3);
+                    if(data[3]/10 > 10)
+                    {
+                        sprintf(value, "%3d", data[3]/10);
+                    }
+                    else
+                    {
+                        sprintf(value, " %02d", data[3]/10);
+                    }
+                    value[3] = '\0';
+                    ST7567_Puts(value, &Font_11x18, 1);
+                    ST7567_DrawRectangle(68, 42, 1, 1, 1);
+                }
+                else
+                {
+                    ST7567_GotoXY(55, 28);
+                    ST7567_Puts("--", &Font_8x16, 1);
+                }
+
+                if(VALUE_NULL != data[4])
+                {
+                    ST7567_GotoXY(90, 28);
+                    rt_memcpy(value, "   ", 3);
+                    if(data[4] > 10)
+                    {
+                        sprintf(value, "%3d", data[4]);
+                    }
+                    else
+                    {
+                        sprintf(value, " %02d", data[4]);
+                    }
+                    value[3] = '\0';
+                    ST7567_Puts(value, &Font_11x18, 1);
+                    ST7567_DrawRectangle(111, 42, 1, 1, 1);
+                }
+                else
+                {
+                    ST7567_GotoXY(98, 28);
+                    ST7567_Puts("--", &Font_8x16, 1);
+                }
+
+            }
+            else if(3 == pagePart)
+            {
+                if(VALUE_NULL != data[5])
+                {
+                    ST7567_GotoXY(68, 32);
+                    rt_memcpy(value, "   ", 3);
+                    if(data[5] > 10)
+                    {
+                        sprintf(value, "%3d", data[5]);
+                    }
+                    else
+                    {
+                        sprintf(value, " %02d", data[5]);
+                    }
+                    value[3] = '\0';
+                    ST7567_Puts(value, &Font_11x18, 1);
+                    ST7567_DrawRectangle(89, 46, 1, 1, 1);
+                }
+                else
+                {
+                    ST7567_GotoXY(76, 32);
+                    ST7567_Puts("--", &Font_8x16, 1);
+                }
             }
 
-            //显示单位
-            ST7567_DrawCircle(100, 48, 1, 1);
-            ST7567_GotoXY(102, 46);
-            ST7567_Puts("C", &Font_6x12, 1);
-
+            //显示分隔符
             ST7567_DrawLine(43, 22, 43, 56, 1);
-            ST7567_DrawLine(86, 22, 86, 56, 1);
-        }
+            if(3 != pagePart)
+            {
+                ST7567_DrawLine(86, 22, 86, 56, 1);
+            }
 
-        ST7567_DrawFilledTriangle(62, 60, 66, 60, 64, 62, 1);
+            //显示可切换图标
+            ST7567_DrawFilledTriangle(62, 60, 66, 60, 64, 62, 1);
+
+            //显示桶内或者管内
+            if(0 == pagePart)
+            {
+                ST7567_GotoXY(0, 50);
+                ST7567_Puts("Tank  ", &Font_6x12, 1);
+            }
+            else if(1 == pagePart)
+            {
+                ST7567_GotoXY(0, 50);
+                ST7567_Puts("Inline", &Font_6x12, 1);
+            }
+            else
+            {
+                ST7567_GotoXY(0, 50);
+                ST7567_Puts("      ", &Font_6x12, 1);
+            }
+        }
     }
 #endif
     //刷新界面
@@ -356,7 +571,7 @@ void SettingPage(type_page_t page, u8 canShow)
 #if(HUB_SELECT == HUB_ENVIRENMENT)
     char                show[6][16] = {"Sensor List", "Device List", "Light List", "QR Code", "Update Firmware", "CO2 Calibration"};
 #elif (HUB_SELECT == HUB_IRRIGSTION)
-    char                show[4][16] = {"Device List", "QR Code", "Update Firmware", "Sensor Calibrate"};
+    char                show[5][16] = {"Sensor List", "Device List", "QR Code", "Update Firmware", "Sensor Calibrate"};
 #endif
     type_sys_time       sys_time;
     u8                  line        = LINE_HIGHT;
@@ -466,9 +681,119 @@ void SettingPage(type_page_t page, u8 canShow)
     ST7567_UpdateScreen();
 }
 
+void SensorList(u64 *pageInfo, type_page_t *page,type_monitor_t *monitor)
+{
+    u8                      canshow     = 4;
+    char                    show[17]    = "";
+    u8                      port        = 0;
+    sensor_t                *sensor     = RT_NULL;
+    static u8               show_home   = 1;
+    static u8               show_end    = 4;
+
+    //1.清除界面
+    clear_screen();
+
+    //2.显示状态
+    if(YES != sdCard.readInfo)
+    {
+        ST7567_GotoXY(LINE_HIGHT, 0);
+        ST7567_Puts("SD is not init", &Font_8x16, 0);
+    }
+    else
+    {
+        if(page->cusor_max > canshow)
+        {
+            //2.1 如果当前的光标比显示的底部值还大的话，那么底部值增加
+            if(page->cusor > show_end)
+            {
+                //2.2.2 显示的底部值已经触底
+                if(page->cusor_max == page->cusor)
+                {
+                    show_end = page->cusor_max;
+                    show_home = show_end - (canshow - 1);
+                }
+                else
+                {
+                    //2.2.3 如果底部值还有增加的余地的话
+                    if(show_end < page->cusor_max)
+                    {
+                        show_end++;
+                        if(show_end > (canshow - 1))
+                        {
+                            show_home = show_end - (canshow - 1);
+                        }
+                    }
+                }
+            }
+            else if(page->cusor < show_home)
+            {
+                if(page->cusor_home == page->cusor)
+                {
+                    show_home = page->cusor_home;
+                    show_end = show_home + (canshow - 1);
+                }
+                else
+                {
+                    if(show_home > 1)
+                    {
+                        show_home--;
+                        show_end = show_home + (canshow - 1);
+                    }
+                }
+            }
+        }
+        else
+        {
+            show_home = page->cusor_home;
+            show_end = page->cusor_max;
+        }
+
+        //3.获取当前的PhEC
+        for(u8 index = show_home; index <= show_end; index++)
+        {
+            sensor = &monitor->sensor[index];
+            if(index <= page->cusor_max)
+            {
+                ST7567_GotoXY(8, 16 * (index - show_home));
+                sprintf(show, "%8s   #%d",sensor->name, sensor->addr);
+
+                ST7567_Puts(show, &Font_7x10, index == page->cusor ? 0 : 1);
+            }
+        }
+
+//        //4.判断点击事件
+//        if(ON == page->select)
+//        {
+//            if(F_S_PH == func)
+//            {
+//                *pageInfo <<= 8;
+//                *pageInfo |= PH_CALIBRATE_PAGE;
+//
+//                setPhCalWithUUID(GetSensorByAddr(monitor, phec->addr[page->cusor - 1])->uuid);
+//                now_phec_uuid = GetSensorByAddr(monitor, phec->addr[page->cusor - 1])->uuid;
+//
+//            }
+//            else if(F_S_EC == func)
+//            {
+//                *pageInfo <<= 8;
+//                *pageInfo |= EC_CALIBRATE_PAGE;
+//
+//                setEcCalWithUUID(GetSensorByAddr(monitor, phec->addr[page->cusor - 1])->uuid);
+//                now_phec_uuid = GetSensorByAddr(monitor, phec->addr[page->cusor - 1])->uuid;
+//
+//            }
+//
+//            page->select = OFF;
+//        }
+    }
+
+    //5.刷新界面
+    ST7567_UpdateScreen();
+}
+
 void SensorStatePage_new(type_monitor_t *monitor)
 {
-#define     SHOWNUM     5
+#define     SHOWNUM     6
     u8              line        = LINE_HIGHT;
     u8              column      = 0;
     char            name[5]     = " ";
@@ -477,7 +802,7 @@ void SensorStatePage_new(type_monitor_t *monitor)
     int             data;
     sys_set_t       *set        = GetSysSet();
     static u8       showInde    = 0;
-    static u8       showList[SHOWNUM] = {F_S_CO2,F_S_TEMP,F_S_HUMI,F_S_LIGHT,F_S_PAR};
+    static u8       showList[SHOWNUM] = {F_S_CO2,F_S_TEMP,F_S_HUMI,F_S_LIGHT,F_S_PAR,F_S_O2};
 
     //1.清除界面
     clear_screen();
@@ -507,6 +832,10 @@ void SensorStatePage_new(type_monitor_t *monitor)
         {
             strcpy(name, "PAR");
         }
+        else if(F_S_O2 == showList[showInde])
+        {
+            strcpy(name, "O2");
+        }
         name[4] = '\0';
 
         if(F_S_LIGHT != showList[showInde])
@@ -518,7 +847,8 @@ void SensorStatePage_new(type_monitor_t *monitor)
         column = 24 - 16;
         ST7567_GotoXY(line, column);
         if(F_S_HUMI == showList[showInde] ||
-           F_S_TEMP == showList[showInde])
+           F_S_TEMP == showList[showInde] ||
+           F_S_O2 == showList[showInde])
         {
 
             data = getSensorDataByFunc(monitor, showList[showInde]);
@@ -528,9 +858,18 @@ void SensorStatePage_new(type_monitor_t *monitor)
             }
             else
             {
-                num = data;
-                num /= 10;
-                sprintf(name, "%.1f", num);
+                if(F_S_O2 == showList[showInde])
+                {
+                    num = data;
+                    num /= 10;
+                    sprintf(name, "%.1f %%", num);
+                }
+                else
+                {
+                    num = data;
+                    num /= 10;
+                    sprintf(name, "%.1f", num);
+                }
             }
         }
         else

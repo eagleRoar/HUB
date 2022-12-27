@@ -41,4 +41,5 @@ void PhCalCallBackPage(u8);
 void EcCalCallBackPage(u8);
 void testPage(void);
 void phecOnlinePage(u64 *, type_page_t *, type_monitor_t *, u8);
+void SensorList(u64 *, type_page_t *,type_monitor_t *);
 #endif /* APPLICATIONS_OLED1309_OLEDBUSINESS_OLEDBUSINESS_H_ */

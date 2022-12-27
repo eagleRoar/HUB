@@ -367,7 +367,6 @@ void SensorUart2TaskEntry(void* parameter)
 
                 if(ON == uart2_msg.messageFlag)
                 {
-
                     AnalyzeData(uart2_serial, &monitor, uart2_msg.data, uart2_msg.size);
                     uart2_msg.messageFlag = OFF;
                 }

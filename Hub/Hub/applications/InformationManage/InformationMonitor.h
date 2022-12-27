@@ -307,7 +307,8 @@ enum
     WARN_SOIL_EC_HIGHT,     //31:基质 EC 高报警
     WARN_SOIL_EC_LOW,       //32:基质 EC 低报警
     WARN_SOIL_T_HIGHT,      //33:基质 Temp 高报警
-    WARN_SOIL_T_LOW         //34:基质 Temp 低报警
+    WARN_SOIL_T_LOW,        //34:基质 Temp 低报警
+    WARN_O2_LOW             //35:O2 低报警
 };
 
 //询问uart 事件

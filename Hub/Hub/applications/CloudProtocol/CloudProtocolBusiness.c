@@ -1029,6 +1029,9 @@ void CmdSetTank(char *data, cloudcmd_t *cmd)
             GetValueByU16(temp, "highEcProtection", &tank->highEcProtection);
             GetValueByU16(temp, "lowPhProtection", &tank->lowPhProtection);
             GetValueByU16(temp, "highPhProtection", &tank->highPhProtection);
+            GetValueByU8(temp, "phMonitorOnly", &tank->phMonitorOnly);
+            GetValueByU8(temp, "ecMonitorOnly", &tank->ecMonitorOnly);
+            GetValueByU8(temp, "wlMonitorOnly", &tank->wlMonitorOnly);
         }
 
         cJSON_Delete(temp);
@@ -1144,6 +1147,7 @@ void CmdSetWarn(char *data, cloudcmd_t *cmd, sys_set_t *set)
         GetValueByU16(temp, "tempTimeoutseconds", &set->sysWarn.tempTimeoutseconds);
         GetValueByU8(temp, "humidTimeoutEn", &set->sysWarn.humidTimeoutEn);
         GetValueByU16(temp, "humidTimeoutseconds", &set->sysWarn.humidTimeoutseconds);
+        GetValueByU8(temp, "o2ProtectionEn", &set->sysWarn.o2ProtectionEn);
 #elif(HUB_SELECT == HUB_IRRIGSTION)
         GetValueByU8(temp, "phEn", &set->sysWarn.phEn);
         GetValueByU8(temp, "ecEn", &set->sysWarn.ecEn);
@@ -2478,6 +2482,9 @@ char *ReplySetTank(char *cmd, cloudcmd_t cloud)
             cJSON_AddNumberToObject(json, "highEcProtection", tank->highEcProtection);
             cJSON_AddNumberToObject(json, "lowPhProtection", tank->lowPhProtection);
             cJSON_AddNumberToObject(json, "highPhProtection", tank->highPhProtection);
+            cJSON_AddNumberToObject(json, "phMonitorOnly", tank->phMonitorOnly);
+            cJSON_AddNumberToObject(json, "ecMonitorOnly", tank->ecMonitorOnly);
+            cJSON_AddNumberToObject(json, "wlMonitorOnly", tank->wlMonitorOnly);
         }
         else
         {
@@ -2525,6 +2532,9 @@ char *ReplyGetTank(char *cmd, cloudcmd_t cloud)
             cJSON_AddNumberToObject(json, "highEcProtection", tank->highEcProtection);
             cJSON_AddNumberToObject(json, "lowPhProtection", tank->lowPhProtection);
             cJSON_AddNumberToObject(json, "highPhProtection", tank->highPhProtection);
+            cJSON_AddNumberToObject(json, "phMonitorOnly", tank->phMonitorOnly);
+            cJSON_AddNumberToObject(json, "ecMonitorOnly", tank->ecMonitorOnly);
+            cJSON_AddNumberToObject(json, "highPhProtection", tank->wlMonitorOnly);
 
             pump = cJSON_CreateObject();
             if(RT_NULL != pump)
@@ -2787,6 +2797,7 @@ char *ReplySetWarn(char *cmd, cloudcmd_t cloud, sys_warn_t warn)
         cJSON_AddNumberToObject(json, "tempTimeoutseconds",warn.tempTimeoutseconds);
         cJSON_AddNumberToObject(json, "humidTimeoutEn",warn.humidTimeoutEn);
         cJSON_AddNumberToObject(json, "humidTimeoutseconds",warn.humidTimeoutseconds);
+        cJSON_AddNumberToObject(json, "o2ProtectionEn",warn.o2ProtectionEn);
 #elif(HUB_SELECT == HUB_IRRIGSTION)
         cJSON_AddNumberToObject(json, "phEn",warn.phEn);
         cJSON_AddNumberToObject(json, "ecEn",warn.ecEn);

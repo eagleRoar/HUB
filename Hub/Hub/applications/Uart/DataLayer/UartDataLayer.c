@@ -211,29 +211,37 @@ char* GetTankSensorNameByType(u8 func)
 
     switch (func) {
         case F_S_WL:
-            strncpy(ret, "WaterLv", 2);
+            strncpy(ret, "WaterLv", 7);
+            ret[7] = '\0';
             break;
         case F_S_WT:
-            strncpy(ret, "Temp", 2);
+            strncpy(ret, "Temp", 4);
+            ret[4] = '\0';
             break;
         case F_S_PH:
             strncpy(ret, "pH", 2);
+            ret[2] = '\0';
             break;
         case F_S_EC:
             strncpy(ret, "EC", 2);
+            ret[2] = '\0';
             break;
         case F_S_SW:
             strncpy(ret, "Medium Moist", 12);
+            ret[12] = '\0';
             break;
         case F_S_SEC:
             strncpy(ret, "Medium EC", 9);
+            ret[9] = '\0';
             break;
         case F_S_ST:
             strncpy(ret, "Medium Temp", 11);
+            ret[11] = '\0';
             break;
 
         default:
             strncpy(ret, "  ", 2);
+            ret[2] = '\0';
             break;
 
     }
@@ -243,7 +251,7 @@ char* GetTankSensorNameByType(u8 func)
 
 char* GetTankSensorSByType(u8 func)
 {
-    char ret[3] = "";
+    static char ret[3] = "";
 
     switch (func) {
         case F_S_WL:
@@ -570,28 +578,34 @@ u8 getAllocateAddress(type_monitor_t *monitor, u8 type)
 
         for(; i < ALLOCATE_ADDRESS_SIZE; i++)
         {
-            if((monitor->allocateStr.address[i] != i) &&
-                (i != 0xFA) && (i != 0xFE) &&
-                !((i <= 0xEF) && (i >= 0xE0))
-                && (i >= 2) && (i != 0xFF) && (i != 0x18) &&
-                (i != 0xFD))//0xFA 是注册的代码 0xFE是PHEC通用 0x18是par特殊, 0xFD为广播地址
+            if(i < 128)//只用前128地址
             {
-                monitor->allocateStr.address[i] = i;
-                return i;
+                if((monitor->allocateStr.address[i] != i) &&
+                    (i != 0xFA) && (i != 0xFE) &&
+                    !((i <= 0xEF) && (i >= 0xE0))
+                    && (i >= 2) && (i != 0xFF) && (i != 0x18) &&
+                    (i != 0xFD))//0xFA 是注册的代码 0xFE是PHEC通用 0x18是par特殊, 0xFD为广播地址
+                {
+                    monitor->allocateStr.address[i] = i;
+                    return i;
+                }
             }
         }
 
         i = 2;
         for(; i < ALLOCATE_ADDRESS_SIZE; i++)
         {
-            if((monitor->allocateStr.address[i] != i) &&
-                (i != 0xFA) && (i != 0xFE) &&
-                !((i <= 0xEF) && (i >= 0xE0))
-                && (i >= 2) && (i != 0xFF) && (i != 0x18) &&
-                (i != 0xFD))//0xFA 是注册的代码 0xFE是PHEC通用 0x18是par特殊
+            if(i < 128)//只用前128地址
             {
-                monitor->allocateStr.address[i] = i;
-                return i;
+                if((monitor->allocateStr.address[i] != i) &&
+                    (i != 0xFA) && (i != 0xFE) &&
+                    !((i <= 0xEF) && (i >= 0xE0))
+                    && (i >= 2) && (i != 0xFF) && (i != 0x18) &&
+                    (i != 0xFD))//0xFA 是注册的代码 0xFE是PHEC通用 0x18是par特殊
+                {
+                    monitor->allocateStr.address[i] = i;
+                    return i;
+                }
             }
         }
         LOG_E("the address full");
