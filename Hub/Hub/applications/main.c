@@ -221,7 +221,6 @@ int main(void)
                     printLine(GetMonitor()->line[index]);
                 }
             }
-
         }
 
         //10s

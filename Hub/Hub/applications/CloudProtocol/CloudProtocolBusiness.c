@@ -1023,6 +1023,7 @@ void CmdSetTank(char *data, cloudcmd_t *cmd)
             tank = &GetSysTank()->tank[cmd->tank_no - 1];
             tank->tankNo = cmd->tank_no;
 
+            GetValueByC16(temp, "name", tank->name, TANK_NAMESZ);
             GetValueByU16(temp, "autoFillValveId", &tank->autoFillValveId);
             GetValueByU8(temp, "autoFillHeight", &tank->autoFillHeight);
             GetValueByU8(temp, "autoFillFulfilHeight", &tank->autoFillFulfilHeight);
@@ -2049,6 +2050,7 @@ char *SendHubReport(char *cmd, sys_set_t *set)
                             }
                         }
                     }
+                    cJSON_AddStringToObject(tank, "name",GetSysTank()->tank[no].name);
                     cJSON_AddNumberToObject(tank, "tankEc",valueTemp[0]);
                     cJSON_AddNumberToObject(tank, "inlineEc",valueTemp[1]);
                     cJSON_AddNumberToObject(tank, "tankPh",valueTemp[2]);
@@ -2475,6 +2477,7 @@ char *ReplySetTank(char *cmd, cloudcmd_t cloud)
         if(RT_NULL != tank)
         {
             cJSON_AddNumberToObject(json, "tankNo", tank->tankNo);
+            cJSON_AddStringToObject(json, "name", tank->name);
             cJSON_AddNumberToObject(json, "autoFillValveId", tank->autoFillValveId);
             cJSON_AddNumberToObject(json, "autoFillHeight", tank->autoFillHeight);
             cJSON_AddNumberToObject(json, "autoFillFulfilHeight", tank->autoFillFulfilHeight);
@@ -2525,6 +2528,7 @@ char *ReplyGetTank(char *cmd, cloudcmd_t cloud)
         if(RT_NULL != tank)
         {
             cJSON_AddNumberToObject(json, "tankNo", tank->tankNo);
+            cJSON_AddStringToObject(json, "name", tank->name);
             cJSON_AddNumberToObject(json, "autoFillValveId", tank->autoFillValveId);
             LOG_D("------------ReplyGetTank autoFillValveId = %x",tank->autoFillValveId);
             cJSON_AddNumberToObject(json, "autoFillHeight", tank->autoFillHeight);
@@ -3723,6 +3727,7 @@ char *ReplyGetHubState(char *cmd, cloudcmd_t cloud)
                             }
                         }
                     }
+                    cJSON_AddStringToObject(tank, "name",GetSysTank()->tank[no].name);
                     cJSON_AddNumberToObject(tank, "tankEc",valueTemp[0]);
                     cJSON_AddNumberToObject(tank, "inlineEc",valueTemp[1]);
                     cJSON_AddNumberToObject(tank, "tankPh",valueTemp[2]);

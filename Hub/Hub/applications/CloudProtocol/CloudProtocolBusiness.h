@@ -19,11 +19,12 @@
 #pragma pack(4)//因为cjson 不能使用1字节对齐
 
 #define     KEYVALUE_NAME_SIZE      25
-#define     KEYVALUE_VALUE_SIZE      25
+#define     KEYVALUE_VALUE_SIZE     25
 #define     CMD_NAME                "cmd"
 #define     CMD_NAME_SIZE           25
 #define     REC_ALLOT_ADDR          100
 #define     TANK_WARN_NAMESZ        8
+#define     TANK_NAMESZ             13
 
 #define     STAGE_LIST_MAX                  5//10//最多10个阶段
 #define     RECIPE_LIST_MAX                 10//最多10个配方
@@ -268,6 +269,7 @@ struct sys_recipe{
 
 struct tank{
     u8      tankNo;                         //桶编号 1-9
+    char    name[TANK_NAMESZ];              //名称12字节
     u16     autoFillValveId;                //自动补水阀 ID ,0 为未指定
     u8      autoFillHeight;                 //低水位补水高度,单位 cm
     u8      autoFillFulfilHeight;           //补满高度,单位 cm

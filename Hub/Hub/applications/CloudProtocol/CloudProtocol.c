@@ -52,6 +52,7 @@ sys_tank_t *GetSysTank(void)
 void insertPumpToTank(type_monitor_t *monitor, sys_tank_t *tank_list, u16 id)
 {
     u8      index       = 0;
+    char    name[TANK_NAMESZ];
 
     if(tank_list->tank_size < TANK_LIST_MAX)
     {
@@ -73,6 +74,8 @@ void insertPumpToTank(type_monitor_t *monitor, sys_tank_t *tank_list, u16 id)
                 {
 
                     tank_list->tank[item].tankNo = item + 1;
+                    sprintf(name, "tank%d",tank_list->tank[item].tankNo);
+                    strncpy(tank_list->tank[item].name, name, TANK_NAMESZ);
                     tank_list->tank[item].autoFillValveId = 0;
                     tank_list->tank[item].autoFillHeight = 10;
                     tank_list->tank[item].autoFillFulfilHeight = 100;
