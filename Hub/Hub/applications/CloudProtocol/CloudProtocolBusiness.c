@@ -2538,7 +2538,7 @@ char *ReplyGetTank(char *cmd, cloudcmd_t cloud)
             cJSON_AddNumberToObject(json, "highPhProtection", tank->highPhProtection);
             cJSON_AddNumberToObject(json, "phMonitorOnly", tank->phMonitorOnly);
             cJSON_AddNumberToObject(json, "ecMonitorOnly", tank->ecMonitorOnly);
-            cJSON_AddNumberToObject(json, "highPhProtection", tank->wlMonitorOnly);
+            cJSON_AddNumberToObject(json, "wlMonitorOnly", tank->wlMonitorOnly);
 
             pump = cJSON_CreateObject();
             if(RT_NULL != pump)

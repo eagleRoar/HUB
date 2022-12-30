@@ -21,9 +21,9 @@
     1 : HUB_IRRIGSTION
 */
 #if(HUB_ENVIRENMENT == HUB_SELECT)
-#define FIRMWAREVISION                  "0.0.3"
+#define FIRMWAREVISION                  "0.0.4"
 #elif(HUB_IRRIGSTION == HUB_SELECT)
-#define FIRMWAREVISION                  "1.0.4"
+#define FIRMWAREVISION                  "1.0.5"
 #endif
 #define BOOTLOADVISION                  "0.0.1"
 
