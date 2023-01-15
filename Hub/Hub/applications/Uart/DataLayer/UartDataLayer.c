@@ -472,6 +472,13 @@ rt_err_t setDeviceDefault(device_t *module)
             addr = module->addr;
             setDeviceDefaultStora(module, 0 , "Pump", F_PUMP, module->type, addr , MANUAL_NO_HAND, 0);
             break;
+
+        case VALVE_TYPE:
+                setDeviceDefaultPara(module, "BIS-V", 0x0040, S_VALVE, module->type, 1);
+                addr = module->addr;
+                setDeviceDefaultStora(module, 0 , "Valve", F_VALVE, module->type, addr , MANUAL_NO_HAND, 0);
+            break;
+
         case IO_12_TYPE:
             setDeviceDefaultPara(module, "BCB-12", 0x0401, S_IO_12, module->type, 12);
             for(u8 index = 0; index < module->storage_size; index++)

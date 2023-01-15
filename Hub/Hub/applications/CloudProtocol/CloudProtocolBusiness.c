@@ -38,7 +38,7 @@ rt_err_t GetValueU8(cJSON *temp, type_kv_u8 *data)
 
     if(RT_ERROR == ret)
     {
-        data->value = 0x00;
+//        data->value = 0x00;//Justin debug
         LOG_E("parse u8 err, name %s",data->name);
     }
 
@@ -58,7 +58,7 @@ rt_err_t GetValueByInt(cJSON *temp, char *name, int *value)
 
     if(RT_ERROR == ret)
     {
-        value = 0x00;
+//        value = 0x00;//Justin debug
         LOG_E("parse int err, name %s",name);
     }
 
@@ -91,7 +91,7 @@ rt_err_t GetValueU16(cJSON *temp, type_kv_u16 *data)
 
     if(RT_ERROR == ret)
     {
-        data->value = 0x0000;
+//        data->value = 0x0000;//Justin debug
         LOG_E("parse u16 err, name %s",data->name);
     }
 
@@ -119,7 +119,6 @@ rt_err_t GetValueC16(cJSON *temp, type_kv_c16 *data)
     cJSON *json = cJSON_GetObjectItem(temp, data->name);
     if(NULL != json)
     {
-//        LOG_E("-----------------------GetValueC16   len = %d",strlen(json->valuestring));
         if(strlen(json->valuestring) <= KEYVALUE_VALUE_SIZE - 1)
         {
             strncpy(data->value, json->valuestring, strlen(json->valuestring));
@@ -135,8 +134,8 @@ rt_err_t GetValueC16(cJSON *temp, type_kv_c16 *data)
     if(RT_ERROR == ret)
     {
         LOG_E("parse c16 err, name %s",data->name);
-        rt_memset(data->value, ' ', KEYVALUE_VALUE_SIZE - 1);
-        data->value[KEYVALUE_VALUE_SIZE - 1] = '\0';
+//        rt_memset(data->value, ' ', KEYVALUE_VALUE_SIZE - 1);
+//        data->value[KEYVALUE_VALUE_SIZE - 1] = '\0';//Justin debug
     }
 
     return ret;

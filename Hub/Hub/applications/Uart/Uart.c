@@ -298,7 +298,7 @@ void SensorUart2TaskEntry(void* parameter)
     rt_device_open(uart3_serial, RT_DEVICE_FLAG_DMA_RX);
     rt_device_set_rx_indicate(uart3_serial, Uart3_input);
 
-    initOfflineFlag();      //初始化离线报警flag
+    initOfflineFlag();                      //初始化离线报警flag
     setDeviceEvent(EV_ASK_PORT_TYPE);       //设置询问AC_4端口事件
     initPhEcCal();
     while (1)

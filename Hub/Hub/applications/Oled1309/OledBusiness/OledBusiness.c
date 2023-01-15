@@ -246,8 +246,8 @@ void HomePage(type_page_t *page, type_monitor_t *monitor)
                 addr = tank->pumpId;
                 port = 0;
             }
-            sprintf(time," %02d:%02d:%02d       %5s",time_for.hour,time_for.minute,time_for.second,
-                    GetDeviceByAddr(monitor, addr)->port[port].name);
+            sprintf(time," %02d:%02d:%02d %12s",time_for.hour,time_for.minute,time_for.second,
+                    tank->name);
             time[21] = '\0';
             ST7567_GotoXY(0, 0);
             ST7567_Puts(time, &Font_6x12, 0);
