@@ -29,7 +29,7 @@ u32 GetFileLength(char* name)
         LOG_D("%s file size = %d", name, buf.st_size);
         return buf.st_size;
     } else {
-        LOG_E("%s file not fonud");
+        LOG_E("%s file not found");
         return 0;
     }
 }

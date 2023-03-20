@@ -14,16 +14,17 @@
 #define HUB_IRRIGSTION                  2
 
 #define DEBUG_MODE                      0//1//                 //1.如果是debug mode 的话不需要偏移位置，否则偏移位置SD卡升级 2.修改link.lds
-#define HUB_SELECT                      HUB_IRRIGSTION//HUB_ENVIRENMENT//
+#define HUB_SELECT                      HUB_ENVIRENMENT//HUB_IRRIGSTION//
 
 /* 软件号的 第一个分配为:
     0 : HUB_ENVIRENMENT
     1 : HUB_IRRIGSTION
+    版本特殊说明，在软件版本(环控版<=0.0.4 灌溉版<=1.0.6之前没有数据兼容性处理)
 */
 #if(HUB_ENVIRENMENT == HUB_SELECT)
 #define FIRMWAREVISION                  "0.0.4"
 #elif(HUB_IRRIGSTION == HUB_SELECT)
-#define FIRMWAREVISION                  "1.0.5"
+#define FIRMWAREVISION                  "1.0.6"
 #endif
 #define BOOTLOADVISION                  "0.0.1"
 

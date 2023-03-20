@@ -602,6 +602,8 @@ u8 *ReplyDataToCloud1(mqtt_client *client, u8 *cloudRes, u16 *len, u8 sendCloudF
                 }
             }
 
+            LOG_I("str = %s",str);//Justin
+
             //获取数据完之后需要free否知数据泄露
             cJSON_free(str);
             str = RT_NULL;
@@ -612,10 +614,27 @@ u8 *ReplyDataToCloud1(mqtt_client *client, u8 *cloudRes, u16 *len, u8 sendCloudF
         {
             *cloudRes = RT_ERROR;
             *len = 0;
-            LOG_E("str == RT_NULL");
+            LOG_E("str == RT_NULL, ReplyDataToCloud1");
         }
     }
     return page;
+}
+
+//SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT_WARN, WARN_OFFLINE - 1, VALUE_NULL, RT_NULL, RT_NULL, YES, index);
+void upTest(void)//Justin debug
+{
+    char *str = RT_NULL;
+    char name[20];
+
+    str = SendHubReport(CMD_HUB_REPORT, GetSysSet());
+
+    rt_memset(name, ' ', 20);
+    GetSnName(name, 12);
+    strcpy(name + 11, "/reply");
+    name[19] = '\0';
+    paho_mqtt_publish(GetMqttClient(), QOS1, name, str, strlen(str));
+    cJSON_free(str);
+    str = RT_NULL;
 }
 
 rt_err_t SendDataToCloud(mqtt_client *client, char *cmd, u8 warn_no, u16 value, u8 *buf, u16 *length, u8 cloudFlg, u8 offline_no)
@@ -1354,6 +1373,7 @@ void lineProgram_new(type_monitor_t *monitor, u8 line_no, u16 mPeroid)
     type_sys_time   time;
     u16             temperature     = 0;
     static u8       stage[LINE_MAX] = {LINE_MIN_VALUE,LINE_MIN_VALUE};
+    static u8       lineDimmingFlag[LINE_MAX] = {NO, NO};
     static u16      cnt[LINE_MAX]   = {0, 0};
 
     //1.获取灯光设置
@@ -1754,14 +1774,26 @@ void lineProgram_new(type_monitor_t *monitor, u8 line_no, u16 mPeroid)
         //过温保护
         if(temperature >= line_set.tempOffDimming)
         {
-            LOG_D("------in dimin off");
+            //LOG_D("------in dimin off");
             state = OFF;
         }
         else if(temperature >= line_set.tempStartDimming)
         {
-            LOG_D("------in dimin");
+            //LOG_D("------in dimin");
+            lineDimmingFlag[line_no] = YES;
             stage[line_no] = LINE_DIMMING;
             value = stage[line_no];
+        }
+        //过温要有一度的回差
+        else if(temperature + 10 < line_set.tempStartDimming)
+        {
+            lineDimmingFlag[line_no] = NO;
+        }
+
+        //如果处于过温保护期间
+        if(YES == lineDimmingFlag[line_no])//Justin debug
+        {
+            value = LINE_DIMMING;
         }
     }
     else

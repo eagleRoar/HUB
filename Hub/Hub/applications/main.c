@@ -262,6 +262,12 @@ int main(void)
                 }
             }
 
+            //Justin debug
+//            LOG_I("print device list test");//Justin debug
+//            for(u8 i = 0; i < 2; i++)
+//            {
+//                upTest();
+//            }
         }
 
         rt_thread_mdelay(20);

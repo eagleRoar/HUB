@@ -246,7 +246,7 @@ void HomePage(type_page_t *page, type_monitor_t *monitor)
                 addr = tank->pumpId;
                 port = 0;
             }
-            sprintf(time," %02d:%02d:%02d %12s",time_for.hour,time_for.minute,time_for.second,
+            sprintf(time," %02d:%02d:%02d%11s",time_for.hour,time_for.minute,time_for.second,
                     tank->name);
             time[21] = '\0';
             ST7567_GotoXY(0, 0);
@@ -505,21 +505,22 @@ void HomePage(type_page_t *page, type_monitor_t *monitor)
             }
             else if(3 == pagePart)
             {
-                if(VALUE_NULL != data[5])
+                if(VALUE_NULL != data[5])//wl 取出来是厘米
                 {
                     ST7567_GotoXY(68, 32);
                     rt_memcpy(value, "   ", 3);
-                    if(data[5] > 10)
-                    {
-                        sprintf(value, "%3d", data[5]);
-                    }
-                    else
-                    {
-                        sprintf(value, " %02d", data[5]);
-                    }
-                    value[3] = '\0';
+//                    if(data[5] > 10)
+//                    {
+//                        sprintf(value, "%3d", data[5]/10);
+//                    }
+//                    else
+//                    {
+//                        sprintf(value, " %02d", data[5]/10);
+//                    }
+                    sprintf(value, "%.2f", (float)data[5]/100);
+                    value[4] = '\0';
                     ST7567_Puts(value, &Font_11x18, 1);
-                    ST7567_DrawRectangle(89, 46, 1, 1, 1);
+//                    ST7567_DrawRectangle(89, 46, 1, 1, 1);
                 }
                 else
                 {

@@ -120,6 +120,25 @@ void sd_dfs_event_entry(void* parameter)
                                 LOG_W("-----------------------------------------------------getsystank ok");
                             }
 
+//                            LOG_E("------------------------------------do monitor init test");//Justin debug 做测试
+//                            initMonitor();//Justin debug
+//                            //Justin debug
+//                            GetMonitor()->device_size = 16;
+//                            for(u8 i = 0; i < GetMonitor()->device_size; i++)
+//                            {
+//                                sprintf(GetMonitor()->device[i].name,"%s%d","name",i);
+//                                GetMonitor()->device[i].addr = i;
+//                                GetMonitor()->device[i].type = HUMI_TYPE;
+//                                GetMonitor()->device[i].conn_state = 3;
+//                                GetMonitor()->device[i].main_type = 5;
+//                                GetMonitor()->device[i].storage_size = 1;
+//                                for(u8 j = 0; j < GetMonitor()->device[i].storage_size; j++)
+//                                {
+//                                    sprintf(GetMonitor()->device[i].port[j].name,"%s%d%d","name",i,j);//Justin debug 做测试
+//                                }
+//                            }
+
+
                             sdCard.readInfo = YES;
                             rt_mutex_release(dynamic_mutex);//互斥锁解锁
                         }

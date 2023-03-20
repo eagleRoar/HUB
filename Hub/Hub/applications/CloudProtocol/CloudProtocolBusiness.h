@@ -16,18 +16,18 @@
 #include "cJSON.h"
 #include "mqtt_client.h"
 
-#pragma pack(4)//因为cjson 不能使用1字节对齐
+#pragma pack(1) //pack(4)//因为cjson 不能使用1字节对齐//Justin debug
 
 #define     KEYVALUE_NAME_SIZE      25
 #define     KEYVALUE_VALUE_SIZE     25
 #define     CMD_NAME                "cmd"
 #define     CMD_NAME_SIZE           25
-#define     REC_ALLOT_ADDR          100
 #define     TANK_WARN_NAMESZ        8
 #define     TANK_NAMESZ             13
 
 #define     STAGE_LIST_MAX                  5//10//最多10个阶段
 #define     RECIPE_LIST_MAX                 10//最多10个配方
+#define     REC_ALLOT_ADDR                  RECIPE_LIST_MAX//100
 #define     TANK_LIST_MAX                   4
 #define     TANK_WARN_ITEM_MAX              8
 
@@ -468,4 +468,6 @@ char *ReplyGetPoolAlarm(char *, cloudcmd_t);
 char *ReplySetDeviceType(char *, cloudcmd_t);
 char *ReplyDelPumpSensor(char *, cloudcmd_t);
 u8 getColorFromTankList(u16, sys_tank_t *);
+#pragma pack()//Justin debug
+
 #endif /* APPLICATIONS_CLOUDPROTOCOL_CLOUDPROTOCOLBUSINESS_H_ */
