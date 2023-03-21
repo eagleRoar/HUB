@@ -392,10 +392,112 @@ void setCloudCmd(char *cmd, u8 flag, u8 cloud_app)
     }
 }
 
+//该函数要加上锁操作 Justin debug
+u8 *ReplyDeviceListDataToCloud(mqtt_client *client, u8 *cloudRes, u8 sendCloudFlg)
+{
+    char        name[20];
+    char        *str        = RT_NULL;
+
+    if(ON == cloudCmd.recv_flag)
+    {
+        //发送device
+        for(int index = 0; index < GetMonitor()->device_size; index++)
+        {
+            str = ReplyGetDeviceList_new(CMD_GET_DEVICELIST, cloudCmd.msgid, DEVICE_TYPE, index);
+
+            if(RT_NULL != str)
+            {
+                if(YES == sendCloudFlg)
+                {
+                    rt_memset(name, ' ', 20);
+                    GetSnName(name, 12);
+                    strcpy(name + 11, "/reply");
+                    name[19] = '\0';
+                    paho_mqtt_publish(client, QOS1, name, str, strlen(str));
+                    *cloudRes = RT_EOK;
+                }
+//                else
+//                {
+//                    *len = strlen(str);
+//                    page = rt_malloc(sizeof(eth_page_head) + *len);
+//                    if(RT_NULL != page)
+//                    {
+//                        rt_memcpy(page, HEAD_CODE, 4);
+//                        rt_memcpy(page + 4, (u8 *)len, 2);
+//                        rt_memcpy(page + sizeof(eth_page_head), str, *len);
+//                    }
+//                }
+
+                LOG_I("str = %s",str);//Justin
+
+                //获取数据完之后需要free否知数据泄露
+                cJSON_free(str);
+                str = RT_NULL;
+
+                setCloudCmd(RT_NULL, OFF, sendCloudFlg);
+            }
+            else
+            {
+                *cloudRes = RT_ERROR;
+//                *len = 0;
+                LOG_E("str == RT_NULL, ReplyDataToCloud1");
+            }
+        }
+
+        //发送line
+        for(int index = 0; index < GetMonitor()->line_size; index++)
+        {
+            str = ReplyGetDeviceList_new(CMD_GET_DEVICELIST, cloudCmd.msgid, LINE1OR2_TYPE, index);
+
+            if(RT_NULL != str)
+            {
+                if(YES == sendCloudFlg)
+                {
+                    rt_memset(name, ' ', 20);
+                    GetSnName(name, 12);
+                    strcpy(name + 11, "/reply");
+                    name[19] = '\0';
+                    paho_mqtt_publish(client, QOS1, name, str, strlen(str));
+                    *cloudRes = RT_EOK;
+                }
+//                else
+//                {
+//                    *len = strlen(str);
+//                    page = rt_malloc(sizeof(eth_page_head) + *len);
+//                    if(RT_NULL != page)
+//                    {
+//                        rt_memcpy(page, HEAD_CODE, 4);
+//                        rt_memcpy(page + 4, (u8 *)len, 2);
+//                        rt_memcpy(page + sizeof(eth_page_head), str, *len);
+//                    }
+//                }
+
+                LOG_I("str = %s",str);//Justin
+
+                //获取数据完之后需要free否知数据泄露
+                cJSON_free(str);
+                str = RT_NULL;
+
+                setCloudCmd(RT_NULL, OFF, sendCloudFlg);
+            }
+            else
+            {
+                *cloudRes = RT_ERROR;
+//                *len = 0;
+                LOG_E("str == RT_NULL, ReplyDataToCloud1");
+            }
+        }
+
+        setCloudCmd(RT_NULL, OFF, sendCloudFlg);
+    }
+
+    return 0;//Justin debug
+}
+
 /**
  * 发布数据(回复云服务器)
  */
-u8 *ReplyDataToCloud1(mqtt_client *client, u8 *cloudRes, u16 *len, u8 sendCloudFlg)
+u8 *ReplyDataToCloud1(mqtt_client *client, u8 *cloudRes, u16 *len, u8 sendCloudFlg)//Justin debug 增加是否发送结束
 {
     char        name[20];
     char        *str        = RT_NULL;
@@ -403,7 +505,7 @@ u8 *ReplyDataToCloud1(mqtt_client *client, u8 *cloudRes, u16 *len, u8 sendCloudF
 
     if(ON == cloudCmd.recv_flag)
     {
-        LOG_D("-------------reply cmd %s",cloudCmd.cmd);
+        //LOG_D("-------------reply cmd %s",cloudCmd.cmd);
         if(0 == rt_memcmp(CMD_SET_TEMP, cloudCmd.cmd, sizeof(CMD_SET_TEMP)) ||
            0 == rt_memcmp(CMD_GET_TEMP, cloudCmd.cmd, sizeof(CMD_GET_TEMP)))   //获取/设置温度参数
         {
@@ -419,10 +521,12 @@ u8 *ReplyDataToCloud1(mqtt_client *client, u8 *cloudRes, u16 *len, u8 sendCloudF
         {
             str = ReplyGetHumi(cloudCmd.cmd, cloudCmd);
         }
-        else if(0 == rt_memcmp(CMD_GET_DEVICELIST, cloudCmd.cmd, sizeof(CMD_GET_DEVICELIST)))   //获取设备列表
-        {
-            str = ReplyGetDeviceList(CMD_GET_DEVICELIST, cloudCmd.msgid);
-        }
+//        else if(0 == rt_memcmp(CMD_GET_DEVICELIST, cloudCmd.cmd, sizeof(CMD_GET_DEVICELIST)))   //获取设备列表
+//        {
+//            //特殊化处理
+//
+//            str = ReplyGetDeviceList(CMD_GET_DEVICELIST, cloudCmd.msgid);//Justin debug 仅仅测试
+//        }
         else if(0 == rt_memcmp(CMD_GET_L1, cloudCmd.cmd, sizeof(CMD_GET_L1)) ||
                 0 == rt_memcmp(CMD_SET_L1, cloudCmd.cmd, sizeof(CMD_SET_L1)))   //获取/设置灯光1
         {
@@ -535,7 +639,6 @@ u8 *ReplyDataToCloud1(mqtt_client *client, u8 *cloudRes, u16 *len, u8 sendCloudF
         }
         else if(0 == rt_memcmp(CMD_GET_RECIPE_ALL, cloudCmd.cmd, sizeof(CMD_GET_RECIPE_ALL)))//获取配方列表all
         {
-            LOG_D(" recv cmd CMD_GET_RECIPE_ALL");
             str = ReplyGetRecipeListAll(CMD_GET_RECIPE_ALL, cloudCmd, GetSysRecipt());
         }
         else if(0 == rt_memcmp(CMD_ADD_PUMP_VALUE, cloudCmd.cmd, sizeof(CMD_ADD_PUMP_VALUE)))//设置泵子阀

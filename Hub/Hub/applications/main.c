@@ -30,6 +30,7 @@ extern struct ethDeviceStruct *eth;
 extern int tcp_sock;
 extern const u8    HEAD_CODE[4];
 
+extern  cloudcmd_t              cloudCmd;
 extern rt_uint8_t GetEthDriverLinkStatus(void);            //获取网口连接状态
 
 int main(void)
@@ -118,7 +119,18 @@ int main(void)
         //50ms 云服务器
         if(ON == GetRecvMqttFlg())
         {
-            ReplyDataToCloud1(GetMqttClient(), &res, RT_NULL, YES);
+            if(0 == rt_memcmp(CMD_GET_DEVICELIST, cloudCmd.cmd, sizeof(CMD_GET_DEVICELIST)))
+            {
+                //Justin debug getDeviceList 命令要特殊拆包
+                LOG_D("CMD getDeviceList");
+
+                ReplyDeviceListDataToCloud(GetMqttClient(), &res, YES);
+            }
+            else
+            {
+                ReplyDataToCloud1(GetMqttClient(), &res, RT_NULL, YES);
+            }
+
             if(RT_EOK == res)
             {
                 SetRecvMqttFlg(OFF);

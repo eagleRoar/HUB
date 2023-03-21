@@ -468,6 +468,7 @@ char *ReplyGetPoolAlarm(char *, cloudcmd_t);
 char *ReplySetDeviceType(char *, cloudcmd_t);
 char *ReplyDelPumpSensor(char *, cloudcmd_t);
 u8 getColorFromTankList(u16, sys_tank_t *);
+char *ReplyGetDeviceList_new(char *, char *, u8, u8);
 #pragma pack()//Justin debug
 
 #endif /* APPLICATIONS_CLOUDPROTOCOL_CLOUDPROTOCOLBUSINESS_H_ */

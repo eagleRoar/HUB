@@ -186,7 +186,7 @@ void UdpTaskEntry(void* parameter)
                         {
                             if (RT_EOK != TcpSendMsg(&tcp_sock, tcp_reply, length + sizeof(eth_page_head)))
                             {
-                                LOG_E("send tcp err 1");
+                                //LOG_E("send tcp err 1");
                                 eth->tcp.SetConnectStatus(OFF);
                             }
 

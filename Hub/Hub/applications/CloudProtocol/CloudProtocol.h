@@ -52,5 +52,5 @@ void sendwarnningInfo(void);
 void sendOfflinewarnning(type_monitor_t *);
 void resetSysSetPhCal(u32);
 void resetSysSetEcCal(u32);
-//void autoValveClose(type_monitor_t *, sys_tank_t *);
+u8 *ReplyDeviceListDataToCloud(mqtt_client *, u8 *, u8);
 #endif /* APPLICATIONS_CLOUDPROTOCOL_CLOUDPROTOCOL_H_ */
