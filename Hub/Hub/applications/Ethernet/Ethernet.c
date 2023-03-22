@@ -95,7 +95,7 @@ void UdpTaskEntry(void* parameter)
     int         bytes_read          = 0x00;
     u16         length              = 0;
     socklen_t   addr_len;
-
+    rt_err_t    ret                 = RT_EOK;
     struct sockaddr_in      broadcastSerAddr;
     struct sockaddr_in      broadcastRecvSerAddr;
     static u16  time10S             = 0;
@@ -179,19 +179,18 @@ void UdpTaskEntry(void* parameter)
                 {
                     if(YES == cloudCmd.recv_app_flag)
                     {
-                        tcp_reply = ReplyDataToCloud1(RT_NULL, RT_NULL, &length, NO);
-                        LOG_W("length = %d",length);
-                        LOG_W("%.*s",length,tcp_reply + sizeof(eth_page_head));
-                        if(RT_NULL != tcp_reply)
+                        if(0 == rt_memcmp(CMD_GET_DEVICELIST, cloudCmd.cmd, sizeof(CMD_GET_DEVICELIST)))
                         {
-                            if (RT_EOK != TcpSendMsg(&tcp_sock, tcp_reply, length + sizeof(eth_page_head)))
-                            {
-                                //LOG_E("send tcp err 1");
-                                eth->tcp.SetConnectStatus(OFF);
-                            }
+                            ret = ReplyDeviceListDataToCloud(RT_NULL, &tcp_sock, NO);
+                        }
+                        else
+                        {
+                            ret = ReplyDataToCloud(RT_NULL, &tcp_sock, NO);
+                        }
 
-                            rt_free(tcp_reply);
-                            tcp_reply = RT_NULL;
+                        if(RT_ERROR == ret)
+                        {
+                            eth->tcp.SetConnectStatus(OFF);
                         }
 
                         cloudCmd.recv_app_flag = NO;
@@ -221,8 +220,7 @@ void UdpTaskEntry(void* parameter)
         /* 10s 定时任务 */
         if(ON == Timer10sTouch)
         {
-//            LOG_I("now %x, last %x, get sock state = %d",
-//                    getTimeStamp(), getEthHeart()->last_connet_time,getSockState(tcp_sock));
+
         }
 
         /* 线程休眠一段时间 */

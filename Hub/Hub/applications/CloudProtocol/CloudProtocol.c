@@ -393,10 +393,13 @@ void setCloudCmd(char *cmd, u8 flag, u8 cloud_app)
 }
 
 //该函数要加上锁操作 Justin debug
-u8 *ReplyDeviceListDataToCloud(mqtt_client *client, u8 *cloudRes, u8 sendCloudFlg)
+rt_err_t ReplyDeviceListDataToCloud(mqtt_client *client, int *sock, u8 sendCloudFlg)
 {
     char        name[20];
     char        *str        = RT_NULL;
+    u8          *page       = RT_NULL;
+    u16         len;
+    rt_err_t    ret         = RT_EOK;
 
     if(ON == cloudCmd.recv_flag)
     {
@@ -414,19 +417,24 @@ u8 *ReplyDeviceListDataToCloud(mqtt_client *client, u8 *cloudRes, u8 sendCloudFl
                     strcpy(name + 11, "/reply");
                     name[19] = '\0';
                     paho_mqtt_publish(client, QOS1, name, str, strlen(str));
-                    *cloudRes = RT_EOK;
+
+                    ret = RT_EOK;
                 }
-//                else
-//                {
-//                    *len = strlen(str);
-//                    page = rt_malloc(sizeof(eth_page_head) + *len);
-//                    if(RT_NULL != page)
-//                    {
-//                        rt_memcpy(page, HEAD_CODE, 4);
-//                        rt_memcpy(page + 4, (u8 *)len, 2);
-//                        rt_memcpy(page + sizeof(eth_page_head), str, *len);
-//                    }
-//                }
+                else
+                {
+                    len = strlen(str);
+                    page = rt_malloc(sizeof(eth_page_head) + len);
+                    if(RT_NULL != page)
+                    {
+                        rt_memcpy(page, HEAD_CODE, 4);
+                        rt_memcpy(page + 4, (u8 *)&len, 2);
+                        rt_memcpy(page + sizeof(eth_page_head), str, len);
+
+                        //发送
+                        ret = TcpSendMsg(sock, page, len + sizeof(eth_page_head));
+                        rt_free(page);
+                    }
+                }
 
                 LOG_I("str = %s",str);//Justin
 
@@ -438,9 +446,7 @@ u8 *ReplyDeviceListDataToCloud(mqtt_client *client, u8 *cloudRes, u8 sendCloudFl
             }
             else
             {
-                *cloudRes = RT_ERROR;
-//                *len = 0;
-                LOG_E("str == RT_NULL, ReplyDataToCloud1");
+                LOG_E("str == RT_NULL, ReplyDeviceListDataToCloud");
             }
         }
 
@@ -458,19 +464,24 @@ u8 *ReplyDeviceListDataToCloud(mqtt_client *client, u8 *cloudRes, u8 sendCloudFl
                     strcpy(name + 11, "/reply");
                     name[19] = '\0';
                     paho_mqtt_publish(client, QOS1, name, str, strlen(str));
-                    *cloudRes = RT_EOK;
+
+                    ret = RT_EOK;
                 }
-//                else
-//                {
-//                    *len = strlen(str);
-//                    page = rt_malloc(sizeof(eth_page_head) + *len);
-//                    if(RT_NULL != page)
-//                    {
-//                        rt_memcpy(page, HEAD_CODE, 4);
-//                        rt_memcpy(page + 4, (u8 *)len, 2);
-//                        rt_memcpy(page + sizeof(eth_page_head), str, *len);
-//                    }
-//                }
+                else
+                {
+                    len = strlen(str);
+                    page = rt_malloc(sizeof(eth_page_head) + len);
+                    if(RT_NULL != page)
+                    {
+                        rt_memcpy(page, HEAD_CODE, 4);
+                        rt_memcpy(page + 4, (u8 *)&len, 2);
+                        rt_memcpy(page + sizeof(eth_page_head), str, len);
+
+                        //发送
+                        ret = TcpSendMsg(sock, page, len + sizeof(eth_page_head));
+                        rt_free(page);
+                    }
+                }
 
                 LOG_I("str = %s",str);//Justin
 
@@ -482,26 +493,26 @@ u8 *ReplyDeviceListDataToCloud(mqtt_client *client, u8 *cloudRes, u8 sendCloudFl
             }
             else
             {
-                *cloudRes = RT_ERROR;
-//                *len = 0;
-                LOG_E("str == RT_NULL, ReplyDataToCloud1");
+                LOG_E("str == RT_NULL, ReplyDeviceListDataToCloud");
             }
         }
 
         setCloudCmd(RT_NULL, OFF, sendCloudFlg);
     }
 
-    return 0;//Justin debug
+    return ret;
 }
 
 /**
  * 发布数据(回复云服务器)
  */
-u8 *ReplyDataToCloud1(mqtt_client *client, u8 *cloudRes, u16 *len, u8 sendCloudFlg)//Justin debug 增加是否发送结束
+rt_err_t ReplyDataToCloud(mqtt_client *client, int *sock, u8 sendCloudFlg)
 {
     char        name[20];
     char        *str        = RT_NULL;
     u8          *page       = RT_NULL;
+    u16         len         = 0;
+    rt_err_t    ret         = RT_EOK;
 
     if(ON == cloudCmd.recv_flag)
     {
@@ -679,7 +690,6 @@ u8 *ReplyDataToCloud1(mqtt_client *client, u8 *cloudRes, u16 *len, u8 sendCloudF
         }
         else
         {
-            *len = 0;
         }
 
         if(RT_NULL != str)
@@ -691,21 +701,26 @@ u8 *ReplyDataToCloud1(mqtt_client *client, u8 *cloudRes, u16 *len, u8 sendCloudF
                 strcpy(name + 11, "/reply");
                 name[19] = '\0';
                 paho_mqtt_publish(client, QOS1, name, str, strlen(str));
-                *cloudRes = RT_EOK;
+
+                ret = RT_EOK;
             }
             else
             {
-                *len = strlen(str);
-                page = rt_malloc(sizeof(eth_page_head) + *len);
+                len = strlen(str);
+                page = rt_malloc(sizeof(eth_page_head) + len);
                 if(RT_NULL != page)
                 {
                     rt_memcpy(page, HEAD_CODE, 4);
-                    rt_memcpy(page + 4, (u8 *)len, 2);
-                    rt_memcpy(page + sizeof(eth_page_head), str, *len);
+                    rt_memcpy(page + 4, (u8 *)&len, 2);
+                    rt_memcpy(page + sizeof(eth_page_head), str, len);
+
+                    //发送
+                    ret = TcpSendMsg(sock, page, len + sizeof(eth_page_head));
+                    rt_free(page);
                 }
             }
 
-            LOG_I("str = %s",str);//Justin
+            LOG_I("str = %s",str);
 
             //获取数据完之后需要free否知数据泄露
             cJSON_free(str);
@@ -715,29 +730,11 @@ u8 *ReplyDataToCloud1(mqtt_client *client, u8 *cloudRes, u16 *len, u8 sendCloudF
         }
         else
         {
-            *cloudRes = RT_ERROR;
-            *len = 0;
-            LOG_E("str == RT_NULL, ReplyDataToCloud1");
+            LOG_E("str == RT_NULL, ReplyDataToCloud");
         }
     }
-    return page;
-}
 
-//SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT_WARN, WARN_OFFLINE - 1, VALUE_NULL, RT_NULL, RT_NULL, YES, index);
-void upTest(void)//Justin debug
-{
-    char *str = RT_NULL;
-    char name[20];
-
-    str = SendHubReport(CMD_HUB_REPORT, GetSysSet());
-
-    rt_memset(name, ' ', 20);
-    GetSnName(name, 12);
-    strcpy(name + 11, "/reply");
-    name[19] = '\0';
-    paho_mqtt_publish(GetMqttClient(), QOS1, name, str, strlen(str));
-    cJSON_free(str);
-    str = RT_NULL;
+    return ret;
 }
 
 rt_err_t SendDataToCloud(mqtt_client *client, char *cmd, u8 warn_no, u16 value, u8 *buf, u16 *length, u8 cloudFlg, u8 offline_no)
