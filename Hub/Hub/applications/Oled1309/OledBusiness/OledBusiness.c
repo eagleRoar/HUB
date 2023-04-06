@@ -1391,6 +1391,7 @@ void UpdateAppProgram(type_page_t *page, u64 *info)
                 ST7567_GotoXY(LINE_HIGHT, 0);
                 ST7567_Puts("Download OK", &Font_8x16, 1);
                 ST7567_UpdateScreen();
+                rt_hw_cpu_reset();//Justin debug 仅仅测试
             }
             else if(DOWNLOAD_NONEED == downloadRes)
             {

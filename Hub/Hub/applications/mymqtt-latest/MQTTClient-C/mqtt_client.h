@@ -62,7 +62,7 @@ extern "C" {
 #define MQTT_SOCKET_TIMEO       5000
 
 //Justin debug 仅仅测试
-#define MQTT_URI                "tcp://192.168.0.222:1883"//"tcp://mqtt.pro-leaf.com:1883"//
+#define MQTT_URI                "tcp://mqtt.pro-leaf.com:1883"//"tcp://192.168.0.222:1883"//
 #define MQTT_USERNAME           "hydro"//"admin"//
 #define MQTT_PASSWORD           "hydro"//"password"
 #define MQTT_WILLMSG            "Goodbye!"

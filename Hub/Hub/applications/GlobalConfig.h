@@ -22,7 +22,7 @@
     版本特殊说明，在软件版本(环控版<=0.0.4 灌溉版<=1.0.6之前没有数据兼容性处理)
 */
 #if(HUB_ENVIRENMENT == HUB_SELECT)
-#define FIRMWAREVISION                  "0.0.4"
+#define FIRMWAREVISION                  "0.0.5"
 #elif(HUB_IRRIGSTION == HUB_SELECT)
 #define FIRMWAREVISION                  "1.0.6"
 #endif

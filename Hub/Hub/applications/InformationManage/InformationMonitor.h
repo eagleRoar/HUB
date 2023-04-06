@@ -59,6 +59,8 @@ typedef     struct eth_heart                eth_heart_t;
 #define     POWER_VALUE                     80
 #define     AUTO_DIMMING                    1200
 #define     MANUAL_TIME_DEFAULT             10
+#define     TEMPSTARTDIMMINGTARGET          350
+#define     TEMPOFFDIMMINGTARGET            400
 
 struct hub{
     u16 crc;

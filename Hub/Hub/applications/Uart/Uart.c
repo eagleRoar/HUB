@@ -467,7 +467,7 @@ void SensorUart2TaskEntry(void* parameter)
                     co2Program(GetMonitor(), 1000);
                     humiProgram(GetMonitor());
                     lineProgram_new(GetMonitor(), 0, 1000);
-                    lineProgram_new(GetMonitor(), 1, 1000);             //line2
+//                    lineProgram_new(GetMonitor(), 1, 1000);             //line2//Justin debug
 #elif(HUB_SELECT == HUB_IRRIGSTION)
                     autoValveClose(GetMonitor(), GetSysTank());//如果是原来关联的自动阀取消关联之后需要关闭
                     pumpProgram(GetMonitor(), GetSysTank());            //水泵的工作

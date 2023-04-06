@@ -226,8 +226,8 @@ void initCloudProtocol(void)
     sys_set.line1Set.brightMode = LINE_MODE_BY_POWER;
     sys_set.line1Set.mode = 1;
     sys_set.line1Set.hidDelay = 3;// HID 延时时间 3-180min HID 模式才有
-    sys_set.line1Set.tempStartDimming = 300;// 灯光自动调光温度点 0℃-60.0℃/32℉-140℉
-    sys_set.line1Set.tempOffDimming = 320;// 灯光自动关闭温度点 0℃-60.0℃/32℉-140℉
+    sys_set.line1Set.tempStartDimming = TEMPSTARTDIMMINGTARGET;// 灯光自动调光温度点 0℃-60.0℃/32℉-140℉
+    sys_set.line1Set.tempOffDimming = TEMPOFFDIMMINGTARGET;// 灯光自动关闭温度点 0℃-60.0℃/32℉-140℉
     sys_set.line1Set.sunriseSunSet = 10;// 0-180min/0 表示关闭状态 日升日落
     sys_set.line1Set.firstRuncycleTime = 0;
 
@@ -1474,6 +1474,7 @@ void lineProgram_new(type_monitor_t *monitor, u8 line_no, u16 mPeroid)
     u16             temperature     = 0;
     static u8       stage[LINE_MAX] = {LINE_MIN_VALUE,LINE_MIN_VALUE};
     static u8       lineDimmingFlag[LINE_MAX] = {NO, NO};
+    static u8       lineOffDimmingFlag[LINE_MAX] = {NO, NO};
     static u16      cnt[LINE_MAX]   = {0, 0};
 
     //1.获取灯光设置
@@ -1875,6 +1876,7 @@ void lineProgram_new(type_monitor_t *monitor, u8 line_no, u16 mPeroid)
         if(temperature >= line_set.tempOffDimming)
         {
             //LOG_D("------in dimin off");
+            lineOffDimmingFlag[line_no] = YES;
             state = OFF;
         }
         else if(temperature >= line_set.tempStartDimming)
@@ -1885,15 +1887,27 @@ void lineProgram_new(type_monitor_t *monitor, u8 line_no, u16 mPeroid)
             value = stage[line_no];
         }
         //过温要有一度的回差
-        else if(temperature + 10 < line_set.tempStartDimming)
+
+        if(temperature + 10 < line_set.tempStartDimming)
         {
             lineDimmingFlag[line_no] = NO;
+            lineOffDimmingFlag[line_no] = NO;
+        }
+
+        if(temperature + 10 < line_set.tempOffDimming)
+        {
+            lineOffDimmingFlag[line_no] = NO;
         }
 
         //如果处于过温保护期间
         if(YES == lineDimmingFlag[line_no])//Justin debug
         {
             value = LINE_DIMMING;
+        }
+
+        if(YES == lineOffDimmingFlag[line_no])
+        {
+            state = OFF;
         }
     }
     else

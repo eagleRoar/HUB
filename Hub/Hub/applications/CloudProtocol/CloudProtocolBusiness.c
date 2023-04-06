@@ -4560,8 +4560,8 @@ char *ReplyGetDeviceList(char *cmd, char *msgid)
 //顺序先发送device再发送line
 char *ReplyGetDeviceList_new(char *cmd, char *msgid, u8 deviceType, u8 no)
 {
-    u8              index       = 0;
-    u8              line_no     = 0;
+//    u8              index       = 0;
+//    u8              line_no     = 0;
     u8              storage     = 0;
     u8              work_state  = 0;
     char            *str        = RT_NULL;
@@ -4663,7 +4663,7 @@ char *ReplyGetDeviceList_new(char *cmd, char *msgid, u8 deviceType, u8 no)
                     {
                         if(HVAC_6_TYPE == module->port[0].type)
                         {
-                            if(((getCtrlPre(index, 0).d_state << 8) + getCtrlPre(index, 0).d_value) > 0)
+                            if(((getCtrlPre(no, 0).d_state << 8) + getCtrlPre(no, 0).d_value) > 0)
                             {
                                 work_state = ON;
                             }
@@ -4674,7 +4674,7 @@ char *ReplyGetDeviceList_new(char *cmd, char *msgid, u8 deviceType, u8 no)
                         }
                         else if(IR_AIR_TYPE == module->port[0].type)
                         {
-                            if(0 == (getCtrlPre(index, 0).d_state & 0x80))
+                            if(0 == (getCtrlPre(no, 0).d_state & 0x80))
                             {
                                 work_state = OFF;
                             }
@@ -4685,7 +4685,7 @@ char *ReplyGetDeviceList_new(char *cmd, char *msgid, u8 deviceType, u8 no)
                         }
                         else
                         {
-                            work_state = getCtrlPre(index, 0).d_state;
+                            work_state = getCtrlPre(no, 0).d_state;
                         }
                     }
                     else if(MANUAL_HAND_ON == module->port[0].manual.manual)
@@ -4756,7 +4756,7 @@ char *ReplyGetDeviceList_new(char *cmd, char *msgid, u8 deviceType, u8 no)
                                 {
                                     if(HVAC_6_TYPE == module->port[storage].type)
                                     {
-                                        if(((getCtrlPre(index, storage).d_state << 8) + getCtrlPre(index, storage).d_value) > 0)
+                                        if(((getCtrlPre(no, storage).d_state << 8) + getCtrlPre(no, storage).d_value) > 0)
     //                                            if(((module->port[storage].ctrl.d_state << 8) + module->port[storage].ctrl.d_value) > 0)
                                         {
                                             work_state = ON;
@@ -4768,7 +4768,7 @@ char *ReplyGetDeviceList_new(char *cmd, char *msgid, u8 deviceType, u8 no)
                                     }
                                     else
                                     {
-                                        work_state = getCtrlPre(index, storage).d_state;
+                                        work_state = getCtrlPre(no, storage).d_state;
                                     }
                                 }
                                 else if(MANUAL_HAND_ON == module->port[storage].manual.manual)
@@ -4828,7 +4828,7 @@ char *ReplyGetDeviceList_new(char *cmd, char *msgid, u8 deviceType, u8 no)
                 cJSON_AddNumberToObject(item, "id", line.addr);
                 cJSON_AddNumberToObject(item, "mainType", 4);
                 cJSON_AddNumberToObject(item, "type", line.type);
-                cJSON_AddNumberToObject(item, "lineNo", line_no + 1);
+                cJSON_AddNumberToObject(item, "lineNo", no + 1);
                 cJSON_AddNumberToObject(item, "manual", line._manual.manual);
 
                 if(CON_FAIL == line.conn_state)
