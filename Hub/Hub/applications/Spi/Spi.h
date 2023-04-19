@@ -21,7 +21,6 @@
 #include "Gpio.h"
 #include <string.h>
 
-void SpiTaskEntry(void*);
-void SpiTaskInit(void);
+int bsp_spi_attach_init(void);
 
 #endif /* APPLICATIONS_SPI_SPI_H_ */

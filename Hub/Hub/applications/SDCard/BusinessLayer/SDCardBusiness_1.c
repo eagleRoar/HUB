@@ -33,7 +33,7 @@ rt_err_t TackSysSetFromSD(sys_set_t *set)
     //1.初始化参数
     rt_memset((u8 *)set, 0, sizeof(sys_set_t));
 
-    if(RT_EOK == ReadSdData(SYSSET_FILE, (u8 *)set, SD_INFOR_SIZE, setSize))
+    if(RT_EOK == ReadFileData(SYSSET_FILE, (u8 *)set, SD_INFOR_SIZE, setSize))
     {
         crc = usModbusRTU_CRC((u8 *)set + 2, setSize - 2);  //crc 在最后
 
@@ -49,7 +49,7 @@ rt_err_t TackSysSetFromSD(sys_set_t *set)
             rt_memset((u8 *)GetSysSet(), 0, setSize);
             initCloudProtocol();
             GetSysSet()->crc = usModbusRTU_CRC((u8 *)GetSysSet() + 2, setSize - 2);
-            if(RT_ERROR == WriteSdData(SYSSET_FILE, (u8 *)GetSysSet(), SD_INFOR_SIZE, setSize))
+            if(RT_ERROR == WriteFileData(SYSSET_FILE, (u8 *)GetSysSet(), SD_INFOR_SIZE, setSize))
             {
                 LOG_E("TackSysSetFromSD err  2");
             }
@@ -74,7 +74,7 @@ rt_err_t SaveSysSet(sys_set_t *set)
 
     set->crc = usModbusRTU_CRC((u8 *)set + 2, sys_set_size - 2);
 
-    if(RT_EOK != WriteSdData(SYSSET_FILE, (u8 *)set, SD_INFOR_SIZE, sys_set_size))
+    if(RT_EOK != WriteFileData(SYSSET_FILE, (u8 *)set, SD_INFOR_SIZE, sys_set_size))
     {
         LOG_E("SaveSysSet err");
         ret = RT_ERROR;

@@ -13,45 +13,21 @@
 #include "CloudProtocol.h"
 
 /**
- * @brief 检测文件夹是否存在
- * @return 返回是否有效,成功为RT_EOK
- */
-static u8 CheckDirectory(char* name)
-{
-    int ret;
-
-    ret = access(name, 0);
-    if (ret < 0) {
-        LOG_E("\"%s\" error, reset the dir", name);
-        //创建文件夹
-        ret = mkdir(name, 0x777);
-        if (ret < 0) {
-            LOG_E("mkdir \"%s\" error", name);
-            return RT_ERROR;
-        } else {
-            return RT_EOK;
-        }
-    } else {
-        return RT_EOK;
-    }
-}
-
-/**
  * 如果该文件还没有使用的标记返回No ,否则Yes
  */
-static u8 CheckFileAndMark(char* file_name)
+/*static*/ u8 CheckFileAndMark(char* file_name)
 {
     u8 ret = YES;
     u32 test = 0x00000000;
 
-    if(RT_EOK == ReadSdData(file_name, (u8 *)&test, 0, SD_HEAD_SIZE))
+    if(RT_EOK == ReadFileData(file_name, (u8 *)&test, 0, SD_HEAD_SIZE))
     {
         LOG_D("CheckFileAndMark test = %x",test);
         if(SD_HEAD_CORE != test)
         {
             //如果该文件未写过，需要先写入标志
             test = SD_HEAD_CORE;
-            WriteSdData(file_name, (u8 *)&test, 0, SD_HEAD_SIZE);
+            WriteFileData(file_name, (u8 *)&test, 0, SD_HEAD_SIZE);
             ret = NO;
         }
     }
@@ -84,7 +60,7 @@ void InitSDCard(void)
     //检查文件是否存在
     if(NO == CheckFileAndMark(MODULE_FILE))
     {
-        if(RT_ERROR == WriteSdData(MODULE_FILE, &size, SD_HEAD_SIZE, SD_PAGE_SIZE))
+        if(RT_ERROR == WriteFileData(MODULE_FILE, &size, SD_HEAD_SIZE, SD_PAGE_SIZE))
         {
             LOG_E("InitSDCard err 1");
         }
@@ -92,7 +68,7 @@ void InitSDCard(void)
         //初始化monitor文件存储monitor的空间,都置0
         rt_memset((u8 *)GetMonitor(), 0, monitorSize);
         GetMonitor()->crc = usModbusRTU_CRC((u8 *)GetMonitor(), monitorSize - 2);
-        if(RT_ERROR == WriteSdData(MODULE_FILE, (u8 *)GetMonitor(), SD_INFOR_SIZE, monitorSize))
+        if(RT_ERROR == WriteFileData(MODULE_FILE, (u8 *)GetMonitor(), SD_INFOR_SIZE, monitorSize))
         {
             LOG_E("InitSDCard err 2");
         }
@@ -101,7 +77,7 @@ void InitSDCard(void)
 
     if(NO == CheckFileAndMark(SYSSET_FILE))
     {
-        if(RT_ERROR == WriteSdData(SYSSET_FILE, &size, SD_HEAD_SIZE, SD_PAGE_SIZE))
+        if(RT_ERROR == WriteFileData(SYSSET_FILE, &size, SD_HEAD_SIZE, SD_PAGE_SIZE))
         {
             LOG_E("InitSDCard err 1");
         }
@@ -109,7 +85,7 @@ void InitSDCard(void)
         rt_memset((u8 *)GetSysSet(), 0, syssetSize);
         initCloudProtocol();
         GetSysSet()->crc = usModbusRTU_CRC((u8 *)GetSysSet() + 2, syssetSize - 2);
-        if(RT_ERROR == WriteSdData(SYSSET_FILE, (u8 *)GetSysSet(), SD_INFOR_SIZE, syssetSize))
+        if(RT_ERROR == WriteFileData(SYSSET_FILE, (u8 *)GetSysSet(), SD_INFOR_SIZE, syssetSize))
         {
             LOG_E("InitSDCard err 3");
         }
@@ -119,14 +95,14 @@ void InitSDCard(void)
 
     if(NO == CheckFileAndMark(RECIPE_FILE))
     {
-        if(RT_ERROR == WriteSdData(RECIPE_FILE, &size, SD_HEAD_SIZE, SD_PAGE_SIZE))
+        if(RT_ERROR == WriteFileData(RECIPE_FILE, &size, SD_HEAD_SIZE, SD_PAGE_SIZE))
         {
             LOG_E("InitSDCard err 4");
         }
 
         initSysRecipe();
         GetSysRecipt()->crc = usModbusRTU_CRC((u8 *)GetSysRecipt() + 2, recipeSize - 2);
-        if(RT_ERROR == WriteSdData(RECIPE_FILE, (u8 *)GetSysRecipt(), SD_INFOR_SIZE, recipeSize))
+        if(RT_ERROR == WriteFileData(RECIPE_FILE, (u8 *)GetSysRecipt(), SD_INFOR_SIZE, recipeSize))
         {
             LOG_E("InitSDCard err 5");
         }
@@ -134,18 +110,19 @@ void InitSDCard(void)
 
     if(NO == CheckFileAndMark(TANK_FILE))
     {
-        if(RT_ERROR == WriteSdData(TANK_FILE, &size, SD_HEAD_SIZE, SD_PAGE_SIZE))
+        if(RT_ERROR == WriteFileData(TANK_FILE, &size, SD_HEAD_SIZE, SD_PAGE_SIZE))
         {
             LOG_E("InitSDCard err 6");
         }
 
         initSysTank();
         GetSysTank()->crc = usModbusRTU_CRC((u8 *)GetSysTank() + 2, tankListSize - 2);
-        if(RT_ERROR == WriteSdData(TANK_FILE, (u8 *)GetSysTank(), SD_INFOR_SIZE, tankListSize))
+        if(RT_ERROR == WriteFileData(TANK_FILE, (u8 *)GetSysTank(), SD_INFOR_SIZE, tankListSize))
         {
             LOG_E("InitSDCard err 7");
         }
     }
+
 }
 
 rt_err_t SaveModule(type_monitor_t *monitor)
@@ -186,7 +163,7 @@ rt_err_t SaveModule(type_monitor_t *monitor)
 
     monitor->crc = usModbusRTU_CRC((u8 *)monitor, monitorSize - 2);
 
-    if(RT_EOK != WriteSdData(MODULE_FILE, (u8 *)monitor, SD_INFOR_SIZE, monitorSize))
+    if(RT_EOK != WriteFileData(MODULE_FILE, (u8 *)monitor, SD_INFOR_SIZE, monitorSize))
     {
         ret = RT_ERROR;
     }
@@ -240,7 +217,6 @@ void printline1(line_t line)
 
 }
 
-
 rt_err_t TakeMonitorFromSD(type_monitor_t *monitor)
 {
     u16         monitorSize     = sizeof(type_monitor_t);
@@ -248,11 +224,10 @@ rt_err_t TakeMonitorFromSD(type_monitor_t *monitor)
     rt_err_t    ret             = RT_ERROR;
     u16         deviceCrc       = 0;
 
-
     //1.初始化monitor
     initMonitor();
 
-    if(RT_EOK == ReadSdData(MODULE_FILE, (u8 *)monitor, SD_INFOR_SIZE, monitorSize))
+    if(RT_EOK == ReadFileData(MODULE_FILE, (u8 *)monitor, SD_INFOR_SIZE, monitorSize))
     {
         crc = usModbusRTU_CRC((u8 *)monitor, monitorSize - 2);//crc 在最后
         LOG_D("TakeMonitorFromSD crc = %x,monitor->crc = %x",crc,monitor->crc);
@@ -315,7 +290,7 @@ rt_err_t SaveSysRecipe(sys_recipe_t *recipe)
 
     recipe->crc = usModbusRTU_CRC((u8 *)recipe + 2, sysRecipeSize - 2);
 
-    if(RT_EOK != WriteSdData(RECIPE_FILE, (u8 *)recipe, SD_INFOR_SIZE, sysRecipeSize))
+    if(RT_EOK != WriteFileData(RECIPE_FILE, (u8 *)recipe, SD_INFOR_SIZE, sysRecipeSize))
     {
         LOG_E("SaveSysRecipe err");
         ret = RT_ERROR;
@@ -336,7 +311,7 @@ rt_err_t TackRecipeFromSD(sys_recipe_t *rec)
 
     rt_memset((u8 *)rec, 0, sizeof(sys_recipe_t));
 
-    if(RT_EOK == ReadSdData(RECIPE_FILE, (u8 *)rec, SD_INFOR_SIZE, sysRecSize))
+    if(RT_EOK == ReadFileData(RECIPE_FILE, (u8 *)rec, SD_INFOR_SIZE, sysRecSize))
     {
         crc = usModbusRTU_CRC((u8 *)rec + 2, sysRecSize - 2);  //crc 在最后
 
@@ -362,7 +337,7 @@ rt_err_t SaveSysTank(sys_tank_t *tank)
 
     tank->crc = usModbusRTU_CRC((u8 *)tank + 2, sysTankSize - 2);
 
-    if(RT_EOK != WriteSdData(TANK_FILE, (u8 *)tank, SD_INFOR_SIZE, sysTankSize))
+    if(RT_EOK != WriteFileData(TANK_FILE, (u8 *)tank, SD_INFOR_SIZE, sysTankSize))
     {
         LOG_E("SaveSysTank err");
         ret = RT_ERROR;
@@ -383,7 +358,7 @@ rt_err_t TackSysTankFromSD(sys_tank_t *tank)
 
     rt_memset((u8 *)tank, 0, sizeof(sys_tank_t));
 
-    if(RT_EOK == ReadSdData(TANK_FILE, (u8 *)tank, SD_INFOR_SIZE, sysTankSize))
+    if(RT_EOK == ReadFileData(TANK_FILE, (u8 *)tank, SD_INFOR_SIZE, sysTankSize))
     {
         crc = usModbusRTU_CRC((u8 *)tank + 2, sysTankSize - 2);  //crc 在最后
 

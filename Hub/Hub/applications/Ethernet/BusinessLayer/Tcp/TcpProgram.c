@@ -270,7 +270,7 @@ void splitJointData(char *data, u16 size)
                             page_size = 0;
                             now_size = 0;
                             //2.调用上层解析
-                            LOG_I("len = %d ,recv buf = %.*s",page.head.length,page.head.length,page.data);
+//                            LOG_I("len = %d ,recv buf = %.*s",page.head.length,page.head.length,page.data);
                             analyzeCloudData(page.data, NO);
                             //3.注意解析完数据后要释放空间
                             if(RT_NULL != page.data)

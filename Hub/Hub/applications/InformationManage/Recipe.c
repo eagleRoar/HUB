@@ -9,7 +9,7 @@
  */
 #include "Recipe.h"
 
-sys_recipe_t sys_recipe;
+__attribute__((section(".ccmbss"))) sys_recipe_t sys_recipe;
 
 void initSysRecipe(void)
 {

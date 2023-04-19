@@ -13,7 +13,8 @@
 #include "UartDataLayer.h"
 #include "CloudProtocolBusiness.h"
 #include "Recipe.h"
-#include "UartBussiness.h"
+#include "deviceUartClass.h"
+#include "lightUartClass.h"
 
 extern  sys_set_t       sys_set;
 extern  type_sys_time   sys_time;
@@ -38,42 +39,9 @@ rt_err_t GetValueU8(cJSON *temp, type_kv_u8 *data)
 
     if(RT_ERROR == ret)
     {
-//        data->value = 0x00;//Justin debug
+//        data->value = 0x00;
         LOG_E("parse u8 err, name %s",data->name);
     }
-
-    return ret;
-}
-
-rt_err_t GetValueByInt(cJSON *temp, char *name, int *value)
-{
-    rt_err_t ret = RT_ERROR;
-
-    cJSON *json = cJSON_GetObjectItem(temp, name);
-    if(NULL != json)
-    {
-        *value = json->valueint;
-        ret = RT_EOK;
-    }
-
-    if(RT_ERROR == ret)
-    {
-//        value = 0x00;//Justin debug
-        LOG_E("parse int err, name %s",name);
-    }
-
-    return ret;
-}
-
-rt_err_t GetValueByU8(cJSON *temp, char *name, u8 *value)
-{
-    type_kv_u8  data;
-    rt_err_t    ret     = RT_ERROR;
-
-    strncpy(data.name, name, KEYVALUE_NAME_SIZE - 1);
-    data.name[KEYVALUE_NAME_SIZE - 1] = '\0';
-    ret = GetValueU8(temp, &data);
-    *value = data.value;
 
     return ret;
 }
@@ -91,22 +59,9 @@ rt_err_t GetValueU16(cJSON *temp, type_kv_u16 *data)
 
     if(RT_ERROR == ret)
     {
-//        data->value = 0x0000;//Justin debug
+//        data->value = 0x0000;
         LOG_E("parse u16 err, name %s",data->name);
     }
-
-    return ret;
-}
-
-rt_err_t GetValueByU16(cJSON *temp, char *name, u16 *value)
-{
-    type_kv_u16 data;
-    rt_err_t    ret     = RT_ERROR;
-
-    strncpy(data.name, name, KEYVALUE_NAME_SIZE - 1);
-    data.name[KEYVALUE_NAME_SIZE - 1] = '\0';
-    ret = GetValueU16(temp, &data);
-    *value = data.value;
 
     return ret;
 }
@@ -135,7 +90,84 @@ rt_err_t GetValueC16(cJSON *temp, type_kv_c16 *data)
     {
         LOG_E("parse c16 err, name %s",data->name);
 //        rt_memset(data->value, ' ', KEYVALUE_VALUE_SIZE - 1);
-//        data->value[KEYVALUE_VALUE_SIZE - 1] = '\0';//Justin debug
+//        data->value[KEYVALUE_VALUE_SIZE - 1] = '\0';
+    }
+
+    return ret;
+}
+
+rt_err_t GetValueByU32(cJSON *temp, char *name, u32 *value)
+{
+    rt_err_t ret = RT_ERROR;
+
+    cJSON *json = cJSON_GetObjectItem(temp, name);
+    if(NULL != json)
+    {
+        *value = json->valuedouble;
+        ret = RT_EOK;
+    }
+
+    if(RT_ERROR == ret)
+    {
+        LOG_E("parse u32 err, name %s",name);
+    }
+
+    return ret;
+}
+
+
+rt_err_t GetValueByInt(cJSON *temp, char *name, int *value)
+{
+    rt_err_t ret = RT_ERROR;
+
+    cJSON *json = cJSON_GetObjectItem(temp, name);
+    if(NULL != json)
+    {
+        *value = json->valueint;
+        ret = RT_EOK;
+    }
+
+    if(RT_ERROR == ret)
+    {
+//        value = 0x00;
+        LOG_E("parse int err, name %s",name);
+    }
+
+    return ret;
+}
+
+rt_err_t GetValueByU8(cJSON *temp, char *name, u8 *value)
+{
+    type_kv_u8  data;
+    rt_err_t    ret     = RT_ERROR;
+
+    rt_memset(&data, 0, sizeof(type_kv_u8));
+
+    strncpy(data.name, name, KEYVALUE_NAME_SIZE - 1);
+    data.name[KEYVALUE_NAME_SIZE - 1] = '\0';
+    ret = GetValueU8(temp, &data);
+    if(RT_EOK == ret)
+    {
+        *value = data.value;
+    }
+
+    return ret;
+}
+
+rt_err_t GetValueByU16(cJSON *temp, char *name, u16 *value)
+{
+    type_kv_u16 data;
+    rt_err_t    ret     = RT_ERROR;
+
+    rt_memset(&data, 0, sizeof(type_kv_u16));
+
+    strncpy(data.name, name, KEYVALUE_NAME_SIZE - 1);
+    data.name[KEYVALUE_NAME_SIZE - 1] = '\0';
+    ret = GetValueU16(temp, &data);
+
+    if(RT_EOK == ret)
+    {
+        *value = data.value;
     }
 
     return ret;
@@ -146,12 +178,17 @@ rt_err_t GetValueByC16(cJSON *temp, char *name, char *value, u8 length)
     type_kv_c16 data;
     rt_err_t    ret     = RT_ERROR;
 
+    rt_memset(&data, 0, sizeof(type_kv_c16));
+
     if(length > 1)
     {
         strncpy(data.name, name, KEYVALUE_NAME_SIZE);
         ret = GetValueC16(temp, &data);
-        strncpy(value, data.value, length - 1);
-        value[length - 1] = '\0';
+        if(RT_EOK == ret)
+        {
+            strncpy(value, data.value, length - 1);
+            value[length - 1] = '\0';
+        }
     }
 
     return ret;
@@ -317,13 +354,37 @@ void CmdGetLine(char *data, proLine_t *line, cloudcmd_t *cmd)
 
 void CmdFindLocation(char *data, cloudcmd_t *cmd)
 {
-    cJSON *temp = RT_NULL;
+    cJSON       *temp       = RT_NULL;
+    u8          addr        = 0;
+    device_t    *device     = RT_NULL;
+    line_t      *line       = RT_NULL;
 
     temp = cJSON_Parse(data);
     if(RT_NULL != temp)
     {
         GetValueByC16(temp, "msgid", cmd->msgid, KEYVALUE_VALUE_SIZE);
         GetValueByU16(temp, "id", &cmd->get_id);
+
+
+        if(cmd->get_id > 0xff)
+        {
+            addr = cmd->get_id >> 8;
+        }
+        else
+        {
+            addr = cmd->get_id;
+        }
+
+        device = GetDeviceByAddr(GetMonitor(), addr);
+        line = GetLineByAddr(GetMonitor(), addr);
+        if(device)
+        {
+            GetDeviceObject()->AskDevice(*device, UART_FINDLOCATION_REG);
+        }
+        else if(line)
+        {
+            GetLightObject()->AskLine(*line, UART_FINDLOCATION_REG);
+        }
 
         cJSON_Delete(temp);
     }
@@ -341,7 +402,6 @@ void CmdGetPortSet(char *data, cloudcmd_t *cmd)
     if(RT_NULL != temp)
     {
         GetValueByC16(temp, "msgid", cmd->msgid, KEYVALUE_VALUE_SIZE);
-        //GetValueU16(temp, &cmd->get_port_id);
         GetValueByU16(temp, "id", &cmd->get_port_id);;
 
         cJSON_Delete(temp);
@@ -374,7 +434,6 @@ void CmdSetPortSet(char *data, cloudcmd_t *cmd)
     if(RT_NULL != temp)
     {
         GetValueByC16(temp, "msgid", cmd->msgid, KEYVALUE_VALUE_SIZE);
-        //GetValueU16(temp, &cmd->get_port_id);
         GetValueByU16(temp, "id", &cmd->get_port_id);
 
         if(cmd->get_port_id > 0xff)
@@ -397,6 +456,12 @@ void CmdSetPortSet(char *data, cloudcmd_t *cmd)
             LOG_I("find device name %s",device->name);
             GetValueByU8(temp, "manual", &device->port[port].manual.manual);
             GetValueByU16(temp, "manualOnTime", &device->port[port].manual.manual_on_time);
+
+            if(MANUAL_HAND_ON == device->port[port].manual.manual)
+            {
+                device->port[port].manual.manual_on_time_save = getTimeStamp();//Justin 未测试
+            }
+
             if((COOL_TYPE == device->port[port].type) ||
                (HEAT_TYPE == device->port[port].type) ||
                (DEHUMI_TYPE == device->port[port].type))
@@ -472,6 +537,11 @@ void CmdSetPortSet(char *data, cloudcmd_t *cmd)
         {
             GetValueByU8(temp, "manual", &line->_manual.manual);
             GetValueByU16(temp, "manualOnTime", &line->_manual.manual_on_time);
+
+            if(MANUAL_HAND_ON == line->_manual.manual)
+            {
+                line->_manual.manual_on_time_save = getTimeStamp();//Justin 未测试
+            }
         }
         else
         {
@@ -533,7 +603,7 @@ void CmdDeleteDevice(char *data, cloudcmd_t *cmd)
         GetValueByC16(temp, "msgid", cmd->msgid, KEYVALUE_VALUE_SIZE);
         GetValueByU16(temp, "id", &cmd->delete_id);
 
-        deleteModule(GetMonitor(), cloudCmd.delete_id);
+        DeleteModule(GetMonitor(), GetDeviceByAddr(GetMonitor(), cloudCmd.delete_id)->uuid);
 
         cJSON_Delete(temp);
     }
@@ -753,11 +823,9 @@ void CmdSetDeviceType(char *data, cloudcmd_t *cmd)
 {
     cJSON   *temp       = RT_NULL;
     u8      type        = 0;
-    u8      port        = 0;
-    u8      addr        = 0;
     u16     id          = 0;
-    u16     crc16Result = 0;
-    u8      buff[8];
+    u8      addr        = 0;
+    u8      port        = 0;
 
     temp = cJSON_Parse(data);
     if(RT_NULL != temp)
@@ -766,35 +834,21 @@ void CmdSetDeviceType(char *data, cloudcmd_t *cmd)
         GetValueByU16(temp, "id", &id);
         GetValueByU8(temp, "type", &type);
         cmd->chg_dev_id = id;
-        if(id > 0xff)
+
+        GetDeviceObject()->DeviceChgType(GetMonitor(), id, type);
+
+        if(id > 0xFF)
         {
-            port = id;
             addr = id >> 8;
+            port = id;
         }
         else
         {
-            port = 0;
             addr = id;
         }
-        //修改type 只有针对AC_4 IO_12
-        changeDeviceType(GetMonitor(), addr, port ,type);
 
-        if((AC_4_TYPE == GetDeviceByAddr(GetMonitor(), addr)->type) ||
-           (IO_4_TYPE == GetDeviceByAddr(GetMonitor(), addr)->type))
-        {
-            //修改端口类型
-            buff[0] = addr;
-            buff[1] = WRITE_SINGLE;
-            buff[2] = ((0x0440 + port) >> 8) & 0x00FF;
-            buff[3] = (0x0440 + port) & 0x00FF;
-            buff[4] = type >> 8;
-            buff[5] = type;
-            crc16Result = usModbusRTU_CRC(buff, 6);
-            buff[6] = crc16Result;                             //CRC16低位
-            buff[7] = (crc16Result>>8);                        //CRC16高位
-
-            rt_device_write(uart2_serial, 0, buff, 8);
-        }
+        GetDeviceByAddr(GetMonitor(), addr)->port[port].type = type;
+        GetDeviceByAddr(GetMonitor(), addr)->port[port].func = GetFuncByType(type);
 
         cJSON_Delete(temp);
     }
@@ -4276,7 +4330,6 @@ char *ReplyGetPortSet(char *cmd, cloudcmd_t cloud)
     return str;
 }
 
-
 char *ReplyGetDeviceList(char *cmd, char *msgid)
 {
     u8              index       = 0;
@@ -4334,7 +4387,7 @@ char *ReplyGetDeviceList(char *cmd, char *msgid)
                         {
                             if(HVAC_6_TYPE == module->port[0].type)
                             {
-                                if(((getCtrlPre(index, 0).d_state << 8) + getCtrlPre(index, 0).d_value) > 0)
+                                if(((module->port[0].ctrl.d_state << 8) + module->port[0].ctrl.d_value) > 0)
                                 {
                                     work_state = ON;
                                 }
@@ -4345,7 +4398,7 @@ char *ReplyGetDeviceList(char *cmd, char *msgid)
                             }
                             else if(IR_AIR_TYPE == module->port[0].type)
                             {
-                                if(0 == (getCtrlPre(index, 0).d_state & 0x80))
+                                if(0 == (module->port[0].ctrl.d_state & 0x80))
                                 {
                                     work_state = OFF;
                                 }
@@ -4356,7 +4409,7 @@ char *ReplyGetDeviceList(char *cmd, char *msgid)
                             }
                             else
                             {
-                                work_state = getCtrlPre(index, 0).d_state;
+                                work_state = module->port[0].ctrl.d_state;
                             }
                         }
                         else if(MANUAL_HAND_ON == module->port[0].manual.manual)
@@ -4427,7 +4480,7 @@ char *ReplyGetDeviceList(char *cmd, char *msgid)
                                     {
                                         if(HVAC_6_TYPE == module->port[storage].type)
                                         {
-                                            if(((getCtrlPre(index, storage).d_state << 8) + getCtrlPre(index, storage).d_value) > 0)
+                                            if(((module->port[storage].ctrl.d_state << 8) + module->port[storage].ctrl.d_value) > 0)
 //                                            if(((module->port[storage].ctrl.d_state << 8) + module->port[storage].ctrl.d_value) > 0)
                                             {
                                                 work_state = ON;
@@ -4439,7 +4492,7 @@ char *ReplyGetDeviceList(char *cmd, char *msgid)
                                         }
                                         else
                                         {
-                                            work_state = getCtrlPre(index, storage).d_state;
+                                            work_state = module->port[storage].ctrl.d_state;
                                         }
                                     }
                                     else if(MANUAL_HAND_ON == module->port[storage].manual.manual)
@@ -4537,327 +4590,6 @@ char *ReplyGetDeviceList(char *cmd, char *msgid)
         else
         {
             LOG_E("ReplyGetDeviceList apply memeory err");
-        }
-
-        if(RT_NULL != json)
-        {
-            cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
-            str = cJSON_PrintUnformatted(json);
-            //LOG_I("str = %d",strlen(str));
-
-            cJSON_Delete(json);
-            json = RT_NULL;
-        }
-    }
-    else
-    {
-        LOG_E("ReplyGetDeviceList err");
-    }
-
-    return str;
-}
-
-//顺序先发送device再发送line
-char *ReplyGetDeviceList_new(char *cmd, char *msgid, u8 deviceType, u8 no)
-{
-//    u8              index       = 0;
-//    u8              line_no     = 0;
-    u8              storage     = 0;
-    u8              work_state  = 0;
-    char            *str        = RT_NULL;
-    char            name[12];
-    char            msgidName[KEYVALUE_VALUE_SIZE];
-    device_t        *module;
-    line_t          line;
-    cJSON           *item       = RT_NULL;
-    cJSON           *portList   = RT_NULL;
-    cJSON           *port       = RT_NULL;
-    cJSON           *json       = cJSON_CreateObject();
-    cJSON           *valveList  = RT_NULL;
-    u8              lastPackage = NO;
-
-    //判断是否是最后一包,如果line的数量没有则只发送device数量
-    if(DEVICE_TYPE == deviceType)
-    {
-        //判断line是否有注册
-        if(0 == GetMonitor()->line_size)
-        {
-            if(no == (GetMonitor()->device_size - 1))
-            {
-                lastPackage = YES;
-            }
-            else
-            {
-                lastPackage = NO;
-            }
-        }
-        else
-        {
-            lastPackage = NO;
-        }
-        module = &GetMonitor()->device[no];
-    }
-    else if(LINE1OR2_TYPE == deviceType)
-    {
-        if(no == (GetMonitor()->line_size - 1))
-        {
-            lastPackage = YES;
-        }
-        else
-        {
-            lastPackage = NO;
-        }
-        line = GetMonitor()->line[no];
-    }
-
-    if(RT_NULL != json)
-    {
-        cJSON_AddStringToObject(json, "cmd", cmd);
-        if(YES == lastPackage)
-        {
-            strcpy(msgidName, msgid);
-        }
-        else
-        {
-            strcpy(msgidName, msgid);
-            strcat(msgidName, "up");//Justin debug
-        }
-        cJSON_AddStringToObject(json, "msgid", msgidName);
-        cJSON_AddStringToObject(json, "sn", GetSnName(name, 12));
-        if(DEVICE_TYPE == deviceType)
-        {
-            cJSON_AddNumberToObject(json, "unpackId", no + 1);
-        }
-        else if(LINE1OR2_TYPE == deviceType)
-        {
-            cJSON_AddNumberToObject(json, "unpackId", GetMonitor()->device_size + no + 1);
-        }
-
-        cJSON_AddNumberToObject(json, "unpackAll", GetMonitor()->device_size + GetMonitor()->line_size);
-
-        item = cJSON_CreateObject();
-        if(RT_NULL != item)
-        {
-            if(DEVICE_TYPE == deviceType)
-            {
-                cJSON_AddStringToObject(item, "name", module->name);
-                cJSON_AddNumberToObject(item, "id", module->addr);
-                cJSON_AddNumberToObject(item, "mainType", module->main_type);
-                cJSON_AddNumberToObject(item, "type", module->type);
-
-                if (CON_FAIL == module->conn_state)
-                {
-                    cJSON_AddNumberToObject(item, "online", 0);
-                }
-                else
-                {
-                    cJSON_AddNumberToObject(item, "online", 1);
-                }
-                //1.单个口的 如 AC_Co2 AC_Humi
-                if(module->storage_size <= 1)
-                {
-                    cJSON_AddNumberToObject(item, "manual", module->port[0].manual.manual);
-
-                    //非手动
-                    if(MANUAL_NO_HAND == module->port[0].manual.manual)
-                    {
-                        if(HVAC_6_TYPE == module->port[0].type)
-                        {
-                            if(((getCtrlPre(no, 0).d_state << 8) + getCtrlPre(no, 0).d_value) > 0)
-                            {
-                                work_state = ON;
-                            }
-                            else
-                            {
-                                work_state = OFF;
-                            }
-                        }
-                        else if(IR_AIR_TYPE == module->port[0].type)
-                        {
-                            if(0 == (getCtrlPre(no, 0).d_state & 0x80))
-                            {
-                                work_state = OFF;
-                            }
-                            else
-                            {
-                                work_state = ON;
-                            }
-                        }
-                        else
-                        {
-                            work_state = getCtrlPre(no, 0).d_state;
-                        }
-                    }
-                    else if(MANUAL_HAND_ON == module->port[0].manual.manual)
-                    {
-                        work_state = ON;
-                    }
-                    else if(MANUAL_HAND_OFF == module->port[0].manual.manual)
-                    {
-                        work_state = OFF;
-                    }
-
-                    if(CON_FAIL == module->conn_state)
-                    {
-                        work_state = OFF;
-                    }
-
-                    cJSON_AddNumberToObject(item, "workingStatus", work_state);
-
-                    cJSON_AddNumberToObject(item, "color", getColorFromTankList(module->addr, GetSysTank()));
-                    if(PUMP_TYPE == module->port[0].type)
-                    {
-                        for(u8 tank_no = 0; tank_no < GetSysTank()->tank_size; tank_no++)
-                        {
-                            if(module->addr == GetSysTank()->tank[tank_no].pumpId)
-                            {
-                                cJSON_AddNumberToObject(item, "autoFillValveId",
-                                        GetSysTank()->tank[tank_no].autoFillValveId);
-
-                                valveList = cJSON_CreateArray();
-                                if(RT_NULL != valveList)
-                                {
-                                    for(u8 valve_i = 0; valve_i < VALVE_MAX; valve_i++)
-                                    {
-                                        if(0 != GetSysTank()->tank[tank_no].valve[valve_i])
-                                        {
-                                            cJSON_AddItemToArray(valveList, cJSON_CreateNumber(GetSysTank()->tank[tank_no].valve[valve_i]));
-                                        }
-                                    }
-
-                                    cJSON_AddItemToObject(item, "valve", valveList);
-                                }
-                            }
-                        }
-                    }
-                }
-                //2.多个口的如  AC_4 IO_12
-                else
-                {
-                    if(IO_12_TYPE == module->type)
-                    {
-                        cJSON_AddNumberToObject(item, "manual", 0);
-                    }
-                    portList = cJSON_CreateArray();
-                    if(RT_NULL != portList)
-                    {
-                        for(storage = 0; storage < module->storage_size; storage++)
-                        {
-                            port = cJSON_CreateObject();
-                            if(RT_NULL != port)
-                            {
-                                module->port[storage].addr = module->addr << 8 | storage;
-                                cJSON_AddNumberToObject(port, "type", module->port[storage].type);
-                                cJSON_AddStringToObject(port, "name", module->port[storage].name);
-                                cJSON_AddNumberToObject(port, "id", module->port[storage].addr);
-                                cJSON_AddNumberToObject(port, "manual", module->port[storage].manual.manual);
-
-                                if(MANUAL_NO_HAND == module->port[storage].manual.manual)
-                                {
-                                    if(HVAC_6_TYPE == module->port[storage].type)
-                                    {
-                                        if(((getCtrlPre(no, storage).d_state << 8) + getCtrlPre(no, storage).d_value) > 0)
-    //                                            if(((module->port[storage].ctrl.d_state << 8) + module->port[storage].ctrl.d_value) > 0)
-                                        {
-                                            work_state = ON;
-                                        }
-                                        else
-                                        {
-                                            work_state = OFF;
-                                        }
-                                    }
-                                    else
-                                    {
-                                        work_state = getCtrlPre(no, storage).d_state;
-                                    }
-                                }
-                                else if(MANUAL_HAND_ON == module->port[storage].manual.manual)
-                                {
-                                    work_state = ON;
-                                }
-                                else if(MANUAL_HAND_OFF == module->port[storage].manual.manual)
-                                {
-                                    work_state = OFF;
-                                }
-
-                                if(CON_FAIL == module->conn_state)
-                                {
-                                    work_state = OFF;
-                                }
-
-                                cJSON_AddNumberToObject(port, "workingStatus", work_state);
-
-                                cJSON_AddNumberToObject(port, "color",
-                                        getColorFromTankList((module->addr << 8) | storage, GetSysTank()));
-                                if(PUMP_TYPE == module->port[storage].type)
-                                {
-                                    for(u8 tank_no = 0; tank_no < GetSysTank()->tank_size; tank_no++)
-                                    {
-                                        if(((module->addr << 8) | storage) == GetSysTank()->tank[tank_no].pumpId)
-                                        {
-                                            cJSON_AddNumberToObject(port, "autoFillValveId",
-                                                    GetSysTank()->tank[tank_no].autoFillValveId);
-
-                                            valveList = cJSON_CreateArray();
-                                            if(RT_NULL != valveList)
-                                            {
-                                                for(u8 valve_i = 0; valve_i < VALVE_MAX; valve_i++)
-                                                {
-                                                    if(0 != GetSysTank()->tank[tank_no].valve[valve_i])
-                                                    {
-                                                        cJSON_AddItemToArray(valveList, cJSON_CreateNumber(GetSysTank()->tank[tank_no].valve[valve_i]));
-                                                    }
-                                                }
-
-                                                cJSON_AddItemToObject(port, "valve", valveList);
-                                            }
-                                        }
-                                    }
-                                }
-
-                                cJSON_AddItemToArray(portList, port);
-                            }
-                        }
-                        cJSON_AddItemToObject(item, "port", portList);
-                    }
-                }
-            }
-            else if(LINE1OR2_TYPE == deviceType)
-            {
-                cJSON_AddStringToObject(item, "name", line.name);
-                cJSON_AddNumberToObject(item, "id", line.addr);
-                cJSON_AddNumberToObject(item, "mainType", 4);
-                cJSON_AddNumberToObject(item, "type", line.type);
-                cJSON_AddNumberToObject(item, "lineNo", no + 1);
-                cJSON_AddNumberToObject(item, "manual", line._manual.manual);
-
-                if(CON_FAIL == line.conn_state)
-                {
-                    cJSON_AddNumberToObject(item, "online", 0);
-                    cJSON_AddNumberToObject(item, "workingStatus", OFF);
-                }
-                else
-                {
-                    cJSON_AddNumberToObject(item, "online", 1);
-                    cJSON_AddNumberToObject(item, "workingStatus", line.d_state);
-                }
-                if(0 == no)
-                {
-                    cJSON_AddNumberToObject(item, "lightType", GetSysSet()->line1Set.lightsType);
-                }
-                else
-                {
-                    cJSON_AddNumberToObject(item, "lightType", GetSysSet()->line2Set.lightsType);
-                }
-                cJSON_AddNumberToObject(item, "lightPower", line.d_value);
-
-                //Justin debug 以下两个没有实现
-//                "lineType":1, // 1 - 2 路 2 - 4 路
-//                //只有 lineType==2 时
-//                "outputRatio":[30,40,20,10],// Output Ratio,单位%
-            }
-
-            cJSON_AddItemToObject(json, "data", item);
         }
 
         if(RT_NULL != json)

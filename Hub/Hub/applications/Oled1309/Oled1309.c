@@ -18,7 +18,6 @@ extern "C" {
 #include "Oled1309.h"
 #include "OledBusiness.h"
 #include "Uart.h"
-#include "UartBussiness.h"
 #include "ButtonTask.h"
 #include "ascii_fonts.h"
 #include "ST7567.h"
@@ -517,7 +516,7 @@ static void pageProgram(u8 page)
 
         case PH_CALIBRATE_PAGE:
 
-            PhCalibratePage(&pageSelect, getPhCalByuuid(now_phec_uuid));
+//            PhCalibratePage(&pageSelect, getPhCalByuuid(now_phec_uuid));//Justin debug
             if(ON == pageSelect.select)
             {
                 pageSelect.select = OFF;
@@ -525,7 +524,7 @@ static void pageProgram(u8 page)
             break;
 
         case EC_CALIBRATE_PAGE:
-            EcCalibratePage(&pageSelect, getEcCalByuuid(now_phec_uuid));
+//            EcCalibratePage(&pageSelect, getEcCalByuuid(now_phec_uuid));//Justin debug
             if(ON == pageSelect.select)
             {
                 pageSelect.select = OFF;
@@ -591,73 +590,74 @@ void OledTaskEntry(void* parameter)
         time1S = TimerTask(&time1S, 20, &Timer1sTouch);
         time3S = TimerTask(&time3S, 60, &Timer3sTouch);
 
-        //50ms
-        nowPage = pageInfor & 0x000000FF;
-
-        if(nowPagePre != nowPage)
-        {
-            //设置初始光标
-            pageSetting(nowPage);
-
-            pageProgram(nowPage);
-
-            nowPagePre = nowPage;
-        }
-        else
-        {
-            if(ON == reflash_flag)
-            {
-                pageProgram(nowPage);
-            }
-        }
-
-        //1.特殊功能
-        if((KEY_ON == rt_pin_read(BUTTON_UP)) && (KEY_ON == rt_pin_read(BUTTON_DOWN)))
-        {
-            if(timeFactory < (10000 / 50))
-            {
-                timeFactory++;
-            }
-            else
-            {
-                setFactoryMode(YES);
-                pageInfor = FACTORY_PAGE;
-            }
-        }
-        else
-        {
-            timeFactory = 0;
-        }
-
-        //1s event
-        if(ON == Timer1sTouch)
-        {
-            monitorBackLight(backlightTime);
-            if((HOME_PAGE == nowPage) || (SETTING_PAGE == nowPage) /*|| (CO2_CALIBRATE_PAGE == nowPage)*/)
-            {
-                //需要刷新
-                reflash_flag = ON;
-            }
-        }
-
-        //3s event
-        if(ON == Timer3sTouch)
-        {
-
-            if((SENSOR_STATE_PAGE == nowPage) ||
-               (DEVICE_STATE_PAGE == nowPage) ||
-               (FA_SENSOR_PAGE == nowPage) ||
-               (FA_DEVICE_PAGE == nowPage) ||
-               (FA_LINE_PAGE == nowPage) ||
-               (FA_SD_PAGE == nowPage) ||
-               (FA_TEST_PAGE == nowPage) ||
-               (PH_CALIBRATE_PAGE == nowPage) ||
-               (EC_CALIBRATE_PAGE == nowPage))
-            {
-                //需要刷新
-                reflash_flag = ON;
-            }
-        }
+        //Justin 以下功能全部要优化 暂时屏蔽
+//        //50ms
+//        nowPage = pageInfor & 0x000000FF;
+//
+//        if(nowPagePre != nowPage)
+//        {
+//            //设置初始光标
+//            pageSetting(nowPage);
+//
+//            pageProgram(nowPage);
+//
+//            nowPagePre = nowPage;
+//        }
+//        else
+//        {
+//            if(ON == reflash_flag)
+//            {
+//                pageProgram(nowPage);
+//            }
+//        }
+//
+//        //1.特殊功能
+//        if((KEY_ON == rt_pin_read(BUTTON_UP)) && (KEY_ON == rt_pin_read(BUTTON_DOWN)))
+//        {
+//            if(timeFactory < (10000 / 50))
+//            {
+//                timeFactory++;
+//            }
+//            else
+//            {
+//                setFactoryMode(YES);
+//                pageInfor = FACTORY_PAGE;
+//            }
+//        }
+//        else
+//        {
+//            timeFactory = 0;
+//        }
+//
+//        //1s event
+//        if(ON == Timer1sTouch)
+//        {
+//            monitorBackLight(backlightTime);
+//            if((HOME_PAGE == nowPage) || (SETTING_PAGE == nowPage) /*|| (CO2_CALIBRATE_PAGE == nowPage)*/)
+//            {
+//                //需要刷新
+//                reflash_flag = ON;
+//            }
+//        }
+//
+//        //3s event
+//        if(ON == Timer3sTouch)
+//        {
+//
+//            if((SENSOR_STATE_PAGE == nowPage) ||
+//               (DEVICE_STATE_PAGE == nowPage) ||
+//               (FA_SENSOR_PAGE == nowPage) ||
+//               (FA_DEVICE_PAGE == nowPage) ||
+//               (FA_LINE_PAGE == nowPage) ||
+//               (FA_SD_PAGE == nowPage) ||
+//               (FA_TEST_PAGE == nowPage) ||
+//               (PH_CALIBRATE_PAGE == nowPage) ||
+//               (EC_CALIBRATE_PAGE == nowPage))
+//            {
+//                //需要刷新
+//                reflash_flag = ON;
+//            }
+//        }
 
         rt_thread_mdelay(50);
     }

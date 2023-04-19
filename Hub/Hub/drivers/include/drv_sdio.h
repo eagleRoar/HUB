@@ -34,11 +34,11 @@
 #define SDCARD_INSTANCE                   SDMMC1
 #endif /*  defined(SOC_SERIES_STM32F1) || defined(SOC_SERIES_STM32F4) */
 
-#define SDIO_BUFF_SIZE       4096
+#define SDIO_BUFF_SIZE       4096//Justin debug
 #define SDIO_ALIGN_LEN       32
 
 #ifndef SDIO_MAX_FREQ
-#define SDIO_MAX_FREQ        (1000000)
+#define SDIO_MAX_FREQ        84000000//24000000//1000000//Justin debug 修改sdio频率
 #endif
 
 #ifndef SDIO_BASE_ADDRESS
@@ -46,7 +46,7 @@
 #endif
 
 #ifndef SDIO_CLOCK_FREQ
-#define SDIO_CLOCK_FREQ      (48U * 1000 * 1000)
+#define SDIO_CLOCK_FREQ      /*(48U * 1000 * 1000)*/(84U * 1000 * 1000)//Justin debug
 #endif
 
 #ifndef SDIO_BUFF_SIZE

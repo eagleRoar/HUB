@@ -13,16 +13,15 @@
 #define HUB_ENVIRENMENT                 1
 #define HUB_IRRIGSTION                  2
 
-#define DEBUG_MODE                      0//1//                 //1.如果是debug mode 的话不需要偏移位置，否则偏移位置SD卡升级 2.修改link.lds
+#define DEBUG_MODE                      1//                 //1.如果是debug mode 的话不需要偏移位置，否则偏移位置SD卡升级 2.修改link.lds
 #define HUB_SELECT                      HUB_ENVIRENMENT//HUB_IRRIGSTION//
 
 /* 软件号的 第一个分配为:
     0 : HUB_ENVIRENMENT
     1 : HUB_IRRIGSTION
-    版本特殊说明，在软件版本(环控版<=0.0.4 灌溉版<=1.0.6之前没有数据兼容性处理)
 */
 #if(HUB_ENVIRENMENT == HUB_SELECT)
-#define FIRMWAREVISION                  "0.0.5"
+#define FIRMWAREVISION                  "0.0.4"
 #elif(HUB_IRRIGSTION == HUB_SELECT)
 #define FIRMWAREVISION                  "1.0.6"
 #endif
@@ -36,21 +35,26 @@
 #define OLED_TASK                       "oled task"
 #define UART_TASK                       "usart_task"
 #define BUTTON_TASK                     "button_task"
+#define SPI_TASK                        "spi_task"
+#define FILE_SYS_TASK                   "filesys_task"
 
 /* 线程优先级管理 */
+#define FILE_SYS_PRIORITY               12
+#define SPI_PRIORITY                    12
 #define SDCARD_PRIORITY                 16
 #define UART_PRIORITY                   21
 #define BUTTON_PRIORITY                 22
 #define OLED_PRIORITY                   23
 #define TCP_PRIORITY                    24
 #define UDP_PRIORITY                    25
-#define SPI_PRIORITY                    26
+//#define SPI_PRIORITY                    26
 #define MQTT_PRIORITY                   27
 #define LED_PRIORITY                    28
 
 //线程周期
 #define BUTTON_TASK_PERIOD              20
-
+#define FILE_SYS_PERIOD                 100
+#define MAIN_PERIOD                     50
 /* 配置button */
 #define PKG_USING_BUTTON
 #define SINGLE_AND_DOUBLE_TRIGGER
@@ -95,5 +99,9 @@
 #elif (HUB_SELECT == HUB_IRRIGSTION)
 #define     HUB_NAME    "BHI"
 #endif
+
+/*存储区名称*/
+#define FLASH_MEMORY_NAME       "norflash0"
+#define SDCARD_MEMORY_NAME      "sd0"
 
 #endif /* GLOBALCONFIG_H_ */

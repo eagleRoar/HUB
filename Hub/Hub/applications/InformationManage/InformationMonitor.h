@@ -7,6 +7,9 @@
  * Date           Author       Notes
  * 2022-04-08     QiuYijie     1.0.0   该文件主要功能是监控设备、主机、本机之间的通讯
  */
+/**
+ * 注意：以下结构体不要随便修改，否则会影响到对旧结构体的数据迁移
+ */
 #ifndef APPLICATIONS_INFORMATIONMANAGE_INFORMATIONMONITOR_H_
 #define APPLICATIONS_INFORMATIONMANAGE_INFORMATIONMONITOR_H_
 
@@ -15,7 +18,7 @@
 #define     name_null                       "null"     //长度32的空字符串
 #define     VALUE_NULL                      -9999       //如果没有值上传给MQTT的值
 
-#define     ALLOCATE_ADDRESS_SIZE           256//100
+#define     ALLOCATE_ADDRESS_SIZE           256
 #define     HUB_NAMESZ                      13
 #define     MODULE_NAMESZ                   9
 #define     STORAGE_NAMESZ                  9
@@ -44,6 +47,7 @@ typedef     struct eth_heart                eth_heart_t;
 #define     DEVICE_PORT_MAX                 12
 #define     LINE_MAX                        2
 #define     VALVE_MAX                       16
+#define     TANK_SINGLE_GROUD               2
 #define     TANK_SENSOR_MAX                 4
 #define     LINE_MAX                        2
 #define     SENSOR_VALUE_MAX                4
@@ -59,8 +63,6 @@ typedef     struct eth_heart                eth_heart_t;
 #define     POWER_VALUE                     80
 #define     AUTO_DIMMING                    1200
 #define     MANUAL_TIME_DEFAULT             10
-#define     TEMPSTARTDIMMINGTARGET          350
-#define     TEMPOFFDIMMINGTARGET            400
 
 struct hub{
     u16 crc;
@@ -85,9 +87,9 @@ enum{
 };
 
 struct sen_stora{
-        char            name[STORAGE_NAMESZ];
-        u8              func;
-        s16             value;
+    char            name[STORAGE_NAMESZ];
+    u8              func;
+    s16             value;
 };
 
 struct sensor
@@ -107,8 +109,8 @@ struct sensor
 
 struct cycle
 {
-    time_t start_at_timestamp;                     //保存当天的时间戳
-    u16     startAt;                                // 开启时间点 8:00 8*60=480
+    time_t start_at_timestamp;                      //保存当天的时间戳
+    u16     startAt;                                //开启时间点 8:00 8*60=480
     int     duration;                               //持续时间 秒
     int     pauseTime;                              //停止时间 秒
     u16     times;
@@ -121,9 +123,9 @@ struct timer
 };
 struct manual
 {
-    u8              manual;                                 //手动开关/ 开、关
-    u16             manual_on_time;                         //手动开启的时间
-    timer_t         manual_on_time_save;                    //保存手动开的时间
+    u8      manual;                                 //手动开关/ 开、关
+    u16     manual_on_time;                         //手动开启的时间
+    timer_t manual_on_time_save;                    //保存手动开的时间
 };
 struct control
 {
@@ -319,6 +321,13 @@ enum
     EV_ASK_PORT_TYPE = 1,
     EV_CTRL_PORT,
     EV_CHG_PORT_TYPE
+};
+
+enum{
+    CON_NULL = 0x00,
+    CON_WAITING ,//等待中
+    CON_FAIL,
+    CON_SUCCESS,
 };
 
 struct allocate

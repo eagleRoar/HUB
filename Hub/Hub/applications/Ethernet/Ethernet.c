@@ -13,11 +13,12 @@
 #include "Udp.h"
 #include "Uart.h"
 #include "CloudProtocol.h"
+#include "FileSystem.h"
 
 
-__attribute__((section(".ccmbss"))) u8          udp_task[1024 * 3];
+__attribute__((section(".ccmbss"))) u8          udp_task[1024 * 6];
 __attribute__((section(".ccmbss"))) struct      rt_thread udp_thread;
-__attribute__((section(".ccmbss"))) u8          tcp_task[1024 * 2];
+__attribute__((section(".ccmbss"))) u8          tcp_task[1024 * 4];
 __attribute__((section(".ccmbss"))) struct      rt_thread tcp_thread;
 
 __attribute__((section(".ccmbss"))) char        tcpRecvBuffer[RCV_ETH_BUFFSZ];
@@ -54,6 +55,12 @@ void TcpRecvTaskEntry(void* parameter)
 
     while(1)
     {
+        //文件系统还没有准备好
+        if(YES != GetFileSystemState())
+        {
+            continue;
+        }
+
         /* 启用定时器 */
         time1S = TimerTask(&time1S, 20, &Timer1sTouch);                 //1秒任务定时器
 
@@ -95,7 +102,7 @@ void UdpTaskEntry(void* parameter)
     int         bytes_read          = 0x00;
     u16         length              = 0;
     socklen_t   addr_len;
-    rt_err_t    ret                 = RT_EOK;
+
     struct sockaddr_in      broadcastSerAddr;
     struct sockaddr_in      broadcastRecvSerAddr;
     static u16  time10S             = 0;
@@ -126,6 +133,12 @@ void UdpTaskEntry(void* parameter)
         /* 启用定时器 */
         time10S = TimerTask(&time10S, 200, &Timer10sTouch);           //1秒任务定时器
         time60S = TimerTask(&time60S, 1200, &Timer60sTouch);          //60秒任务定时器
+
+        //文件系统还没有准备好
+        if(YES != GetFileSystemState())
+        {
+            continue;
+        }
 
         /* 网络掉线 */
         if(LINKDOWN == eth->GetethLinkStatus())
@@ -179,18 +192,19 @@ void UdpTaskEntry(void* parameter)
                 {
                     if(YES == cloudCmd.recv_app_flag)
                     {
-                        if(0 == rt_memcmp(CMD_GET_DEVICELIST, cloudCmd.cmd, sizeof(CMD_GET_DEVICELIST)))
+                        tcp_reply = ReplyDataToCloud1(RT_NULL, RT_NULL, &length, NO);
+                        //LOG_W("length = %d",length);
+                        //LOG_W("%.*s",length,tcp_reply + sizeof(eth_page_head));
+                        if(RT_NULL != tcp_reply)
                         {
-                            ret = ReplyDeviceListDataToCloud(RT_NULL, &tcp_sock, NO);
-                        }
-                        else
-                        {
-                            ret = ReplyDataToCloud(RT_NULL, &tcp_sock, NO);
-                        }
+                            if (RT_EOK != TcpSendMsg(&tcp_sock, tcp_reply, length + sizeof(eth_page_head)))
+                            {
+                                LOG_E("send tcp err 1");
+                                eth->tcp.SetConnectStatus(OFF);
+                            }
 
-                        if(RT_ERROR == ret)
-                        {
-                            eth->tcp.SetConnectStatus(OFF);
+                            rt_free(tcp_reply);
+                            tcp_reply = RT_NULL;
                         }
 
                         cloudCmd.recv_app_flag = NO;
@@ -220,7 +234,8 @@ void UdpTaskEntry(void* parameter)
         /* 10s 定时任务 */
         if(ON == Timer10sTouch)
         {
-
+//            LOG_I("now %x, last %x, get sock state = %d",
+//                    getTimeStamp(), getEthHeart()->last_connet_time,getSockState(tcp_sock));
         }
 
         /* 线程休眠一段时间 */

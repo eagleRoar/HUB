@@ -9,7 +9,6 @@
  */
 /* 该文件主要处理数据解析 */
 #include "UartDataLayer.h"
-#include "UartBussiness.h"
 #include "InformationMonitor.h"
 #include "Module.h"
 #include "Uart.h"
@@ -203,6 +202,22 @@ u8 GetFuncByType(u8 type)
     }
 
     return ret;
+}
+
+//主要是返回特殊的device读取的寄存器
+void GetReadRegAddrByType(u8 type, u16 *reg)
+{
+    *reg = 0;
+
+    switch (type)
+    {
+        case IO_4_TYPE:
+
+            *reg = 0x0440;
+            break;
+
+        default: break;
+    }
 }
 
 char* GetTankSensorNameByType(u8 func)
@@ -472,13 +487,6 @@ rt_err_t setDeviceDefault(device_t *module)
             addr = module->addr;
             setDeviceDefaultStora(module, 0 , "Pump", F_PUMP, module->type, addr , MANUAL_NO_HAND, 0);
             break;
-
-        case VALVE_TYPE:
-                setDeviceDefaultPara(module, "BIS-V", 0x0040, S_VALVE, module->type, 1);
-                addr = module->addr;
-                setDeviceDefaultStora(module, 0 , "Valve", F_VALVE, module->type, addr , MANUAL_NO_HAND, 0);
-            break;
-
         case IO_12_TYPE:
             setDeviceDefaultPara(module, "BCB-12", 0x0401, S_IO_12, module->type, 12);
             for(u8 index = 0; index < module->storage_size; index++)
@@ -564,63 +572,56 @@ u8 getMonitorMaxAddr(type_monitor_t *monitor)
 
 /* 获取分配的地址 */
 //0xE0~0xEF预留
-u8 getAllocateAddress(type_monitor_t *monitor, u8 type)
+u8 getAllocateAddress(type_monitor_t *monitor)
 {
     u16 i = 0;
 
-    if(PAR_TYPE == type)
+    if(getMonitorMaxAddr(monitor) + 2 > ALLOCATE_ADDRESS_SIZE)
     {
-        return 0xEE;
+        i = 2;
     }
     else
     {
-        if(getMonitorMaxAddr(monitor) + 2 > ALLOCATE_ADDRESS_SIZE)
-        {
-            i = 2;
-        }
-        else
-        {
-            i = getMonitorMaxAddr(monitor) + 1;
-        }
-
-        for(; i < ALLOCATE_ADDRESS_SIZE; i++)
-        {
-            if(i < 128)//只用前128地址
-            {
-                if((monitor->allocateStr.address[i] != i) &&
-                    (i != 0xFA) && (i != 0xFE) &&
-                    !((i <= 0xEF) && (i >= 0xE0))
-                    && (i >= 2) && (i != 0xFF) && (i != 0x18) &&
-                    (i != 0xFD))//0xFA 是注册的代码 0xFE是PHEC通用 0x18是par特殊, 0xFD为广播地址
-                {
-                    monitor->allocateStr.address[i] = i;
-                    return i;
-                }
-            }
-        }
-
-        i = 2;
-        for(; i < ALLOCATE_ADDRESS_SIZE; i++)
-        {
-            if(i < 128)//只用前128地址
-            {
-                if((monitor->allocateStr.address[i] != i) &&
-                    (i != 0xFA) && (i != 0xFE) &&
-                    !((i <= 0xEF) && (i >= 0xE0))
-                    && (i >= 2) && (i != 0xFF) && (i != 0x18) &&
-                    (i != 0xFD))//0xFA 是注册的代码 0xFE是PHEC通用 0x18是par特殊
-                {
-                    monitor->allocateStr.address[i] = i;
-                    return i;
-                }
-            }
-        }
-        LOG_E("the address full");
+        i = getMonitorMaxAddr(monitor) + 1;
     }
+
+    for(; i < ALLOCATE_ADDRESS_SIZE; i++)
+    {
+        if(i < 128)//只用前128地址
+        {
+            if((monitor->allocateStr.address[i] != i) &&
+                (i != 0xFA) && (i != 0xFE) &&
+                !((i <= 0xEF) && (i >= 0xE0))
+                && (i >= 2) && (i != 0xFF) && (i != 0x18) &&
+                (i != 0xFD))//0xFA 是注册的代码 0xFE是PHEC通用 0x18是par特殊, 0xFD为广播地址
+            {
+                monitor->allocateStr.address[i] = i;
+                return i;
+            }
+        }
+    }
+
+    i = 2;
+    for(; i < ALLOCATE_ADDRESS_SIZE; i++)
+    {
+        if(i < 128)//只用前128地址
+        {
+            if((monitor->allocateStr.address[i] != i) &&
+                (i != 0xFA) && (i != 0xFE) &&
+                !((i <= 0xEF) && (i >= 0xE0))
+                && (i >= 2) && (i != 0xFF) && (i != 0x18) &&
+                (i != 0xFD))//0xFA 是注册的代码 0xFE是PHEC通用 0x18是par特殊
+            {
+                monitor->allocateStr.address[i] = i;
+                return i;
+            }
+        }
+    }
+
     return 0;
 }
 
-u8 getSOrD(u8 type)
+u8 TypeSupported(u8 type)
 {
     u8 ret = 0;
     switch (type) {
@@ -682,7 +683,7 @@ void AnlyzeDeviceRegister(type_monitor_t *monitor, rt_device_t serial, u8 *data,
     line.type = data[8];
     line.uuid = (data[9] << 24) | (data[10] << 16) | (data[11] << 8) | data[12];
 
-    s_or_d = getSOrD(data[8]);
+    s_or_d = TypeSupported(data[8]);
 
     if(SENSOR_TYPE == s_or_d)
     {
@@ -696,7 +697,7 @@ void AnlyzeDeviceRegister(type_monitor_t *monitor, rt_device_t serial, u8 *data,
                    (PAR_TYPE != sensor.type) &&
                    (SOIL_T_H_TYPE != sensor.type))
                 {
-                    sensor.addr = getAllocateAddress(monitor, sensor.type);
+                    sensor.addr = getAllocateAddress(monitor);
                 }
                 else
                 {
@@ -735,7 +736,7 @@ void AnlyzeDeviceRegister(type_monitor_t *monitor, rt_device_t serial, u8 *data,
         {
             if(NO == FindDevice(monitor, device, &no))
             {
-                device.addr = getAllocateAddress(monitor, device.type);
+                device.addr = getAllocateAddress(monitor);
                 if(RT_EOK == setDeviceDefault(&device))
                 {
                     InsertDeviceToTable(monitor, device, no);
@@ -765,7 +766,7 @@ void AnlyzeDeviceRegister(type_monitor_t *monitor, rt_device_t serial, u8 *data,
         {
             if(NO == FindLine(monitor, line, &no))
             {
-                line.addr = getAllocateAddress(monitor, line.type);
+                line.addr = getAllocateAddress(monitor);
                 setLineDefault(&line);
                 InsertLineToTable(monitor, line, no);
             }
@@ -913,25 +914,5 @@ void AnlyzeStorage(type_monitor_t *monitor, u8 addr, u8 read, u8 *data, u8 lengt
             }
         }
 
-    }
-}
-
-void getRegisterData(u8* data, u8 len, u32 uuid,u8 type)
-{
-    if(len >= 13)
-    {
-        data[0] = 0xFA;
-        data[1] = 0x00;
-        data[2] = 0x00;
-        data[3] = 0x00;
-        data[4] = 0x00;
-        data[5] = 0x00;
-        data[6] = 6;
-        data[7] = 0x01;
-        data[8] = type;
-        data[9] = uuid >> 24;
-        data[10] = uuid >> 16;
-        data[11] = uuid >> 8;
-        data[12] = uuid;
     }
 }

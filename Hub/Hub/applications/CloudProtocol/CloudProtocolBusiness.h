@@ -16,14 +16,14 @@
 #include "cJSON.h"
 #include "mqtt_client.h"
 
-#pragma pack(1) //pack(4)//因为cjson 不能使用1字节对齐//Justin debug
+#pragma pack(1)
 
-#define     KEYVALUE_NAME_SIZE      25
-#define     KEYVALUE_VALUE_SIZE     25
-#define     CMD_NAME                "cmd"
-#define     CMD_NAME_SIZE           25
-#define     TANK_WARN_NAMESZ        8
-#define     TANK_NAMESZ             13
+#define     KEYVALUE_NAME_SIZE              25
+#define     KEYVALUE_VALUE_SIZE             25
+#define     CMD_NAME                        "cmd"
+#define     CMD_NAME_SIZE                   25
+#define     TANK_WARN_NAMESZ                8
+#define     TANK_NAMESZ                     13
 
 #define     STAGE_LIST_MAX                  5//10//最多10个阶段
 #define     RECIPE_LIST_MAX                 10//最多10个配方
@@ -281,7 +281,7 @@ struct tank{
     u8      wlMonitorOnly;                  //水位监视 1-On 0-off 默认监视
     u16     pumpId;                         //水泵Id
     u16     valve[VALVE_MAX];               //关联的阀的ID
-    u8      sensorId[2][TANK_SENSOR_MAX];   //桶内存在两个sensor 一个是测试桶内的 一个测试管道的
+    u8      sensorId[TANK_SINGLE_GROUD][TANK_SENSOR_MAX];   //桶内存在两个sensor 一个是测试桶内的 一个测试管道的
     u8      color;                          //颜色
     u16     poolTimeout;
 };
@@ -386,7 +386,11 @@ enum{
 #define         CMD_ADD_PUMP_VALUE      "addPumpValve"          //增加泵子阀
 #define         CMD_DEL_PUMP_VALUE      "delPumpValve"          //删除泵子阀
 
-
+rt_err_t GetValueByU8(cJSON *, char *, u8 *);
+rt_err_t GetValueByU16(cJSON *, char *, u16 *);
+rt_err_t GetValueByInt(cJSON *, char *, int *);
+rt_err_t GetValueByU32(cJSON *, char *, u32 *);
+rt_err_t GetValueByC16(cJSON *, char *, char *, u8 );
 void CmdSetTempValue(char *,cloudcmd_t *);
 void CmdGetTempValue(char *,cloudcmd_t *);
 void CmdSetCo2(char *,cloudcmd_t *);
@@ -468,7 +472,5 @@ char *ReplyGetPoolAlarm(char *, cloudcmd_t);
 char *ReplySetDeviceType(char *, cloudcmd_t);
 char *ReplyDelPumpSensor(char *, cloudcmd_t);
 u8 getColorFromTankList(u16, sys_tank_t *);
-char *ReplyGetDeviceList_new(char *, char *, u8, u8);
-#pragma pack()//Justin debug
-
+rt_err_t changeCharToDate(char* data, type_sys_time *time);
 #endif /* APPLICATIONS_CLOUDPROTOCOL_CLOUDPROTOCOLBUSINESS_H_ */

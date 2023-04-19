@@ -40,4 +40,15 @@ void changeIrAirCode(u16 , u16 *);
 int getSensorDataByAddr(type_monitor_t *, u8, u8);
 phec_sensor_t* getPhEcList(type_monitor_t *, u8);
 sensor_t *GetSensorByuuid(type_monitor_t *, u32);
+rt_err_t CheckDeviceExist(type_monitor_t *, u32);
+rt_err_t CheckDeviceCorrect(type_monitor_t *, u32, u8, u8);
+rt_err_t CheckSensorExist(type_monitor_t *, u32);
+rt_err_t CheckSensorCorrect(type_monitor_t *, u32, u8, u8);
+rt_err_t CheckLineExist(type_monitor_t *, u32);
+rt_err_t CheckLineCorrect(type_monitor_t *, u32, u8, u8);
+rt_err_t SetDeviceDefault(type_monitor_t *, u32, u8, u8);
+void DeleteModule(type_monitor_t *, u32);
+u8 IsExistFunc(type_monitor_t *, u8,u8);
+rt_err_t SetSensorDefault(type_monitor_t *, u32, u8, u8);
+rt_err_t SetLineDefault(type_monitor_t *, u32 , u8, u8);
 #endif /* APPLICATIONS_INFORMATIONMANAGE_MODULE_MODULE_H_ */

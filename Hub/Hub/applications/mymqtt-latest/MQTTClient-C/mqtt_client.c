@@ -1117,6 +1117,11 @@ __mqtt_start:
     fd_set readset;
     struct timeval timeout;
 
+    if(YES != GetFileSystemState())
+    {
+        continue;
+    }
+
     tick_now = rt_tick_get();
     time_diff = ((tick_now - c->tick_ping) / RT_TICK_PER_SECOND);
     if(time_diff >= c->keepalive_interval) {

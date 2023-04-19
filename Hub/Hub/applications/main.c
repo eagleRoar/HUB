@@ -21,6 +21,8 @@
 #include "CloudProtocol.h"
 #include "module.h"
 #include "TcpProgram.h"
+#include "FileSystem.h"
+#include "UartAction.h"
 
 #define DBG_TAG "main"
 #define DBG_LVL DBG_LOG
@@ -30,18 +32,28 @@ extern struct ethDeviceStruct *eth;
 extern int tcp_sock;
 extern const u8    HEAD_CODE[4];
 
-extern  cloudcmd_t              cloudCmd;
 extern rt_uint8_t GetEthDriverLinkStatus(void);            //获取网口连接状态
+extern cloudcmd_t      cloudCmd;//Justin
+
+//初始化一些必要的参数
+static void InitParameter(void)
+{
+    initMonitor();
+    initSysRecipe();
+    initSysTank();
+    initSysSet();
+    GetSnName(GetSysSet()->hub_info.name, 13);
+}
 
 int main(void)
 {
     rt_uint8_t      ethStatus           = LINKDOWN;
-    u16             length              = 0;
-    u8              *buf                = RT_NULL;
     u8              res                 = 0;
-    static u8       sensor_size         = 0;
-    static u8       device_size         = 0;
-    static u8       line_size           = 0;
+    type_uart_class *deviceObj          = GetDeviceObject();
+    type_uart_class *lineObj            = GetLightObject();
+    u8              *buf                = RT_NULL;
+    type_sys_time   time;
+    u16             length              = 0;
     static u8       cnt                 = 0;
     static u8       start_warn_flg      = NO;
     static u8       Timer100msTouch     = OFF;
@@ -54,10 +66,16 @@ int main(void)
     static u16      time10S             = 0;
     static u16      time60S             = 0;
     static u16      timeInit            = 0;
-    type_sys_time   time;
+    static u8       startProgram        = NO;
 
     //初始化GPIO口
     GpioInit();
+
+    //初始化参数
+    InitParameter();
+
+    //spi初始化挂载
+    bsp_spi_attach_init();
 
     //灯光
     LedTaskInit();
@@ -82,14 +100,14 @@ int main(void)
         rt_thread_mdelay(100);
     } while (LINKDOWN == ethStatus);
 
+    //初始化文件系统
+    FileSystemInit();
+
     if(LINKUP == ethStatus)
     {
         /*初始化网络线程，处理和主机之间的交互，Tcp和Udp协议*/
         EthernetTaskInit();
     }
-
-    //初始化SD卡处理线程
-    SDCardTaskInit();
 
     //初始化串口接收传感器类线程
     SensorUart2TaskInit();
@@ -98,10 +116,10 @@ int main(void)
     mqtt_start();
     while(1)
     {
-        time100mS = TimerTask(&time100mS, 5, &Timer100msTouch);             //100毫秒任务定时器
-        time1S = TimerTask(&time1S, 50, &Timer1sTouch);                     //1秒任务定时器
-        time10S = TimerTask(&time10S, 500, &Timer10sTouch);                 //1秒任务定时器
-        time60S = TimerTask(&time60S, 3000, &Timer60sTouch);                //60秒任务定时器
+        time100mS = TimerTask(&time100mS, 100/MAIN_PERIOD, &Timer100msTouch);             //100毫秒任务定时器
+        time1S = TimerTask(&time1S, 1000/MAIN_PERIOD, &Timer1sTouch);                     //1秒任务定时器
+        time10S = TimerTask(&time10S, 10000/MAIN_PERIOD, &Timer10sTouch);                 //1秒任务定时器
+        time60S = TimerTask(&time60S, 60000/MAIN_PERIOD, &Timer60sTouch);                //60秒任务定时
 
         /* 监视网络模块是否上线 */
         ethStatus = GetEthDriverLinkStatus();
@@ -116,18 +134,9 @@ int main(void)
             }
         }
 
-        //50ms 云服务器
         if(ON == GetRecvMqttFlg())
         {
-            if(0 == rt_memcmp(CMD_GET_DEVICELIST, cloudCmd.cmd, sizeof(CMD_GET_DEVICELIST)))
-            {
-                res = ReplyDeviceListDataToCloud(GetMqttClient(), RT_NULL, YES);
-            }
-            else
-            {
-                res = ReplyDataToCloud(GetMqttClient(), RT_NULL, YES);
-            }
-
+            ReplyDataToCloud1(GetMqttClient(), &res, RT_NULL, YES);
             if(RT_EOK == res)
             {
                 SetRecvMqttFlg(OFF);
@@ -147,19 +156,6 @@ int main(void)
             }
         }
 
-        //60s 主动发送给云服务
-        if(ON == Timer60sTouch)
-        {
-            start_warn_flg = YES;
-            if(LINKUP == ethStatus)
-            {
-                if(YES == GetMqttStartFlg())
-                {
-                    SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT, 0 , 0, RT_NULL, RT_NULL, YES, 0);
-                }
-            }
-        }
-
         //主动发送告警
         if(LINKUP == ethStatus)
         {
@@ -170,8 +166,7 @@ int main(void)
             }
         }
 
-        //1s event
-        if(ON == Timer1sTouch)
+        if(Timer1sTouch)
         {
             //分辨白天黑夜
             if(DAY_BY_TIME == GetSysSet()->sysPara.dayNightMode)//按时间分辨
@@ -203,33 +198,25 @@ int main(void)
                 }
             }
 
-            if(sensor_size != GetMonitor()->sensor_size)
+            //环控版功能
+#if(HUB_SELECT == HUB_ENVIRENMENT)
+            if(YES == GetFileSystemState())
             {
-                sensor_size = GetMonitor()->sensor_size;
-
-                for(int index = 0; index < sensor_size; index++)
+                if(YES == startProgram)
                 {
-                    printSensor(GetMonitor()->sensor[index]);
+                    tempProgram(GetMonitor(), *deviceObj);
+                    co2Program(GetMonitor(), *deviceObj, 1000);
+                    humiProgram(GetMonitor(), *deviceObj);
+//                  lineProgram_new(GetMonitor(), 0, 1000);
+//                  lineProgram_new(GetMonitor(), 1, 1000);
                 }
-            }
-            if(device_size != GetMonitor()->device_size)
-            {
-                device_size = GetMonitor()->device_size;
 
-                for(int index = 0; index < device_size; index++)
-                {
-                    printDevice(GetMonitor()->device[index]);
-                }
             }
-            if(line_size != GetMonitor()->line_size)
-            {
-                line_size = GetMonitor()->line_size;
+#elif(HUB_SELECT == HUB_ENVIRENMENT)
+#endif
 
-                for(int index = 0; index < line_size; index++)
-                {
-                    printLine(GetMonitor()->line[index]);
-                }
-            }
+            //执行手动功能
+            menualHandProgram(GetMonitor(), *deviceObj, *lineObj);
         }
 
         //10s
@@ -271,9 +258,23 @@ int main(void)
                 }
             }
 
+            startProgram = YES;
         }
 
-        rt_thread_mdelay(20);
+        //60s 主动发送给云服务
+        if(ON == Timer60sTouch)
+        {
+            start_warn_flg = YES;
+            if(LINKUP == ethStatus)
+            {
+                if(YES == GetMqttStartFlg())
+                {
+                    SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT, 0 , 0, RT_NULL, RT_NULL, YES, 0);
+                }
+            }
+        }
+
+        rt_thread_mdelay(MAIN_PERIOD);
     }
 
     return RT_EOK;
@@ -354,5 +355,3 @@ u16 usModbusRTU_CRC(const u8* pucData, u32 ulLen)
     }
     return usCRC;
 }
-
-

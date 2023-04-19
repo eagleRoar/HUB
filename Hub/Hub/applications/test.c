@@ -12,9 +12,9 @@
 
 
 #include "Gpio.h"
-#include "UartBussiness.h"
 #include "CloudProtocolBusiness.h"
 #include "UartDataLayer.h"
+#include "recipe.h"
 
 time_t getTimeStamp(void)
 {
@@ -142,11 +142,11 @@ void printSensor(sensor_t module)
     LOG_D("addr             : %x",module.addr);
     LOG_D("save_state       : %x",module.save_state);
     LOG_D("conn_state       : %x",module.conn_state);
-    if(SENSOR_TYPE == getSOrD(module.type))
+    if(SENSOR_TYPE == TypeSupported(module.type))
     {
         LOG_D("s_or_d           : sensor");
     }
-    else if(DEVICE_TYPE == getSOrD(module.type))
+    else if(DEVICE_TYPE == TypeSupported(module.type))
     {
         LOG_D("s_or_d           : device");
     }
@@ -163,25 +163,27 @@ void printDevice(device_t module)
     int         index       = 0;
 
     LOG_D("----------------------print new mnodule-----------");
-    LOG_D("type             : %x",module.type);
     LOG_D("uuid             : %x",module.uuid);
     LOG_D("name             : %s",module.name);
     LOG_D("addr             : %x",module.addr);
+    LOG_D("type             : %x",module.type);;
+    LOG_D("ctrl_reg         : %x",module.ctrl_addr);
     LOG_D("save_state       : %x",module.save_state);
     LOG_D("conn_state       : %x",module.conn_state);
-    if(SENSOR_TYPE == getSOrD(module.type))
+    if(SENSOR_TYPE == TypeSupported(module.type))
     {
         LOG_D("s_or_d           : sensor");
     }
-    else if(DEVICE_TYPE == getSOrD(module.type))
+    else if(DEVICE_TYPE == TypeSupported(module.type))
     {
         LOG_D("s_or_d           : device");
     }
     LOG_D("storage_size     : %d",module.storage_size);
     for(index = 0; index < module.storage_size; index++)
     {
-        LOG_D("stora %d name    : %s, value = %d",
-               index, module.port[index].name, module.port[index].ctrl.d_state);
+        LOG_D("stora %d name    : %s",index, module.port[index].name);
+        LOG_D("stora %d type    : %x",index, module.port[index].type);
+        LOG_D("stora %d mode    : %x",index, module.port[index].mode);
     }
 }
 
@@ -245,6 +247,45 @@ time_t changeDataToTimestamp(u16 year, u8 mon, u8 day, u8 hour, u8 min, u8 sec)
     time->tm_sec = sec;
 
     return changeTmTotimet(time);
+}
+
+void printRecipe(recipe_t *recipe)
+{
+    LOG_D("id                   %d",recipe->id);
+    LOG_D("name                 %s", recipe->name);
+    LOG_D("color                %d", recipe->color);
+    LOG_D("dayCoolingTarget     %d", recipe->dayCoolingTarget);
+    LOG_D("dayHeatingTarget     %d", recipe->dayHeatingTarget);
+    LOG_D("nightCoolingTarget   %d", recipe->nightCoolingTarget);
+    LOG_D("nightHeatingTarget   %d", recipe->nightHeatingTarget);
+    LOG_D("dayHumidifyTarget    %d", recipe->dayHumidifyTarget);
+    LOG_D("dayDehumidifyTarget  %d", recipe->dayDehumidifyTarget);
+    LOG_D("nightHumidifyTarget  %d", recipe->nightHumidifyTarget);
+    LOG_D("nightDehumidifyTarget %d", recipe->nightDehumidifyTarget);
+    LOG_D("dayCo2Target         %d", recipe->dayCo2Target);
+    LOG_D("nightCo2Target       %d", recipe->nightCo2Target);
+
+    LOG_D("brightMode       %d", recipe->line_list[0].brightMode);
+    LOG_D("byPower          %d", recipe->line_list[0].byPower);
+    LOG_D("byAutoDimming    %d", recipe->line_list[0].byAutoDimming);
+    LOG_D("mode             %d", recipe->line_list[0].mode);
+    LOG_D("lightOn          %d", recipe->line_list[0].lightOn);
+    LOG_D("lightOff         %d", recipe->line_list[0].lightOff);
+    LOG_D("firstCycleTime   %d", recipe->line_list[0].firstCycleTime);
+    LOG_D("duration         %d", recipe->line_list[0].duration);
+    LOG_D("pauseTime        %d", recipe->line_list[0].pauseTime);
+    LOG_D("firstRuncycleTime %d", recipe->line_list[0].firstRuncycleTime);
+
+    LOG_D("brightMode       %d", recipe->line_list[1].brightMode);
+    LOG_D("byPower          %d", recipe->line_list[1].byPower);
+    LOG_D("byAutoDimming    %d", recipe->line_list[1].byAutoDimming);
+    LOG_D("mode             %d", recipe->line_list[1].mode);
+    LOG_D("lightOn          %d", recipe->line_list[1].lightOn);
+    LOG_D("lightOff         %d", recipe->line_list[1].lightOff);
+    LOG_D("firstCycleTime   %d", recipe->line_list[1].firstCycleTime);
+    LOG_D("duration         %d", recipe->line_list[1].duration);
+    LOG_D("pauseTime        %d", recipe->line_list[1].pauseTime);
+    LOG_D("firstRuncycleTime %d", recipe->line_list[1].firstRuncycleTime);
 }
 
 #endif /* APPLICATIONS_TEST_C_ */
