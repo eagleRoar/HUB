@@ -64,10 +64,5 @@ void SensorUart2TaskEntry(void* parameter);
 void SensorUart2TaskInit(void);
 type_monitor_t *GetMonitor(void);
 void initMonitor(void);
-ph_cal_t *getPhCal(void);
-ec_cal_t *getEcCal(void);
-ph_cal_t *getPhCalByuuid(u32);
-ec_cal_t *getEcCalByuuid(u32);
-void setPhCalWithUUID(u32);
-void setEcCalWithUUID(u32);
+
 #endif /* APPLICATIONS_UART_H_ */

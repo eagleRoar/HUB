@@ -1769,29 +1769,29 @@ void phecOnlinePage(u64 *pageInfo, type_page_t *page, type_monitor_t *monitor, u
         }
 
         //4.判断点击事件//Justin debug
-//        if(ON == page->select)
-//        {
-//            if(F_S_PH == func)
-//            {
-//                *pageInfo <<= 8;
-//                *pageInfo |= PH_CALIBRATE_PAGE;
-//
-//                setPhCalWithUUID(GetSensorByAddr(monitor, phec->addr[page->cusor - 1])->uuid);
-//                now_phec_uuid = GetSensorByAddr(monitor, phec->addr[page->cusor - 1])->uuid;
-//
-//            }
-//            else if(F_S_EC == func)
-//            {
-//                *pageInfo <<= 8;
-//                *pageInfo |= EC_CALIBRATE_PAGE;
-//
-//                setEcCalWithUUID(GetSensorByAddr(monitor, phec->addr[page->cusor - 1])->uuid);
-//                now_phec_uuid = GetSensorByAddr(monitor, phec->addr[page->cusor - 1])->uuid;
-//
-//            }
-//
-//            page->select = OFF;
-//        }
+        if(ON == page->select)
+        {
+            if(F_S_PH == func)
+            {
+                *pageInfo <<= 8;
+                *pageInfo |= PH_CALIBRATE_PAGE;
+
+                setPhCalWithUUID(GetSensorByAddr(monitor, phec->addr[page->cusor - 1])->uuid);
+                now_phec_uuid = GetSensorByAddr(monitor, phec->addr[page->cusor - 1])->uuid;
+
+            }
+            else if(F_S_EC == func)
+            {
+                *pageInfo <<= 8;
+                *pageInfo |= EC_CALIBRATE_PAGE;
+
+                setEcCalWithUUID(GetSensorByAddr(monitor, phec->addr[page->cusor - 1])->uuid);
+                now_phec_uuid = GetSensorByAddr(monitor, phec->addr[page->cusor - 1])->uuid;
+
+            }
+
+            page->select = OFF;
+        }
     }
 
     //5.刷新界面

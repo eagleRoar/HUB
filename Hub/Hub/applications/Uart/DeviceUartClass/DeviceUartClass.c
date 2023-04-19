@@ -15,6 +15,7 @@
 #include "Module.h"
 #include "UartDataLayer.h"
 #include "DeviceUartClass.h"
+#include "UartAction.h"
 
 //设备类型
 type_uart_class uart2Object;
@@ -114,6 +115,7 @@ static void GenerateChangeType(device_t device, u8 port, u8 type, u8 *data)
     data[7] = usModbusRTU_CRC(data, 6) >> 8;
 }
 
+#if(HUB_ENVIRENMENT == HUB_SELECT)
 //获取红外空调命令
 static void GenerateIrAirCtrlData(u8 state, u16 *res)
 {
@@ -135,6 +137,7 @@ static void GenerateIrAirCtrlData(u8 state, u16 *res)
         *res = 0x6000;
     }
 }
+#endif
 
 static void GenarateHvacCtrData(u8 HvacMode, u8 cool, u8 heat, u16 *value)
 {
@@ -187,6 +190,7 @@ static void GenerateVuleBySingleCtrl(device_t device, u8 port, u8 state, u16 *va
         //1.如果是非手动模式
         if(MANUAL_HAND_ON == device.port[0].manual.manual)
         {
+#if(HUB_ENVIRENMENT == HUB_SELECT)
             if(HVAC_6_TYPE == device.type)
             {
                 GenarateHvacCtrData(device._hvac.hvacMode, ON, ON, value);
@@ -196,12 +200,14 @@ static void GenerateVuleBySingleCtrl(device_t device, u8 port, u8 state, u16 *va
                 GenerateIrAirCtrlData(ON, value);
             }
             else
+#endif
             {
                 *value = 0x0100;//开启
             }
         }
         else if(MANUAL_HAND_OFF == device.port[0].manual.manual)
         {
+#if(HUB_ENVIRENMENT == HUB_SELECT)
             if(HVAC_6_TYPE == device.type)
             {
                 GenarateHvacCtrData(device._hvac.hvacMode, OFF, OFF, value);
@@ -211,6 +217,7 @@ static void GenerateVuleBySingleCtrl(device_t device, u8 port, u8 state, u16 *va
                 GenerateIrAirCtrlData(OFF, value);
             }
             else
+#endif
             {
                 *value = 0x0000;
             }
@@ -219,6 +226,7 @@ static void GenerateVuleBySingleCtrl(device_t device, u8 port, u8 state, u16 *va
         {
             if(ON == state)
             {
+#if(HUB_ENVIRENMENT == HUB_SELECT)
                 if(IR_AIR_TYPE == device.type)
                 {
                     GenerateIrAirCtrlData(ON, value);
@@ -228,12 +236,14 @@ static void GenerateVuleBySingleCtrl(device_t device, u8 port, u8 state, u16 *va
                     GenarateHvacCtrData(device._hvac.hvacMode, ON, ON, value);
                 }
                 else
+#endif
                 {
                     *value = 0x0100;//开启
                 }
             }
             else if(OFF == state)//Justin 考虑hvac被关的时候 未完待续
             {
+#if(HUB_ENVIRENMENT == HUB_SELECT)
                 if(HVAC_6_TYPE == device.type)
                 {
                     GenarateHvacCtrData(device._hvac.hvacMode, OFF, OFF, value);
@@ -243,6 +253,7 @@ static void GenerateVuleBySingleCtrl(device_t device, u8 port, u8 state, u16 *va
                     GenerateIrAirCtrlData(OFF, value);
                 }
                 else
+#endif
                 {
                     *value = 0x0000;
                 }
@@ -295,6 +306,7 @@ static void GenerateVuleByCtrl(device_t device, u8 func, u8 state, u16 *value)
             //1.如果是非手动模式
             if(MANUAL_HAND_ON == device.port[0].manual.manual)
             {
+#if(HUB_ENVIRENMENT == HUB_SELECT)
                 if(HVAC_6_TYPE == device.type)
                 {
                     GenarateHvacCtrData(device._hvac.hvacMode, ON, ON, value);
@@ -304,12 +316,14 @@ static void GenerateVuleByCtrl(device_t device, u8 func, u8 state, u16 *value)
                     GenerateIrAirCtrlData(ON, value);
                 }
                 else
+#endif
                 {
                     *value = 0x0100;//开启
                 }
             }
             else if(MANUAL_HAND_OFF == device.port[0].manual.manual)
             {
+#if(HUB_ENVIRENMENT == HUB_SELECT)
                 if(HVAC_6_TYPE == device.type)
                 {
                     GenarateHvacCtrData(device._hvac.hvacMode, OFF, OFF, value);
@@ -319,6 +333,7 @@ static void GenerateVuleByCtrl(device_t device, u8 func, u8 state, u16 *value)
                     GenerateIrAirCtrlData(OFF, value);
                 }
                 else
+#endif
                 {
                     *value = 0x0000;
                 }
@@ -327,6 +342,7 @@ static void GenerateVuleByCtrl(device_t device, u8 func, u8 state, u16 *value)
             {
                 if(ON == state)
                 {
+#if(HUB_ENVIRENMENT == HUB_SELECT)
                     if(IR_AIR_TYPE == device.type)
                     {
                         GenerateIrAirCtrlData(ON, value);
@@ -344,12 +360,14 @@ static void GenerateVuleByCtrl(device_t device, u8 func, u8 state, u16 *value)
                         }
                     }
                     else
+#endif
                     {
                         *value = 0x0100;//开启
                     }
                 }
                 else if(OFF == state)
                 {
+#if(HUB_ENVIRENMENT == HUB_SELECT)
                     if(IR_AIR_TYPE == device.type)
                     {
                         GenerateIrAirCtrlData(OFF, value);
@@ -359,6 +377,7 @@ static void GenerateVuleByCtrl(device_t device, u8 func, u8 state, u16 *value)
                         GenarateHvacCtrData(device._hvac.hvacMode, ON, ON, value);
                     }
                     else
+#endif
                     {
                         *value = 0x0000;
                     }
@@ -402,27 +421,27 @@ static void GenerateVuleByCtrl(device_t device, u8 func, u8 state, u16 *value)
     }
 }
 
-//生成发送的数据
-static void GenerateRegisterData(u32 destUuid, u8 newAddr, u8 type, u32 souceUuid, u8 *data)
-{
-    rt_memset(data, 0, 15);
-
-    data[0] = REGISTER_CODE;
-    data[1] = 0x80;
-    data[2] = destUuid >> 24;
-    data[3] = destUuid >> 16;
-    data[4] = destUuid >> 8;
-    data[5] = destUuid;
-    data[6] = 6;
-    data[7] = newAddr;
-    data[8] = type;
-    data[9] = souceUuid >> 24;
-    data[10] = souceUuid >> 16;
-    data[11] = souceUuid >> 8;
-    data[12] = souceUuid;
-    data[13] = usModbusRTU_CRC(data, 13);
-    data[14] = usModbusRTU_CRC(data, 13) >> 8;
-}
+////生成发送的数据
+//static void GenerateRegisterData(u32 destUuid, u8 newAddr, u8 type, u32 souceUuid, u8 *data)
+//{
+//    rt_memset(data, 0, 15);
+//
+//    data[0] = REGISTER_CODE;
+//    data[1] = 0x80;
+//    data[2] = destUuid >> 24;
+//    data[3] = destUuid >> 16;
+//    data[4] = destUuid >> 8;
+//    data[5] = destUuid;
+//    data[6] = 6;
+//    data[7] = newAddr;
+//    data[8] = type;
+//    data[9] = souceUuid >> 24;
+//    data[10] = souceUuid >> 16;
+//    data[11] = souceUuid >> 8;
+//    data[12] = souceUuid;
+//    data[13] = usModbusRTU_CRC(data, 13);
+//    data[14] = usModbusRTU_CRC(data, 13) >> 8;
+//}
 
 //生成可以加载到keyValue 的数据
 static rt_err_t GenerateKVData(KV *kv, device_t device, u8 *data, u8 len)

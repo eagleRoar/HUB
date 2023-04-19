@@ -63,27 +63,22 @@ u8 ReadFileData(char* name, void* text, u32 offset, u32 l)
             for(index = 0; index < l/BUFF_MAX_SZ; index++)
             {
                 size = read(fd, text + index * BUFF_MAX_SZ, BUFF_MAX_SZ);
-//                LOG_D("-----------read %d 1024",index+1);
             }
 
             if((l % BUFF_MAX_SZ) > 0)
             {
                 size = read(fd, text + index * BUFF_MAX_SZ, l % BUFF_MAX_SZ);
-//                LOG_D("-----------read %d %d",index+1,l % BUFF_MAX_SZ);
             }
         }
 
         if(0 == close(fd))
         {
-//            LOG_D("read fd close ok");
         }
         else
         {
-//            LOG_E("read fd close fail");
         }
 
         if (size > 0) {
-            //LOG_D("read done[%d].", size);
             ret = RT_EOK;
         }
     }
@@ -118,7 +113,7 @@ u8 WriteFileData(char* name, void* text, u32 offset, u32 l)
         fd = open(name, O_WRONLY | O_CREAT);
         if (fd >= 0) {
             lseek(fd,offset,SEEK_SET);//设置偏移地址
-//            write(fd, text, l);
+
             if(l <= BUFF_MAX_SZ)
             {
                 write(fd, text, l);
@@ -128,13 +123,11 @@ u8 WriteFileData(char* name, void* text, u32 offset, u32 l)
                 for(index = 0; index < l/BUFF_MAX_SZ; index++)
                 {
                     write(fd, text + index * BUFF_MAX_SZ, BUFF_MAX_SZ);
-//                    LOG_D("-----------write %d 1024",index+1);
                 }
 
                 if((l % BUFF_MAX_SZ) > 0)
                 {
                     write(fd, text + index * BUFF_MAX_SZ, l % BUFF_MAX_SZ);
-//                    LOG_D("-----------write %d %d",index+1,l % BUFF_MAX_SZ);
                 }
             }
 
@@ -283,70 +276,6 @@ static void SaveMonitorAddrByJson(struct allocate all_addr)
         {
             LOG_E("SaveMonitorAddrByJson str == NULL");
 
-        }
-    }
-}
-
-/*
- * 将旧数据device类转化为cjson格式
- * saveFile : 保存的文件的文件夹位置
- */
-static void SaveLineByJson(line_t light, u8 no, char *saveFile)
-{
-    cJSON       *cjson              = RT_NULL;
-    char        file[50]            = "";
-    char        *str                = RT_NULL;
-
-    //1. 是否存在sensor 文件夹
-    sprintf(file, "%s%s%d", saveFile, "/line", no);
-    if(RT_ERROR == CheckDirectory(file))
-    {
-        //新建存储该文件的文件夹
-        CreateDirectory(file);
-    }
-
-    //2.数据转化成json格式
-    cjson = cJSON_CreateObject();
-    if(cjson)
-    {
-        cJSON_AddNumberToObject(cjson, "crc", light.crc);
-        cJSON_AddNumberToObject(cjson, "type", light.type);
-        cJSON_AddNumberToObject(cjson, "uuid", light.uuid);
-        cJSON_AddStringToObject(cjson, "name", light.name);
-        cJSON_AddNumberToObject(cjson, "addr", light.addr);
-        cJSON_AddNumberToObject(cjson, "ctrl_addr", light.ctrl_addr);
-        cJSON_AddNumberToObject(cjson, "d_state", light.d_state);
-        cJSON_AddNumberToObject(cjson, "d_value", light.d_value);
-        cJSON_AddNumberToObject(cjson, "save_state", light.save_state);
-        cJSON_AddNumberToObject(cjson, "conn_state", light.conn_state);
-
-        cJSON_AddNumberToObject(cjson, "manual", light._manual.manual);
-        cJSON_AddNumberToObject(cjson, "manual_on_time", light._manual.manual_on_time);
-        cJSON_AddNumberToObject(cjson, "manual_on_time_save", light._manual.manual_on_time_save);
-
-        //3. 存储sensor数据
-        str = cJSON_PrintUnformatted(cjson);
-        //释放空间 否则JSON 占用的空间很大
-        cJSON_Delete(cjson);
-        if(str)
-        {
-            int size = strlen(str);
-//            LOG_I("file size = %d",size);
-            sprintf(file, "%s%s%d%s", saveFile, "/line", no, "/line.txt");
-//            LOG_D("file name = %s",file);
-            RemoveFileDirectory(file);
-            if(RT_ERROR == WriteFileData(file, str, 0, size))
-            {
-                LOG_E("SaveLineByJson, write to %s err",file);
-            }
-            else
-            {
-                LOG_I("SaveLineByJson write to file ok");
-
-            }
-
-            cJSON_free(str);
-            str = RT_NULL;
         }
     }
 }
@@ -631,6 +560,71 @@ static void SaveDeviceByJson(device_t device, u8 no, char *saveFile)
     }
 }
 
+#if(HUB_SELECT == HUB_ENVIRENMENT)
+/*
+ * 将旧数据device类转化为cjson格式
+ * saveFile : 保存的文件的文件夹位置
+ */
+static void SaveLineByJson(line_t light, u8 no, char *saveFile)
+{
+    cJSON       *cjson              = RT_NULL;
+    char        file[50]            = "";
+    char        *str                = RT_NULL;
+
+    //1. 是否存在sensor 文件夹
+    sprintf(file, "%s%s%d", saveFile, "/line", no);
+    if(RT_ERROR == CheckDirectory(file))
+    {
+        //新建存储该文件的文件夹
+        CreateDirectory(file);
+    }
+
+    //2.数据转化成json格式
+    cjson = cJSON_CreateObject();
+    if(cjson)
+    {
+        cJSON_AddNumberToObject(cjson, "crc", light.crc);
+        cJSON_AddNumberToObject(cjson, "type", light.type);
+        cJSON_AddNumberToObject(cjson, "uuid", light.uuid);
+        cJSON_AddStringToObject(cjson, "name", light.name);
+        cJSON_AddNumberToObject(cjson, "addr", light.addr);
+        cJSON_AddNumberToObject(cjson, "ctrl_addr", light.ctrl_addr);
+        cJSON_AddNumberToObject(cjson, "d_state", light.d_state);
+        cJSON_AddNumberToObject(cjson, "d_value", light.d_value);
+        cJSON_AddNumberToObject(cjson, "save_state", light.save_state);
+        cJSON_AddNumberToObject(cjson, "conn_state", light.conn_state);
+
+        cJSON_AddNumberToObject(cjson, "manual", light._manual.manual);
+        cJSON_AddNumberToObject(cjson, "manual_on_time", light._manual.manual_on_time);
+        cJSON_AddNumberToObject(cjson, "manual_on_time_save", light._manual.manual_on_time_save);
+
+        //3. 存储sensor数据
+        str = cJSON_PrintUnformatted(cjson);
+        //释放空间 否则JSON 占用的空间很大
+        cJSON_Delete(cjson);
+        if(str)
+        {
+            int size = strlen(str);
+//            LOG_I("file size = %d",size);
+            sprintf(file, "%s%s%d%s", saveFile, "/line", no, "/line.txt");
+//            LOG_D("file name = %s",file);
+            RemoveFileDirectory(file);
+            if(RT_ERROR == WriteFileData(file, str, 0, size))
+            {
+                LOG_E("SaveLineByJson, write to %s err",file);
+            }
+            else
+            {
+                LOG_I("SaveLineByJson write to file ok");
+
+            }
+
+            cJSON_free(str);
+            str = RT_NULL;
+        }
+    }
+}
+
 static void SaveSysCo2CalByJson(sys_set_t sys_set,char *saveFile)
 {
     char        file[50]            = "";//存储device类设备
@@ -660,81 +654,6 @@ static void SaveSysCo2CalByJson(sys_set_t sys_set,char *saveFile)
         cJSON_free(str);
     }
 }
-
-static void SaveSysPhCalByJson(sys_set_t sys_set,char *saveFile)
-{
-    char        file[50]            = "";//存储device类设备
-    char        *str                = RT_NULL;
-
-    cJSON *phCal = cJSON_CreateArray();
-    if(phCal)
-    {
-        for(int i = 0; i < SENSOR_MAX; i++)
-        {
-            cJSON *item = cJSON_CreateObject();
-            if (item) {
-                cJSON_AddNumberToObject(item, "ph_a", sys_set.ph[i].ph_a);
-                cJSON_AddNumberToObject(item, "ph_b", sys_set.ph[i].ph_b);
-                cJSON_AddNumberToObject(item, "uuid", sys_set.ph[i].uuid);
-
-                cJSON_AddItemToArray(phCal, item);
-            }
-        }
-    }
-
-    str = cJSON_PrintUnformatted(phCal);
-    //释放空间
-    cJSON_Delete(phCal);
-    if(str)
-    {
-        int size = strlen(str);
-        sprintf(file, "%s%s", saveFile, "/phCal.txt");
-        RemoveFileDirectory(file);
-        if(RT_ERROR == WriteFileData(file, str, 0, size))
-        {
-            LOG_E("SaveSysPhCalByJson, write to %s err",file);
-        }
-        cJSON_free(str);
-    }
-}
-
-static void SaveSysEcCalByJson(sys_set_t sys_set,char *saveFile)
-{
-    char        file[50]            = "";//存储device类设备
-    char        *str                = RT_NULL;
-
-    cJSON *ecCal = cJSON_CreateArray();
-    if(ecCal)
-    {
-        for(int i = 0; i < SENSOR_MAX; i++)
-        {
-            cJSON *item = cJSON_CreateObject();
-            if (item) {
-                cJSON_AddNumberToObject(item, "ec_a", sys_set.ec[i].ec_a);
-                cJSON_AddNumberToObject(item, "ec_b", sys_set.ec[i].ec_b);
-                cJSON_AddNumberToObject(item, "uuid", sys_set.ec[i].uuid);
-
-                cJSON_AddItemToArray(ecCal, item);
-            }
-        }
-    }
-
-    str = cJSON_PrintUnformatted(ecCal);
-    //释放空间
-    cJSON_Delete(ecCal);
-    if(str)
-    {
-        int size = strlen(str);
-        sprintf(file, "%s%s", saveFile, "/ecCal.txt");
-        RemoveFileDirectory(file);
-        if(RT_ERROR == WriteFileData(file, str, 0, size))
-        {
-            LOG_E("SaveSysEcCalByJson, write to %s err",file);
-        }
-        cJSON_free(str);
-    }
-}
-
 
 static void SaveRecipeByJson(recipe_t recipe, u8 no, char *saveFile)
 {
@@ -878,6 +797,205 @@ static void SaveRecipeAddrByJson(u8 *addr, u8 size, char *saveFile)
     }
 }
 
+static void SaveSysStageList(stage_t *stage)
+{
+    char        sys_StageList_dir[]         = "/main/sysSet/stageList.txt";
+    char        *str                        = RT_NULL;
+    char        file[20]                    = "";//存储device类设备
+    cJSON       *stageSet                   = RT_NULL;
+    cJSON       *item                       = RT_NULL;
+
+    stageSet = cJSON_CreateObject();
+    if(stageSet)
+    {
+        cJSON_AddNumberToObject(stageSet, "en", stage->en);
+        cJSON_AddStringToObject(stageSet, "starts", stage->starts);
+        for(int i = 0; i < STAGE_LIST_MAX; i++)
+        {
+            item = cJSON_CreateObject();
+            if(item)
+            {
+                cJSON_AddNumberToObject(item, "recipeId", stage->_list[i].recipeId);
+                cJSON_AddNumberToObject(item, "duration_day", stage->_list[i].duration_day);
+
+                sprintf(file, "%s%d", "stage", i);
+                cJSON_AddItemToObject(stageSet, file, item);
+            }
+        }
+    }
+
+    str = cJSON_PrintUnformatted(stageSet);
+    //释放空间
+    cJSON_Delete(stageSet);
+    if(str)
+    {
+        int size = strlen(str);
+
+        RemoveFileDirectory(sys_StageList_dir);
+        if(RT_ERROR == WriteFileData(sys_StageList_dir, str, 0, size))
+        {
+            LOG_E("SaveSysStageList, write to %s err",file);
+        }
+        cJSON_free(str);
+    }
+}
+
+static void SaveSysWarn(sys_warn_t *warn)
+{
+    char        sys_warn_dir[]         = "/main/sysSet/warn.txt";
+    char        *str                        = RT_NULL;
+    char        file[20]                    = "";//存储device类设备
+    cJSON       *cjson                       = RT_NULL;
+//    cJSON       *item                       = RT_NULL;
+
+    cjson = cJSON_CreateObject();
+    if(cjson)
+    {
+#if(HUB_SELECT == HUB_ENVIRENMENT)
+        cJSON_AddNumberToObject(cjson, "dayTempMin", warn->dayTempMin);
+        cJSON_AddNumberToObject(cjson, "dayTempMax", warn->dayTempMax);
+        cJSON_AddNumberToObject(cjson, "dayTempEn", warn->dayTempEn);
+        cJSON_AddNumberToObject(cjson, "dayhumidMin", warn->dayhumidMin);
+        cJSON_AddNumberToObject(cjson, "dayhumidMax", warn->dayhumidMax);
+        cJSON_AddNumberToObject(cjson, "dayhumidEn", warn->dayhumidEn);
+        cJSON_AddNumberToObject(cjson, "dayCo2Min", warn->dayCo2Min);
+        cJSON_AddNumberToObject(cjson, "dayCo2Max", warn->dayCo2Max);
+        cJSON_AddNumberToObject(cjson, "dayCo2En", warn->dayCo2En);
+        cJSON_AddNumberToObject(cjson, "dayCo2Buzz", warn->dayCo2Buzz);
+        cJSON_AddNumberToObject(cjson, "dayVpdMin", warn->dayVpdMin);
+        cJSON_AddNumberToObject(cjson, "dayVpdMax", warn->dayVpdMax);
+        cJSON_AddNumberToObject(cjson, "dayVpdEn", warn->dayVpdEn);
+        cJSON_AddNumberToObject(cjson, "dayParMin", warn->dayParMin);
+        cJSON_AddNumberToObject(cjson, "dayParMax", warn->dayParMax);
+        cJSON_AddNumberToObject(cjson, "dayParEn", warn->dayParEn);
+        cJSON_AddNumberToObject(cjson, "nightTempMin", warn->nightTempMin);
+        cJSON_AddNumberToObject(cjson, "nightTempMax", warn->nightTempMax);
+        cJSON_AddNumberToObject(cjson, "nightTempEn", warn->nightTempEn);
+        cJSON_AddNumberToObject(cjson, "nighthumidMin", warn->nighthumidMin);
+        cJSON_AddNumberToObject(cjson, "nighthumidMax", warn->nighthumidMax);
+        cJSON_AddNumberToObject(cjson, "nighthumidEn", warn->nighthumidEn);
+        cJSON_AddNumberToObject(cjson, "nightCo2Min", warn->nightCo2Min);
+        cJSON_AddNumberToObject(cjson, "nightCo2Max", warn->nightCo2Max);
+        cJSON_AddNumberToObject(cjson, "nightCo2En", warn->nightCo2En);
+        cJSON_AddNumberToObject(cjson, "nightCo2Buzz", warn->nightCo2Buzz);
+        cJSON_AddNumberToObject(cjson, "nightVpdMin", warn->nightVpdMin);
+        cJSON_AddNumberToObject(cjson, "nightVpdMax", warn->nightVpdMax);
+        cJSON_AddNumberToObject(cjson, "nightVpdEn", warn->nightVpdEn);
+        cJSON_AddNumberToObject(cjson, "co2TimeoutEn", warn->co2TimeoutEn);
+        cJSON_AddNumberToObject(cjson, "co2Timeoutseconds", warn->co2Timeoutseconds);
+        cJSON_AddNumberToObject(cjson, "tempTimeoutEn", warn->tempTimeoutEn);
+        cJSON_AddNumberToObject(cjson, "tempTimeoutseconds", warn->tempTimeoutseconds);
+        cJSON_AddNumberToObject(cjson, "humidTimeoutEn", warn->humidTimeoutEn);
+        cJSON_AddNumberToObject(cjson, "humidTimeoutseconds", warn->humidTimeoutseconds);
+        cJSON_AddNumberToObject(cjson, "lightEn", warn->lightEn);
+        cJSON_AddNumberToObject(cjson, "o2ProtectionEn", warn->o2ProtectionEn);
+#elif(HUB_SELECT == HUB_IRRIGSTION)
+        cJSON_AddNumberToObject(cjson, "phEn", warn->phEn);
+        cJSON_AddNumberToObject(cjson, "ecEn", warn->ecEn);
+        cJSON_AddNumberToObject(cjson, "wtEn", warn->wtEn);
+        cJSON_AddNumberToObject(cjson, "wlEn", warn->wlEn);
+        cJSON_AddNumberToObject(cjson, "mmEn", warn->mmEn);
+        cJSON_AddNumberToObject(cjson, "meEn", warn->meEn);
+        cJSON_AddNumberToObject(cjson, "mtEn", warn->mtEn);
+        cJSON_AddNumberToObject(cjson, "autoFillTimeout", warn->autoFillTimeout);
+#endif
+        cJSON_AddNumberToObject(cjson, "smokeEn", warn->smokeEn);
+        cJSON_AddNumberToObject(cjson, "waterEn", warn->waterEn);
+        cJSON_AddNumberToObject(cjson, "offlineEn", warn->offlineEn);
+    }
+
+    str = cJSON_PrintUnformatted(cjson);
+    //释放空间
+    cJSON_Delete(cjson);
+    if(str)
+    {
+        int size = strlen(str);
+
+        RemoveFileDirectory(sys_warn_dir);
+        if(RT_ERROR == WriteFileData(sys_warn_dir, str, 0, size))
+        {
+            LOG_E("SaveSysWarn, write to %s err",file);
+        }
+        cJSON_free(str);
+    }
+}
+
+#elif(HUB_SELECT == HUB_IRRIGSTION)
+
+static void SaveSysPhCalByJson(sys_set_t sys_set,char *saveFile)
+{
+    char        file[50]            = "";//存储device类设备
+    char        *str                = RT_NULL;
+
+    cJSON *phCal = cJSON_CreateArray();
+    if(phCal)
+    {
+        for(int i = 0; i < SENSOR_MAX; i++)
+        {
+            cJSON *item = cJSON_CreateObject();
+            if (item) {
+                cJSON_AddNumberToObject(item, "ph_a", sys_set.ph[i].ph_a);
+                cJSON_AddNumberToObject(item, "ph_b", sys_set.ph[i].ph_b);
+                cJSON_AddNumberToObject(item, "uuid", sys_set.ph[i].uuid);
+
+                cJSON_AddItemToArray(phCal, item);
+            }
+        }
+    }
+
+    str = cJSON_PrintUnformatted(phCal);
+    //释放空间
+    cJSON_Delete(phCal);
+    if(str)
+    {
+        int size = strlen(str);
+        sprintf(file, "%s%s", saveFile, "/phCal.txt");
+        RemoveFileDirectory(file);
+        if(RT_ERROR == WriteFileData(file, str, 0, size))
+        {
+            LOG_E("SaveSysPhCalByJson, write to %s err",file);
+        }
+        cJSON_free(str);
+    }
+}
+
+static void SaveSysEcCalByJson(sys_set_t sys_set,char *saveFile)
+{
+    char        file[50]            = "";//存储device类设备
+    char        *str                = RT_NULL;
+
+    cJSON *ecCal = cJSON_CreateArray();
+    if(ecCal)
+    {
+        for(int i = 0; i < SENSOR_MAX; i++)
+        {
+            cJSON *item = cJSON_CreateObject();
+            if (item) {
+                cJSON_AddNumberToObject(item, "ec_a", sys_set.ec[i].ec_a);
+                cJSON_AddNumberToObject(item, "ec_b", sys_set.ec[i].ec_b);
+                cJSON_AddNumberToObject(item, "uuid", sys_set.ec[i].uuid);
+
+                cJSON_AddItemToArray(ecCal, item);
+            }
+        }
+    }
+
+    str = cJSON_PrintUnformatted(ecCal);
+    //释放空间
+    cJSON_Delete(ecCal);
+    if(str)
+    {
+        int size = strlen(str);
+        sprintf(file, "%s%s", saveFile, "/ecCal.txt");
+        RemoveFileDirectory(file);
+        if(RT_ERROR == WriteFileData(file, str, 0, size))
+        {
+            LOG_E("SaveSysEcCalByJson, write to %s err",file);
+        }
+        cJSON_free(str);
+    }
+}
+
 static void SaveTankSizeByJson(u8 size, u16 crc, char *saveFile)
 {
     cJSON       *cjson              = RT_NULL;
@@ -979,48 +1097,241 @@ static void SaveTankByJson(tank_t tank, u8 no, char *saveFile)
     }
 }
 
-static void SaveSysStageList(stage_t *stage)
+static void GetEcCalFromFile(sys_set_t *set)
 {
-    char        sys_StageList_dir[]         = "/main/sysSet/stageList.txt";
-    char        *str                        = RT_NULL;
-    char        file[20]                    = "";//存储device类设备
-    cJSON       *stageSet                   = RT_NULL;
-    cJSON       *item                       = RT_NULL;
+    char        eccal_file[]       = "/main/sysSet/ecCal.txt";
+    int         file_size           = 0;
+    char        *str                = RT_NULL;
 
-    stageSet = cJSON_CreateObject();
-    if(stageSet)
+    if(RT_EOK == CheckDirectory(eccal_file))
     {
-        cJSON_AddNumberToObject(stageSet, "en", stage->en);
-        cJSON_AddStringToObject(stageSet, "starts", stage->starts);
-        for(int i = 0; i < STAGE_LIST_MAX; i++)
-        {
-            item = cJSON_CreateObject();
-            if(item)
-            {
-                cJSON_AddNumberToObject(item, "recipeId", stage->_list[i].recipeId);
-                cJSON_AddNumberToObject(item, "duration_day", stage->_list[i].duration_day);
+        file_size = GetFileLength(eccal_file);
 
-                sprintf(file, "%s%d", "stage", i);
-                cJSON_AddItemToObject(stageSet, file, item);
+        if(file_size)
+        {
+            //1.1申请内存
+            str = rt_malloc(file_size);
+
+            if(str)
+            {
+                //1.2读取文件
+                if(RT_EOK == ReadFileData(eccal_file, str, 0, file_size))
+                {
+                    //1.3解析数据
+                    cJSON *cjson = cJSON_Parse(str);
+                    rt_free(str);
+
+                    if(cjson)
+                    {
+                        //获取数组大小
+                        u8 num = cJSON_GetArraySize(cjson);
+                        if(num)
+                        {
+                            num = num < SENSOR_MAX ? num : SENSOR_MAX;
+
+                            for(u8 i = 0; i < num; i++)
+                            {
+                                GetValueByInt(cJSON_GetArrayItem(cjson, i), "ec_a", &set->ec[i].ec_a);
+                                GetValueByInt(cJSON_GetArrayItem(cjson, i), "ec_b", &set->ec[i].ec_b);
+                                GetValueByInt(cJSON_GetArrayItem(cjson, i), "uuid", &set->ec[i].uuid);
+                            }
+                        }
+
+                        cJSON_Delete(cjson);
+                    }
+                }
             }
         }
     }
+}
 
-    str = cJSON_PrintUnformatted(stageSet);
-    //释放空间
-    cJSON_Delete(stageSet);
-    if(str)
+static void GetPhCalFromFile(sys_set_t *set)
+{
+    char        phcal_file[]       = "/main/sysSet/phCal.txt";
+    int         file_size           = 0;
+    char        *str                = RT_NULL;
+
+    if(RT_EOK == CheckDirectory(phcal_file))
     {
-        int size = strlen(str);
+        file_size = GetFileLength(phcal_file);
 
-        RemoveFileDirectory(sys_StageList_dir);
-        if(RT_ERROR == WriteFileData(sys_StageList_dir, str, 0, size))
+        if(file_size)
         {
-            LOG_E("SaveSysStageList, write to %s err",file);
+            //1.1申请内存
+            str = rt_malloc(file_size);
+
+            if(str)
+            {
+                //1.2读取文件
+                if(RT_EOK == ReadFileData(phcal_file, str, 0, file_size))
+                {
+                    //1.3解析数据
+                    cJSON *cjson = cJSON_Parse(str);
+                    rt_free(str);
+
+                    if(cjson)
+                    {
+                        //获取数组大小
+                        u8 num = cJSON_GetArraySize(cjson);
+                        if(num)
+                        {
+                            num = num < SENSOR_MAX ? num : SENSOR_MAX;
+
+                            for(u8 i = 0; i < num; i++)
+                            {
+                                GetValueByInt(cJSON_GetArrayItem(cjson, i), "ph_a", &set->ph[i].ph_a);
+                                GetValueByInt(cJSON_GetArrayItem(cjson, i), "ph_b", &set->ph[i].ph_b);
+                                GetValueByInt(cJSON_GetArrayItem(cjson, i), "uuid", &set->ph[i].uuid);
+                            }
+                        }
+
+                        cJSON_Delete(cjson);
+                    }
+                }
+            }
         }
-        cJSON_free(str);
     }
 }
+
+static void GetTankListFromFile(sys_tank_t *list)
+{
+    //1.获取tank size
+    GetTankSizeFromFile(list);
+    //获取tank
+    u8 num = list->tank_size < TANK_LIST_MAX ? list->tank_size : TANK_LIST_MAX;
+    for(u8 i = 0; i < num; i++)
+    {
+        GetTankFromFile(&list->tank[i], i);
+    }
+}
+
+static void GetTankSizeFromFile(sys_tank_t *list)
+{
+    char        tank_size_file[]          = "/main/tank/tank_size.txt";
+    int         file_size                   = 0;
+    char        *str                        = RT_NULL;
+
+    if(RT_EOK == CheckDirectory(tank_size_file))
+    {
+        file_size = GetFileLength(tank_size_file);
+
+        if(file_size)
+        {
+            //1.1申请空间
+            str = rt_malloc(file_size);
+            if(str)
+            {
+                //1.2读取文件
+                if(RT_EOK == ReadFileData(tank_size_file, str, 0, file_size))
+                {
+                    //1.3解析数据
+                    cJSON *cjson = cJSON_Parse(str);
+                    rt_free(str);
+                    if(cjson)
+                    {
+                      GetValueByU16(cjson, "crc", &list->crc);
+                      GetValueByU8(cjson, "tank_size", &list->tank_size);
+
+                      cJSON_Delete(cjson);
+                    }
+                }
+            }
+        }
+    }
+}
+
+static void GetTankFromFile(tank_t *tank, u8 no)
+{
+    char        file_name[50]               = "";
+    char        tank_dir[]                  = "/main/tank";
+    int         file_size                   = 0;
+    char        *str                        = RT_NULL;
+
+    sprintf(file_name, "%s%s%d%s", tank_dir, "/tank", no, ".txt");
+
+    if(RT_EOK == CheckDirectory(file_name))
+    {
+        file_size = GetFileLength(file_name);
+
+        if(file_size)
+        {
+            //1.1申请空间
+            str = rt_malloc(file_size);
+            if(str)
+            {
+                //1.2读取文件
+                if(RT_EOK == ReadFileData(file_name, str, 0, file_size))
+                {
+                    //1.3解析数据
+                    cJSON *cjson = cJSON_Parse(str);
+                    rt_free(str);
+                    if(cjson)
+                    {
+                        GetValueByU8(cjson, "tankNo", &tank->tankNo);
+                        GetValueByC16(cjson, "name", tank->name, TANK_NAMESZ);
+                        GetValueByU16(cjson, "autoFillValveId", &tank->autoFillValveId);
+                        GetValueByU8(cjson, "autoFillHeight", &tank->autoFillHeight);
+                        GetValueByU8(cjson, "autoFillFulfilHeight", &tank->autoFillFulfilHeight);
+                        GetValueByU16(cjson, "highEcProtection", &tank->highEcProtection);
+                        GetValueByU16(cjson, "lowPhProtection", &tank->lowPhProtection);
+                        GetValueByU16(cjson, "highPhProtection", &tank->highPhProtection);
+                        GetValueByU8(cjson, "phMonitorOnly", &tank->phMonitorOnly);
+                        GetValueByU8(cjson, "ecMonitorOnly", &tank->ecMonitorOnly);
+                        GetValueByU8(cjson, "wlMonitorOnly", &tank->wlMonitorOnly);
+                        GetValueByU16(cjson, "pumpId", &tank->pumpId);
+                        GetValueByU8(cjson, "color", &tank->color);
+                        GetValueByU16(cjson, "poolTimeout", &tank->poolTimeout);
+
+                        cJSON *valve = cJSON_GetObjectItem(cjson, "valve");
+                        u8 num = cJSON_GetArraySize(valve);
+                        num = num < VALVE_MAX ? num : VALVE_MAX;
+                        for(u8 i = 0; i < num; i++)
+                        {
+                            tank->valve[i] = cJSON_GetArrayItem(valve, i)->valueint;
+                        }
+
+                        cJSON *sensorId = cJSON_GetObjectItem(cjson, "sensorId");
+                        u8 groud = cJSON_GetArraySize(sensorId);
+                        groud = groud < TANK_SINGLE_GROUD ? groud : TANK_SINGLE_GROUD;
+                        for(u8 i = 0; i < groud; i++)
+                        {
+                            u8 sen_n = cJSON_GetArraySize(cJSON_GetArrayItem(sensorId, i));
+                            sen_n = sen_n < TANK_SENSOR_MAX ? sen_n : TANK_SENSOR_MAX;
+                            for(u8 j = 0; j < sen_n; j++)
+                            {
+                                tank->sensorId[i][j] = cJSON_GetArrayItem(cJSON_GetArrayItem(sensorId, i), j)->valueint;
+                            }
+                        }
+
+                      cJSON_Delete(cjson);
+                    }
+                }
+            }
+        }
+    }
+}
+
+static void CheckSysTankNeedSave(sys_tank_t *list)
+{
+    int             i = 0;
+    u16             crc = 0;
+    char            tank_dir[]          = "/main/tank";
+
+    crc = usModbusRTU_CRC((u8 *)list + 2, sizeof(sys_tank_t) - 2);
+    if(crc != list->crc)
+    {
+        LOG_I("CheckSysTankNeedSave");
+        list->crc = crc;
+        SaveTankSizeByJson(list->tank_size, list->crc, tank_dir);
+
+        for(i = 0; i < list->tank_size; i++)
+        {
+            SaveTankByJson(list->tank[i], i, tank_dir);
+        }
+    }
+}
+
+#endif
 
 static void SaveSysSetByJson(sys_set_t sys_set,char *saveFile)
 {
@@ -1151,6 +1462,7 @@ static void SaveSysSetByJson(sys_set_t sys_set,char *saveFile)
 #if(HUB_SELECT == HUB_ENVIRENMENT)
         SaveSysCo2CalByJson(sys_set, saveFile);
         SaveSysStageList(&sys_set.stageSet);
+        SaveSysWarn(&sys_set.sysWarn);
 #elif(HUB_SELECT == HUB_IRRIGSTION)
 
         SaveSysPhCalByJson(sys_set, saveFile);
@@ -1202,6 +1514,9 @@ static void GetDevPortFromFile(device_t *device, u8 no, char *fromFile)
 
                     GetValueByU8(cjson, "d_state", &device->port[no].ctrl.d_state);
                     GetValueByU8(cjson, "d_value", &device->port[no].ctrl.d_value);
+
+                    device->port[no].ctrl.d_state = 0x00;//Justin
+                    device->port[no].ctrl.d_value = 0x00;
 
                     //释放空间
                     cJSON_Delete(cjson);
@@ -1461,102 +1776,6 @@ static void GetLineFromFile(line_t *line, u8 no, char *fromFile)
     }
 }
 
-static void GetEcCalFromFile(sys_set_t *set)
-{
-    char        eccal_file[]       = "/main/sysSet/ecCal.txt";
-    int         file_size           = 0;
-    char        *str                = RT_NULL;
-
-    if(RT_EOK == CheckDirectory(eccal_file))
-    {
-        file_size = GetFileLength(eccal_file);
-
-        if(file_size)
-        {
-            //1.1申请内存
-            str = rt_malloc(file_size);
-
-            if(str)
-            {
-                //1.2读取文件
-                if(RT_EOK == ReadFileData(eccal_file, str, 0, file_size))
-                {
-                    //1.3解析数据
-                    cJSON *cjson = cJSON_Parse(str);
-                    rt_free(str);
-
-                    if(cjson)
-                    {
-                        //获取数组大小
-                        u8 num = cJSON_GetArraySize(cjson);
-                        if(num)
-                        {
-                            num = num < SENSOR_MAX ? num : SENSOR_MAX;
-
-                            for(u8 i = 0; i < num; i++)
-                            {
-                                GetValueByInt(cJSON_GetArrayItem(cjson, i), "ec_a", &set->ec[i].ec_a);
-                                GetValueByInt(cJSON_GetArrayItem(cjson, i), "ec_b", &set->ec[i].ec_b);
-                                GetValueByInt(cJSON_GetArrayItem(cjson, i), "uuid", &set->ec[i].uuid);
-                            }
-                        }
-
-                        cJSON_Delete(cjson);
-                    }
-                }
-            }
-        }
-    }
-}
-
-static void GetPhCalFromFile(sys_set_t *set)
-{
-    char        phcal_file[]       = "/main/sysSet/phCal.txt";
-    int         file_size           = 0;
-    char        *str                = RT_NULL;
-
-    if(RT_EOK == CheckDirectory(phcal_file))
-    {
-        file_size = GetFileLength(phcal_file);
-
-        if(file_size)
-        {
-            //1.1申请内存
-            str = rt_malloc(file_size);
-
-            if(str)
-            {
-                //1.2读取文件
-                if(RT_EOK == ReadFileData(phcal_file, str, 0, file_size))
-                {
-                    //1.3解析数据
-                    cJSON *cjson = cJSON_Parse(str);
-                    rt_free(str);
-
-                    if(cjson)
-                    {
-                        //获取数组大小
-                        u8 num = cJSON_GetArraySize(cjson);
-                        if(num)
-                        {
-                            num = num < SENSOR_MAX ? num : SENSOR_MAX;
-
-                            for(u8 i = 0; i < num; i++)
-                            {
-                                GetValueByInt(cJSON_GetArrayItem(cjson, i), "ph_a", &set->ph[i].ph_a);
-                                GetValueByInt(cJSON_GetArrayItem(cjson, i), "ph_b", &set->ph[i].ph_b);
-                                GetValueByInt(cJSON_GetArrayItem(cjson, i), "uuid", &set->ph[i].uuid);
-                            }
-                        }
-
-                        cJSON_Delete(cjson);
-                    }
-                }
-            }
-        }
-    }
-}
-
 static void GetCo2CalFromFile(sys_set_t *set)
 {
     char        co2cal_file[]       = "/main/sysSet/co2Cal.txt";
@@ -1600,6 +1819,115 @@ static void GetCo2CalFromFile(sys_set_t *set)
                 }
             }
         }
+    }
+}
+
+static void GetSysWarnFromFile(sys_warn_t *warn)
+{
+    char        sys_warn_dir[]              = "/main/sysSet/warn.txt";
+    int         file_size                   = 0;
+    char        *str                        = RT_NULL;
+//    char        name[20];
+
+    LOG_I("GetSysWarnFromFile");
+
+    if(RT_EOK == CheckDirectory(sys_warn_dir))
+    {
+        file_size = GetFileLength(sys_warn_dir);
+
+        if(file_size)
+        {
+            //1.1申请内存
+            str = rt_malloc(file_size);
+
+            if(str)
+            {
+                //1.2读取文件
+                if(RT_EOK == ReadFileData(sys_warn_dir, str, 0, file_size))
+                {
+                    //1.3解析数据
+                    cJSON *cjson = cJSON_Parse(str);
+                    rt_free(str);
+
+                    if(cjson)
+                    {
+#if(HUB_SELECT == HUB_ENVIRENMENT)
+                        GetValueByU16(cjson, "dayTempMin", &warn->dayTempMin);
+                        LOG_I("warn->dayTempMin = %d",warn->dayTempMin);//Justin
+                        GetValueByU16(cjson, "dayTempMax", &warn->dayTempMax);
+                        GetValueByU8(cjson, "dayTempEn", &warn->dayTempEn);
+                        GetValueByU16(cjson, "dayhumidMin", &warn->dayhumidMin);
+                        GetValueByU16(cjson, "dayhumidMax", &warn->dayhumidMax);
+                        GetValueByU8(cjson, "dayhumidEn", &warn->dayhumidEn);
+                        GetValueByU16(cjson, "dayCo2Min", &warn->dayCo2Min);
+                        GetValueByU16(cjson, "dayCo2Max", &warn->dayCo2Max);
+                        GetValueByU8(cjson, "dayCo2En", &warn->dayCo2En);
+                        GetValueByU8(cjson, "dayCo2Buzz", &warn->dayCo2Buzz);
+                        GetValueByU16(cjson, "dayVpdMin", &warn->dayVpdMin);
+                        GetValueByU16(cjson, "dayVpdMax", &warn->dayVpdMax);
+                        GetValueByU8(cjson, "dayVpdEn", &warn->dayVpdEn);
+                        GetValueByU16(cjson, "dayParMin", &warn->dayParMin);
+                        GetValueByU16(cjson, "dayParMax", &warn->dayParMax);
+                        GetValueByU8(cjson, "dayParEn", &warn->dayParEn);
+                        GetValueByU16(cjson, "nightTempMin", &warn->nightTempMin);
+                        GetValueByU16(cjson, "nightTempMax", &warn->nightTempMax);
+                        GetValueByU8(cjson, "nightTempEn", &warn->nightTempEn);
+                        GetValueByU16(cjson, "nighthumidMin", &warn->nighthumidMin);
+                        GetValueByU16(cjson, "nighthumidMax", &warn->nighthumidMax);
+                        GetValueByU8(cjson, "nighthumidEn", &warn->nighthumidEn);
+                        GetValueByU16(cjson, "nightCo2Min", &warn->nightCo2Min);
+                        GetValueByU16(cjson, "nightCo2Max", &warn->nightCo2Max);
+                        GetValueByU8(cjson, "nightCo2En", &warn->nightCo2En);
+                        GetValueByU8(cjson, "nightCo2Buzz", &warn->nightCo2Buzz);
+                        GetValueByU16(cjson, "nightVpdMin", &warn->nightVpdMin);
+                        GetValueByU16(cjson, "nightVpdMax", &warn->nightVpdMax);
+                        GetValueByU8(cjson, "nightVpdEn", &warn->nightVpdEn);
+                        GetValueByU8(cjson, "co2TimeoutEn", &warn->co2TimeoutEn);
+                        GetValueByU16(cjson, "co2Timeoutseconds", &warn->co2Timeoutseconds);
+                        GetValueByU8(cjson, "tempTimeoutEn", &warn->tempTimeoutEn);
+                        GetValueByU16(cjson, "tempTimeoutseconds", &warn->tempTimeoutseconds);
+                        GetValueByU8(cjson, "humidTimeoutEn", &warn->humidTimeoutEn);
+                        GetValueByU16(cjson, "humidTimeoutseconds", &warn->humidTimeoutseconds);
+                        GetValueByU8(cjson, "lightEn", &warn->lightEn);
+                        GetValueByU8(cjson, "o2ProtectionEn", &warn->o2ProtectionEn);
+    #elif(HUB_SELECT == HUB_IRRIGSTION)
+                        GetValueByU8(cjson, "phEn", &warn->phEn);
+                        GetValueByU8(cjson, "ecEn", &warn->ecEn);
+                        GetValueByU8(cjson, "wtEn", &warn->wtEn);
+                        GetValueByU8(cjson, "wlEn", &warn->wlEn);
+                        GetValueByU8(cjson, "mmEn", &warn->mmEn);
+                        GetValueByU8(cjson, "meEn", &warn->meEn);
+                        GetValueByU8(cjson, "mtEn", &warn->mtEn);
+                        GetValueByU8(cjson, "autoFillTimeout", &warn->autoFillTimeout);
+    #endif
+                        GetValueByU8(cjson, "smokeEn", &warn->smokeEn);
+                        GetValueByU8(cjson, "waterEn", &warn->waterEn);
+                        GetValueByU8(cjson, "offlineEn", &warn->offlineEn);
+                        cJSON_Delete(cjson);
+                    }
+                    else
+                    {
+                        LOG_E("GetSysWarnFromFile err2");
+                    }
+                }
+                else
+                {
+                    LOG_E("GetSysWarnFromFile err1");
+                }
+            }
+            else
+            {
+                LOG_E("GetSysWarnFromFile err");
+            }
+        }
+        else {
+
+            LOG_E("GetSysWarnFromFile err4");
+        }
+    }
+    else
+    {
+        LOG_E("GetSysWarnFromFile err3");
     }
 }
 
@@ -1809,124 +2137,6 @@ static void GetSysRecipeSizeFromFile(sys_recipe_t *list)
     }
 }
 
-static void GetTankSizeFromFile(sys_tank_t *list)
-{
-    char        tank_size_file[]          = "/main/tank/tank_size.txt";
-    int         file_size                   = 0;
-    char        *str                        = RT_NULL;
-
-    if(RT_EOK == CheckDirectory(tank_size_file))
-    {
-        file_size = GetFileLength(tank_size_file);
-
-        if(file_size)
-        {
-            //1.1申请空间
-            str = rt_malloc(file_size);
-            if(str)
-            {
-                //1.2读取文件
-                if(RT_EOK == ReadFileData(tank_size_file, str, 0, file_size))
-                {
-                    //1.3解析数据
-                    cJSON *cjson = cJSON_Parse(str);
-                    rt_free(str);
-                    if(cjson)
-                    {
-                      GetValueByU16(cjson, "crc", &list->crc);
-                      GetValueByU8(cjson, "tank_size", &list->tank_size);
-
-                      cJSON_Delete(cjson);
-                    }
-                }
-            }
-        }
-    }
-}
-
-static void GetTankFromFile(tank_t *tank, u8 no)
-{
-    char        file_name[50]               = "";
-    char        tank_dir[]                  = "/main/tank";
-    int         file_size                   = 0;
-    char        *str                        = RT_NULL;
-
-    sprintf(file_name, "%s%s%d%s", tank_dir, "/tank", no, ".txt");
-
-    if(RT_EOK == CheckDirectory(file_name))
-    {
-        file_size = GetFileLength(file_name);
-
-        if(file_size)
-        {
-            //1.1申请空间
-            str = rt_malloc(file_size);
-            if(str)
-            {
-                //1.2读取文件
-                if(RT_EOK == ReadFileData(file_name, str, 0, file_size))
-                {
-                    //1.3解析数据
-                    cJSON *cjson = cJSON_Parse(str);
-                    rt_free(str);
-                    if(cjson)
-                    {
-                        GetValueByU8(cjson, "tankNo", &tank->tankNo);
-                        GetValueByC16(cjson, "name", tank->name, TANK_NAMESZ);
-                        GetValueByU16(cjson, "autoFillValveId", &tank->autoFillValveId);
-                        GetValueByU8(cjson, "autoFillHeight", &tank->autoFillHeight);
-                        GetValueByU8(cjson, "autoFillFulfilHeight", &tank->autoFillFulfilHeight);
-                        GetValueByU16(cjson, "highEcProtection", &tank->highEcProtection);
-                        GetValueByU16(cjson, "lowPhProtection", &tank->lowPhProtection);
-                        GetValueByU16(cjson, "highPhProtection", &tank->highPhProtection);
-                        GetValueByU8(cjson, "phMonitorOnly", &tank->phMonitorOnly);
-                        GetValueByU8(cjson, "ecMonitorOnly", &tank->ecMonitorOnly);
-                        GetValueByU8(cjson, "wlMonitorOnly", &tank->wlMonitorOnly);
-                        GetValueByU16(cjson, "pumpId", &tank->pumpId);
-                        GetValueByU8(cjson, "color", &tank->color);
-                        GetValueByU16(cjson, "poolTimeout", &tank->poolTimeout);
-
-                        cJSON *valve = cJSON_GetObjectItem(cjson, "valve");
-                        u8 num = cJSON_GetArraySize(valve);
-                        num = num < VALVE_MAX ? num : VALVE_MAX;
-                        for(u8 i = 0; i < num; i++)
-                        {
-                            tank->valve[i] = cJSON_GetArrayItem(valve, i)->valueint;
-                        }
-
-                        cJSON *sensorId = cJSON_GetObjectItem(cjson, "sensorId");
-                        u8 groud = cJSON_GetArraySize(sensorId);
-                        groud = groud < TANK_SINGLE_GROUD ? groud : TANK_SINGLE_GROUD;
-                        for(u8 i = 0; i < groud; i++)
-                        {
-                            u8 sen_n = cJSON_GetArraySize(cJSON_GetArrayItem(sensorId, i));
-                            sen_n = sen_n < TANK_SENSOR_MAX ? sen_n : TANK_SENSOR_MAX;
-                            for(u8 j = 0; j < sen_n; j++)
-                            {
-                                tank->sensorId[i][j] = cJSON_GetArrayItem(cJSON_GetArrayItem(sensorId, i), j)->valueint;
-                            }
-                        }
-
-                      cJSON_Delete(cjson);
-                    }
-                }
-            }
-        }
-    }
-}
-
-static void GetTankListFromFile(sys_tank_t *list)
-{
-    //1.获取tank size
-    GetTankSizeFromFile(list);
-    //获取tank
-    u8 num = list->tank_size < TANK_LIST_MAX ? list->tank_size : TANK_LIST_MAX;
-    for(u8 i = 0; i < num; i++)
-    {
-        GetTankFromFile(&list->tank[i], i);
-    }
-}
-
 static void GetSysRecipeListFromFile(sys_recipe_t *list)
 {
     //1.获取配方地址
@@ -1949,7 +2159,7 @@ static void GetSysSetFromFile(sys_set_t *set)
     char        sysset_file[]       = "/main/sysSet/sys_set.txt";
     int         file_size           = 0;
     char        *str                = RT_NULL;
-    char        name[20];
+    //char        name[20];
 
     //1.检查是否存在文件
     if(RT_EOK == CheckDirectory(sysset_file))
@@ -2060,6 +2270,7 @@ static void GetSysSetFromFile(sys_set_t *set)
     //2.读取co2 定标
     GetCo2CalFromFile(set);
     GetSysStageListFromFile(&set->stageSet);
+    GetSysWarnFromFile(&set->sysWarn);
 #elif(HUB_SELECT == HUB_IRRIGSTION)
     GetPhCalFromFile(set);
     GetEcCalFromFile(set);
@@ -2150,20 +2361,18 @@ static void GetMonitorAadrByJson(type_monitor_t *monitor)
 
 static void GetMonitorFromFile(type_monitor_t *monitor)
 {
-    char        reg_addr_file[]     = "/main/devRegistry/reg_addr.bin";//新版本设备注册表存储文件夹
-    char        reg_size_file[]     = "/main/devRegistry/reg_size.bin";//新版本设备注册表存储文件夹
+    //char        reg_addr_file[]     = "/main/devRegistry/reg_addr.bin";//新版本设备注册表存储文件夹
+    //char        reg_size_file[]     = "/main/devRegistry/reg_size.bin";//新版本设备注册表存储文件夹
     char        reg_sensor[]        = "/main/devRegistry/sensor";//存储device类设备
     char        reg_device[]        = "/main/devRegistry/device";//存储device类设备
     char        reg_line[]          = "/main/devRegistry/line";//存储device类设备
-    char        *str;
+    //char        *str;
 
     //1.读取地址分配表
     GetMonitorAadrByJson(monitor);
 
     //2.读取device、sensor、line数量
     GetMonitorSizeByJson(monitor);
-//    LOG_E("sen size = %d, dev size = %d, line size = %d",
-//            monitor->sensor_size, monitor->device_size, monitor->line_size);
 
     //3.读取sensor 数据
     u8 num = monitor->sensor_size;
@@ -2179,10 +2388,9 @@ static void GetMonitorFromFile(type_monitor_t *monitor)
     for(u8 i = 0; i < num; i++)
     {
         GetDeviceFromFile(&monitor->device[i], i, reg_device);
-        if(IO_4_TYPE == monitor->device[i].type)
-        {
-            LOG_W("-----------------humi state = %d",monitor->device[i].port[2].ctrl.d_state);//Justin
-        }
+
+        //Justin
+        printDevice(monitor->device[i]);
     }
 
     //5.读取line 数据
@@ -2450,9 +2658,9 @@ static void CheckSysSetNeedSave(sys_set_t *set)
     if(crc != set->crc)
     {
         LOG_I("CheckSysSetNeedSave");
+        LOG_I("crc = %x, set.crc = %x",crc,set->crc);//Justin
         //存储
         set->crc = crc;
-        LOG_I("crc = %x, set.crc = %x",crc,set->crc);//Justin
         SaveSysSetByJson(*set, sys_set_dir);
     }
 }
@@ -2476,26 +2684,6 @@ static void CheckSysRecipeNeedSave(sys_recipe_t *list)
         for(i = 0; i < list->recipe_size; i++)
         {
             SaveRecipeByJson(list->recipe[i], i, recipe_dir);
-        }
-    }
-}
-
-static void CheckSysTankNeedSave(sys_tank_t *list)
-{
-    int             i = 0;
-    u16             crc = 0;
-    char            tank_dir[]          = "/main/tank";
-
-    crc = usModbusRTU_CRC((u8 *)list + 2, sizeof(sys_tank_t) - 2);
-    if(crc != list->crc)
-    {
-        LOG_I("CheckSysTankNeedSave");
-        list->crc = crc;
-        SaveTankSizeByJson(list->tank_size, list->crc, tank_dir);
-
-        for(i = 0; i < list->tank_size; i++)
-        {
-            SaveTankByJson(list->tank[i], i, tank_dir);
         }
     }
 }
@@ -2544,17 +2732,17 @@ void FileSystemEntry(void* parameter)
             CheckLineNeedSave(GetMonitor());
         }
 
-        //60s 任务
+        //1s 任务
         if(ON == Timer1sTouch)
         {
             //2.存储系统信息
-            CheckSysSetNeedSave(GetSysSet());
-//#if(HUB_SELECT == HUB_ENVIRENMENT)
+            CheckSysSetNeedSave(GetSysSet());//Justin debug 一直存储 有问题
+#if(HUB_SELECT == HUB_ENVIRENMENT)
             //3.存储配方
             CheckSysRecipeNeedSave(GetSysRecipt());
-//#elif(HUB_SELECT == HUB_IRRIGSTION)
+#elif(HUB_SELECT == HUB_IRRIGSTION)
             CheckSysTankNeedSave(GetSysTank());
-//#endif
+#endif
         }
 
         rt_thread_mdelay(FILE_SYS_PERIOD);

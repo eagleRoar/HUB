@@ -17,5 +17,7 @@ rt_err_t CheckDirectory(char*);
 rt_err_t CreateDirectory(char*);
 void FileSystemInit(void);
 u8 GetFileSystemState(void);
+u8 WriteFileData(char* name, void* text, u32 offset, u32 l);
+u8 ReadFileData(char* name, void* text, u32 offset, u32 l);
 
 #endif /* APPLICATIONS_FILESYSTEM_FILESYSTEM_H_ */

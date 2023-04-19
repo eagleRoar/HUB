@@ -516,7 +516,7 @@ static void pageProgram(u8 page)
 
         case PH_CALIBRATE_PAGE:
 
-//            PhCalibratePage(&pageSelect, getPhCalByuuid(now_phec_uuid));//Justin debug
+            PhCalibratePage(&pageSelect, getPhCalByuuid(now_phec_uuid));//Justin debug
             if(ON == pageSelect.select)
             {
                 pageSelect.select = OFF;
@@ -524,7 +524,7 @@ static void pageProgram(u8 page)
             break;
 
         case EC_CALIBRATE_PAGE:
-//            EcCalibratePage(&pageSelect, getEcCalByuuid(now_phec_uuid));//Justin debug
+            EcCalibratePage(&pageSelect, getEcCalByuuid(now_phec_uuid));//Justin debug
             if(ON == pageSelect.select)
             {
                 pageSelect.select = OFF;

@@ -19,7 +19,7 @@ phec_sensor_t phec_sensor;
 
 extern rt_mutex_t dynamic_mutex;
 extern void printLine(line_t);
-extern void GetNowSysSet(proTempSet_t *, proCo2Set_t *, proHumiSet_t *, proLine_t *, proLine_t *, struct recipeInfor *);
+//extern void GetNowSysSet(proTempSet_t *, proCo2Set_t *, proHumiSet_t *, proLine_t *, proLine_t *, struct recipeInfor *);
 
 //获取phec sensor
 //注意:如果有多线程使用该函数的时候需要使用锁

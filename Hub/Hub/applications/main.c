@@ -201,16 +201,47 @@ int main(void)
                     tempProgram(GetMonitor(), *deviceObj);
                     co2Program(GetMonitor(), *deviceObj, 1000);
                     humiProgram(GetMonitor(), *deviceObj);
-//                  lineProgram_new(GetMonitor(), 0, 1000);
-//                  lineProgram_new(GetMonitor(), 1, 1000);
+                    lineProgram_new(GetMonitor(), 0, *lineObj, 1000);
+                    lineProgram_new(GetMonitor(), 1, *lineObj, 1000);
+                    timmerProgram(GetMonitor(), *deviceObj);
                 }
 
             }
-#elif(HUB_SELECT == HUB_ENVIRENMENT)
+#elif(HUB_SELECT == HUB_IRRIGSTION)
+            autoValveClose(GetMonitor(), GetSysTank());                 //如果是原来关联的自动阀取消关联之后需要关闭
+            pumpProgram(GetMonitor(), GetSysTank(), *deviceObj);        //水泵的工作
+
+            //phec 校准
+            for(u8 phec_i = 0; phec_i < getPhEcList(GetMonitor(), YES)->num; phec_i++)
+            {
+                ph_cal_t *ph = RT_NULL;
+                ph = getPhCalByuuid(GetSensorByAddr(GetMonitor(), getPhEcList(GetMonitor(), YES)->addr[phec_i])->uuid);
+                if(RT_NULL != ph)
+                {
+                    if((CAL_INCAL == ph->cal_7_flag) || (CAL_INCAL == ph->cal_4_flag))
+                    {
+                        phCalibrate1(GetSensorByAddr(GetMonitor(), getPhEcList(GetMonitor(), YES)->addr[phec_i]),
+                                GetMonitor(),ph, GetSysSet());
+                    }
+                }
+
+                ec_cal_t *ec = RT_NULL;
+                ec = getEcCalByuuid(GetSensorByAddr(GetMonitor(), getPhEcList(GetMonitor(), YES)->addr[phec_i])->uuid);
+                if(RT_NULL != ec)
+                {
+                    if((CAL_INCAL == ec->cal_0_flag) || (CAL_INCAL == ec->cal_141_flag))
+                    {
+                        ecCalibrate1(GetSensorByAddr(GetMonitor(), getPhEcList(GetMonitor(), YES)->addr[phec_i]),
+                                GetMonitor(),ec, GetSysSet());
+                    }
+                }
+            }
 #endif
 
             //执行手动功能
             menualHandProgram(GetMonitor(), *deviceObj, *lineObj);
+            //报警功能
+            warnProgram(GetMonitor(), GetSysSet());             //监听告警信息//Justin debug
         }
 
         //10s

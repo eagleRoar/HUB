@@ -23,7 +23,7 @@ extern  rt_device_t     uart2_serial;
 
 extern void getAppVersion(char *);
 extern void getRealTimeForMat(type_sys_time *);
-extern void GetNowSysSet(proTempSet_t *, proCo2Set_t *, proHumiSet_t *, proLine_t *, proLine_t *, struct recipeInfor *);
+//extern void GetNowSysSet(proTempSet_t *, proCo2Set_t *, proHumiSet_t *, proLine_t *, proLine_t *, struct recipeInfor *);
 extern  cloudcmd_t              cloudCmd;
 
 rt_err_t GetValueU8(cJSON *temp, type_kv_u8 *data)
@@ -3627,16 +3627,17 @@ char *ReplyGetHubState(char *cmd, cloudcmd_t cloud)
     char            *str        = RT_NULL;
     char            model[15];
     char            name[12];
+    cJSON           *json       = cJSON_CreateObject();
+#if(HUB_SELECT == HUB_ENVIRENMENT)
     char            week[3]     = "";
     char            day[3]      = "";
-    cJSON           *json       = cJSON_CreateObject();
-#if(HUB_SELECT == HUB_IRRIGSTION)
+    struct recipeInfor info;
+#elif(HUB_SELECT == HUB_IRRIGSTION)
     cJSON           *tank       = RT_NULL;
     int             valueTemp[10]    = {VALUE_NULL,VALUE_NULL,VALUE_NULL,VALUE_NULL,VALUE_NULL,VALUE_NULL,VALUE_NULL,VALUE_NULL,VALUE_NULL,VALUE_NULL};
 #endif
     cJSON           *list       = RT_NULL;
 
-    struct recipeInfor info;
 
     if(RT_NULL != json)
     {
@@ -3648,6 +3649,7 @@ char *ReplyGetHubState(char *cmd, cloudcmd_t cloud)
         cJSON_AddStringToObject(json, "name", GetHub()->name);
         GetHub()->name[HUB_NAMESZ - 1] = '\0';
         cJSON_AddNumberToObject(json, "nameSeq", GetHub()->nameSeq);
+        cJSON_AddNumberToObject(json, "maintain", GetSysSet()->sysPara.maintain);
 #if(HUB_SELECT == HUB_ENVIRENMENT)
         cJSON_AddNumberToObject(json, "co2", getSensorDataByFunc(GetMonitor(), F_S_CO2));
         cJSON_AddNumberToObject(json, "temp", getSensorDataByFunc(GetMonitor(), F_S_TEMP));
@@ -3672,9 +3674,7 @@ char *ReplyGetHubState(char *cmd, cloudcmd_t cloud)
         {
             cJSON_AddNumberToObject(json, "vpd", getVpd());
         }
-#endif
         cJSON_AddNumberToObject(json, "dayNight", GetSysSet()->dayOrNight);
-        cJSON_AddNumberToObject(json, "maintain", GetSysSet()->sysPara.maintain);
 
         list = cJSON_CreateObject();
         if(RT_NULL != list)
@@ -3702,7 +3702,7 @@ char *ReplyGetHubState(char *cmd, cloudcmd_t cloud)
         }
 
         //灌溉
-#if(HUB_SELECT == HUB_IRRIGSTION)
+#elif(HUB_SELECT == HUB_IRRIGSTION)
         list = cJSON_CreateArray();
         if(RT_NULL != list)
         {
