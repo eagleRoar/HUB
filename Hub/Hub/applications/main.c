@@ -136,24 +136,18 @@ int main(void)
 
         if(ON == GetRecvMqttFlg())
         {
-            ReplyDataToCloud1(GetMqttClient(), &res, RT_NULL, YES);
-            if(RT_EOK == res)
+
+            if(0 == rt_memcmp(CMD_GET_DEVICELIST, cloudCmd.cmd, sizeof(CMD_GET_DEVICELIST)))
             {
-                SetRecvMqttFlg(OFF);
+                res = ReplyDeviceListDataToCloud(GetMqttClient(), RT_NULL, YES);
             }
             else
             {
-                if(cnt < 10)
-                {
-                    cnt++;
-                }
-                else
-                {
-                    cnt = 0;
-                    SetRecvMqttFlg(OFF);
-                }
-                LOG_E("reply ReplyDataToCloud err");
+                res = ReplyDataToCloud(GetMqttClient(), RT_NULL, YES);
             }
+
+            SetRecvMqttFlg(OFF);
+
         }
 
         //主动发送告警

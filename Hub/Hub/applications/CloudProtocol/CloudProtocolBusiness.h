@@ -473,4 +473,5 @@ char *ReplySetDeviceType(char *, cloudcmd_t);
 char *ReplyDelPumpSensor(char *, cloudcmd_t);
 u8 getColorFromTankList(u16, sys_tank_t *);
 rt_err_t changeCharToDate(char* data, type_sys_time *time);
+char *ReplyGetDeviceList_new(char *cmd, char *msgid, u8 deviceType, u8 no);
 #endif /* APPLICATIONS_CLOUDPROTOCOL_CLOUDPROTOCOLBUSINESS_H_ */

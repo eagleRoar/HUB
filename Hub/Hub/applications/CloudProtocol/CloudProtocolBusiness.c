@@ -4639,3 +4639,275 @@ u8 getColorFromTankList(u16 address, sys_tank_t *list)
 
     return color;
 }
+
+//顺序先发送device再发送line
+char *ReplyGetDeviceList_new(char *cmd, char *msgid, u8 deviceType, u8 no)
+{
+//    u8              index       = 0;
+//    u8              line_no     = 0;
+    u8              storage     = 0;
+    u8              work_state  = 0;
+    char            *str        = RT_NULL;
+    char            name[12];
+    char            msgidName[KEYVALUE_VALUE_SIZE];
+    device_t        *module;
+    line_t          line;
+    cJSON           *item       = RT_NULL;
+    cJSON           *portList   = RT_NULL;
+    cJSON           *port       = RT_NULL;
+    cJSON           *json       = cJSON_CreateObject();
+    cJSON           *valveList  = RT_NULL;
+    u8              lastPackage = NO;
+
+    //判断是否是最后一包,如果line的数量没有则只发送device数量
+    if(DEVICE_TYPE == deviceType)
+    {
+        //判断line是否有注册
+        if(0 == GetMonitor()->line_size)
+        {
+            if(no == (GetMonitor()->device_size - 1))
+            {
+                lastPackage = YES;
+            }
+            else
+            {
+                lastPackage = NO;
+            }
+        }
+        else
+        {
+            lastPackage = NO;
+        }
+        module = &GetMonitor()->device[no];
+    }
+    else if(LINE1OR2_TYPE == deviceType)
+    {
+        if(no == (GetMonitor()->line_size - 1))
+        {
+            lastPackage = YES;
+        }
+        else
+        {
+            lastPackage = NO;
+        }
+        line = GetMonitor()->line[no];
+    }
+
+    if(RT_NULL != json)
+    {
+        cJSON_AddStringToObject(json, "cmd", cmd);
+        if(YES == lastPackage)
+        {
+            strcpy(msgidName, msgid);
+        }
+        else
+        {
+            strcpy(msgidName, msgid);
+            strcat(msgidName, "up");//Justin debug
+        }
+        cJSON_AddStringToObject(json, "msgid", msgidName);
+        cJSON_AddStringToObject(json, "sn", GetSnName(name, 12));
+        if(DEVICE_TYPE == deviceType)
+        {
+            cJSON_AddNumberToObject(json, "unpackId", no + 1);
+        }
+        else if(LINE1OR2_TYPE == deviceType)
+        {
+            cJSON_AddNumberToObject(json, "unpackId", GetMonitor()->device_size + no + 1);
+        }
+
+        cJSON_AddNumberToObject(json, "unpackAll", GetMonitor()->device_size + GetMonitor()->line_size);
+
+        item = cJSON_CreateObject();
+        if(RT_NULL != item)
+        {
+            if(DEVICE_TYPE == deviceType)
+            {
+                cJSON_AddStringToObject(item, "name", module->name);
+                cJSON_AddNumberToObject(item, "id", module->addr);
+                cJSON_AddNumberToObject(item, "mainType", module->main_type);
+                cJSON_AddNumberToObject(item, "type", module->type);
+
+                if (CON_FAIL == module->conn_state)
+                {
+                    cJSON_AddNumberToObject(item, "online", 0);
+                }
+                else
+                {
+                    cJSON_AddNumberToObject(item, "online", 1);
+                }
+                //1.单个口的 如 AC_Co2 AC_Humi
+                if(module->storage_size <= 1)
+                {
+                    cJSON_AddNumberToObject(item, "manual", module->port[0].manual.manual);
+
+                    if(ON == module->port[0].ctrl.d_state)
+                    {
+                        work_state = ON;
+                    }
+                    else if(OFF == module->port[0].ctrl.d_state)
+                    {
+                        work_state = OFF;
+                    }
+
+                    if(CON_FAIL == module->conn_state)
+                    {
+                        work_state = OFF;
+                    }
+
+                    cJSON_AddNumberToObject(item, "workingStatus", work_state);
+
+                    cJSON_AddNumberToObject(item, "color", getColorFromTankList(module->addr, GetSysTank()));
+                    if(PUMP_TYPE == module->port[0].type)
+                    {
+                        for(u8 tank_no = 0; tank_no < GetSysTank()->tank_size; tank_no++)
+                        {
+                            if(module->addr == GetSysTank()->tank[tank_no].pumpId)
+                            {
+                                cJSON_AddNumberToObject(item, "autoFillValveId",
+                                        GetSysTank()->tank[tank_no].autoFillValveId);
+
+                                valveList = cJSON_CreateArray();
+                                if(RT_NULL != valveList)
+                                {
+                                    for(u8 valve_i = 0; valve_i < VALVE_MAX; valve_i++)
+                                    {
+                                        if(0 != GetSysTank()->tank[tank_no].valve[valve_i])
+                                        {
+                                            cJSON_AddItemToArray(valveList, cJSON_CreateNumber(GetSysTank()->tank[tank_no].valve[valve_i]));
+                                        }
+                                    }
+
+                                    cJSON_AddItemToObject(item, "valve", valveList);
+                                }
+                            }
+                        }
+                    }
+                }
+                //2.多个口的如  AC_4 IO_12
+                else
+                {
+                    if(IO_12_TYPE == module->type)
+                    {
+                        cJSON_AddNumberToObject(item, "manual", 0);
+                    }
+                    portList = cJSON_CreateArray();
+                    if(RT_NULL != portList)
+                    {
+                        for(storage = 0; storage < module->storage_size; storage++)
+                        {
+                            port = cJSON_CreateObject();
+                            if(RT_NULL != port)
+                            {
+                                module->port[storage].addr = module->addr << 8 | storage;
+                                cJSON_AddNumberToObject(port, "type", module->port[storage].type);
+                                cJSON_AddStringToObject(port, "name", module->port[storage].name);
+                                cJSON_AddNumberToObject(port, "id", module->port[storage].addr);
+                                cJSON_AddNumberToObject(port, "manual", module->port[storage].manual.manual);
+
+                                if(ON == module->port[storage].ctrl.d_state)
+                                {
+                                    work_state = ON;
+                                }
+                                else if(OFF == module->port[storage].ctrl.d_state)
+                                {
+                                    work_state = OFF;
+                                }
+
+                                if(CON_FAIL == module->conn_state)
+                                {
+                                    work_state = OFF;
+                                }
+
+                                cJSON_AddNumberToObject(port, "workingStatus", work_state);
+
+                                cJSON_AddNumberToObject(port, "color",
+                                        getColorFromTankList((module->addr << 8) | storage, GetSysTank()));
+                                if(PUMP_TYPE == module->port[storage].type)
+                                {
+                                    for(u8 tank_no = 0; tank_no < GetSysTank()->tank_size; tank_no++)
+                                    {
+                                        if(((module->addr << 8) | storage) == GetSysTank()->tank[tank_no].pumpId)
+                                        {
+                                            cJSON_AddNumberToObject(port, "autoFillValveId",
+                                                    GetSysTank()->tank[tank_no].autoFillValveId);
+
+                                            valveList = cJSON_CreateArray();
+                                            if(RT_NULL != valveList)
+                                            {
+                                                for(u8 valve_i = 0; valve_i < VALVE_MAX; valve_i++)
+                                                {
+                                                    if(0 != GetSysTank()->tank[tank_no].valve[valve_i])
+                                                    {
+                                                        cJSON_AddItemToArray(valveList, cJSON_CreateNumber(GetSysTank()->tank[tank_no].valve[valve_i]));
+                                                    }
+                                                }
+
+                                                cJSON_AddItemToObject(port, "valve", valveList);
+                                            }
+                                        }
+                                    }
+                                }
+
+                                cJSON_AddItemToArray(portList, port);
+                            }
+                        }
+                        cJSON_AddItemToObject(item, "port", portList);
+                    }
+                }
+            }
+            else if(LINE1OR2_TYPE == deviceType)
+            {
+                cJSON_AddStringToObject(item, "name", line.name);
+                cJSON_AddNumberToObject(item, "id", line.addr);
+                cJSON_AddNumberToObject(item, "mainType", 4);
+                cJSON_AddNumberToObject(item, "type", line.type);
+                cJSON_AddNumberToObject(item, "lineNo", no + 1);
+                cJSON_AddNumberToObject(item, "manual", line._manual.manual);
+
+                if(CON_FAIL == line.conn_state)
+                {
+                    cJSON_AddNumberToObject(item, "online", 0);
+                    cJSON_AddNumberToObject(item, "workingStatus", OFF);
+                }
+                else
+                {
+                    cJSON_AddNumberToObject(item, "online", 1);
+                    cJSON_AddNumberToObject(item, "workingStatus", line.d_state);
+                }
+                if(0 == no)
+                {
+                    cJSON_AddNumberToObject(item, "lightType", GetSysSet()->line1Set.lightsType);
+                }
+                else
+                {
+                    cJSON_AddNumberToObject(item, "lightType", GetSysSet()->line2Set.lightsType);
+                }
+                cJSON_AddNumberToObject(item, "lightPower", line.d_value);
+
+                //Justin debug 以下两个没有实现
+//                "lineType":1, // 1 - 2 路 2 - 4 路
+//                //只有 lineType==2 时
+//                "outputRatio":[30,40,20,10],// Output Ratio,单位%
+            }
+
+            cJSON_AddItemToObject(json, "data", item);
+        }
+
+        if(RT_NULL != json)
+        {
+            cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
+            str = cJSON_PrintUnformatted(json);
+            //LOG_I("str = %d",strlen(str));
+
+            cJSON_Delete(json);
+            json = RT_NULL;
+        }
+    }
+    else
+    {
+        LOG_E("ReplyGetDeviceList err");
+    }
+
+    return str;
+}

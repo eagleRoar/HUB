@@ -100,7 +100,7 @@ void UdpTaskEntry(void* parameter)
     u8          Timer10sTouch       = OFF;
     int         broadcastSock       = 0x00;
     int         bytes_read          = 0x00;
-    u16         length              = 0;
+    rt_err_t    ret                 = RT_EOK;
     socklen_t   addr_len;
 
     struct sockaddr_in      broadcastSerAddr;
@@ -192,19 +192,18 @@ void UdpTaskEntry(void* parameter)
                 {
                     if(YES == cloudCmd.recv_app_flag)
                     {
-                        tcp_reply = ReplyDataToCloud1(RT_NULL, RT_NULL, &length, NO);
-                        //LOG_W("length = %d",length);
-                        //LOG_W("%.*s",length,tcp_reply + sizeof(eth_page_head));
-                        if(RT_NULL != tcp_reply)
+                        if(0 == rt_memcmp(CMD_GET_DEVICELIST, cloudCmd.cmd, sizeof(CMD_GET_DEVICELIST)))
                         {
-                            if (RT_EOK != TcpSendMsg(&tcp_sock, tcp_reply, length + sizeof(eth_page_head)))
-                            {
-                                LOG_E("send tcp err 1");
-                                eth->tcp.SetConnectStatus(OFF);
-                            }
+                            ret = ReplyDeviceListDataToCloud(RT_NULL, &tcp_sock, NO);
+                        }
+                        else
+                        {
+                            ret = ReplyDataToCloud(RT_NULL, &tcp_sock, NO);
+                        }
 
-                            rt_free(tcp_reply);
-                            tcp_reply = RT_NULL;
+                        if(RT_ERROR == ret)
+                        {
+                            eth->tcp.SetConnectStatus(OFF);
                         }
 
                         cloudCmd.recv_app_flag = NO;
