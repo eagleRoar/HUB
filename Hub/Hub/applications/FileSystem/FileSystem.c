@@ -1333,6 +1333,55 @@ static void CheckSysTankNeedSave(sys_tank_t *list)
 
 #endif
 
+static void saveSysParaByJson(sys_para_t *sysPara)
+{
+    cJSON       *cjson              = RT_NULL;
+    char        sys_warn_dir[]      = "/main/sysSet/sysPara.txt";
+    char        *str                = RT_NULL;
+
+    cjson = cJSON_CreateObject();
+
+    if(cjson)
+    {
+        cJSON_AddStringToObject(cjson, "ntpzone", sysPara->ntpzone);
+        cJSON_AddNumberToObject(cjson, "tempUnit", sysPara->tempUnit);
+        cJSON_AddNumberToObject(cjson, "ecUnit", sysPara->ecUnit);
+        cJSON_AddNumberToObject(cjson, "timeFormat", sysPara->timeFormat);
+        cJSON_AddNumberToObject(cjson, "dayNightMode", sysPara->dayNightMode);
+        cJSON_AddNumberToObject(cjson, "photocellSensitivity", sysPara->photocellSensitivity);
+        cJSON_AddNumberToObject(cjson, "dayTime", sysPara->dayTime);
+        cJSON_AddNumberToObject(cjson, "nightTime", sysPara->nightTime);
+        cJSON_AddNumberToObject(cjson, "maintain", sysPara->maintain);
+
+        str = cJSON_PrintUnformatted(cjson);
+        //释放空间
+        cJSON_Delete(cjson);
+
+        if(str)
+        {
+            int size = strlen(str);
+
+            RemoveFileDirectory(sys_warn_dir);
+            if(RT_ERROR == WriteFileData(sys_warn_dir, str, 0, size))
+            {
+                LOG_E("saveSysParaByJson, write to %s err",sys_warn_dir);
+            }
+            else
+            {
+                LOG_I("saveSysParaByJson write to file ok");
+
+            }
+            //释放空间
+            cJSON_free(str);
+        }
+        else
+        {
+            LOG_E("saveSysParaByJson reply memory err");
+        }
+    }
+
+}
+
 static void SaveSysSetByJson(sys_set_t sys_set,char *saveFile)//Justin 存储这个太大了 可能会失败
 {
     cJSON       *cjson              = RT_NULL;
@@ -1414,22 +1463,6 @@ static void SaveSysSetByJson(sys_set_t sys_set,char *saveFile)//Justin 存储这
             cJSON_AddItemToObject(cjson, "line2", line);
         }
 
-        sysPara = cJSON_CreateObject();
-        if(sysPara)
-        {
-            cJSON_AddStringToObject(sysPara, "ntpzone", sys_set.sysPara.ntpzone);
-            cJSON_AddNumberToObject(sysPara, "tempUnit", sys_set.sysPara.tempUnit);
-            cJSON_AddNumberToObject(sysPara, "ecUnit", sys_set.sysPara.ecUnit);
-            cJSON_AddNumberToObject(sysPara, "timeFormat", sys_set.sysPara.timeFormat);
-            cJSON_AddNumberToObject(sysPara, "dayNightMode", sys_set.sysPara.dayNightMode);
-            cJSON_AddNumberToObject(sysPara, "photocellSensitivity", sys_set.sysPara.photocellSensitivity);
-            cJSON_AddNumberToObject(sysPara, "dayTime", sys_set.sysPara.dayTime);
-            cJSON_AddNumberToObject(sysPara, "nightTime", sys_set.sysPara.nightTime);
-            cJSON_AddNumberToObject(sysPara, "maintain", sys_set.sysPara.maintain);
-
-            cJSON_AddItemToObject(cjson, "sysPara", sysPara);
-        }
-
         str = cJSON_PrintUnformatted(cjson);
         //释放空间
         cJSON_Delete(cjson);
@@ -1467,6 +1500,7 @@ static void SaveSysSetByJson(sys_set_t sys_set,char *saveFile)//Justin 存储这
         SaveSysCo2CalByJson(sys_set, saveFile);
         SaveSysStageList(&sys_set.stageSet);
         SaveSysWarn(&sys_set.sysWarn);
+        saveSysParaByJson(&sys_set.sysPara);//Justin 未测试
 #elif(HUB_SELECT == HUB_IRRIGSTION)
 
         SaveSysPhCalByJson(sys_set, saveFile);
