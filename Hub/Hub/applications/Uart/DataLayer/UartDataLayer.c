@@ -652,6 +652,9 @@ u8 TypeSupported(u8 type)
             ret = DEVICE_TYPE;
             break;
         case LINE_TYPE:
+        case LINE1_TYPE://固定在第一路
+        case LINE2_TYPE://固定在第二路
+        case LINE_4_TYPE://为4路输出
             ret = LINE1OR2_TYPE;
             break;
         default:

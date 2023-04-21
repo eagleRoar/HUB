@@ -1072,8 +1072,6 @@ rt_err_t SetDeviceDefault(type_monitor_t *monitor, u32 uuid, u8 type, u8 addr)
     device_t    *device                 = RT_NULL;
     char        name[STORAGE_NAMESZ]    = " ";
 
-//    LOG_D("--------------------------------- SetDeviceDefault 0");
-
     //1.判断device的注册数量是否已经满了
     if(monitor->device_size < DEVICE_MAX)
     {
@@ -1365,6 +1363,11 @@ u8 IsExistFunc(type_monitor_t *monitor, u8 addr,u8 func)
     }
 
     return NO;
+}
+
+u8 GetLineType(type_monitor_t *monitor)
+{
+
 }
 
 #endif /* APPLICATIONS_INFORMATIONMANAGE_MODULE_MODULE_C_ */

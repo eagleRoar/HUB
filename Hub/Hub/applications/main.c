@@ -12,6 +12,7 @@
 #include "Gpio.h"
 #include "Ethernet.h"
 #include "Oled1309.h"
+#include "OledBusiness.h"
 #include "SDCard.h"
 #include "Uart.h"
 #include "Spi.h"
@@ -42,6 +43,7 @@ static void InitParameter(void)
     initSysRecipe();
     initSysTank();
     initSysSet();
+    GetSysSet()->ver = 2;
     GetSnName(GetSysSet()->hub_info.name, 13);
 }
 
@@ -207,6 +209,12 @@ int main(void)
                 }
 
             }
+
+            //co2 校准
+            if(YES == GetSysSet()->startCalFlg)
+            {
+                co2Calibrate1(GetMonitor(), GetSysSet()->co2Cal, &GetSysSet()->startCalFlg, &GetSysSet()->saveFlag, co2CalibraterResPage);
+            }
 #elif(HUB_SELECT == HUB_IRRIGSTION)
             autoValveClose(GetMonitor(), GetSysTank());                 //如果是原来关联的自动阀取消关联之后需要关闭
             pumpProgram(GetMonitor(), GetSysTank(), *deviceObj);        //水泵的工作
@@ -242,6 +250,8 @@ int main(void)
             menualHandProgram(GetMonitor(), *deviceObj, *lineObj);
             //报警功能
             warnProgram(GetMonitor(), GetSysSet());             //监听告警信息//Justin debug
+
+            //LOG_I("ir func = %d",GetDeviceByType(GetMonitor(), IR_AIR_TYPE)->port[0].func);//Justin
         }
 
         //10s

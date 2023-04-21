@@ -2821,9 +2821,11 @@ char *ReplySetWarn(char *cmd, cloudcmd_t cloud, sys_warn_t warn)
         cJSON_AddNumberToObject(json, "dayTempMin",warn.dayTempMin);
         cJSON_AddNumberToObject(json, "dayTempMax",warn.dayTempMax);
         cJSON_AddNumberToObject(json, "dayTempEn",warn.dayTempEn);
+        cJSON_AddNumberToObject(json, "dayTempBuzz",warn.dayTempBuzz);
         cJSON_AddNumberToObject(json, "dayhumidMin",warn.dayhumidMin);
         cJSON_AddNumberToObject(json, "dayhumidMax",warn.dayhumidMax);
         cJSON_AddNumberToObject(json, "dayhumidEn",warn.dayhumidEn);
+        cJSON_AddNumberToObject(json, "dayhumidBuzz",warn.dayhumidBuzz);
         cJSON_AddNumberToObject(json, "dayCo2Min",warn.dayCo2Min);
         cJSON_AddNumberToObject(json, "dayCo2Max",warn.dayCo2Max);
         cJSON_AddNumberToObject(json, "dayCo2En",warn.dayCo2En);
@@ -2837,9 +2839,11 @@ char *ReplySetWarn(char *cmd, cloudcmd_t cloud, sys_warn_t warn)
         cJSON_AddNumberToObject(json, "nightTempMin",warn.nightTempMin);
         cJSON_AddNumberToObject(json, "nightTempMax",warn.nightTempMax);
         cJSON_AddNumberToObject(json, "nightTempEn",warn.nightTempEn);
+        cJSON_AddNumberToObject(json, "nightTempBuzz",warn.nightTempBuzz);
         cJSON_AddNumberToObject(json, "nighthumidMin",warn.nighthumidMin);
         cJSON_AddNumberToObject(json, "nighthumidMax",warn.nighthumidMax);
         cJSON_AddNumberToObject(json, "nighthumidEn",warn.nighthumidEn);
+        cJSON_AddNumberToObject(json, "nighthumidBuzz",warn.nighthumidBuzz);
         cJSON_AddNumberToObject(json, "nightCo2Min",warn.nightCo2Min);
         cJSON_AddNumberToObject(json, "nightCo2Max",warn.nightCo2Max);
         cJSON_AddNumberToObject(json, "nightCo2En",warn.nightCo2En);
@@ -2857,12 +2861,19 @@ char *ReplySetWarn(char *cmd, cloudcmd_t cloud, sys_warn_t warn)
         cJSON_AddNumberToObject(json, "o2ProtectionEn",warn.o2ProtectionEn);
 #elif(HUB_SELECT == HUB_IRRIGSTION)
         cJSON_AddNumberToObject(json, "phEn",warn.phEn);
+        cJSON_AddNumberToObject(json, "phBuzz",warn.phBuzz);
         cJSON_AddNumberToObject(json, "ecEn",warn.ecEn);
+        cJSON_AddNumberToObject(json, "ecBuzz",warn.ecBuzz);
         cJSON_AddNumberToObject(json, "wtEn",warn.wtEn);
+        cJSON_AddNumberToObject(json, "wtBuzz",warn.wtBuzz);
         cJSON_AddNumberToObject(json, "wlEn",warn.wlEn);
+        cJSON_AddNumberToObject(json, "wlBuzz",warn.wlBuzz);
         cJSON_AddNumberToObject(json, "mmEn",warn.mmEn);
+        cJSON_AddNumberToObject(json, "mmBuzz",warn.mmBuzz);
         cJSON_AddNumberToObject(json, "meEn",warn.meEn);
+        cJSON_AddNumberToObject(json, "meBuzz",warn.meBuzz);
         cJSON_AddNumberToObject(json, "mtEn",warn.mtEn);
+        cJSON_AddNumberToObject(json, "mtBuzz",warn.mtBuzz);
 
         cJSON_AddNumberToObject(json, "autoFillTimeout",warn.autoFillTimeout);
         pool = cJSON_CreateArray();
@@ -3650,6 +3661,7 @@ char *ReplyGetHubState(char *cmd, cloudcmd_t cloud)
         GetHub()->name[HUB_NAMESZ - 1] = '\0';
         cJSON_AddNumberToObject(json, "nameSeq", GetHub()->nameSeq);
         cJSON_AddNumberToObject(json, "maintain", GetSysSet()->sysPara.maintain);
+        cJSON_AddNumberToObject(json, "ver", GetSysSet()->ver);
 #if(HUB_SELECT == HUB_ENVIRENMENT)
         cJSON_AddNumberToObject(json, "co2", getSensorDataByFunc(GetMonitor(), F_S_CO2));
         cJSON_AddNumberToObject(json, "temp", getSensorDataByFunc(GetMonitor(), F_S_TEMP));

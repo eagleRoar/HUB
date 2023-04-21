@@ -18,6 +18,7 @@
 #include "qrcode.h"
 #include "ST7567.h"
 #include "SDCard.h"
+#include "UartAction.h"
 
 char    data[80];
 u32     now_phec_uuid = 0;
@@ -1406,6 +1407,8 @@ void UpdateAppProgram(type_page_t *page, u64 *info)
     ST7567_UpdateScreen();
 }
 
+#if(HUB_SELECT == HUB_ENVIRENMENT)
+
 void co2CalibratePage(type_page_t *page, u64 *info)
 {
     if(NO == GetSysSet()->startCalFlg)
@@ -1459,6 +1462,39 @@ void co2CalibratePage(type_page_t *page, u64 *info)
     //3
     ST7567_UpdateScreen();
 }
+
+void co2CalibraterResPage(u8 flag)
+{
+   if(NO == flag)
+   {
+       //失败
+       ST7567_GotoXY(LINE_HIGHT, 0);
+       ST7567_Puts("Calibrate fail ", &Font_8x16, 1);
+       ST7567_GotoXY(LINE_HIGHT, 16);
+       ST7567_Puts("                ", &Font_8x16, 1);
+       ST7567_GotoXY(LINE_HIGHT, 16*2);
+       ST7567_Puts("                ", &Font_8x16, 1);
+       ST7567_GotoXY(LINE_HIGHT, 16*3);
+       ST7567_Puts("                ", &Font_8x16, 1);
+   }
+   else if(YES == flag)
+   {
+       //成功
+       ST7567_GotoXY(LINE_HIGHT, 0);
+       ST7567_Puts("Calibrate OK  ", &Font_8x16, 1);
+       ST7567_GotoXY(LINE_HIGHT, 16);
+       ST7567_Puts("                ", &Font_8x16, 1);
+       ST7567_GotoXY(LINE_HIGHT, 16*2);
+       ST7567_Puts("                ", &Font_8x16, 1);
+       ST7567_GotoXY(LINE_HIGHT, 16*3);
+       ST7567_Puts("                ", &Font_8x16, 1);
+   }
+
+   ST7567_UpdateScreen();
+   pageSelect.cusor = 1;//避免客户直接点击YES 又再次校准
+}
+
+#elif(HUB_SELECT == HUB_IRRIGSTION)
 
 void PhEcCalibratePage(type_page_t *page)
 {
@@ -1798,36 +1834,7 @@ void phecOnlinePage(u64 *pageInfo, type_page_t *page, type_monitor_t *monitor, u
     ST7567_UpdateScreen();
 }
 
-void co2CalibraterResPage(u8 flag)
-{
-   if(NO == flag)
-   {
-       //失败
-       ST7567_GotoXY(LINE_HIGHT, 0);
-       ST7567_Puts("Calibrate fail ", &Font_8x16, 1);
-       ST7567_GotoXY(LINE_HIGHT, 16);
-       ST7567_Puts("                ", &Font_8x16, 1);
-       ST7567_GotoXY(LINE_HIGHT, 16*2);
-       ST7567_Puts("                ", &Font_8x16, 1);
-       ST7567_GotoXY(LINE_HIGHT, 16*3);
-       ST7567_Puts("                ", &Font_8x16, 1);
-   }
-   else if(YES == flag)
-   {
-       //成功
-       ST7567_GotoXY(LINE_HIGHT, 0);
-       ST7567_Puts("Calibrate OK  ", &Font_8x16, 1);
-       ST7567_GotoXY(LINE_HIGHT, 16);
-       ST7567_Puts("                ", &Font_8x16, 1);
-       ST7567_GotoXY(LINE_HIGHT, 16*2);
-       ST7567_Puts("                ", &Font_8x16, 1);
-       ST7567_GotoXY(LINE_HIGHT, 16*3);
-       ST7567_Puts("                ", &Font_8x16, 1);
-   }
-
-   ST7567_UpdateScreen();
-   pageSelect.cusor = 1;//避免客户直接点击YES 又再次校准
-}
+#endif
 
 void factoryPage(type_page_t page, u8 canShow)
 {

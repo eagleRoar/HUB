@@ -20,8 +20,6 @@
 #define RT_TIMER_THREAD_STACK_SIZE 512
 #define RT_DEBUG
 #define RT_DEBUG_COLOR
-#define RT_DEBUG_INIT_CONFIG
-#define RT_DEBUG_INIT 1
 
 /* Inter-Thread communication */
 

@@ -1193,18 +1193,6 @@ static void GetPhCalFromFile(sys_set_t *set)
     }
 }
 
-static void GetTankListFromFile(sys_tank_t *list)
-{
-    //1.获取tank size
-    GetTankSizeFromFile(list);
-    //获取tank
-    u8 num = list->tank_size < TANK_LIST_MAX ? list->tank_size : TANK_LIST_MAX;
-    for(u8 i = 0; i < num; i++)
-    {
-        GetTankFromFile(&list->tank[i], i);
-    }
-}
-
 static void GetTankSizeFromFile(sys_tank_t *list)
 {
     char        tank_size_file[]          = "/main/tank/tank_size.txt";
@@ -1311,6 +1299,18 @@ static void GetTankFromFile(tank_t *tank, u8 no)
     }
 }
 
+static void GetTankListFromFile(sys_tank_t *list)
+{
+    //1.获取tank size
+    GetTankSizeFromFile(list);
+    //获取tank
+    u8 num = list->tank_size < TANK_LIST_MAX ? list->tank_size : TANK_LIST_MAX;
+    for(u8 i = 0; i < num; i++)
+    {
+        GetTankFromFile(&list->tank[i], i);
+    }
+}
+
 static void CheckSysTankNeedSave(sys_tank_t *list)
 {
     int             i = 0;
@@ -1333,7 +1333,7 @@ static void CheckSysTankNeedSave(sys_tank_t *list)
 
 #endif
 
-static void SaveSysSetByJson(sys_set_t sys_set,char *saveFile)
+static void SaveSysSetByJson(sys_set_t sys_set,char *saveFile)//Justin 存储这个太大了 可能会失败
 {
     cJSON       *cjson              = RT_NULL;
     cJSON       *line               = RT_NULL;
@@ -1457,6 +1457,10 @@ static void SaveSysSetByJson(sys_set_t sys_set,char *saveFile)
         {
             LOG_E("SaveSysSetByJson reply memory err");
         }
+    }
+    else
+    {
+        LOG_E("SaveSysSetByJson err");
     }
 
 #if(HUB_SELECT == HUB_ENVIRENMENT)
@@ -2154,7 +2158,7 @@ static void GetSysRecipeListFromFile(sys_recipe_t *list)
     }
 }
 
-static void GetSysSetFromFile(sys_set_t *set)
+static void GetSysSetFromFile(sys_set_t *set)//Justin 存储这个太大了 可能会失败
 {
     char        sysset_file[]       = "/main/sysSet/sys_set.txt";
     int         file_size           = 0;
@@ -2182,6 +2186,7 @@ static void GetSysSetFromFile(sys_set_t *set)
                     if(cjson)
                     {
                         GetValueByU16(cjson, "crc", &set->crc);
+                        rt_kprintf("GetSysSetFromFile crc = %x",set->crc);//Justin debug
                         GetValueByU16(cjson, "dayCoolingTarget", &set->tempSet.dayCoolingTarget);
                         GetValueByU16(cjson, "dayHeatingTarget", &set->tempSet.dayHeatingTarget);
                         GetValueByU16(cjson, "nightCoolingTarget", &set->tempSet.nightCoolingTarget);
@@ -2261,8 +2266,24 @@ static void GetSysSetFromFile(sys_set_t *set)
 
                         cJSON_Delete(cjson);
                     }
+                    else
+                    {
+                        LOG_E("GetSysSetFromFile 4");
+                    }
+                }
+                else
+                {
+                    LOG_E("GetSysSetFromFile 3");
                 }
             }
+            else
+            {
+                LOG_E("GetSysSetFromFile 2");
+            }
+        }
+        else
+        {
+            LOG_E("GetSysSetFromFile 1");
         }
     }
 
@@ -2402,151 +2423,6 @@ static void GetMonitorFromFile(type_monitor_t *monitor)
     }
 }
 
-//旧数据迁移
-static void OldDataMigration(void)
-{
-    u8              FileHeadSpace       = 5;//旧结构文件头部预留4Byte 0x5A5AA5A5作为文件已写的标识 + 1byte为标记为
-    char            old_dev_reg[]       = "/backup/moduleInfo";
-    char            old_dev_file[]      = "/backup/moduleInfo/module.bin";
-    char            old_sysset_file[]   = "/backup/moduleInfo/sys_set.bin";
-//    char            reg_addr_file[]     = "/main/devRegistry/reg_addr.bin";//新版本设备注册表存储文件夹
-//    char            reg_size_file[]     = "/main/devRegistry/reg_size.bin";//新版本设备注册表存储文件夹
-    char            reg_sensor[]        = "/main/devRegistry/sensor";//存储device类设备
-    char            reg_device[]        = "/main/devRegistry/device";//存储device类设备
-    char            reg_line[]          = "/main/devRegistry/line";//存储device类设备
-    char            sys_set_dir[]       = "/main/sysSet";
-#if(HUB_SELECT == HUB_ENVIRENMENT)
-    char            old_recipe_file[]   = "/backup/moduleInfo/recipe.bin";
-    char            recipe_dir[]        = "/main/recipe";
-//    char            recipe_size_file[]  = "/main/recipe/recipe_size.txt";
-#elif(HUB_SELECT == HUB_IRRIGSTION)
-    char            tank_dir[]          = "/main/tank";
-    char            old_tank_file[]     = "/backup/moduleInfo/tank.bin";
-    char            recipe_file[]       = "/main/recipe/recipe.txt";
-    tank_t          tank;
-#endif
-    struct          allocate all_addr;
-    sensor_t        sensor;
-    device_t        device;
-    line_t          light;
-    u8              num[3];
-    sys_set_t       sys_set;
-    recipe_t        recipe;
-
-    //1.读取旧的设备注册信息
-    if(RT_EOK == CheckDirectory(old_dev_reg))
-    {
-        //读取地址配置列表
-        if(RT_EOK == ReadFileData(old_dev_file, &all_addr, FileHeadSpace, sizeof(struct allocate)))
-        {
-            SaveMonitorAddrByJson(all_addr);
-        }
-        //读取sensor size
-        if(RT_EOK == ReadFileData(old_dev_file, &num, FileHeadSpace + sizeof(struct allocate), 3))
-        {
-            SaveMonitorSizeByJson(num[0],num[1],num[2]);
-        }
-
-        //读取sensor
-        for(u8 i = 0; i < 20; i++)
-        {
-            if(RT_EOK == ReadFileData(old_dev_file, &sensor,
-                    FileHeadSpace + sizeof(struct allocate) + 3 + sizeof(sensor_t) *i,
-                    sizeof(sensor_t)))
-            {
-                if(sensor.addr)//只存入有效值
-                {
-                    SaveSensorByJson(sensor, i, reg_sensor);
-                }
-            }
-        }
-
-        for(u8 i = 0; i < 16; i++)//旧数据结构的最大device数量为16
-        {
-            if(RT_EOK == ReadFileData(old_dev_file, &device,
-                    FileHeadSpace + sizeof(struct allocate) + 3 + sizeof(sensor_t) * 20 + sizeof(device_t)*i,
-                    sizeof(device_t)))
-            {
-                if(device.addr)
-                {
-                    SaveDeviceByJson(device, i, reg_device);
-                }
-            }
-        }
-
-        for(u8 i = 0; i < 2; i++)
-        {
-            if(RT_EOK == ReadFileData(old_dev_file, &light,
-                    FileHeadSpace + sizeof(struct allocate) + 3 + sizeof(sensor_t) * 20 + sizeof(device_t) * 16 +
-                    sizeof(line_t) * i,
-                    sizeof(line_t)))
-            {
-                if(light.addr)
-                {
-                    SaveLineByJson(light, i, reg_line);
-                }
-            }
-        }
-
-        //2.读取旧的系统设置
-        if(RT_EOK == ReadFileData(old_sysset_file, &sys_set,
-            FileHeadSpace,
-            sizeof(sys_set_t)))
-        {
-            SaveSysSetByJson(sys_set, sys_set_dir);
-        }
-
-        //3.如果是环控的则需要保存配方
-#if(HUB_SELECT == HUB_ENVIRENMENT)
-        u8 recipe_size = 0;
-        u16 crc = 0;
-        //保存配方数据
-        if(RT_EOK == ReadFileData(old_recipe_file, &recipe_size, FileHeadSpace + 2, 1))
-        {
-            if(ReadFileData(old_recipe_file, &crc, FileHeadSpace, 2))
-            {
-                SaveRecipeSizeByJson(recipe_size, crc);
-            }
-        }
-        //保存配方
-        recipe_size = recipe_size < RECIPE_LIST_MAX ? recipe_size : RECIPE_LIST_MAX;
-        for(u8 i = 0; i < recipe_size; i++)
-        {
-            if(RT_EOK == ReadFileData(old_recipe_file, &recipe, FileHeadSpace + 3 + sizeof(recipe_t) * i, sizeof(recipe_t)))
-            {
-                SaveRecipeByJson(recipe, i, recipe_dir);
-            }
-        }
-        //保存配方地址
-        u8 addr[10];
-        if(RT_EOK == ReadFileData(old_recipe_file, addr, FileHeadSpace + 3 + sizeof(recipe_t) * 10, 10))
-        {
-            SaveRecipeAddrByJson(addr, 10, recipe_dir);
-        }
-        //4.如果是灌溉则要保存水桶信息
-#elif(HUB_SELECT == HUB_IRRIGSTION)
-        u8 tank_size = 0;
-        u16 crc = 0;
-        if(RT_EOK == ReadFileData(old_tank_file, &tank_size, FileHeadSpace + 2, 1))
-        {
-            if(RT_EOK == ReadFileData(old_tank_file, &crc, FileHeadSpace, 2))
-            {
-                SaveTankSizeByJson(tank_size, crc, tank_dir);
-            }
-        }
-
-        tank_size = tank_size < TANK_LIST_MAX ? tank_size : TANK_LIST_MAX;
-        for(u8 i = 0; i < tank_size; i++)
-        {
-            if(RT_EOK == ReadFileData(old_tank_file, &tank, FileHeadSpace + 3 + sizeof(tank_t) * i, sizeof(tank_t)))
-            {
-                SaveTankByJson(tank, i, tank_dir);
-            }
-        }
-#endif
-    }
-}
-
 //通过查看crc校验是否正确 如果不正确 则crc赋值并存入SD卡中
 static void CheckDeviceNeedSave(type_monitor_t *monitor)
 {
@@ -2650,18 +2526,21 @@ static void CheckLineNeedSave(type_monitor_t *monitor)
 
 static void CheckSysSetNeedSave(sys_set_t *set)
 {
-    u16         crc = 0;
+//    u16         crc = 0;
     char        sys_set_dir[]       = "/main/sysSet";
 
-    crc = usModbusRTU_CRC((u8 *)set + 2, sizeof(sys_set_t) - 2);
+//    crc = usModbusRTU_CRC((u8 *)set + 2, sizeof(sys_set_t) - 2);
 
-    if(crc != set->crc)
+//    if(crc != set->crc)
+    if(YES == set->saveFlag)
     {
         LOG_I("CheckSysSetNeedSave");
-        LOG_I("crc = %x, set.crc = %x",crc,set->crc);//Justin
+//        LOG_I("crc = %x, set.crc = %x",crc,set->crc);//Justin
         //存储
-        set->crc = crc;
+//        set->crc = crc;
         SaveSysSetByJson(*set, sys_set_dir);
+
+        set->saveFlag = NO;
     }
 }
 
@@ -2729,14 +2608,16 @@ void FileSystemEntry(void* parameter)
 
             CheckDeviceNeedSave(GetMonitor());
             CheckSensorNeedSave(GetMonitor());
+#if(HUB_SELECT == HUB_ENVIRENMENT)
             CheckLineNeedSave(GetMonitor());
+#endif
         }
 
         //1s 任务
         if(ON == Timer1sTouch)
         {
             //2.存储系统信息
-            CheckSysSetNeedSave(GetSysSet());//Justin debug 一直存储 有问题
+            CheckSysSetNeedSave(GetSysSet());//Justin debug 这个函数一直在存储 有问题
 #if(HUB_SELECT == HUB_ENVIRENMENT)
             //3.存储配方
             CheckSysRecipeNeedSave(GetSysRecipt());

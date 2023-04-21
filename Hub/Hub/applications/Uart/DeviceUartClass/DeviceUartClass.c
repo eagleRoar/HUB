@@ -346,7 +346,7 @@ static void GenerateVuleByCtrl(device_t device, u8 func, u8 state, u16 *value)
                     if(IR_AIR_TYPE == device.type)
                     {
                         GenerateIrAirCtrlData(ON, value);
-                        LOG_I("GenerateVuleByCtrl ir_air value = %x",*value);
+//                        LOG_I("GenerateVuleByCtrl ir_air value = %x",*value);
                     }
                     else if(HVAC_6_TYPE == device.type)
                     {
@@ -1176,8 +1176,22 @@ static void RecvListHandle(void)
                         //判断寄存器的数量
                         if(1 == regSize)
                         {
-                            device->port[0].ctrl.d_state = tail->keyData.dataSegment.data[4];
-                            device->port[0].ctrl.d_value = tail->keyData.dataSegment.data[5];
+                            if(IR_AIR_TYPE == device->type)
+                            {
+                                if(tail->keyData.dataSegment.data[4] & 0x80)
+                                {
+                                    device->port[0].ctrl.d_state = ON;
+                                }
+                                else
+                                {
+                                    device->port[0].ctrl.d_state = OFF;
+                                }
+                            }
+                            else
+                            {
+                                device->port[0].ctrl.d_state = tail->keyData.dataSegment.data[4];
+                                device->port[0].ctrl.d_value = tail->keyData.dataSegment.data[5];
+                            }
                         }
                         else
                         {

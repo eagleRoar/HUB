@@ -42,4 +42,5 @@ void EcCalCallBackPage(u8);
 void testPage(void);
 void phecOnlinePage(u64 *, type_page_t *, type_monitor_t *, u8);
 void SensorList(u64 *, type_page_t *,type_monitor_t *);
+void co2CalibraterResPage(u8 flag);
 #endif /* APPLICATIONS_OLED1309_OLEDBUSINESS_OLEDBUSINESS_H_ */

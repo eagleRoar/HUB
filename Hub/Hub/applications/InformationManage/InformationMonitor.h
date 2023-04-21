@@ -28,7 +28,6 @@
 typedef     struct packageEth               type_package_t;
 
 typedef     struct hub                      hub_t;
-//typedef     struct monitor                  type_monitor_t;
 typedef     struct sensor                   sensor_t;
 typedef     struct timer                    type_timmer_t;
 typedef     struct cycle                    type_cycle_t;
@@ -64,6 +63,12 @@ typedef     struct eth_heart                eth_heart_t;
 #define     AUTO_DIMMING                    1200
 #define     MANUAL_TIME_DEFAULT             10
 
+typedef struct hubOld{
+    u16 crc;
+    char name[HUB_NAMESZ];
+    u8 nameSeq;   //名称序号 仅仅提供给主机使用
+}hubOld_t;
+
 struct hub{
     u16 crc;
     char name[HUB_NAMESZ];
@@ -92,6 +97,21 @@ struct sen_stora{
     s16             value;
 };
 
+typedef struct sensorOld
+{
+    u16             crc;
+    u32             uuid;
+    char            name[MODULE_NAMESZ];                    //产品名称
+    u8              addr;                                   //hub管控的地址
+    u8              type;                                   //产品类型号
+    u16             ctrl_addr;                              //终端控制的寄存器地址
+    u8              conn_state;                             //连接状态
+    u8              reg_state;                              //注册状态
+    u8              save_state;                             //是否已经存储
+    u8              storage_size;                           //寄存器数量
+    sen_stora_t     __stora[SENSOR_VALUE_MAX];
+}sensorOld_t;//占35字节
+
 struct sensor
 {
     u16             crc;
@@ -107,6 +127,15 @@ struct sensor
     sen_stora_t     __stora[SENSOR_VALUE_MAX];
 };//占35字节
 
+typedef struct cycleOld
+{
+    time_t start_at_timestamp;                      //保存当天的时间戳
+    u16     startAt;                                //开启时间点 8:00 8*60=480
+    int     duration;                               //持续时间 秒
+    int     pauseTime;                              //停止时间 秒
+    u16     times;
+}type_cycleOld_t;
+
 struct cycle
 {
     time_t start_at_timestamp;                      //保存当天的时间戳
@@ -115,23 +144,60 @@ struct cycle
     int     pauseTime;                              //停止时间 秒
     u16     times;
 };
+
+typedef struct timerOld
+{
+    int     on_at;                                  //开始的时间
+    int     duration;                               //持续时间 //该时间以秒为单位的
+    u8      en;
+}type_timmerOld_t;
+
 struct timer
 {
     int     on_at;                                  //开始的时间
     int     duration;                               //持续时间 //该时间以秒为单位的
     u8      en;
 };
+
+typedef struct manualOld
+{
+    u8      manual;                                 //手动开关/ 开、关
+    u16     manual_on_time;                         //手动开启的时间
+    timer_t manual_on_time_save;                    //保存手动开的时间
+}type_manualOld_t;
+
 struct manual
 {
     u8      manual;                                 //手动开关/ 开、关
     u16     manual_on_time;                         //手动开启的时间
     timer_t manual_on_time_save;                    //保存手动开的时间
 };
+
+typedef struct controlOld
+{
+    u8      d_state;                                //device 的状态位
+    u8      d_value;                                //device 的控制数值
+}type_ctrlOld_t;
+
 struct control
 {
     u8      d_state;                                //device 的状态位
     u8      d_value;                                //device 的控制数值
 };
+
+typedef struct lineOld{
+    u16             crc;
+    u8              type;                                   //产品类型号
+    u32             uuid;
+    char            name[MODULE_NAMESZ];                    //产品名称
+    u8              addr;                                   //hub管控的地址
+    u16             ctrl_addr;                              //终端控制的寄存器地址
+    u8              d_state;                                //device 的状态位
+    u8              d_value;                                //device 的控制数值
+    u8              save_state;                             //是否已经存储
+    u8              conn_state;
+    type_manual_t   _manual;
+}lineOld_t;
 
 struct line{
     u16             crc;
@@ -146,6 +212,42 @@ struct line{
     u8              conn_state;
     type_manual_t   _manual;
 };
+
+typedef struct deviceOld{
+    u16             crc;
+    u32             uuid;
+    char            name[MODULE_NAMESZ];
+    u8              addr;                                   //hub管控的地址
+    u8              type;                                   //类型
+    u16             ctrl_addr;                              //实际上终端需要控制的地址
+    u8              main_type;                              //主类型 如co2 温度 湿度 line timer
+    u8              conn_state;                             //连接状态
+    u8              reg_state;                              //注册状态
+    u8              save_state;                             //是否已经存储
+    u8              storage_size;                           //寄存器数量
+    u8              color;                                  //颜色
+    //12个端口需要 state time cycle
+    struct portOld{
+        char    name[STORAGE_NAMESZ];
+        u16     addr;
+        u8      type;                                       //类型
+        u8      hotStartDelay;                              //对于制冷 制热 除湿设备需要有该保护
+        u8      mode;                                       // 模式 1-By Schedule 2-By Recycle
+        u8      func;
+        //timer
+        type_timmerOld_t timer[TIMER_GROUP];
+        type_cycleOld_t cycle;
+        type_manualOld_t manual;
+        type_ctrlOld_t ctrl;
+    }port[DEVICE_PORT_MAX];
+    //特殊处理
+    struct hvacOld
+    {
+        u8      manualOnMode;        //1-cooling 2-heating //手动开关的时候 该选项才有意义
+        u8      fanNormallyOpen;     //风扇常开 1-常开 0-自动
+        u8      hvacMode;            //1-conventional 模式 2-HEAT PUM 模式 O 模式 3-HEAT PUM 模式 B 模式
+    }_hvac;
+}deviceOld_t;
 
 struct device{
     u16             crc;
@@ -330,6 +432,11 @@ enum{
     CON_SUCCESS,
 };
 
+struct allocate_old
+{
+    u8 address[256];
+};
+
 struct allocate
 {
     u8 address[ALLOCATE_ADDRESS_SIZE];
@@ -338,6 +445,19 @@ struct allocate
 /** 一下结构顺序不能打乱 否则存取SD卡的GetMonitorFromSdCard相关逻辑要改 **/
 
 #pragma pack(1)
+typedef struct monitorOld
+{
+    /* 以下为统一分配 */
+    struct allocate_old     allocateStr;
+    u8                  sensor_size;
+    u8                  device_size;
+    u8                  line_size;
+    sensorOld_t         sensor[SENSOR_MAX];
+    deviceOld_t         device[DEVICE_MAX];
+    lineOld_t           line[LINE_MAX];
+    u16                 crc;
+}type_monitorOld_t;
+
 typedef struct monitor
 {
     /* 以下为统一分配 */
@@ -371,6 +491,9 @@ typedef     void (*FAC_FUNC)(type_monitor_t *);
 
 #define     HUB_TYPE        0xFF
 #define     LINE_TYPE       0x22        //灯光类
+#define     LINE1_TYPE      0x23        //灯光类
+#define     LINE2_TYPE      0x24        //灯光类
+#define     LINE_4_TYPE     0x25        //灯光类
 #define     BHS_TYPE        0x03
 #define     PHEC_TYPE       0x05
 #define     PAR_TYPE        0x08

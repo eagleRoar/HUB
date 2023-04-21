@@ -97,6 +97,17 @@ struct cloudCmd{
 };
 
 //cmd : getTempSetting
+
+typedef struct proTempSetOld
+{
+    u16         dayCoolingTarget;           //白天制冷目标值
+    u16         dayHeatingTarget;           //白天制热目标值
+    u16         nightCoolingTarget;         //晚上制冷目标值
+    u16         nightHeatingTarget;         //晚上制热目标值
+    u8          coolingDehumidifyLock;      // 0-off 1-on 降温设备和除湿设备联动
+    u16         tempDeadband;
+}proTempSetOld_t;
+
 struct proTempSet{
     u16         dayCoolingTarget;           //白天制冷目标值
     u16         dayHeatingTarget;           //白天制热目标值
@@ -105,6 +116,17 @@ struct proTempSet{
     u8          coolingDehumidifyLock;      // 0-off 1-on 降温设备和除湿设备联动
     u16         tempDeadband;
 };
+
+typedef struct proCo2SetOld
+{
+    u16         dayCo2Target;               //白天Co2目标值
+    u16         nightCo2Target;             //晚上Co2目标值
+    u8          isFuzzyLogic;               //是不是fuzzylogic 如果是的话 就使用pid算法
+    u8          coolingLock;                //制冷联动状态
+    u8          dehumidifyLock;             //除湿联动状态
+    u16         co2Deadband;
+    int         co2Corrected;               //Co2 修正值
+}proCo2SetOld_t;
 
 struct proCo2Set{
     u16         dayCo2Target;               //白天Co2目标值
@@ -116,6 +138,14 @@ struct proCo2Set{
     int         co2Corrected;               //Co2 修正值
 };
 
+typedef struct proHumiSetOld{
+    u16         dayHumiTarget;              //白天增湿目标值
+    u16         dayDehumiTarget;            //白天除湿目标值
+    u16         nightHumiTarget;            //晚上增湿目标值
+    u16         nightDehumiTarget;          //晚上除湿目标值
+    u16         humidDeadband;
+}proHumiSetOld_t;
+
 struct proHumiSet{
     u16         dayHumiTarget;              //白天增湿目标值
     u16         dayDehumiTarget;            //白天除湿目标值
@@ -123,6 +153,25 @@ struct proHumiSet{
     u16         nightDehumiTarget;          //晚上除湿目标值
     u16         humidDeadband;
 };
+
+typedef struct proLineOld{
+    u8          lightsType;                 //灯光类型 0x00:LED 0x01:HID
+    u8          brightMode;                 // 1-power 2-auto dimming
+    u8          byPower;                    // 设置亮度值 10%-115%
+    u16         byAutoDimming;              // PPFD
+    u8          mode;                       //模式 1-by timer 2-cycle
+    u16         lightOn;                    // 开启时间点 8:00 8*60=480
+    u16         lightOff;                   // 关闭时间点 9:00 9*60=540
+    u16         firstCycleTime;             //第一次循环开始时间 8*60=480
+    int         duration;                   //循环持续时间 s
+    int         pauseTime;                  //循环停止时间 s
+    u8          hidDelay;                   // HID 延时时间 3-180min HID 模式才有
+    u16         tempStartDimming;           // 灯光自动调光温度点 0℃-60.0℃/32℉-140℉
+    u16         tempOffDimming;             // 灯光自动关闭温度点 0℃-60.0℃/32℉-140℉
+    u8          sunriseSunSet;              // 0-30min /0 表示关闭状态
+    u32         timestamp;                  //时间戳
+    time_t      firstRuncycleTime;          //记录第一次开始执行的时间 方便回溯
+}proLineOld_t;
 
 struct proLine{
     u8          lightsType;                 //灯光类型 0x00:LED 0x01:HID
@@ -143,11 +192,32 @@ struct proLine{
     time_t      firstRuncycleTime;          //记录第一次开始执行的时间 方便回溯
 };
 
+typedef struct tankWarnOld{
+    u8          func;
+    u16         min;
+    u16         max;
+}tankWarnOld_t;
+
+
 struct tankWarn{
     u8          func;
     u16         min;
     u16         max;
 };
+
+
+typedef struct sysParaOld
+{
+    char ntpzone[9];            //"-7:00", //设备时区
+    u8 tempUnit;                //1, //0- °C 1-℉ 只对设备显示有效，APP 及主机用自身(不传此参数时不设置，暂时 不对设备进行修改）
+    u8 ecUnit;                  //0, // 0-mS/cm 1-ppm 灌溉才有 只对设备显示有效，APP 及主机用自身(不传此参数时 不设置，暂时不对设备进行修改）
+    u8 timeFormat;              //1, //1-12 2-24 只对设备显示有效，APP 及主机用自身(不传此参数时不设置，暂时不对设备进行修改）
+    u8 dayNightMode;            //1, //1-by photocell, 2-by timer 环控才有
+    u16 photocellSensitivity;   //20, //光敏阈值 by photocell 才有
+    u16 dayTime;                //480, //白天开始时间 by timer 才有
+    u16 nightTime;              //1600, //晚上开始时间
+    u8 maintain;                //1, //1-on 0-off
+}sys_paraOld_t;
 
 struct sysPara
 {
@@ -162,9 +232,8 @@ struct sysPara
     u8 maintain;                //1, //1-on 0-off
 };
 
-struct sysWarn
+typedef struct sysWarnOld
 {
-#if(HUB_SELECT == HUB_ENVIRENMENT)
     u16 dayTempMin;         //100, //温度最小值 只传摄氏度
     u16 dayTempMax;         //200,
     u8 dayTempEn;           // 0-off 1-on
@@ -194,6 +263,59 @@ struct sysWarn
     u16 nightVpdMin;        //50,//单位 kPa 0~2.20 step 0.1
     u16 nightVpdMax;        //250, // 0.8-5 step 0.1
     u8 nightVpdEn;          //1, // 0-off 1-on
+    u8 phEn;                //1,// 0-off 1-on
+    u8 ecEn;                //1,// 0-off 1-on
+    u8 wtEn;                //1,// 0-off 1-on //水温
+    u8 wlEn;                //1, // 0-off 1-on //水位
+    u8 offlineEn;           //1 //离线警告 1-on 0-off
+    u8 lightEn;             //1, //灯光警告 1-on 2-off
+    u8 smokeEn;             //1, //烟雾报警 1-on 2-off
+    u8 waterEn;             //1,//漏水报警 1-on 2-off
+    u8 autoFillTimeout;     //1, //补水超时 1-on 2-off
+    u8 co2TimeoutEn;        //1, //Co2 超时报警 1-on 2-off
+    u16 co2Timeoutseconds;  // 600, // Co2 超时秒数
+    u8 tempTimeoutEn;       //1, //temp 超时报警 1-on 2-off
+    u16 tempTimeoutseconds; //600, // temp 超时秒数
+    u8 humidTimeoutEn;      //1,   //humid 超时报警 1-on 2-off
+    u16 humidTimeoutseconds;// 600, // humid 超时秒数
+}sys_warnOld_t;
+
+struct sysWarn
+{
+#if(HUB_SELECT == HUB_ENVIRENMENT)
+    u16 dayTempMin;         //100, //温度最小值 只传摄氏度
+    u16 dayTempMax;         //200,
+    u8 dayTempEn;           // 0-off 1-on
+    u8 dayTempBuzz;
+    u16 dayhumidMin;         //40 湿度最小值 单位%
+    u16 dayhumidMax;         //90, //温度最大值 单位%
+    u8 dayhumidBuzz;
+    u8 dayhumidEn;          //1 // 0-off 1-on
+    u16 dayCo2Min;          //350, //co2 最小值 单位 ppm
+    u16 dayCo2Max;          //1600, //
+    u8 dayCo2En;            //1 // 0-off 1-on
+    u8 dayCo2Buzz;          //1, //0-co2 不蜂鸣 1-co2 蜂鸣
+    u16 dayVpdMin;          //50,//单位 kPa 0~2.20 step 0.1
+    u16 dayVpdMax;          //250, // 0.8-5 step 0.1
+    u8 dayVpdEn;            //1 // 0-off 1-on
+    u16 dayParMin;          //100, //PPFD Range:100-1400,Step:100
+    u16 dayParMax;          //1000, // PPFD Range:200-1500,Step:100
+    u8 dayParEn;            //1 // 0-off 1-on
+    u16 nightTempMin;       // 100, //温度最小值 只传摄氏度
+    u16 nightTempMax;       //200,
+    u8 nightTempEn;         //1 // 0-off 1-on
+    u8 nightTempBuzz;
+    u16 nighthumidMin;       //40, //湿度最小值 单位%
+    u16 nighthumidMax;       //90, //温度最大值 单位%
+    u8 nighthumidEn;        //1 // 0-off 1-on
+    u8 nighthumidBuzz;
+    u16 nightCo2Min;        //350, //co2 最小值 单位 ppm
+    u16 nightCo2Max;        //1600, //
+    u8 nightCo2En;          //1 // 0-off 1-on
+    u8 nightCo2Buzz;        //1, //0-co2 不蜂鸣 1-co2 蜂鸣
+    u16 nightVpdMin;        //50,//单位 kPa 0~2.20 step 0.1
+    u16 nightVpdMax;        //250, // 0.8-5 step 0.1
+    u8 nightVpdEn;          //1, // 0-off 1-on
     u8 co2TimeoutEn;        //1, //Co2 超时报警 1-on 2-off
     u16 co2Timeoutseconds;  // 600, // Co2 超时秒数
     u8 tempTimeoutEn;       //1, //temp 超时报警 1-on 2-off
@@ -204,12 +326,19 @@ struct sysWarn
     u8 o2ProtectionEn;      //氧气低保护
 #elif(HUB_SELECT == HUB_IRRIGSTION)
     u8 phEn;                //1,// 0-off 1-on
+    u8 phBuzz;
     u8 ecEn;                //1,// 0-off 1-on
+    u8 ecBuzz;
     u8 wtEn;                //1,// 0-off 1-on //水温
+    u8 wtBuzz;
     u8 wlEn;                //1, // 0-off 1-on //水位
+    u8 wlBuzz;
     u8 mmEn;                // 0-off 1-on //基质湿度
+    u8 mmBuzz;
     u8 meEn;                // 0-off 1-on //基质 EC
+    u8 meBuzz;
     u8 mtEn;                // 0-off 1-on //基质 Temp
+    u8 mtBuzz;
     u8 autoFillTimeout;     //1, //补水超时 1-on 2-off
 #endif
     u8 smokeEn;             //1, //烟雾报警 1-on 2-off
@@ -224,11 +353,46 @@ struct stage_schedule
     u8 duration_day;
 };
 
+typedef struct stageOld
+{//日程设置
+    u8      en;
+    char    starts[16];
+    struct stage_schedule _list[5];
+}stageOld_t;
+
 struct stage{//日程设置
     u8      en;
     char    starts[16];
     struct stage_schedule _list[STAGE_LIST_MAX];
 };
+
+typedef struct recipeOld{//配方 限制10个
+    u8      id;//该id为hub分配
+    char    name[RECIPE_NAMESZ];
+    u8      color;
+    u16     dayCoolingTarget;
+    u16     dayHeatingTarget;
+    u16     nightCoolingTarget;
+    u16     nightHeatingTarget;
+    u16     dayHumidifyTarget;
+    u16     dayDehumidifyTarget;
+    u16     nightHumidifyTarget;
+    u16     nightDehumidifyTarget;
+    u16     dayCo2Target;
+    u16     nightCo2Target;
+    struct line_recipeOld{
+        u8      brightMode;     // 1-power 2-auto dimming
+        u8      byPower;        // 设置亮度值 10%-115%
+        u16     byAutoDimming;  // PPFD
+        u8      mode;           //模式 1-by timer 2-cycle
+        u16     lightOn;        // 开启时间点 8:00 8*60=480
+        u16     lightOff;       // 关闭时间点 9:00 9*60=540
+        u16     firstCycleTime; //第一次循环开始时间
+        int     duration;       //循环持续时间 s
+        int     pauseTime;      //循环停止时间 s
+        time_t  firstRuncycleTime;
+    }line_list[2];
+}recipeOld_t;
 
 struct recipe{//配方 限制10个
     u8      id;//该id为hub分配
@@ -266,6 +430,24 @@ struct sys_recipe{
     u8 saveFlag;
 };
 
+typedef struct tankOld{
+    u8      tankNo;                         //桶编号 1-9
+    char    name[TANK_NAMESZ];              //名称12字节
+    u16     autoFillValveId;                //自动补水阀 ID ,0 为未指定
+    u8      autoFillHeight;                 //低水位补水高度,单位 cm
+    u8      autoFillFulfilHeight;           //补满高度,单位 cm
+    u16     highEcProtection;               //EC 高停止值
+    u16     lowPhProtection;                //PH 低停止值
+    u16     highPhProtection;               //PH 高停止值
+    u8      phMonitorOnly;                  //1-On 0-off 默认监视
+    u8      ecMonitorOnly;                  //1-On 0-off 默认监视
+    u8      wlMonitorOnly;                  //水位监视 1-On 0-off 默认监视
+    u16     pumpId;                         //水泵Id
+    u16     valve[VALVE_MAX];               //关联的阀的ID
+    u8      sensorId[TANK_SINGLE_GROUD][TANK_SENSOR_MAX];   //桶内存在两个sensor 一个是测试桶内的 一个测试管道的
+    u8      color;                          //颜色
+    u16     poolTimeout;
+}tankOld_t;
 
 struct tank{
     u8      tankNo;                         //桶编号 1-9
@@ -301,6 +483,38 @@ struct recipeInfor{
 };
 
 /****************************     灌溉部分的内容*****/
+typedef struct sysSetOld
+{
+    u16 crc;
+    proTempSetOld_t    tempSet;
+    proCo2SetOld_t     co2Set;
+    proHumiSetOld_t    humiSet;
+    proLineOld_t       line1Set;
+    proLineOld_t       line2Set;
+    tankWarnOld_t      tankWarnSet[TANK_LIST_MAX][TANK_WARN_ITEM_MAX];
+    stageOld_t         stageSet;   //阶段(日历)
+    sys_paraOld_t      sysPara;
+    sys_warnOld_t      sysWarn;
+    u8              dayOrNight;//白天黑夜 白天0 黑夜1
+    u8              warn[WARN_MAX];
+    u8              offline[DEVICE_MAX];
+    u16             warn_value[WARN_MAX];//该值主要为了显示使用 数据
+    int             co2Cal[SENSOR_MAX];   //co2校准值
+    struct phCalOld{
+        float ph_a;
+        float ph_b;
+        u32 uuid;
+    }ph[SENSOR_MAX];
+    struct ecCalOld{
+        float ec_a;
+        float ec_b;
+        u32 uuid;
+    }ec[SENSOR_MAX];
+    u8              startCalFlg;
+    hubOld_t           hub_info;
+    u8              saveFlag;
+}sys_setOld_t;
+
 struct sysSet{
     u16 crc;
     proTempSet_t    tempSet;
@@ -330,6 +544,7 @@ struct sysSet{
     u8              startCalFlg;
     hub_t           hub_info;
     u8              saveFlag;
+    u8 ver;//标志软件第几期
 };
 
 

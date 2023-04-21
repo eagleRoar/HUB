@@ -27,7 +27,6 @@
 #include "LightUartClass.h"
 #include "SeqList.h"
 #include "UartEventType.h"
-#include "compatibility.h"
 #include "FileSystem.h"
 
 __attribute__((section(".ccmbss"))) type_monitor_t monitor;
@@ -208,13 +207,6 @@ void SensorUart2TaskEntry(void* parameter)
 
             if(ON == uart1_msg.messageFlag)
             {
-//                rt_kprintf("recv data:");
-//                for(int i = 0; i < uart1_msg.size; i++)
-//                {
-//                    rt_kprintf(" %x",uart1_msg.data[i]);
-//                }
-//                rt_kprintf("\r\n");
-
                 sensorObj->RecvCmd(uart1_msg.data, uart1_msg.size);
                 uart1_msg.messageFlag = OFF;
             }
@@ -225,13 +217,6 @@ void SensorUart2TaskEntry(void* parameter)
 
             if(ON == uart2_msg.messageFlag)
             {
-//                rt_kprintf("recv data:");
-//                for(int i = 0; i < uart2_msg.size; i++)
-//                {
-//                    rt_kprintf(" %x",uart2_msg.data[i]);
-//                }
-//                rt_kprintf("\r\n");
-
                 deviceObj->RecvCmd(uart2_msg.data, uart2_msg.size);
                 uart2_msg.messageFlag = OFF;
             }
@@ -243,13 +228,6 @@ void SensorUart2TaskEntry(void* parameter)
 
             if(ON == uart3_msg.messageFlag)
             {
-//                rt_kprintf("recv data:");
-//                for(int i = 0; i < uart3_msg.size; i++)
-//                {
-//                    rt_kprintf(" %x",uart3_msg.data[i]);
-//                }
-//                rt_kprintf("\r\n");
-
                 lineObj->RecvCmd(uart3_msg.data, uart3_msg.size);
                 uart3_msg.messageFlag = OFF;
             }
@@ -306,12 +284,6 @@ void SensorUart2TaskEntry(void* parameter)
                 }
             }
 
-//            LOG_D("device size = %d",GetMonitor()->device_size);//Justin
-//            for(int i = 0; i < GetMonitor()->device_size; i++)
-//            {
-//                LOG_D("no %d, addr = %x, name = %s, uuid = %x",
-//                      i,GetMonitor()->device[i].addr,GetMonitor()->device[i].name, GetMonitor()->device[i].uuid);
-//            }
         }
 
         rt_thread_mdelay(UART_PERIOD);
