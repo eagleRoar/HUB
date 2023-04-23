@@ -1379,14 +1379,13 @@ static void saveSysParaByJson(sys_para_t *sysPara)
             LOG_E("saveSysParaByJson reply memory err");
         }
     }
-
 }
 
 static void SaveSysSetByJson(sys_set_t sys_set,char *saveFile)//Justin 存储这个太大了 可能会失败
 {
     cJSON       *cjson              = RT_NULL;
     cJSON       *line               = RT_NULL;
-    cJSON       *sysPara            = RT_NULL;
+//    cJSON       *sysPara            = RT_NULL;
     char        file[50]            = "";//存储device类设备
     char        *str                = RT_NULL;
 
@@ -1416,6 +1415,8 @@ static void SaveSysSetByJson(sys_set_t sys_set,char *saveFile)//Justin 存储这
         cJSON_AddNumberToObject(cjson, "nightHumiTarget", sys_set.humiSet.nightHumiTarget);
         cJSON_AddNumberToObject(cjson, "nightDehumiTarget", sys_set.humiSet.nightDehumiTarget);
         cJSON_AddNumberToObject(cjson, "humidDeadband", sys_set.humiSet.humidDeadband);
+
+        cJSON_AddNumberToObject(cjson, "sensorMainType", sys_set.sensorMainType);
 
         line = cJSON_CreateObject();
         if(line)
@@ -1860,12 +1861,53 @@ static void GetCo2CalFromFile(sys_set_t *set)
     }
 }
 
+static void GetSysParaFromFile(sys_para_t *para)
+{
+    char        sys_para_dir[]              = "/main/sysSet/sysPara.txt";
+    int         file_size                   = 0;
+    char        *str                        = RT_NULL;
+
+    if(RT_EOK == CheckDirectory(sys_para_dir))
+    {
+        file_size = GetFileLength(sys_para_dir);
+
+        if(file_size)
+        {
+            //1.1申请内存
+            str = rt_malloc(file_size);
+
+            if(str)
+            {
+                //1.2读取文件
+                if(RT_EOK == ReadFileData(sys_para_dir, str, 0, file_size))
+                {
+                    //1.3解析数据
+                    cJSON *cjson = cJSON_Parse(str);
+                    rt_free(str);
+
+                    if(cjson)
+                    {
+                        GetValueByC16(cjson, "ntpzone", para->ntpzone, 9);
+                        GetValueByU8(cjson, "tempUnit", &para->tempUnit);
+                        GetValueByU8(cjson, "ecUnit", &para->ecUnit);
+                        GetValueByU8(cjson, "timeFormat", &para->timeFormat);
+                        GetValueByU8(cjson, "dayNightMode", &para->dayNightMode);
+                        GetValueByU16(cjson, "photocellSensitivity", &para->photocellSensitivity);
+                        GetValueByU16(cjson, "dayTime", &para->dayTime);
+                        GetValueByU16(cjson, "nightTime", &para->nightTime);
+                        GetValueByU8(cjson, "maintain", &para->maintain);
+                    }
+                }
+            }
+        }
+    }
+}
+
 static void GetSysWarnFromFile(sys_warn_t *warn)
 {
     char        sys_warn_dir[]              = "/main/sysSet/warn.txt";
     int         file_size                   = 0;
     char        *str                        = RT_NULL;
-//    char        name[20];
 
     LOG_I("GetSysWarnFromFile");
 
@@ -2242,6 +2284,8 @@ static void GetSysSetFromFile(sys_set_t *set)//Justin 存储这个太大了 可�
                         GetValueByU16(cjson, "nightDehumiTarget", &set->humiSet.nightDehumiTarget);
                         GetValueByU16(cjson, "humidDeadband", &set->humiSet.humidDeadband);
 
+                        GetValueByU8(cjson, "sensorMainType", &set->sensorMainType);
+
                         cJSON *line = cJSON_GetObjectItem(cjson, "line1");
                         if(line)
                         {
@@ -2284,20 +2328,6 @@ static void GetSysSetFromFile(sys_set_t *set)//Justin 存储这个太大了 可�
                             GetValueByU32(line, "firstRuncycleTime", &set->line2Set.firstRuncycleTime);
                         }
 
-                        cJSON *sysPara = cJSON_GetObjectItem(cjson, "sysPara");
-                        if(sysPara)
-                        {
-                            GetValueByC16(sysPara, "ntpzone", set->sysPara.ntpzone, 9);
-                            GetValueByU8(sysPara, "tempUnit", &set->sysPara.tempUnit);
-                            GetValueByU8(sysPara, "ecUnit", &set->sysPara.ecUnit);
-                            GetValueByU8(sysPara, "timeFormat", &set->sysPara.timeFormat);
-                            GetValueByU8(sysPara, "dayNightMode", &set->sysPara.dayNightMode);
-                            GetValueByU16(sysPara, "photocellSensitivity", &set->sysPara.photocellSensitivity);
-                            GetValueByU16(sysPara, "dayTime", &set->sysPara.dayTime);
-                            GetValueByU16(sysPara, "nightTime", &set->sysPara.nightTime);
-                            GetValueByU8(sysPara, "maintain", &set->sysPara.maintain);
-                        }
-
                         cJSON_Delete(cjson);
                     }
                     else
@@ -2326,6 +2356,7 @@ static void GetSysSetFromFile(sys_set_t *set)//Justin 存储这个太大了 可�
     GetCo2CalFromFile(set);
     GetSysStageListFromFile(&set->stageSet);
     GetSysWarnFromFile(&set->sysWarn);
+    GetSysParaFromFile(&set->sysPara);//Justin 未测试
 #elif(HUB_SELECT == HUB_IRRIGSTION)
     GetPhCalFromFile(set);
     GetEcCalFromFile(set);

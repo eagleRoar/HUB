@@ -25,6 +25,7 @@ extern void getAppVersion(char *);
 extern void getRealTimeForMat(type_sys_time *);
 //extern void GetNowSysSet(proTempSet_t *, proCo2Set_t *, proHumiSet_t *, proLine_t *, proLine_t *, struct recipeInfor *);
 extern  cloudcmd_t              cloudCmd;
+extern  line_4_recipe_t *GetNowLine_4_output(void);
 
 rt_err_t GetValueU8(cJSON *temp, type_kv_u8 *data)
 {
@@ -910,21 +911,63 @@ void CmdSetRecipe(char *data, cloudcmd_t *cmd)
             line = cJSON_GetObjectItem(temp, "line1");
             if(RT_NULL != line)
             {
-                GetValueByU8(line, "brightMode", &recipe->line_list[0].brightMode);
-                GetValueByU8(line, "byPower", &recipe->line_list[0].byPower);
-                GetValueByU16(line, "byAutoDimming", &recipe->line_list[0].byAutoDimming);
-                GetValueByU8(line, "mode", &recipe->line_list[0].mode);
-                GetValueByU16(line, "lightOn", &recipe->line_list[0].lightOn);
-                GetValueByU16(line, "lightOff", &recipe->line_list[0].lightOff);
+                if(1 == GetLineType(GetMonitor()))
+                {
+                    GetValueByU8(line, "brightMode", &recipe->line_list[0].brightMode);
+                    GetValueByU8(line, "byPower", &recipe->line_list[0].byPower);
+                    GetValueByU16(line, "byAutoDimming", &recipe->line_list[0].byAutoDimming);
+                    GetValueByU8(line, "mode", &recipe->line_list[0].mode);
+                    GetValueByU16(line, "lightOn", &recipe->line_list[0].lightOn);
+                    GetValueByU16(line, "lightOff", &recipe->line_list[0].lightOff);
 
-                GetValueByC16(line, "firstStartAt", firstStartAt, 15);
-                firstStartAt[14] = '\0';
-                changeCharToDate(firstStartAt, &time);
+    //                GetValueByC16(line, "firstStartAt", firstStartAt, 15);//Justin debug 注意该功能需要修改
+                    firstStartAt[14] = '\0';
+                    changeCharToDate(firstStartAt, &time);
 
-                recipe->line_list[0].firstCycleTime = time.hour * 60 + time.minute;
-                recipe->line_list[0].firstRuncycleTime = systimeToTimestamp(time.year, time.month, time.day, time.hour, time.minute, 0);
-                GetValueByInt(line, "duration", &recipe->line_list[0].duration);
-                GetValueByInt(line, "pauseTime", &recipe->line_list[0].pauseTime);
+                    recipe->line_list[0].firstCycleTime = time.hour * 60 + time.minute;
+                    recipe->line_list[0].firstRuncycleTime = systimeToTimestamp(time.year, time.month, time.day, time.hour, time.minute, 0);
+                    GetValueByInt(line, "duration", &recipe->line_list[0].duration);
+                    GetValueByInt(line, "pauseTime", &recipe->line_list[0].pauseTime);
+                }
+                else if(2 == GetLineType(GetMonitor()))
+                {
+                    GetValueByU8(line, "brightMode", &recipe->line_4.brightMode);
+                    GetValueByU16(line, "byAutoDimming", &recipe->line_4.byAutoDimming);
+                    GetValueByU8(line, "mode", &recipe->line_4.mode);
+                    cJSON *timer_list = cJSON_GetObjectItem(line, "timerList");
+                    if(timer_list)
+                    {
+                        u8 timeSize = cJSON_GetArraySize(timer_list);
+                        timeSize = timeSize > LINE_4_TIMER_MAX ? LINE_4_TIMER_MAX : timeSize;
+                        for(int i = 0; i < timeSize; i++)
+                        {
+                            cJSON *timer = cJSON_GetArrayItem(timer_list, i);
+
+                            GetValueByU16(timer, "on", &recipe->line_4.timerList[i].on);
+                            GetValueByU16(timer, "off", &recipe->line_4.timerList[i].off);
+                            GetValueByU8(timer, "en", &recipe->line_4.timerList[i].en);
+                            GetValueByU8(timer, "no", &recipe->line_4.timerList[i].no);
+                        }
+                    }
+                    GetValueByC16(line, "firstStartAt", recipe->line_4.firstStartAt, 15);
+                    cJSON *cycle_list = cJSON_GetObjectItem(line, "cycleList");
+                    if(cycle_list)
+                    {
+                        u8 cycleSize = cJSON_GetArraySize(cycle_list);
+                        cycleSize = cycleSize > LINE_4_CYCLE_MAX ? LINE_4_CYCLE_MAX : cycleSize;
+                        for(int i = 0; i < cycleSize; i++)
+                        {
+                            cJSON *cycle = cJSON_GetArrayItem(cycle_list, i);
+
+                            GetValueByU16(cycle, "duration", &recipe->line_4.cycleList[i].duration);
+                            GetValueByU8(cycle, "no", &recipe->line_4.cycleList[i].no);
+                        }
+                    }
+                    GetValueByU16(line, "pauseTime", &recipe->line_4.pauseTime);
+                    GetValueByU8(line, "tempStartDimming", &recipe->line_4.tempStartDimming);
+                    GetValueByU8(line, "tempOffDimming", &recipe->line_4.tempOffDimming);
+                    GetValueByU8(line, "sunriseSunSet", &recipe->line_4.sunriseSunSet);
+                }
             }
 
             line = cJSON_GetObjectItem(temp, "line2");
@@ -937,7 +980,7 @@ void CmdSetRecipe(char *data, cloudcmd_t *cmd)
                 GetValueByU16(line, "lightOn", &recipe->line_list[1].lightOn);
                 GetValueByU16(line, "lightOff", &recipe->line_list[1].lightOff);
 
-                GetValueByC16(line, "firstStartAt", firstStartAt, 15);
+//                GetValueByC16(line, "firstStartAt", firstStartAt, 15);//Justin debug 注意该功能需要修改
                 firstStartAt[14] = '\0';
                 changeCharToDate(firstStartAt, &time);
 
@@ -945,100 +988,6 @@ void CmdSetRecipe(char *data, cloudcmd_t *cmd)
                 recipe->line_list[1].firstRuncycleTime = systimeToTimestamp(time.year, time.month, time.day, time.hour, time.minute, 0);
                 GetValueByInt(line, "duration", &recipe->line_list[1].duration);
                 GetValueByInt(line, "pauseTime", &recipe->line_list[1].pauseTime);
-            }
-
-            if(recipe->dayCoolingTarget > 400)
-            {
-                //合理性检测
-                LOG_E("set cooltarget err, target > 40 ℃");
-                recipe->dayCoolingTarget = 400;
-            }
-
-            if(recipe->dayHeatingTarget > 400)
-            {
-                //合理性检测
-                LOG_E("set HeatingTarget err, target > 40 ℃");
-                recipe->dayHeatingTarget = 400;
-            }
-
-            if(recipe->dayHeatingTarget > recipe->dayCoolingTarget)//加热温度值应该低于制冷温度值
-            {
-                tempValue = recipe->dayCoolingTarget - 2 * GetSysSet()->tempSet.tempDeadband;
-                recipe->dayHeatingTarget = tempValue > 0 ? tempValue : 0;
-            }
-
-            if(recipe->nightCoolingTarget > 400)
-            {
-                //合理性检测
-                LOG_E("set cooltarget err, target > 40 ℃");
-                recipe->nightCoolingTarget = 400;
-            }
-
-            if(recipe->nightHeatingTarget > 400)
-            {
-                //合理性检测
-                LOG_E("set HeatingTarget err, target > 40 ℃");
-                recipe->nightHeatingTarget = 400;
-            }
-
-            if(recipe->nightHeatingTarget > recipe->nightCoolingTarget)//加热温度值应该低于制冷温度值
-            {
-                tempValue = recipe->nightCoolingTarget - 2 * GetSysSet()->tempSet.tempDeadband;
-                recipe->nightHeatingTarget = tempValue > 0 ? tempValue : 0;
-            }
-
-            if(recipe->dayDehumidifyTarget > 1000)
-            {
-                //合理性检测
-                LOG_E("set dehumidifyTarget err, target > 100 %");
-                recipe->dayDehumidifyTarget = 1000;
-            }
-
-            if(recipe->dayHumidifyTarget > 1000)
-            {
-                //合理性检测
-                LOG_E("set HeatingTarget err, target > 100 %");
-                recipe->dayHeatingTarget = 1000;
-            }
-
-            if(recipe->dayHumidifyTarget > recipe->dayDehumidifyTarget)//加湿目标应该低于除湿目标
-            {
-                tempValue = recipe->dayHumidifyTarget - 2 * GetSysSet()->humiSet.humidDeadband;
-                recipe->dayHumidifyTarget = tempValue > 0 ? tempValue : 0;
-            }
-
-            if(recipe->nightDehumidifyTarget > 1000)
-            {
-                //合理性检测
-                LOG_E("set dehumidifyTarget err, target > 100 %");
-                recipe->nightDehumidifyTarget = 1000;
-            }
-
-            if(recipe->nightHumidifyTarget > 1000)
-            {
-                //合理性检测
-                LOG_E("set HeatingTarget err, target > 100 %");
-                recipe->nightHeatingTarget = 1000;
-            }
-
-            if(recipe->nightHumidifyTarget > recipe->nightDehumidifyTarget)//加湿目标应该低于除湿目标
-            {
-                tempValue = recipe->nightHumidifyTarget - 2 * GetSysSet()->humiSet.humidDeadband;
-                recipe->nightHumidifyTarget = tempValue > 0 ? tempValue : 0;
-            }
-
-            if(recipe->dayCo2Target > 5000)
-            {
-                //合理性检测
-                LOG_E("set Co2Target err, target > 5000");
-                recipe->dayCo2Target = 5000;
-            }
-
-            if(recipe->nightCo2Target > 5000)
-            {
-                //合理性检测
-                LOG_E("set Co2Target err, target > 5000");
-                recipe->dayHeatingTarget = 5000;
             }
 
             AddRecipe(recipe, GetSysRecipt());
@@ -1692,6 +1641,180 @@ void CmdSetSysTime(char *data, cloudcmd_t *cmd)
     }
 }
 
+void CmdSetDimmingCurve(char *data, dimmingCurve_t *curve, cloudcmd_t *cmd)
+{
+    cJSON   *json = RT_NULL;
+
+    json = cJSON_Parse(data);
+
+    if(json)
+    {
+        GetValueByC16(json, "msgid", cmd->msgid, KEYVALUE_VALUE_SIZE);
+
+        GetValueByU8(json, "onOutput1", &curve->onOutput1);
+        GetValueByU8(json, "onOutput2", &curve->onOutput2);
+        GetValueByU8(json, "onOutput3", &curve->onOutput3);
+        GetValueByU8(json, "onOutput4", &curve->onOutput4);
+        GetValueByU8(json, "onVoltage1", &curve->onVoltage1);
+        GetValueByU8(json, "onVoltage2", &curve->onVoltage2);
+        GetValueByU8(json, "onVoltage3", &curve->onVoltage3);
+        GetValueByU8(json, "onVoltage4", &curve->onVoltage4);
+        GetValueByU8(json, "fullVoltage1", &curve->fullVoltage1);
+        GetValueByU8(json, "fullVoltage2", &curve->fullVoltage2);
+        GetValueByU8(json, "fullVoltage3", &curve->fullVoltage3);
+        GetValueByU8(json, "fullVoltage4", &curve->fullVoltage4);
+
+        cJSON_Delete(json);
+    }
+}
+
+void CmdGetDimmingCurve(char *data, cloudcmd_t *cmd)
+{
+    cJSON   *json = RT_NULL;
+
+    json = cJSON_Parse(data);
+
+    if(json)
+    {
+        GetValueByC16(json, "msgid", cmd->msgid, KEYVALUE_VALUE_SIZE);
+
+        cJSON_Delete(json);
+    }
+}
+
+void CmdGetSensorEList(char *data, cloudcmd_t *cmd)
+{
+    cJSON   *json = RT_NULL;
+
+    json = cJSON_Parse(data);
+
+    if(json)
+    {
+        GetValueByC16(json, "msgid", cmd->msgid, KEYVALUE_VALUE_SIZE);
+
+        cJSON_Delete(json);
+    }
+}
+
+void CmdSetMainSensor(char *data, cloudcmd_t *cmd)
+{
+    cJSON   *json   = RT_NULL;
+    u8      addr    = 0;
+    u8      port    = 0;
+
+    json = cJSON_Parse(data);
+
+    if(json)
+    {
+        GetValueByC16(json, "msgid", cmd->msgid, KEYVALUE_VALUE_SIZE);
+        GetValueByU16(json, "id", &cmd->setMainSensorId);
+
+        if(cmd->setMainSensorId < 0xff)
+        {
+            addr = cmd->setMainSensorId;
+        }
+        else
+        {
+            addr = cmd->setMainSensorId >> 8;
+        }
+
+        GetSensorByAddr(GetMonitor(), addr)->isMainSensor = YES;
+
+        cJSON_Delete(json);
+    }
+}
+
+void CmdSetSensorShowType(char *data, cloudcmd_t *cmd)
+{
+    cJSON   *json = RT_NULL;
+
+    json = cJSON_Parse(data);
+
+    if(json)
+    {
+        GetValueByC16(json, "msgid", cmd->msgid, KEYVALUE_VALUE_SIZE);
+        GetValueByU8(json, "showType", &GetSysSet()->sensorMainType);
+
+        cJSON_Delete(json);
+    }
+}
+
+void CmdSetSensorName(char *data, cloudcmd_t *cmd)
+{
+    cJSON   *json       = RT_NULL;
+    char    name[MODULE_NAMESZ];
+    u8      addr        = 0;
+    u8      port        = 0;
+    sensor_t *sensor    = RT_NULL;
+
+    json = cJSON_Parse(data);
+
+    if(json)
+    {
+        GetValueByC16(json, "msgid", cmd->msgid, KEYVALUE_VALUE_SIZE);
+        GetValueByU16(json, "id", &cmd->setSensorNameId);
+        GetValueByC16(json, "name", name, MODULE_NAMESZ);
+
+        //设置名称
+        if(cmd->setSensorNameId < 0xff)
+        {
+            addr = cmd->setSensorNameId;
+        }
+        else
+        {
+            addr = cmd->setSensorNameId >> 8;
+            port = cmd->setSensorNameId;
+        }
+
+        sensor = GetSensorByAddr(GetMonitor(), addr);
+
+        if(sensor)
+        {
+            if(cmd->setSensorNameId < 0xff)
+            {
+                strncpy(sensor->name, name, MODULE_NAMESZ);
+            }
+            strncpy(sensor->__stora[port].name, name, MODULE_NAMESZ);
+        }
+
+        cJSON_Delete(json);
+    }
+}
+
+void CmdDeleteSensor(char *data, cloudcmd_t *cmd)
+{
+    cJSON   *json       = RT_NULL;
+    char    name[MODULE_NAMESZ];
+    u8      addr        = 0;
+    u8      port        = 0;
+    sensor_t *sensor    = RT_NULL;
+
+    json = cJSON_Parse(data);
+
+    if(json)
+    {
+        GetValueByC16(json, "msgid", cmd->msgid, KEYVALUE_VALUE_SIZE);
+        GetValueByU16(json, "id", &cmd->deleteSensorId);
+
+        if(cmd->deleteSensorId < 0xff)
+        {
+            addr = cmd->deleteSensorId;
+        }
+        else
+        {
+            addr = cmd->deleteSensorId >> 8;
+        }
+
+        sensor = GetSensorByAddr(GetMonitor(), addr);
+        if(sensor)
+        {
+            DeleteModule(GetMonitor(), sensor->uuid);
+        }
+
+        cJSON_Delete(json);
+    }
+}
+
 rt_err_t changeDataToChar(char* data, type_sys_time *time)
 {
     rt_err_t ret = RT_ERROR;
@@ -1744,10 +1867,39 @@ rt_err_t changeCharToDate(char* data, type_sys_time *time)
     return ret;
 }
 
-void CmdSetLine(char *data, proLine_t *line, cloudcmd_t *cmd)
+void CmdSetLightRecipe(char *data, line_4_recipe_t *repice, cloudcmd_t *cmd)
+{
+    cJSON           *temp   = RT_NULL;
+    u8              no      = 0;
+
+    temp = cJSON_Parse(data);
+
+    if(temp)
+    {
+        GetValueByU8(temp, "no", &no);
+
+        if((no > 0) && (no + 1 <= LINE_4_RECIPE_MAX))
+        {
+            cmd->setLightRecipeNo = no;
+            no = no - 1;//因为下标和no 差1
+
+            repice[no].no = no + 1;
+            GetValueByU8(temp, "ouput1", &repice[no].ouput1);
+            GetValueByU8(temp, "ouput2", &repice[no].ouput2);
+            GetValueByU8(temp, "ouput3", &repice[no].ouput3);
+            GetValueByU8(temp, "ouput4", &repice[no].ouput4);
+        }
+
+        GetValueByC16(temp, "msgid", cmd->msgid, KEYVALUE_VALUE_SIZE);
+
+        cJSON_Delete(temp);
+    }
+}
+
+void CmdSetLine(char *data, proLine_t *line, proLine_4_t *line_4, cloudcmd_t *cmd)//Justin 未测试
 {
     cJSON           *temp = RT_NULL;
-    //u16             time  = 0;
+    u8              lineType = 0;
     char            firstStartAt[15] = "";
     type_sys_time   time;
 
@@ -1756,44 +1908,85 @@ void CmdSetLine(char *data, proLine_t *line, cloudcmd_t *cmd)
     if(RT_NULL != temp)
     {
         GetValueByC16(temp, "msgid", cmd->msgid, KEYVALUE_VALUE_SIZE);
-        GetValueByU8(temp, "lightType", &line->lightsType);
-        GetValueByU8(temp, "brightMode", &line->brightMode);
-        if(LINE_MODE_BY_POWER == line->brightMode)
-        {
-            GetValueByU8(temp, "byPower", &line->byPower);
-        }
-        else if(LINE_MODE_AUTO_DIMMING == line->brightMode)
-        {
-            GetValueByU16(temp, "byAutoDimming", &line->byAutoDimming);
-        }
-        GetValueByU8(temp, "mode", &line->mode);
-        if(LINE_BY_TIMER == line->mode)
-        {
-            GetValueByU16(temp, "lightOn", &line->lightOn);
-            GetValueByU16(temp, "lightOff", &line->lightOff);
-        }
-        else if(LINE_BY_CYCLE == line->mode)
-        {
+        GetValueByU8(temp, "lineType", &lineType);
 
-            GetValueByC16(temp, "firstStartAt", firstStartAt, 15);
-            firstStartAt[14] = '\0';
-            changeCharToDate(firstStartAt, &time);
-//            LOG_E("year %d, mon %d, day %d, hour %d, min %d, sec %d",
-//                    time.year,time.month,time.day,time.hour,time.minute,time.second);
-            line->firstCycleTime = time.hour * 60 + time.minute;// 云服务器修改协议，后续逻辑修改较多，在此转化
-            line->firstRuncycleTime = systimeToTimestamp(time.year, time.month, time.day, time.hour, time.minute, 0);
-            GetValueByInt(temp, "duration", &line->duration);
-            GetValueByInt(temp, "pauseTime", &line->pauseTime);
-        }
-
-        if(LINE_HID == line->lightsType)
+        if((1 == lineType) || (RT_NULL == line_4))//第二路没有4路调光的功能
         {
-            GetValueByU8(temp, "hidDelay", &line->hidDelay);
-        }
-        GetValueByU16(temp, "tempStartDimming", &line->tempStartDimming);
-        GetValueByU16(temp, "tempOffDimming", &line->tempOffDimming);
-        GetValueByU8(temp, "sunriseSunSet", &line->sunriseSunSet);
+            GetValueByU8(temp, "lightType", &line->lightsType);
+            GetValueByU8(temp, "brightMode", &line->brightMode);
+            if(LINE_MODE_BY_POWER == line->brightMode)
+            {
+                GetValueByU8(temp, "byPower", &line->byPower);
+            }
+            else if(LINE_MODE_AUTO_DIMMING == line->brightMode)
+            {
+                GetValueByU16(temp, "byAutoDimming", &line->byAutoDimming);
+            }
+            GetValueByU8(temp, "mode", &line->mode);
+            if(LINE_BY_TIMER == line->mode)
+            {
+                GetValueByU16(temp, "lightOn", &line->lightOn);
+                GetValueByU16(temp, "lightOff", &line->lightOff);
+            }
+            else if(LINE_BY_CYCLE == line->mode)
+            {
 
+                GetValueByC16(temp, "firstStartAt", firstStartAt, 15);
+                firstStartAt[14] = '\0';
+                changeCharToDate(firstStartAt, &time);
+                line->firstCycleTime = time.hour * 60 + time.minute;// 云服务器修改协议，后续逻辑修改较多，在此转化
+                line->firstRuncycleTime = systimeToTimestamp(time.year, time.month, time.day, time.hour, time.minute, 0);
+                GetValueByInt(temp, "duration", &line->duration);
+                GetValueByInt(temp, "pauseTime", &line->pauseTime);
+            }
+
+            if(LINE_HID == line->lightsType)
+            {
+                GetValueByU8(temp, "hidDelay", &line->hidDelay);
+            }
+            GetValueByU16(temp, "tempStartDimming", &line->tempStartDimming);
+            GetValueByU16(temp, "tempOffDimming", &line->tempOffDimming);
+            GetValueByU8(temp, "sunriseSunSet", &line->sunriseSunSet);
+        }
+        else if(2 == lineType)//Justin 增加光谱
+        {
+            GetValueByU8(temp, "brightMode", &line_4->brightMode);
+            GetValueByU16(temp, "byAutoDimming", &line_4->byAutoDimming);
+            GetValueByU8(temp, "mode", &line_4->mode);
+            cJSON *timer_list = cJSON_GetObjectItem(temp, "timerList");
+            if(timer_list)
+            {
+                u8 timeSize = cJSON_GetArraySize(timer_list);
+                timeSize = timeSize > LINE_4_TIMER_MAX ? LINE_4_TIMER_MAX : timeSize;
+                for(int i = 0; i < timeSize; i++)
+                {
+                    cJSON *timer = cJSON_GetArrayItem(timer_list, i);
+
+                    GetValueByU16(timer, "on", &line_4->timerList[i].on);
+                    GetValueByU16(timer, "off", &line_4->timerList[i].off);
+                    GetValueByU8(timer, "en", &line_4->timerList[i].en);
+                    GetValueByU8(timer, "no", &line_4->timerList[i].no);
+                }
+            }
+            GetValueByC16(temp, "firstStartAt", line_4->firstStartAt, 15);
+            cJSON *cycle_list = cJSON_GetObjectItem(temp, "cycleList");
+            if(cycle_list)
+            {
+                u8 cycleSize = cJSON_GetArraySize(cycle_list);
+                cycleSize = cycleSize > LINE_4_CYCLE_MAX ? LINE_4_CYCLE_MAX : cycleSize;
+                for(int i = 0; i < cycleSize; i++)
+                {
+                    cJSON *cycle = cJSON_GetArrayItem(cycle_list, i);
+
+                    GetValueByU16(cycle, "duration", &line_4->cycleList[i].duration);
+                    GetValueByU8(cycle, "no", &line_4->cycleList[i].no);
+                }
+            }
+            GetValueByU16(temp, "pauseTime", &line_4->pauseTime);
+            GetValueByU8(temp, "tempStartDimming", &line_4->tempStartDimming);
+            GetValueByU8(temp, "tempOffDimming", &line_4->tempOffDimming);
+            GetValueByU8(temp, "sunriseSunSet", &line_4->sunriseSunSet);
+        }
         cJSON_Delete(temp);
     }
     else
@@ -2215,53 +2408,162 @@ char *ReplyGetHumi(char *cmd, cloudcmd_t cloud)
     return str;
 }
 
-char *ReplyGetLine(char *cmd, char *msgid, proLine_t line, cloudcmd_t cloud)
+char *ReplySetLightRecipe(char *cmd, line_4_recipe_t *recipe, cloudcmd_t cloud)
+{
+    cJSON   *json       = cJSON_CreateObject();
+    char    *str        = RT_NULL;
+    u8      no          = 0;
+
+    if(json)
+    {
+        cJSON_AddStringToObject(json, "cmd", cloud.cmd);
+        cJSON_AddStringToObject(json, "msgid", cloud.msgid);
+        cJSON_AddNumberToObject(json, "no", cloud.setLightRecipeNo);
+        no = cloud.setLightRecipeNo;
+        if((no > 0) && (no + 1 <= LINE_4_RECIPE_MAX))
+        {
+            no = no - 1;
+            cJSON_AddNumberToObject(json, "ouput1", recipe[no].ouput1);
+            cJSON_AddNumberToObject(json, "ouput2", recipe[no].ouput2);
+            cJSON_AddNumberToObject(json, "ouput3", recipe[no].ouput3);
+            cJSON_AddNumberToObject(json, "ouput4", recipe[no].ouput4);
+        }
+
+        cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
+
+        str = cJSON_PrintUnformatted(json);
+
+        cJSON_Delete(json);
+    }
+
+    return str;
+}
+
+char *ReplyGetLine(u8 lineNo, char *cmd, char *msgid, proLine_t line, proLine_4_t line_4, line_4_recipe_t *recipe,cloudcmd_t cloud)
 {
     char    firstStartAt[15] = "";
     char    name[12];
     char    *str        = RT_NULL;
+    u8      lineType    = 0;
     cJSON   *json       = cJSON_CreateObject();
     type_sys_time       format_time;
 
     if(RT_NULL != json)
     {
+        lineType = GetLineType(GetMonitor());
+
         cJSON_AddStringToObject(json, "cmd", cmd);
         cJSON_AddStringToObject(json, "msgid", cloud.msgid);
         cJSON_AddStringToObject(json, "sn", GetSnName(name, 12));
-        cJSON_AddNumberToObject(json, "lightType", line.lightsType);
-        cJSON_AddNumberToObject(json, "brightMode", line.brightMode);
-        cJSON_AddNumberToObject(json, "byPower", line.byPower);
-        cJSON_AddNumberToObject(json, "byAutoDimming", line.byAutoDimming);
-        cJSON_AddNumberToObject(json, "mode", line.mode);
-        cJSON_AddNumberToObject(json, "lightOn", line.lightOn);
-        cJSON_AddNumberToObject(json, "lightOff", line.lightOff);
-//        cJSON_AddNumberToObject(json, "firstCycleTime", line.firstCycleTime);//新协议修改
-        if(0 != line.firstRuncycleTime)
+        cJSON_AddNumberToObject(json, "lineType", lineType);
+        if((1 == lineNo) || ((0 == lineNo) && (1 == lineType)))
         {
-            struct tm *time1 = getTimeStampByDate(&line.firstRuncycleTime);
-            format_time.year = time1->tm_year + 1900;
-            format_time.month = time1->tm_mon + 1;
-            format_time.day = time1->tm_mday;
-            format_time.hour = line.firstCycleTime / 60;
-            format_time.minute = line.firstCycleTime % 60;
-            format_time.second = 0;
-            changeDataToChar(firstStartAt, &format_time);
+            cJSON_AddNumberToObject(json, "lightType", line.lightsType);
+            cJSON_AddNumberToObject(json, "brightMode", line.brightMode);
+            cJSON_AddNumberToObject(json, "byPower", line.byPower);
+            cJSON_AddNumberToObject(json, "byAutoDimming", line.byAutoDimming);
+            cJSON_AddNumberToObject(json, "mode", line.mode);
+            cJSON_AddNumberToObject(json, "lightOn", line.lightOn);
+            cJSON_AddNumberToObject(json, "lightOff", line.lightOff);
+
+            if(0 != line.firstRuncycleTime)
+            {
+                struct tm *time1 = getTimeStampByDate(&line.firstRuncycleTime);
+                format_time.year = time1->tm_year + 1900;
+                format_time.month = time1->tm_mon + 1;
+                format_time.day = time1->tm_mday;
+                format_time.hour = line.firstCycleTime / 60;
+                format_time.minute = line.firstCycleTime % 60;
+                format_time.second = 0;
+                changeDataToChar(firstStartAt, &format_time);
+            }
+            else
+            {
+                getRealTimeForMat(&format_time);
+                format_time.hour = 0;
+                format_time.minute = 0;
+                format_time.second = 0;
+                changeDataToChar(firstStartAt, &format_time);
+            }
+            cJSON_AddStringToObject(json, "firstStartAt", firstStartAt);
+            cJSON_AddNumberToObject(json, "duration", line.duration);
+            cJSON_AddNumberToObject(json, "pauseTime", line.pauseTime);
+            cJSON_AddNumberToObject(json, "hidDelay", line.hidDelay);
+            cJSON_AddNumberToObject(json, "tempStartDimming", line.tempStartDimming);
+            cJSON_AddNumberToObject(json, "tempOffDimming", line.tempOffDimming);
+            cJSON_AddNumberToObject(json, "sunriseSunSet", line.sunriseSunSet);
         }
-        else
+        else if((0 == lineNo) && (2 == lineType))
         {
-            getRealTimeForMat(&format_time);
-            format_time.hour = 0;
-            format_time.minute = 0;
-            format_time.second = 0;
-            changeDataToChar(firstStartAt, &format_time);
+            cJSON_AddNumberToObject(json, "brightMode", line_4.brightMode);
+            cJSON_AddNumberToObject(json, "byAutoDimming", line_4.byAutoDimming);
+            cJSON *recipeList = cJSON_CreateArray();
+            if(recipeList)
+            {
+                for(int i = 0; i < LINE_4_RECIPE_MAX; i++)
+                {
+                    cJSON *item = cJSON_CreateArray();
+
+                    if(item)
+                    {
+                        cJSON_AddItemToArray(item, cJSON_CreateNumber(recipe[i].no));
+                        cJSON_AddItemToArray(item, cJSON_CreateNumber(recipe[i].ouput1));
+                        cJSON_AddItemToArray(item, cJSON_CreateNumber(recipe[i].ouput2));
+                        cJSON_AddItemToArray(item, cJSON_CreateNumber(recipe[i].ouput3));
+                        cJSON_AddItemToArray(item, cJSON_CreateNumber(recipe[i].ouput4));
+
+                        cJSON_AddItemToArray(recipeList, item);
+                    }
+                }
+
+                cJSON_AddItemToObject(json, "recipeList", recipeList);
+            }
+
+            cJSON_AddNumberToObject(json, "mode", line_4.mode);
+            cJSON *timeList = cJSON_CreateArray();
+            if(timeList)
+            {
+                for(int i = 0; i < LINE_4_TIMER_MAX; i++)
+                {
+                    cJSON *item = cJSON_CreateObject();
+                    if(item)
+                    {
+                        cJSON_AddNumberToObject(item, "on", line_4.timerList[i].on);
+                        cJSON_AddNumberToObject(item, "off", line_4.timerList[i].off);
+                        cJSON_AddNumberToObject(item, "en", line_4.timerList[i].en);
+                        cJSON_AddNumberToObject(item, "no", line_4.timerList[i].no);
+
+                        cJSON_AddItemToArray(timeList, item);
+                    }
+                }
+
+                cJSON_AddItemToObject(json, "timerList", timeList);
+            }
+            cJSON_AddStringToObject(json, "firstStartAt", line_4.firstStartAt);
+            cJSON *cycleList = cJSON_CreateArray();
+            if(cycleList)
+            {
+                for(int i = 0; i < LINE_4_CYCLE_MAX; i++)
+                {
+                    cJSON *item = cJSON_CreateObject();
+
+                    if(item)
+                    {
+                        cJSON_AddNumberToObject(item, "duration", line_4.cycleList[i].duration);
+                        cJSON_AddNumberToObject(item, "no", line_4.cycleList[i].no);
+
+                        cJSON_AddItemToArray(cycleList, item);
+                    }
+                }
+
+                cJSON_AddItemToObject(json, "cycleList", cycleList);
+            }
+            cJSON_AddNumberToObject(json, "pauseTime", line_4.pauseTime);
+            cJSON_AddNumberToObject(json, "tempStartDimming", line_4.tempStartDimming);
+            cJSON_AddNumberToObject(json, "tempOffDimming", line_4.tempOffDimming);
+            cJSON_AddNumberToObject(json, "sunriseSunSet", line_4.sunriseSunSet);
         }
-        cJSON_AddStringToObject(json, "firstStartAt", firstStartAt);
-        cJSON_AddNumberToObject(json, "duration", line.duration);
-        cJSON_AddNumberToObject(json, "pauseTime", line.pauseTime);
-        cJSON_AddNumberToObject(json, "hidDelay", line.hidDelay);
-        cJSON_AddNumberToObject(json, "tempStartDimming", line.tempStartDimming);
-        cJSON_AddNumberToObject(json, "tempOffDimming", line.tempOffDimming);
-        cJSON_AddNumberToObject(json, "sunriseSunSet", line.sunriseSunSet);
+
         cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
 
         str = cJSON_PrintUnformatted(json);
@@ -3865,53 +4167,86 @@ char *ReplySetRecipe(char *cmd, cloudcmd_t cloud)
                     line = cJSON_CreateObject();
                     if(RT_NULL != line)
                     {
-                        cJSON_AddNumberToObject(line, "brightMode", recipe->line_list[index].brightMode);
-                        cJSON_AddNumberToObject(line, "byPower", recipe->line_list[index].byPower);
-                        cJSON_AddNumberToObject(line, "byAutoDimming", recipe->line_list[index].byAutoDimming);
-                        cJSON_AddNumberToObject(line, "mode", recipe->line_list[index].mode);
-                        cJSON_AddNumberToObject(line, "lightOn", recipe->line_list[index].lightOn);
-                        cJSON_AddNumberToObject(line, "lightOff", recipe->line_list[index].lightOff);
-//                        cJSON_AddNumberToObject(line, "firstCycleTime", recipe->line_list[index].firstCycleTime);
-                        if(0 != recipe->line_list[index].firstRuncycleTime)
+                        if((0 == index && 1 == GetLineType(GetMonitor())) || (1 == index))
                         {
-                            struct tm *time1 = getTimeStampByDate(&recipe->line_list[index].firstRuncycleTime);
-                            format_time.year = time1->tm_year + 1900;
-                            format_time.month = time1->tm_mon + 1;
-                            format_time.day = time1->tm_mday;
-                            LOG_W("firstCycleTime = %d",recipe->line_list[index].firstCycleTime);
-                            format_time.hour = recipe->line_list[index].firstCycleTime / 60;
-                            format_time.minute = recipe->line_list[index].firstCycleTime % 60;
-                            format_time.second = 0;
-                            changeDataToChar(firstStartAt, &format_time);
+                            cJSON_AddNumberToObject(line, "brightMode", recipe->line_list[index].brightMode);
+                            cJSON_AddNumberToObject(line, "byPower", recipe->line_list[index].byPower);
+                            cJSON_AddNumberToObject(line, "byAutoDimming", recipe->line_list[index].byAutoDimming);
+                            cJSON_AddNumberToObject(line, "mode", recipe->line_list[index].mode);
+                            cJSON_AddNumberToObject(line, "lightOn", recipe->line_list[index].lightOn);
+                            cJSON_AddNumberToObject(line, "lightOff", recipe->line_list[index].lightOff);
+    //                        cJSON_AddNumberToObject(line, "firstCycleTime", recipe->line_list[index].firstCycleTime);
+                            if(0 != recipe->line_list[index].firstRuncycleTime)
+                            {
+                                struct tm *time1 = getTimeStampByDate(&recipe->line_list[index].firstRuncycleTime);
+                                format_time.year = time1->tm_year + 1900;
+                                format_time.month = time1->tm_mon + 1;
+                                format_time.day = time1->tm_mday;
+                                LOG_W("firstCycleTime = %d",recipe->line_list[index].firstCycleTime);
+                                format_time.hour = recipe->line_list[index].firstCycleTime / 60;
+                                format_time.minute = recipe->line_list[index].firstCycleTime % 60;
+                                format_time.second = 0;
+                                changeDataToChar(firstStartAt, &format_time);
+                            }
+                            else
+                            {
+                                getRealTimeForMat(&format_time);
+                                format_time.hour = 0;
+                                format_time.minute = 0;
+                                format_time.second = 0;
+                                changeDataToChar(firstStartAt, &format_time);
+                            }
+                            cJSON_AddStringToObject(line, "firstStartAt", firstStartAt);
+                            cJSON_AddNumberToObject(line, "duration", recipe->line_list[index].duration);
+                            cJSON_AddNumberToObject(line, "pauseTime", recipe->line_list[index].pauseTime);
                         }
-                        else
+                        else if(0 == index && 2 == GetLineType(GetMonitor()))
                         {
-                            getRealTimeForMat(&format_time);
-                            format_time.hour = 0;
-                            format_time.minute = 0;
-                            format_time.second = 0;
-                            changeDataToChar(firstStartAt, &format_time);
-                        }
-                        cJSON_AddStringToObject(line, "firstStartAt", firstStartAt);
-                        cJSON_AddNumberToObject(line, "duration", recipe->line_list[index].duration);
-                        cJSON_AddNumberToObject(line, "pauseTime", recipe->line_list[index].pauseTime);
+                            cJSON_AddNumberToObject(line, "brightMode", recipe->line_4.brightMode);
+                            cJSON_AddNumberToObject(line, "byAutoDimming", recipe->line_4.byAutoDimming);
+                            cJSON_AddNumberToObject(line, "mode", recipe->line_4.mode);
+                            cJSON *timeList = cJSON_CreateArray();
+                            if(timeList)
+                            {
+                                for(int i = 0; i < LINE_4_TIMER_MAX; i++)
+                                {
+                                    cJSON *item = cJSON_CreateObject();
+                                    if(item)
+                                    {
+                                        cJSON_AddNumberToObject(item, "on", recipe->line_4.timerList[i].on);
+                                        cJSON_AddNumberToObject(item, "off", recipe->line_4.timerList[i].off);
+                                        cJSON_AddNumberToObject(item, "en", recipe->line_4.timerList[i].en);
+                                        cJSON_AddNumberToObject(item, "no", recipe->line_4.timerList[i].no);
 
-                        if(recipe->line_list[index].byPower < 10)
-                        {
-                            recipe->line_list[index].byPower = 10;
-                            LOG_E("bypower too low");
-                        }
+                                        cJSON_AddItemToArray(timeList, item);
+                                    }
+                                }
 
-                        if(recipe->line_list[index].byPower > 115)
-                        {
-                            recipe->line_list[index].byPower = 115;
-                            LOG_E("bypower too hight");
-                        }
+                                cJSON_AddItemToObject(line, "timerList", timeList);
+                            }
+                            cJSON_AddStringToObject(line, "firstStartAt", recipe->line_4.firstStartAt);
+                            cJSON *cycleList = cJSON_CreateArray();
+                            if(cycleList)
+                            {
+                                for(int i = 0; i < LINE_4_CYCLE_MAX; i++)
+                                {
+                                    cJSON *item = cJSON_CreateObject();
 
-                        if(recipe->line_list[index].byAutoDimming > 2500)
-                        {
-                            recipe->line_list[index].byAutoDimming = 2500;
-                            LOG_E("byAutoDimming too hight");
+                                    if(item)
+                                    {
+                                        cJSON_AddNumberToObject(item, "duration", recipe->line_4.cycleList[i].duration);
+                                        cJSON_AddNumberToObject(item, "no", recipe->line_4.cycleList[i].no);
+
+                                        cJSON_AddItemToArray(cycleList, item);
+                                    }
+                                }
+
+                                cJSON_AddItemToObject(line, "cycleList", cycleList);
+                            }
+                            cJSON_AddNumberToObject(line, "pauseTime", recipe->line_4.pauseTime);
+                            cJSON_AddNumberToObject(line, "tempStartDimming", recipe->line_4.tempStartDimming);
+                            cJSON_AddNumberToObject(line, "tempOffDimming", recipe->line_4.tempOffDimming);
+                            cJSON_AddNumberToObject(line, "sunriseSunSet", recipe->line_4.sunriseSunSet);
                         }
 
                         if(0 == index)
@@ -4622,6 +4957,213 @@ char *ReplyGetDeviceList(char *cmd, char *msgid)
     return str;
 }
 
+char *ReplySetDimmingCurve(char *cmd, dimmingCurve_t *curve, char *msgid)
+{
+    cJSON   *json       = cJSON_CreateObject();
+    char    *str        = RT_NULL;
+
+    if(json)
+    {
+        cJSON_AddStringToObject(json, "cmd", cmd);
+        cJSON_AddStringToObject(json, "msgid", msgid);
+
+        cJSON_AddNumberToObject(json, "onOutput1", curve->onOutput1);
+        cJSON_AddNumberToObject(json, "onOutput2", curve->onOutput2);
+        cJSON_AddNumberToObject(json, "onOutput3", curve->onOutput3);
+        cJSON_AddNumberToObject(json, "onOutput4", curve->onOutput4);
+        cJSON_AddNumberToObject(json, "onVoltage1", curve->onVoltage1);
+        cJSON_AddNumberToObject(json, "onVoltage2", curve->onVoltage2);
+        cJSON_AddNumberToObject(json, "onVoltage3", curve->onVoltage3);
+        cJSON_AddNumberToObject(json, "onVoltage4", curve->onVoltage4);
+        cJSON_AddNumberToObject(json, "fullVoltage1", curve->fullVoltage1);
+        cJSON_AddNumberToObject(json, "fullVoltage2", curve->fullVoltage2);
+        cJSON_AddNumberToObject(json, "fullVoltage3", curve->fullVoltage3);
+        cJSON_AddNumberToObject(json, "fullVoltage4", curve->fullVoltage4);
+        cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
+
+        str = cJSON_PrintUnformatted(json);
+        cJSON_Delete(json);
+    }
+
+    return str;
+}
+
+char *ReplyGetSensorEList(char *cmd, char *msgid)
+{
+    cJSON   *json       = cJSON_CreateObject();
+    char    *str        = RT_NULL;
+
+    if(json)
+    {
+        cJSON_AddStringToObject(json, "cmd", cmd);
+        cJSON_AddStringToObject(json, "msgid", msgid);
+
+        cJSON *senlist = cJSON_CreateArray();
+        if(senlist)
+        {
+            for(int i = 0; i < GetMonitor()->sensor_size; i++)
+            {
+                sensor_t *sensor = &GetMonitor()->sensor[i];
+                cJSON *item = cJSON_CreateObject();
+                if(item)
+                {
+                    cJSON_AddNumberToObject(item, "id", sensor->addr);
+                    cJSON_AddStringToObject(item, "name", sensor->name);
+                    cJSON_AddNumberToObject(item, "isMain", sensor->isMainSensor);
+                    cJSON_AddNumberToObject(item, "sensorType", sensor->type);
+                    u8 online = 0;
+                    if(CON_FAIL == sensor->conn_state)
+                    {
+                        online = 0;
+                    }
+                    else
+                    {
+                        online = 1;
+                    }
+                    cJSON_AddNumberToObject(item, "online", online);
+                    cJSON *itemList = cJSON_CreateArray();
+                    if(itemList)
+                    {
+                        for(int port = 0; port < sensor->storage_size; port++)
+                        {
+                            cJSON *portItem = cJSON_CreateObject();
+                            if(portItem)
+                            {
+                                u8 type = 0;
+                                // 1-co2 2-temp 3-humid 4-ph 5-ec 6-wt 7-wl 8-mm 9-me 10-mt
+                                //11-光敏 12-par 13-烟感(1:报警 0:正常) 14-漏水(1:报警 0:正常) 15-O2
+                                switch(sensor->__stora[port].func)
+                                {
+                                    case F_S_CO2:
+                                        type = 1;
+                                        break;
+                                    case F_S_TEMP:
+                                        type = 2;
+                                        break;
+                                    case F_S_HUMI:
+                                        type = 3;
+                                        break;
+                                    case F_S_LIGHT:
+                                        type = 11;
+                                        break;
+                                    case F_S_PAR:
+                                        type = 12;
+                                        break;
+                                    default:break;
+                                }
+                                cJSON_AddNumberToObject(portItem, "type", type);
+                                cJSON_AddNumberToObject(portItem, "value", sensor->__stora[port].value);
+
+                                cJSON_AddItemToArray(itemList, portItem);
+                            }
+                        }
+
+                        cJSON_AddItemToObject(item, "list", itemList);
+                    }
+
+                    cJSON_AddItemToArray(senlist, item);
+                }
+            }
+
+            cJSON_AddItemToObject(json, "list", senlist);
+        }
+
+        //Justin debug仅仅测试
+        cJSON_AddNumberToObject(json, "showType", /*GetSysSet()->sensorMainType*/2);
+        cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
+
+        str = cJSON_PrintUnformatted(json);
+        cJSON_Delete(json);
+    }
+
+    return str;
+}
+
+char *ReplyDeleteSensor(char *cmd, u16 addr, char *msgid)
+{
+    cJSON   *json       = cJSON_CreateObject();
+    char    *str        = RT_NULL;
+
+    if(json)
+    {
+        cJSON_AddStringToObject(json, "cmd", cmd);
+        cJSON_AddStringToObject(json, "msgid", msgid);
+        cJSON_AddNumberToObject(json, "id", addr);
+
+        str = cJSON_PrintUnformatted(json);
+        cJSON_Delete(json);
+    }
+
+    return str;
+}
+
+char *ReplySetMainSensor(char *cmd, u16 addr, char *msgid)
+{
+    cJSON   *json       = cJSON_CreateObject();
+    char    *str        = RT_NULL;
+
+    if(json)
+    {
+        cJSON_AddStringToObject(json, "cmd", cmd);
+        cJSON_AddStringToObject(json, "msgid", msgid);
+        cJSON_AddNumberToObject(json, "id", addr);
+
+        str = cJSON_PrintUnformatted(json);
+        cJSON_Delete(json);
+    }
+
+    return str;
+}
+
+char *ReplySetSensorShow(char *cmd, u8 showType, char *msgid)
+{
+    cJSON   *json       = cJSON_CreateObject();
+    char    *str        = RT_NULL;
+
+    if(json)
+    {
+        cJSON_AddStringToObject(json, "cmd", cmd);
+        cJSON_AddStringToObject(json, "msgid", msgid);
+        cJSON_AddNumberToObject(json, "showType", showType);
+
+        str = cJSON_PrintUnformatted(json);
+        cJSON_Delete(json);
+    }
+
+    return str;
+}
+
+char *ReplySetSensorName(char *cmd, u16 id, char *msgid)
+{
+    cJSON   *json       = cJSON_CreateObject();
+    char    *str        = RT_NULL;
+    u8      addr        = 0;
+    u8      port        = 0;
+
+    if(json)
+    {
+        cJSON_AddStringToObject(json, "cmd", cmd);
+        cJSON_AddStringToObject(json, "msgid", msgid);
+
+        if(id < 0xff)
+        {
+            addr = id;
+        }
+        else
+        {
+            addr = id >> 8;
+            port = id;
+        }
+
+        cJSON_AddStringToObject(json, "name", GetSensorByAddr(GetMonitor(), addr)->__stora[port].name);
+
+        str = cJSON_PrintUnformatted(json);
+        cJSON_Delete(json);
+    }
+
+    return str;
+}
+
 u8 getColorFromTankList(u16 address, sys_tank_t *list)
 {
     u8      color       = 0;
@@ -4901,6 +5443,19 @@ char *ReplyGetDeviceList_new(char *cmd, char *msgid, u8 deviceType, u8 no)
 //                "lineType":1, // 1 - 2 路 2 - 4 路
 //                //只有 lineType==2 时
 //                "outputRatio":[30,40,20,10],// Output Ratio,单位%
+                if(2 == GetLineType(GetMonitor()))
+                {
+                    cJSON *out = cJSON_CreateArray();
+                    if(out)
+                    {
+                        cJSON_AddItemToArray(out, cJSON_CreateNumber(GetNowLine_4_output()->ouput1));
+                        cJSON_AddItemToArray(out, cJSON_CreateNumber(GetNowLine_4_output()->ouput2));
+                        cJSON_AddItemToArray(out, cJSON_CreateNumber(GetNowLine_4_output()->ouput3));
+                        cJSON_AddItemToArray(out, cJSON_CreateNumber(GetNowLine_4_output()->ouput4));
+
+                        cJSON_AddItemToObject(item, "outputRatio", out);
+                    }
+                }
             }
 
             cJSON_AddItemToObject(json, "data", item);

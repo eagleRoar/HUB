@@ -24,6 +24,9 @@
 #define     CMD_NAME_SIZE                   25
 #define     TANK_WARN_NAMESZ                8
 #define     TANK_NAMESZ                     13
+#define     LINE_4_TIMER_MAX                9
+#define     LINE_4_CYCLE_MAX                9
+#define     LINE_4_RECIPE_MAX               9
 
 #define     STAGE_LIST_MAX                  5//10//最多10个阶段
 #define     RECIPE_LIST_MAX                 10//最多10个配方
@@ -35,6 +38,7 @@ typedef     struct proTempSet               proTempSet_t;
 typedef     struct proCo2Set                proCo2Set_t;
 typedef     struct proHumiSet               proHumiSet_t;
 typedef     struct proLine                  proLine_t;
+typedef     struct proLine_4                proLine_4_t;
 typedef     struct sysPara                  sys_para_t;
 typedef     struct cloudCmd                 cloudcmd_t;
 typedef     struct sysSet                   sys_set_t;
@@ -94,6 +98,10 @@ struct cloudCmd{
     u16             chg_dev_id;                 //修改设备类型
     u8              recv_cloud_flag;            //接收到云服务器的标志
     u8              recv_app_flag;              //接收到云服务器的标志
+    u8              setLightRecipeNo;
+    u16             setMainSensorId;            //设置主sensor的ID
+    u16             setSensorNameId;            //设置sensor名称的id
+    u16             deleteSensorId;             //设置sensor名称的id
 };
 
 //cmd : getTempSetting
@@ -191,6 +199,42 @@ struct proLine{
     u32         timestamp;                  //时间戳
     time_t      firstRuncycleTime;          //记录第一次开始执行的时间 方便回溯
 };
+
+typedef struct line_4_timer
+{
+    u16 on; // 开启时间点 8:00 8*60=480
+    u16 off; // 关闭时间点 9:00 9*60=540
+    u8 en;
+    u8 no;//配方编号 1~9
+}line_4_timer_t;
+
+typedef struct line_4_cycle
+{
+    u16 duration; //循环持续时间 s
+    u8 no; //配方编号 1~9
+}line_4_cycle_t;
+
+//4路光输出类型
+struct proLine_4{
+    u8 brightMode; // 1-power 2-auto dimming
+    u16 byAutoDimming; // PPFD
+    u8 mode; //模式 1-by timer 2-cycle
+    line_4_timer_t timerList[LINE_4_TIMER_MAX];
+    char firstStartAt[15]; //第一次循环开始时间，日期到秒 初始默认当天0点
+    line_4_cycle_t cycleList[LINE_4_CYCLE_MAX];
+    u16 pauseTime; //循环停止时间 s,
+    u8 tempStartDimming; //灯光自动调光温度点 0℃-60.0℃/32℉-140℉
+    u8 tempOffDimming; // 灯光自动关闭温度点 0℃-60.0℃/32℉-140℉
+    u8 sunriseSunSet; //0-30min /0 表示关闭状态
+};
+
+typedef struct Line_4_recipe{
+    u8 no;
+    u8 ouput1;
+    u8 ouput2;
+    u8 ouput3;
+    u8 ouput4;
+}line_4_recipe_t;
 
 typedef struct tankWarnOld{
     u8          func;
@@ -346,6 +390,23 @@ struct sysWarn
     u8 offlineEn;           //1 //离线警告 1-on 0-off
 };
 
+
+typedef struct dimmingCurve
+{
+    u8 onOutput1;
+    u8 onOutput2;
+    u8 onOutput3;
+    u8 onOutput4;
+    u8 onVoltage1;
+    u8 onVoltage2;
+    u8 onVoltage3;
+    u8 onVoltage4;
+    u8 fullVoltage1;
+    u8 fullVoltage2;
+    u8 fullVoltage3;
+    u8 fullVoltage4;
+}dimmingCurve_t;
+
 /****************************以下是灌溉部分的内容*****/
 struct stage_schedule
 {
@@ -420,6 +481,7 @@ struct recipe{//配方 限制10个
         int     pauseTime;      //循环停止时间 s
         time_t  firstRuncycleTime;
     }line_list[2];
+    proLine_4_t line_4;
 };
 
 struct sys_recipe{
@@ -521,16 +583,20 @@ struct sysSet{
     proCo2Set_t     co2Set;
     proHumiSet_t    humiSet;
     proLine_t       line1Set;
+    proLine_4_t     line1_4Set;//第一路的4路调光类型
+    line_4_recipe_t lineRecipeList[LINE_4_RECIPE_MAX];
     proLine_t       line2Set;
     tankWarn_t      tankWarnSet[TANK_LIST_MAX][TANK_WARN_ITEM_MAX];
     stage_t         stageSet;   //阶段(日历)
     sys_para_t      sysPara;
     sys_warn_t      sysWarn;
+    dimmingCurve_t  dimmingCurve;//光曲线
     u8              dayOrNight;//白天黑夜 白天0 黑夜1
     u8              warn[WARN_MAX];
     u8              offline[DEVICE_MAX];
     u16             warn_value[WARN_MAX];//该值主要为了显示使用 数据
     int             co2Cal[SENSOR_MAX];   //co2校准值
+    u8              sensorMainType;//四合一传感器的控制类型 ///1-平均（默认） 2-指定主传感器
     struct phCal{
         float ph_a;
         float ph_b;
@@ -552,6 +618,7 @@ enum{
     TANK_SENSOR_TANK = 0x01,        //桶内
     TANK_SENSOR_INLINE              //管道内
 };
+
 /****************************灌溉内容 End*************/
 #define         TEST_CMD                "test"                  //Hub 主动上报
 #define         CMD_HUB_REPORT_WARN     "reportWarning"         //Hub 主动上报
@@ -572,6 +639,7 @@ enum{
 #define         CMD_SET_L1              "setLine1"
 #define         CMD_GET_L2              "getLine2"
 #define         CMD_SET_L2              "setLine2"
+#define         CMD_SET_LIGHT_RECIPE    "setLightRecipe"
 #define         CMD_GET_DEVICELIST      "getDeviceList"         //获取设备列表
 #define         CMD_GET_PORT_SET        "getDeviceSetting"      //获取设备端口设置
 #define         CMD_SET_PORT_SET        "setDeviceSetting"      //设置设备端口设置
@@ -600,6 +668,14 @@ enum{
 #define         CMD_SET_PUMP_COLOR      "setPumpColor"          //设置泵颜色
 #define         CMD_ADD_PUMP_VALUE      "addPumpValve"          //增加泵子阀
 #define         CMD_DEL_PUMP_VALUE      "delPumpValve"          //删除泵子阀
+#define         CMD_GET_DIMMING_CURVE   "getDimmingCurve"       //获取调光曲线设置
+#define         CMD_SET_DIMMING_CURVE   "setDimmingCurve"       //保存 调光曲线设置
+#define         CMD_GET_SENSOR_E_LIST   "getSensorEList"        //获取环控 Sensor 列表
+#define         CMD_GET_SENSOR_I_LIST   "getSensorIList"        //获取灌溉 Sensor 列表
+#define         CMD_DELETE_SENSOR       "deleteSensor"          //删除sensor
+#define         CMD_SET_MAIN_SENSOR     "setMainSensor"         //设置主 Sensor
+#define         CMD_SET_SENSOR_SHOW_TYPE "setSensorShowType"    //设置 Sensor 显示方式
+#define         CMD_SET_SENSOR_NAME     "setSensorName"         //设置 Sensor 名字
 
 rt_err_t GetValueByU8(cJSON *, char *, u8 *);
 rt_err_t GetValueByU16(cJSON *, char *, u16 *);
@@ -614,7 +690,7 @@ void CmdSetHumi(char *,cloudcmd_t *);
 void CmdGetHumi(char *,cloudcmd_t *);
 void CmdGetDeviceList(char *, cloudcmd_t *);
 void CmdGetLine(char *, proLine_t *,cloudcmd_t *);
-void CmdSetLine(char *, proLine_t *,cloudcmd_t *);
+void CmdSetLine(char *data, proLine_t *line, proLine_4_t *line_4, cloudcmd_t *cmd);
 void CmdFindLocation(char *, cloudcmd_t *);
 void CmdGetPortSet(char *data, cloudcmd_t *);
 void CmdSetSysTime(char *, cloudcmd_t *);
@@ -648,6 +724,8 @@ void CmdSetPoolAlarm(char *, cloudcmd_t *);
 void CmdGetPoolAlarm(char *, cloudcmd_t *);
 void CmdSetDeviceType(char *, cloudcmd_t *);
 void CmdDelTankSensor(char *data, cloudcmd_t *cmd);
+void CmdSetDimmingCurve(char *data, dimmingCurve_t *curve, cloudcmd_t *cmd);
+void CmdGetDimmingCurve(char *data, cloudcmd_t *cmd);
 char *SendHubReport(char *, sys_set_t *);
 char *SendHubReportWarn(char *, sys_set_t *, u8, u16, u8);
 char *ReplySetSchedule(char *, cloudcmd_t);
@@ -655,7 +733,7 @@ char *ReplyGetTempValue(char *,cloudcmd_t);
 char *ReplyGetCo2(char *,cloudcmd_t);
 char *ReplyGetHumi(char *,cloudcmd_t);
 char *ReplyGetDeviceList(char *, char *);
-char *ReplyGetLine(char *, char *, proLine_t,cloudcmd_t);
+char *ReplyGetLine(u8 lineNo, char *cmd, char *msgid, proLine_t line, proLine_4_t line_4, line_4_recipe_t *recipe,cloudcmd_t cloud);
 char *ReplyFindLocation(char *, cloudcmd_t);
 char *ReplyGetPortSet(char *, cloudcmd_t);
 char *ReplySetSysTime(char *, cloudcmd_t );
@@ -689,4 +767,17 @@ char *ReplyDelPumpSensor(char *, cloudcmd_t);
 u8 getColorFromTankList(u16, sys_tank_t *);
 rt_err_t changeCharToDate(char* data, type_sys_time *time);
 char *ReplyGetDeviceList_new(char *cmd, char *msgid, u8 deviceType, u8 no);
+char *ReplySetDimmingCurve(char *cmd, dimmingCurve_t *curve, char *msgid);
+char *ReplySetLightRecipe(char *cmd, line_4_recipe_t *recipe, cloudcmd_t cloud);
+char *ReplyGetSensorEList(char *cmd, char *msgid);
+char *ReplyDeleteSensor(char *cmd, u16 addr, char *msgid);
+char *ReplySetMainSensor(char *cmd, u16 addr, char *msgid);
+char *ReplySetSensorShow(char *cmd, u8 showType, char *msgid);
+char *ReplySetSensorName(char *cmd, u16 id, char *msgid);
+void CmdSetLightRecipe(char *data, line_4_recipe_t *repice, cloudcmd_t *cmd);
+void CmdGetSensorEList(char *data, cloudcmd_t *cmd);
+void CmdSetMainSensor(char *data, cloudcmd_t *cmd);
+void CmdSetSensorShowType(char *data, cloudcmd_t *cmd);
+void CmdSetSensorName(char *data, cloudcmd_t *cmd);
+void CmdDeleteSensor(char *data, cloudcmd_t *cmd);
 #endif /* APPLICATIONS_CLOUDPROTOCOL_CLOUDPROTOCOLBUSINESS_H_ */

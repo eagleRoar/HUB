@@ -43,4 +43,5 @@ void sendwarnningInfo(void);
 void sendOfflinewarnning(type_monitor_t *);
 void resetSysSetPhCal(u32);
 void resetSysSetEcCal(u32);
+//line_4_recipe_t *GetNowLine_4_output(void);
 #endif /* APPLICATIONS_CLOUDPROTOCOL_CLOUDPROTOCOL_H_ */

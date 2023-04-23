@@ -1,3 +1,4 @@
+
 /*
  * Copyright (c) 2006-2021, RT-Thread Development Team
  *
@@ -124,6 +125,7 @@ struct sensor
     u8              reg_state;                              //注册状态
     u8              save_state;                             //是否已经存储
     u8              storage_size;                           //寄存器数量
+    u8              isMainSensor;                           //是否是主传感器（目前只有四合一才设置主传感器）
     sen_stora_t     __stora[SENSOR_VALUE_MAX];
 };//占35字节
 
@@ -432,6 +434,11 @@ enum{
     CON_SUCCESS,
 };
 
+enum{
+    SENSOR_CTRL_AVE = 0x01,//平均方式
+    SENSOR_CTRL_MAIN
+};
+
 struct allocate_old
 {
     u8 address[256];
@@ -491,8 +498,8 @@ typedef     void (*FAC_FUNC)(type_monitor_t *);
 
 #define     HUB_TYPE        0xFF
 #define     LINE_TYPE       0x22        //灯光类
-#define     LINE1_TYPE      0x23        //灯光类
-#define     LINE2_TYPE      0x24        //灯光类
+#define     LINE1_TYPE      0x23        //灯光类//Justin debug 该类型为默认地址 需要和黄工确认
+#define     LINE2_TYPE      0x24        //灯光类//Justin debug 该类型为默认地址 需要和黄工确认
 #define     LINE_4_TYPE     0x25        //灯光类
 #define     BHS_TYPE        0x03
 #define     PHEC_TYPE       0x05

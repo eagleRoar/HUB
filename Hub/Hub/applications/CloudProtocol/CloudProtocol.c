@@ -338,6 +338,12 @@ void initCloudProtocol(void)
     sys_set.sysPara.maintain = OFF;     //非维护状态
     strcpy(sys_set.sysPara.ntpzone, "+00:00");
 
+    rt_memset(&sys_set.line1_4Set, 0, sizeof(proLine_4_t));
+    rt_memset(&sys_set.lineRecipeList, 0, sizeof(line_4_recipe_t) * LINE_4_RECIPE_MAX);
+    rt_memset(&sys_set.dimmingCurve, 0, sizeof(dimmingCurve_t));
+
+    sys_set.sensorMainType = SENSOR_CTRL_AVE;
+
     initHubinfo();
 }
 
@@ -544,12 +550,16 @@ rt_err_t ReplyDataToCloud(mqtt_client *client, int *sock, u8 sendCloudFlg)
         else if(0 == rt_memcmp(CMD_GET_L1, cloudCmd.cmd, sizeof(CMD_GET_L1)) ||
                 0 == rt_memcmp(CMD_SET_L1, cloudCmd.cmd, sizeof(CMD_SET_L1)))   //获取/设置灯光1
         {
-            str = ReplyGetLine(cloudCmd.cmd, cloudCmd.msgid, sys_set.line1Set, cloudCmd);
+            str = ReplyGetLine(0, cloudCmd.cmd, cloudCmd.msgid, sys_set.line1Set, sys_set.line1_4Set, sys_set.lineRecipeList, cloudCmd);
+        }
+        else if(0 == rt_memcmp(CMD_SET_LIGHT_RECIPE, cloudCmd.cmd, sizeof(CMD_SET_LIGHT_RECIPE)))
+        {
+            str = ReplySetLightRecipe(cloudCmd.cmd, sys_set.lineRecipeList, cloudCmd);
         }
         else if(0 == rt_memcmp(CMD_GET_L2, cloudCmd.cmd, sizeof(CMD_GET_L2)) ||
                 0 == rt_memcmp(CMD_SET_L2, cloudCmd.cmd, sizeof(CMD_SET_L2)))   //获取/设置灯光2
         {
-            str = ReplyGetLine(cloudCmd.cmd, cloudCmd.msgid, sys_set.line2Set, cloudCmd);
+            str = ReplyGetLine(1, cloudCmd.cmd, cloudCmd.msgid, sys_set.line2Set, sys_set.line1_4Set, sys_set.lineRecipeList, cloudCmd);
         }
         else if(0 == rt_memcmp(CMD_FIND_LOCATION, cloudCmd.cmd, sizeof(CMD_FIND_LOCATION)))//设备定位
         {
@@ -691,6 +701,31 @@ rt_err_t ReplyDataToCloud(mqtt_client *client, int *sock, u8 sendCloudFlg)
         else if(0 == rt_memcmp(CMD_SET_DEVICETYPE, cloudCmd.cmd, sizeof(CMD_SET_DEVICETYPE)))//设置设备类型(主要是针对修改AC_4 和 IO_12的端口)
         {
             str = ReplySetDeviceType(CMD_SET_DEVICETYPE, cloudCmd);
+        }
+        else if((0 == rt_memcmp(CMD_GET_DIMMING_CURVE, cloudCmd.cmd, sizeof(CMD_GET_DIMMING_CURVE))) ||
+                (0 == rt_memcmp(CMD_SET_DIMMING_CURVE, cloudCmd.cmd, sizeof(CMD_SET_DIMMING_CURVE))) )
+        {
+            str = ReplySetDimmingCurve(cloudCmd.cmd, &GetSysSet()->dimmingCurve, cloudCmd.msgid);
+        }
+        else if(0 == rt_memcmp(CMD_GET_SENSOR_E_LIST, cloudCmd.cmd, sizeof(CMD_GET_SENSOR_E_LIST)))
+        {
+            str = ReplyGetSensorEList(cloudCmd.cmd, cloudCmd.msgid);
+        }
+        else if(0 == rt_memcmp(CMD_DELETE_SENSOR, cloudCmd.cmd, sizeof(CMD_DELETE_SENSOR)))
+        {
+            str = ReplyDeleteSensor(CMD_DELETE_SENSOR, cloudCmd.deleteSensorId, cloudCmd.msgid);
+        }
+        else if(0 == rt_memcmp(CMD_SET_MAIN_SENSOR, cloudCmd.cmd, sizeof(CMD_SET_MAIN_SENSOR)))
+        {
+            str = ReplySetMainSensor(CMD_SET_MAIN_SENSOR, cloudCmd.setMainSensorId, cloudCmd.msgid);
+        }
+        else if(0 == rt_memcmp(CMD_SET_SENSOR_SHOW_TYPE, cloudCmd.cmd, sizeof(CMD_SET_SENSOR_SHOW_TYPE)))
+        {
+            str = ReplySetSensorShow(CMD_SET_SENSOR_SHOW_TYPE, GetSysSet()->sensorMainType, cloudCmd.msgid);
+        }
+        else if(0 == rt_memcmp(CMD_SET_SENSOR_NAME, cloudCmd.cmd, sizeof(CMD_SET_SENSOR_NAME)))
+        {
+            str = ReplySetSensorName(CMD_SET_SENSOR_NAME, cloudCmd.setSensorNameId, cloudCmd.msgid);
         }
         else
         {
@@ -846,7 +881,13 @@ void analyzeCloudData(char *data, u8 cloudFlg)
             }
             else if(0 == rt_memcmp(CMD_SET_L1, cmd->valuestring, strlen(CMD_SET_L1)))
             {
-                CmdSetLine(data, &sys_set.line1Set, &cloudCmd);
+                CmdSetLine(data, &sys_set.line1Set, &sys_set.line1_4Set, &cloudCmd);
+                GetSysSet()->saveFlag = YES;
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
+            }
+            else if(0 == rt_memcmp(CMD_SET_LIGHT_RECIPE, cmd->valuestring, strlen(CMD_SET_LIGHT_RECIPE)))
+            {
+                CmdSetLightRecipe(data, sys_set.lineRecipeList, &cloudCmd);
                 GetSysSet()->saveFlag = YES;
                 setCloudCmd(cmd->valuestring, ON, cloudFlg);
             }
@@ -857,7 +898,7 @@ void analyzeCloudData(char *data, u8 cloudFlg)
             }
             else if(0 == rt_memcmp(CMD_SET_L2, cmd->valuestring, strlen(CMD_SET_L2)))
             {
-                CmdSetLine(data, &sys_set.line2Set, &cloudCmd);
+                CmdSetLine(data, &sys_set.line2Set, RT_NULL, &cloudCmd);
                 GetSysSet()->saveFlag = YES;
                 setCloudCmd(cmd->valuestring, ON, cloudFlg);
             }
@@ -1052,6 +1093,42 @@ void analyzeCloudData(char *data, u8 cloudFlg)
                 CmdSetDeviceType(data, &cloudCmd);
                 setCloudCmd(cmd->valuestring, ON, cloudFlg);
                 saveModuleFlag = YES;
+            }
+            else if(0 == rt_memcmp(CMD_GET_DIMMING_CURVE, cmd->valuestring, strlen(CMD_GET_DIMMING_CURVE)))
+            {
+                CmdGetDimmingCurve(data, &cloudCmd);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
+                GetSysSet()->saveFlag = YES;
+            }
+            else if(0 == rt_memcmp(CMD_SET_DIMMING_CURVE, cmd->valuestring, strlen(CMD_SET_DIMMING_CURVE)))
+            {
+                CmdSetDimmingCurve(data, &GetSysSet()->dimmingCurve, &cloudCmd);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
+                GetSysSet()->saveFlag = YES;
+            }
+            else if(0 == rt_memcmp(CMD_GET_SENSOR_E_LIST, cmd->valuestring, strlen(CMD_GET_SENSOR_E_LIST)))
+            {
+                CmdGetSensorEList(data, &cloudCmd);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
+            }
+            else if(0 == rt_memcmp(CMD_SET_MAIN_SENSOR, cmd->valuestring, strlen(CMD_SET_MAIN_SENSOR)))
+            {
+                CmdSetMainSensor(data, &cloudCmd);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
+            }
+            else if(0 == rt_memcmp(CMD_SET_SENSOR_SHOW_TYPE, cmd->valuestring, strlen(CMD_SET_SENSOR_SHOW_TYPE)))
+            {
+                CmdSetSensorShowType(data, &cloudCmd);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
+            }
+            else if(0 == rt_memcmp(CMD_SET_SENSOR_NAME, cmd->valuestring, strlen(CMD_SET_SENSOR_NAME)))
+            {
+                CmdSetSensorName(data, &cloudCmd);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
+            }
+            else if(0 == rt_memset(CMD_DELETE_SENSOR, cmd->valuestring, sizeof(CMD_DELETE_SENSOR)))
+            {
+                CmdDeleteSensor(data, &cloudCmd);
             }
         }
         else
@@ -1764,3 +1841,9 @@ void ecCalibrate1(sensor_t *sensor, type_monitor_t *monitor, ec_cal_t *ec, sys_s
     }
 }
 
+line_4_recipe_t *GetNowLine_4_output(void)
+{
+    //Justin debug 未完待续 在此判断当前的输出设置
+
+    return &GetSysSet()->lineRecipeList[0];//Justin 仅仅测试
+}

@@ -1367,7 +1367,14 @@ u8 IsExistFunc(type_monitor_t *monitor, u8 addr,u8 func)
 
 u8 GetLineType(type_monitor_t *monitor)
 {
-
+    if(GetLineByAddr(monitor, LINE_4_TYPE))
+    {
+        return 2;
+    }
+    else
+    {
+        return 1;
+    }
 }
 
 #endif /* APPLICATIONS_INFORMATIONMANAGE_MODULE_MODULE_C_ */
