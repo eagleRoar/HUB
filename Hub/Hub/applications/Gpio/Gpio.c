@@ -166,22 +166,48 @@ void LedTaskEntry(void* parameter)
 //报警逻辑: 如果是有标志报警的话就一直报 否则关闭
 void AlarmLedProgram(void)
 {
+    u8 state = OFF;
+
     if((ON == GetSysSet()->sysWarn.dayCo2Buzz && DAY_TIME == GetSysSet()->dayOrNight) ||
        (ON == GetSysSet()->sysWarn.nightCo2Buzz && NIGHT_TIME == GetSysSet()->dayOrNight))
     {
         if(ON == GetSysSet()->warn[WARN_CO2_HIGHT - 1])
         {
-            rt_pin_write(ALARM_OUT, ON);
+            state = ON;
         }
         else
         {
-            rt_pin_write(ALARM_OUT, OFF);
+            state = OFF;
         }
     }
-    else
+
+    if((ON == GetSysSet()->sysWarn.dayTempBuzz && DAY_TIME == GetSysSet()->dayOrNight) ||
+       (ON == GetSysSet()->sysWarn.nightTempBuzz && NIGHT_TIME == GetSysSet()->dayOrNight))
     {
-        rt_pin_write(ALARM_OUT, OFF);
+        if(ON == GetSysSet()->warn[WARN_TEMP_HIGHT - 1] || ON == GetSysSet()->warn[WARN_TEMP_LOW - 1])
+        {
+            state = ON;
+        }
+        else
+        {
+            state = OFF;
+        }
     }
+
+    if((ON == GetSysSet()->sysWarn.dayhumidBuzz && DAY_TIME == GetSysSet()->dayOrNight) ||
+       (ON == GetSysSet()->sysWarn.nighthumidBuzz && NIGHT_TIME == GetSysSet()->dayOrNight))
+    {
+        if(ON == GetSysSet()->warn[WARN_HUMI_HIGHT - 1] || ON == GetSysSet()->warn[WARN_HUMI_LOW - 1])
+        {
+            state = ON;
+        }
+        else
+        {
+            state = OFF;
+        }
+    }
+
+    rt_pin_write(ALARM_OUT, state);
 }
 #endif
 

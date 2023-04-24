@@ -2011,14 +2011,14 @@ void lineStatePage_fac(type_page_t *page, type_monitor_t *monitor, u8 canShow)
 //        else
         if(CON_SUCCESS == data)
         {
-            if(OFF == GetMonitor()->line[index].d_state)
-            {
-                sprintf(temp,"%6s   OFF", name);
-            }
-            else
-            {
-                sprintf(temp,"%6s   %3d%%", name, GetMonitor()->line[index].d_value);
-            }
+//            if(OFF == GetMonitor()->line[index].d_state)//Justin debug 控制模式得修改
+//            {
+//                sprintf(temp,"%6s   OFF", name);
+//            }
+//            else
+//            {
+//                sprintf(temp,"%6s   %3d%%", name, GetMonitor()->line[index].d_value);
+//            }
             temp[16] = '\0';
             ST7567_Puts(temp, &Font_8x16, 1);
         }
@@ -2299,8 +2299,8 @@ void lineStage_Fa(type_monitor_t *monitor)
             value[index] = 0;
         }
 
-        line->d_state = ON;
-        line->d_value = stage[value[index]];
+//        line->d_state = ON;//Justin debug 需要修改
+//        line->d_value = stage[value[index]];
     }
 }
 
@@ -2313,8 +2313,8 @@ void lineStageClose_Fa(type_monitor_t *monitor)
     {
         line = &monitor->line[index];
 
-        line->d_state = OFF;
-        line->d_value = 0;
+//        line->d_state = OFF;//Justin debug 需要修改控制模式
+//        line->d_value = 0;
     }
 }
 

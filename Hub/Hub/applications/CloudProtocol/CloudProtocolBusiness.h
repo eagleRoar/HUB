@@ -732,7 +732,6 @@ char *ReplySetSchedule(char *, cloudcmd_t);
 char *ReplyGetTempValue(char *,cloudcmd_t);
 char *ReplyGetCo2(char *,cloudcmd_t);
 char *ReplyGetHumi(char *,cloudcmd_t);
-char *ReplyGetDeviceList(char *, char *);
 char *ReplyGetLine(u8 lineNo, char *cmd, char *msgid, proLine_t line, proLine_4_t line_4, line_4_recipe_t *recipe,cloudcmd_t cloud);
 char *ReplyFindLocation(char *, cloudcmd_t);
 char *ReplyGetPortSet(char *, cloudcmd_t);

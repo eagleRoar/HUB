@@ -34,7 +34,7 @@
 #define SDCARD_INSTANCE                   SDMMC1
 #endif /*  defined(SOC_SERIES_STM32F1) || defined(SOC_SERIES_STM32F4) */
 
-#define SDIO_BUFF_SIZE       4096//Justin debug
+#define SDIO_BUFF_SIZE       1024/*4096*///Justin debug
 #define SDIO_ALIGN_LEN       32
 
 #ifndef SDIO_MAX_FREQ

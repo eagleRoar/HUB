@@ -51,7 +51,7 @@ typedef struct uartClass{
     void(*DeviceCtrl)(type_monitor_t *, u8, u8);                //发送串口数据
     void(*DeviceCtrlSingle)(device_t *, u8 , u8 );
     void(*DeviceChgType)(type_monitor_t *, u16 id, u8 type);       //发送设置端口type
-    void (*LineCtrl)(type_monitor_t *, u8, u8, u8);
+    void (*LineCtrl)(line_t *line, u8 port, u8 state, u8 value);
     void(*AskDevice)(device_t , u16);                           //发送串口数据
     void(*AskSensor)(sensor_t , u16);                           //发送串口数据
     void(*AskLine)(line_t , u16);                               //发送串口数据
@@ -68,6 +68,13 @@ typedef struct uartSendMonitor{
     time_t sendTime;
     u8 SendCnt;
 }uart_send_monitor;
+
+typedef struct uartSendLine{
+    u8 addr;
+    u16 ctrl[LINE_PORT_MAX];
+    time_t sendTime;
+    u8 SendCnt;
+}uart_send_line;
 
 void InitUart2Object(void);
 time_t getTimerRun(void);

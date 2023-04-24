@@ -19,15 +19,15 @@
 
 //设备类型
 type_uart_class lightObject;
-static uart_send_monitor sendMoni[LINE_MAX]; //优化设备发送
+static uart_send_line sendMoni[LINE_MAX]; //优化设备发送
 
-static void GenerateVuleByCtrl(line_t line, u8 state, u8 value, u16 *res)
+static void GenerateVuleByCtrl(line_t *line, u8 port, u8 state, u8 value, u16 *res)
 {
-    if(MANUAL_HAND_ON == line._manual.manual)
+    if(MANUAL_HAND_ON == line->port[port]._manual.manual)
     {
         *res = 0x0164;
     }
-    else if(MANUAL_HAND_OFF == line._manual.manual)
+    else if(MANUAL_HAND_OFF == line->port[port]._manual.manual)
     {
         *res = 0x0000;
     }
@@ -38,14 +38,14 @@ static void GenerateVuleByCtrl(line_t line, u8 state, u8 value, u16 *res)
 }
 
 //生成发送的数据
-static void GenerateSendData(line_t light, u16 ctrl, u8 *data)
+static void GenerateSendData(line_t *light, u8 port, u16 ctrl, u8 *data)
 {
     rt_memset(data, 0, 8);
 
-    data[0] = light.addr;
+    data[0] = light->addr;
     data[1] = WRITE_SINGLE;
-    data[2] = light.ctrl_addr >> 8;
-    data[3] = light.ctrl_addr;
+    data[2] = (light->ctrl_addr + port) >> 8;
+    data[3] = (light->ctrl_addr + port);
     data[4] = ctrl >> 8;
     data[5] = ctrl;
     data[6] = usModbusRTU_CRC(data, 6);
@@ -53,13 +53,13 @@ static void GenerateSendData(line_t light, u16 ctrl, u8 *data)
 }
 
 //生成可以加载到keyValue 的数据
-static rt_err_t GenerateKVData(KV *kv, line_t light, u8 *data, u8 len)
+static rt_err_t GenerateKVData(KV *kv, line_t light, u8 port, u8 *data, u8 len)
 {
     seq_key_t   seq_key;
 
     seq_key.addr = light.addr;
-    seq_key.regH = light.ctrl_addr >> 8;
-    seq_key.regL = light.ctrl_addr;
+    seq_key.regH = (light.ctrl_addr + port) >> 8;
+    seq_key.regL = (light.ctrl_addr + port);
     seq_key.regSize = 1;
     kv->key = SeqKeyToLong(seq_key);
     kv->dataSegment.len = len;
@@ -93,7 +93,7 @@ static void GenerateAskData(line_t line, u16 reg, u8 *data)
  *
  * @return
  */
-static u8 IsCtrlChange(u8 addr, u16 ctrl)
+static u8 IsCtrlChange(u8 addr, u8 port, u16 ctrl)
 {
     u8              i           = 0;
     u8              ret         = NO;
@@ -104,7 +104,7 @@ static u8 IsCtrlChange(u8 addr, u16 ctrl)
         if(addr == sendMoni[i].addr)
         {
             //控制内容发生变化
-            if(ctrl != sendMoni[i].ctrl)
+            if(ctrl != sendMoni[i].ctrl[port])
             {
                 ret = YES;
                 break;
@@ -154,7 +154,7 @@ static void SignLightRecvFlag(u8 addr)
     }
 }
 
-static void AddLastCtrl(u8 addr, u16 ctrl)
+static void AddLastCtrl(u8 addr, u8 port, u16 ctrl)
 {
     u8              i           = 0;
 
@@ -162,7 +162,7 @@ static void AddLastCtrl(u8 addr, u16 ctrl)
     {
         if(addr == sendMoni[i].addr)
         {
-            sendMoni[i].ctrl = ctrl;
+            sendMoni[i].ctrl[port] = ctrl;
             break;
         }
     }
@@ -174,14 +174,14 @@ static void AddLastCtrl(u8 addr, u16 ctrl)
             if(0x00 == sendMoni[i].addr)
             {
                 sendMoni[i].addr = addr;
-                sendMoni[i].ctrl = ctrl;
+                sendMoni[i].ctrl[port] = ctrl;
                 break;
             }
         }
     }
 }
 
-static u8 IsNeedSendCtrToConnect(u8 addr, u16 *ctrl)
+static u8 IsNeedSendCtrToConnect(u8 addr, u8 port, u16 *ctrl)
 {
     u8 ret = NO;
 
@@ -204,7 +204,7 @@ static u8 IsNeedSendCtrToConnect(u8 addr, u16 *ctrl)
             if(getTimerRun() > (sendMoni[i].sendTime + timeOut))
             {
                 ret = YES;
-                *ctrl = sendMoni[i].ctrl;
+                *ctrl = sendMoni[i].ctrl[port];
             }
         }
     }
@@ -223,7 +223,7 @@ static void Optimization(type_monitor_t *monitor)
         {
             if(RT_NULL == GetLineByAddr(monitor, sendMoni[i].addr))
             {
-                rt_memset(&sendMoni[i], 0, sizeof(uart_send_monitor));
+                rt_memset(&sendMoni[i], 0, sizeof(uart_send_line));
             }
         }
     }
@@ -247,7 +247,7 @@ static void Optimization(type_monitor_t *monitor)
                 {
                     sendMoni[j].addr = monitor->line[i].addr;
                     sendMoni[j].sendTime = 0;
-                    sendMoni[j].ctrl = 0;
+                    rt_memset( sendMoni[j].ctrl, 0, LINE_PORT_MAX);
 
                     break;
                 }
@@ -349,7 +349,7 @@ static void ConfigureUart2(rt_device_t *dev)
  *        reg_data  寄存器实际值
  *        reg_size  控制的寄存器值的数量
  */
-static void LineCtrl(type_monitor_t *monitor, u8 no, u8 state, u8 value)
+static void LineCtrl(line_t *line, u8 port, u8 state, u8 value)
 {
     u8          data[8];
     KV          keyValue;
@@ -360,23 +360,18 @@ static void LineCtrl(type_monitor_t *monitor, u8 no, u8 state, u8 value)
         return;
     }
 
-    if(no >= LINE_MAX)
-    {
-        return;
-    }
-
     //3.加入到发送列表
     u16 ctrl = 0x0000;
-    GenerateVuleByCtrl(monitor->line[no], state, value, &ctrl);
+    GenerateVuleByCtrl(line, port, state, value, &ctrl);
 
-    GenerateSendData(monitor->line[no], ctrl, data);
+    GenerateSendData(line, port, ctrl, data);
 
-    if(YES == IsCtrlChange(monitor->line[no].addr, ctrl))
+    if(YES == IsCtrlChange(line->addr, port, ctrl))
     {
         //4.添加到taskList 之后会在统一接口中实现数据的发送
-        seq_key.addr = monitor->line[no].addr;
-        seq_key.regH = monitor->line[no].ctrl_addr >> 8;
-        seq_key.regL = monitor->line[no].ctrl_addr;
+        seq_key.addr = line->addr;
+        seq_key.regH = (line->ctrl_addr + port) >> 8;
+        seq_key.regL = (line->ctrl_addr + port);
         seq_key.regSize = 1;
         keyValue.key = SeqKeyToLong(seq_key);
         keyValue.dataSegment.len = 8;
@@ -432,11 +427,11 @@ static void KeepConnect(type_monitor_t *monitor)
     u8          data[8];
     static u8   i           = 0;
 
-    if(YES == IsNeedSendCtrToConnect(monitor->line[i].addr, &lastCtrl))
+    if(YES == IsNeedSendCtrToConnect(monitor->line[i].addr, 0, &lastCtrl))
     {
         //1.如果是在线 则发送前一次的数据保持连续
-        GenerateSendData(monitor->line[i], lastCtrl, data);
-        if(RT_EOK == GenerateKVData(&keyValue, monitor->line[i], data, 8))
+        GenerateSendData(&monitor->line[i], 0, lastCtrl, data);
+        if(RT_EOK == GenerateKVData(&keyValue, monitor->line[i], 0, data, 8))
         {
             lightObject.taskList.AddToList(keyValue, NO);
 
@@ -500,6 +495,7 @@ static void RecvCmd(u8* data, u8 len)
 static void SendCmd(void)
 {
     Node        *first;
+    line_t      *line   = RT_NULL;
 
     first = lightObject.taskList.list.next;
 
@@ -515,14 +511,16 @@ static void SendCmd(void)
                     first->keyData.dataSegment.len);
 
     //4.标记已经发送
-    if(GetLineByAddr(GetMonitor(), LongToSeqKey(first->keyData.key).addr))
+    line = GetLineByAddr(GetMonitor(), LongToSeqKey(first->keyData.key).addr);
+    if(line)
     {
         //添加到记录控制内容数组
         if(WRITE_SINGLE == first->keyData.dataSegment.data[1])
         {
             u16 value = (first->keyData.dataSegment.data[4] << 8) | first->keyData.dataSegment.data[5];
+            u16 stoa_addr = (first->keyData.dataSegment.data[2] << 8) | first->keyData.dataSegment.data[3];
 
-            AddLastCtrl(LongToSeqKey(first->keyData.key).addr, value);
+            AddLastCtrl(LongToSeqKey(first->keyData.key).addr, stoa_addr - line->ctrl_addr, value);
             SignLightSendFlag(LongToSeqKey(first->keyData.key).addr);
         }
     }
@@ -651,9 +649,14 @@ static void RecvListHandle(void)
                     //判断是否是开关寄存器
                     if(reg == line->ctrl_addr)
                     {
-                        line->d_state = tail->keyData.dataSegment.data[4];
-                        line->d_value = tail->keyData.dataSegment.data[5];
+                        line->port[0].ctrl.d_state = tail->keyData.dataSegment.data[4];
+                        line->port[0].ctrl.d_value = tail->keyData.dataSegment.data[5];
                     }
+                }
+                //针对设置4路调光  //Justin debug
+                else if(WRITE_MUTI == rwType)
+                {
+
                 }
             }
         }
@@ -698,7 +701,7 @@ static void RecvListHandle(void)
 void InitLightObject(void)
 {
     //1.初始化记录发送情况
-    rt_memset(sendMoni, 0, sizeof(uart_send_monitor) * LINE_MAX);
+    rt_memset(sendMoni, 0, sizeof(uart_send_line) * LINE_MAX);
 
     //2.初始化相关数据
     lightObject.dev = RT_NULL;

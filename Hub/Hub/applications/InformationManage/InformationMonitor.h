@@ -45,7 +45,8 @@ typedef     struct eth_heart                eth_heart_t;
 #define     SENSOR_MAX                      20
 #define     DEVICE_MAX                      16
 #define     DEVICE_PORT_MAX                 12
-#define     LINE_MAX                        2
+#define     LINE_PORT_MAX                   4
+#define     LINE_MAX                        16
 #define     VALVE_MAX                       16
 #define     TANK_SINGLE_GROUD               2
 #define     TANK_SENSOR_MAX                 4
@@ -208,11 +209,15 @@ struct line{
     char            name[MODULE_NAMESZ];                    //产品名称
     u8              addr;                                   //hub管控的地址
     u16             ctrl_addr;                              //终端控制的寄存器地址
-    u8              d_state;                                //device 的状态位
-    u8              d_value;                                //device 的控制数值
+//    u8              d_state;                                //device 的状态位
+//    u8              d_value;                                //device 的控制数值
+    struct linePort{
+        type_ctrl_t     ctrl;
+        type_manual_t   _manual;
+    }port[LINE_PORT_MAX];
+    u8              storage_size;
     u8              save_state;                             //是否已经存储
     u8              conn_state;
-    type_manual_t   _manual;
 };
 
 typedef struct deviceOld{

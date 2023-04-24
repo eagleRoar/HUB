@@ -541,12 +541,6 @@ rt_err_t ReplyDataToCloud(mqtt_client *client, int *sock, u8 sendCloudFlg)
         {
             str = ReplyGetHumi(cloudCmd.cmd, cloudCmd);
         }
-//        else if(0 == rt_memcmp(CMD_GET_DEVICELIST, cloudCmd.cmd, sizeof(CMD_GET_DEVICELIST)))   //获取设备列表
-//        {
-//            //特殊化处理
-//
-//            str = ReplyGetDeviceList(CMD_GET_DEVICELIST, cloudCmd.msgid);//Justin debug 仅仅测试
-//        }
         else if(0 == rt_memcmp(CMD_GET_L1, cloudCmd.cmd, sizeof(CMD_GET_L1)) ||
                 0 == rt_memcmp(CMD_SET_L1, cloudCmd.cmd, sizeof(CMD_SET_L1)))   //获取/设置灯光1
         {
@@ -1120,15 +1114,17 @@ void analyzeCloudData(char *data, u8 cloudFlg)
             {
                 CmdSetSensorShowType(data, &cloudCmd);
                 setCloudCmd(cmd->valuestring, ON, cloudFlg);
+                GetSysSet()->saveFlag = YES;
             }
             else if(0 == rt_memcmp(CMD_SET_SENSOR_NAME, cmd->valuestring, strlen(CMD_SET_SENSOR_NAME)))
             {
                 CmdSetSensorName(data, &cloudCmd);
                 setCloudCmd(cmd->valuestring, ON, cloudFlg);
             }
-            else if(0 == rt_memset(CMD_DELETE_SENSOR, cmd->valuestring, sizeof(CMD_DELETE_SENSOR)))
+            else if(0 == rt_memcmp(CMD_DELETE_SENSOR, cmd->valuestring, sizeof(CMD_DELETE_SENSOR)))
             {
                 CmdDeleteSensor(data, &cloudCmd);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
             }
         }
         else

@@ -485,6 +485,19 @@ sensor_t *GetSensorByAddr(type_monitor_t *monitor, u8 addr)
     return RT_NULL;
 }
 
+sensor_t *GetMainSensorByAddr(type_monitor_t *monitor, u8 type)
+{
+    for(int i = 0; i < monitor->sensor_size; i++)
+    {
+        if(type == monitor->sensor[i].type && YES == monitor->sensor[i].isMainSensor)
+        {
+            return &(monitor->sensor[i]);
+        }
+    }
+
+    return RT_NULL;
+}
+
 sensor_t *GetSensorByuuid(type_monitor_t *monitor, u32 uuid)
 {
     u8      index       = 0;
@@ -1323,16 +1336,34 @@ rt_err_t SetLineDefault(type_monitor_t *monitor, u32 uuid, u8 type, u8 addr)
         if(LINE1OR2_TYPE == TypeSupported(type))
         {
             rt_memset((u8 *)&line, 0, sizeof(line_t));
-            line.uuid = uuid;
-            line.type = type;
-            line.addr = addr;
-            strncpy(line.name, "line", MODULE_NAMESZ);
-            line.ctrl_addr = 0x0060;
-            line.d_state = 0;
-            line.d_value = 0;
 
-            line._manual.manual = MANUAL_NO_HAND;
-            line._manual.manual_on_time = MANUAL_TIME_DEFAULT;
+            if((LINE_TYPE == type) || (LINE1_TYPE == type) || (LINE2_TYPE == type))
+            {
+                line.uuid = uuid;
+                line.type = type;
+                line.addr = addr;
+                strncpy(line.name, "line", MODULE_NAMESZ);
+                line.ctrl_addr = 0x0060;
+                line.port[0].ctrl.d_state = 0;
+                line.port[0].ctrl.d_value = 0;
+                line.port[0]._manual.manual = MANUAL_NO_HAND;
+                line.port[0]._manual.manual_on_time = MANUAL_TIME_DEFAULT;
+            }
+            else if(LINE_4_TYPE == type)
+            {
+                line.uuid = uuid;
+                line.type = type;
+                line.addr = addr;
+                strncpy(line.name, "line_4", MODULE_NAMESZ);
+                line.ctrl_addr = 0x0100;
+                for(int i = 0; i < 4; i++)
+                {
+                    line.port[i].ctrl.d_state = 0;
+                    line.port[i].ctrl.d_value = 0;
+                    line.port[i]._manual.manual = MANUAL_NO_HAND;
+                    line.port[i]._manual.manual_on_time = MANUAL_TIME_DEFAULT;
+                }
+            }
 
             //插入到设备列表中
             InsertLine(monitor, line);

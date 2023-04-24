@@ -383,14 +383,25 @@ static void SaveOldLineByJson(lineOld_t light, u8 no, char *saveFile)
         cJSON_AddStringToObject(cjson, "name", light.name);
         cJSON_AddNumberToObject(cjson, "addr", light.addr);
         cJSON_AddNumberToObject(cjson, "ctrl_addr", light.ctrl_addr);
-        cJSON_AddNumberToObject(cjson, "d_state", light.d_state);
-        cJSON_AddNumberToObject(cjson, "d_value", light.d_value);
         cJSON_AddNumberToObject(cjson, "save_state", light.save_state);
         cJSON_AddNumberToObject(cjson, "conn_state", light.conn_state);
+        cJSON_AddNumberToObject(cjson, "storage_size", 1);
 
-        cJSON_AddNumberToObject(cjson, "manual", light._manual.manual);
-        cJSON_AddNumberToObject(cjson, "manual_on_time", light._manual.manual_on_time);
-        cJSON_AddNumberToObject(cjson, "manual_on_time_save", light._manual.manual_on_time_save);
+        cJSON *portList = cJSON_CreateArray();
+        if(portList)
+        {
+            cJSON *item = cJSON_CreateObject();
+            if(item)
+            {
+                cJSON_AddNumberToObject(item, "d_state", light.d_state);
+                cJSON_AddNumberToObject(item, "d_value", light.d_value);
+                cJSON_AddNumberToObject(item, "manual", light._manual.manual);
+                cJSON_AddNumberToObject(item, "manual_on_time", light._manual.manual_on_time);
+                cJSON_AddNumberToObject(item, "manual_on_time_save", light._manual.manual_on_time_save);
+                cJSON_AddItemToArray(portList, item);
+            }
+            cJSON_AddItemToObject(cjson, "port", portList);
+        }
 
         //3. 存储sensor数据
         str = cJSON_PrintUnformatted(cjson);
@@ -578,7 +589,7 @@ static void SaveOldSysPhCalByJson(sys_setOld_t sys_set,char *saveFile)
     cJSON *phCal = cJSON_CreateArray();
     if(phCal)
     {
-        for(int i = 0; i < SENSOR_MAX; i++)
+        for(int i = 0; i < 20; i++)
         {
             cJSON *item = cJSON_CreateObject();
             if (item) {
@@ -615,7 +626,7 @@ static void SaveOldSysEcCalByJson(sys_setOld_t sys_set,char *saveFile)
     cJSON *ecCal = cJSON_CreateArray();
     if(ecCal)
     {
-        for(int i = 0; i < SENSOR_MAX; i++)
+        for(int i = 0; i < 20; i++)
         {
             cJSON *item = cJSON_CreateObject();
             if (item) {
@@ -1013,7 +1024,7 @@ static void SaveOldTankByJson(tankOld_t tank, u8 no, char *saveFile)
         cJSON *valve = cJSON_CreateArray();
         if(valve)
         {
-            for(u8 i = 0; i < VALVE_MAX; i++)
+            for(u8 i = 0; i < 16; i++)
             {
                 cJSON_AddItemToArray(valve, cJSON_CreateNumber(tank.valve[i]));
             }
@@ -1029,7 +1040,7 @@ static void SaveOldTankByJson(tankOld_t tank, u8 no, char *saveFile)
                 cJSON *item = cJSON_CreateArray();
                 if(item)
                 {
-                    for(u8 j = 0; j < TANK_SENSOR_MAX; j++)
+                    for(u8 j = 0; j < 4; j++)
                     {
                         cJSON_AddItemToArray(item, cJSON_CreateNumber(tank.sensorId[i][j]));
                     }
@@ -1161,7 +1172,7 @@ void OldDataMigration(void)
             }
         }
         //保存配方
-        recipe_size = recipe_size < RECIPE_LIST_MAX ? recipe_size : RECIPE_LIST_MAX;
+        recipe_size = recipe_size < 10 ? recipe_size : 10;
         for(u8 i = 0; i < recipe_size; i++)
         {
             if(RT_EOK == ReadFileData(old_recipe_file, &recipe, FileHeadSpace + 3 + sizeof(recipe_t) * i, sizeof(recipe_t)))
@@ -1187,7 +1198,7 @@ void OldDataMigration(void)
             }
         }
 
-        tank_size = tank_size < TANK_LIST_MAX ? tank_size : TANK_LIST_MAX;
+        tank_size = tank_size < 4 ? tank_size : 4;
         for(u8 i = 0; i < tank_size; i++)
         {
             if(RT_EOK == ReadFileData(old_tank_file, &tank, FileHeadSpace + 3 + sizeof(tank_t) * i, sizeof(tank_t)))

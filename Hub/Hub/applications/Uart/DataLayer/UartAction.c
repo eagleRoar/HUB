@@ -748,7 +748,11 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
            (LINE_MODE_BY_POWER == set->line2Set.brightMode) ||
            (LINE_MODE_AUTO_DIMMING == set->line2Set.brightMode))
         {
-            if((ON == monitor->line[0].d_state) || (ON == monitor->line[1].d_state))//灯开关为开
+            if((ON == monitor->line[0].port[0].ctrl.d_state) ||
+               (ON == monitor->line[0].port[1].ctrl.d_state) ||
+               (ON == monitor->line[0].port[2].ctrl.d_state) ||
+               (ON == monitor->line[0].port[3].ctrl.d_state) ||
+               (ON == monitor->line[1].port[0].ctrl.d_state))//灯开关为开
             {
                 data = getSensorDataByFunc(monitor, F_S_PAR);
                 if(VALUE_NULL != data)
@@ -764,7 +768,11 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
                     }
                 }
             }
-            else if((OFF == monitor->line[0].d_state) && (OFF == monitor->line[1].d_state))
+            else if((OFF == monitor->line[0].port[0].ctrl.d_state) &&
+                    (OFF == monitor->line[0].port[1].ctrl.d_state) &&
+                    (OFF == monitor->line[0].port[2].ctrl.d_state) &&
+                    (OFF == monitor->line[0].port[3].ctrl.d_state) &&
+                    (OFF == monitor->line[1].port[0].ctrl.d_state))
             {
                 data = getSensorDataByFunc(monitor, F_S_PAR);
                 if(VALUE_NULL != data)
@@ -1236,21 +1244,44 @@ void menualHandProgram(type_monitor_t *monitor, type_uart_class deviceUart, type
     for(i = 0; i < monitor->line_size; i++)
     {
         line = &monitor->line[i];
-        if(MANUAL_HAND_OFF == line->_manual.manual)
+        if(MANUAL_HAND_OFF == line->port[0]._manual.manual)
         {
-            lineUart.LineCtrl(monitor, i, 0, 0);
-        }
-        else if(MANUAL_HAND_ON == line->_manual.manual)
-        {
-            if((nowTime >= line->_manual.manual_on_time_save) &&
-               (nowTime <= (line->_manual.manual_on_time + line->_manual.manual_on_time_save)))
+            if(LINE_TYPE == line->type)
             {
-                lineUart.LineCtrl(monitor, i, ON, 100);
+                lineUart.LineCtrl(line, 0, 0, 0);
+            }
+            else if(LINE_4_TYPE == line->type)
+            {
+                for(port = 0; port < line->storage_size; port++)
+                {
+                    lineUart.LineCtrl(line, port, 0, 0);
+                }
+            }
+        }
+        else if(MANUAL_HAND_ON == line->port[0]._manual.manual)
+        {
+            if((nowTime >= line->port[0]._manual.manual_on_time_save) &&
+               (nowTime <= (line->port[0]._manual.manual_on_time + line->port[0]._manual.manual_on_time_save)))
+            {
+                if(LINE_TYPE == line->type)
+                {
+                    lineUart.LineCtrl(line, 0, ON, 100);
+                }
+                else if(LINE_4_TYPE == line->type)
+                {
+                    for(port = 0; port < line->storage_size; port++)
+                    {
+                        lineUart.LineCtrl(line, port, ON, 100);
+                    }
+                }
             }
             else
             {
-                line->_manual.manual = MANUAL_NO_HAND;
-                lineUart.LineCtrl(monitor, i, 0, 0);
+                line->port[0]._manual.manual = MANUAL_NO_HAND;
+                for(port = 0; port < line->storage_size; port++)
+                {
+                    lineUart.LineCtrl(line, port, 0, 0);
+                }
             }
         }
     }
@@ -1434,7 +1465,29 @@ void co2Program(type_monitor_t *monitor, type_uart_class uart, u16 mPeriod)
 
     GetNowSysSet(RT_NULL, &co2Set, RT_NULL, RT_NULL, RT_NULL, RT_NULL);
 
-    co2Now = getSensorDataByFunc(monitor, F_S_CO2);
+    if(SENSOR_CTRL_AVE == GetSysSet()->sensorMainType)//平均模式
+    {
+        co2Now = getSensorDataByFunc(monitor, F_S_CO2);
+    }
+    else if(SENSOR_CTRL_MAIN == GetSysSet()->sensorMainType)
+    {
+        sensor_t *sensor = GetMainSensorByAddr(monitor, BHS_TYPE);
+        if(sensor)
+        {
+            for(int i = 0; i < sensor->storage_size; i++)
+            {
+                if(F_S_CO2 == sensor->__stora[i].func)
+                {
+                    co2Now = sensor->__stora[i].value;
+                }
+            }
+        }
+        else
+        {
+            co2Now = VALUE_NULL;
+        }
+    }
+
     if(VALUE_NULL != co2Now)
     {
         if(DAY_TIME == GetSysSet()->dayOrNight)
@@ -1544,7 +1597,29 @@ void humiProgram(type_monitor_t *monitor, type_uart_class uart)
 
     GetNowSysSet(&tempSet, RT_NULL, &humiSet, RT_NULL, RT_NULL, RT_NULL);
 
-    humiNow = getSensorDataByFunc(monitor, F_S_HUMI);
+    if(SENSOR_CTRL_AVE == GetSysSet()->sensorMainType)//平均模式
+    {
+        humiNow = getSensorDataByFunc(monitor, F_S_HUMI);
+    }
+    else if(SENSOR_CTRL_MAIN == GetSysSet()->sensorMainType)
+    {
+        sensor_t *sensor = GetMainSensorByAddr(monitor, BHS_TYPE);
+        if(sensor)
+        {
+            for(int i = 0; i < sensor->storage_size; i++)
+            {
+                if(F_S_HUMI == sensor->__stora[i].func)
+                {
+                    humiNow = sensor->__stora[i].value;
+                }
+            }
+        }
+        else
+        {
+            humiNow = VALUE_NULL;
+        }
+    }
+
     if(VALUE_NULL != humiNow)
     {
         if(DAY_TIME == GetSysSet()->dayOrNight)
@@ -1599,7 +1674,29 @@ void tempProgram(type_monitor_t *monitor, type_uart_class uart)
 
     GetNowSysSet(&tempSet, RT_NULL, RT_NULL, RT_NULL, RT_NULL, RT_NULL);
 
-    tempNow = getSensorDataByFunc(monitor, F_S_TEMP);
+    if(SENSOR_CTRL_AVE == GetSysSet()->sensorMainType)//平均模式
+    {
+        tempNow = getSensorDataByFunc(monitor, F_S_TEMP);
+    }
+    else if(SENSOR_CTRL_MAIN == GetSysSet()->sensorMainType)
+    {
+        sensor_t *sensor = GetMainSensorByAddr(monitor, BHS_TYPE);
+        if(sensor)
+        {
+            for(int i = 0; i < sensor->storage_size; i++)
+            {
+                if(F_S_TEMP == sensor->__stora[i].func)
+                {
+                    tempNow = sensor->__stora[i].value;
+                }
+            }
+        }
+        else
+        {
+            tempNow = VALUE_NULL;
+        }
+    }
+
     if(VALUE_NULL != tempNow)
     {
         if(DAY_TIME == GetSysSet()->dayOrNight)
@@ -1922,37 +2019,37 @@ void lineProgram_new(type_monitor_t *monitor, u8 line_no, type_uart_class lineUa
                 {
                     if((line_set.sunriseSunSet + line_set.lightOn) * 60 > now_time)
                     {
-                        if(line_set.byPower > line->d_value)
+                        if(line_set.byPower > line->port[0].ctrl.d_value)
                         {
                             if(now_time > line_set.lightOn * 60)
                             {
                                 temp_stage = (((line_set.sunriseSunSet + line_set.lightOn) * 60 - now_time) *1000 / mPeroid)/
-                                             (line_set.byPower - line->d_value);
+                                             (line_set.byPower - line->port[0].ctrl.d_value);
                             }
                             else if(now_time < line_set.lightOff * 60)
                             {
                                 temp_stage = (((line_set.sunriseSunSet + line_set.lightOn) * 60 - now_time - 24 * 60 * 60) *1000 / mPeroid)/
-                                             (line_set.byPower - line->d_value);
+                                             (line_set.byPower - line->port[0].ctrl.d_value);
                             }
                         }
                     }
                 }
                 else if(LINE_DOWN == sunriseFlg)
                 {
-                    if(line_set.byPower > line->d_value)
+                    if(line_set.byPower > line->port[0].ctrl.d_value)
                     {
                         if(now_time > line_set.lightOn * 60)
                         {
                             if(line_set.lightOff * 60 + 24 * 60 * 60 < now_time + line_set.sunriseSunSet)
                             {
-                                temp_stage = ((line_set.lightOff * 60 + 24 * 60 * 60 - now_time) *1000 / mPeroid)/(line_set.byPower - line->d_value);
+                                temp_stage = ((line_set.lightOff * 60 + 24 * 60 * 60 - now_time) *1000 / mPeroid)/(line_set.byPower - line->port[0].ctrl.d_value);
                             }
                         }
                         else if(now_time < line_set.lightOff * 60)
                         {
                             if(line_set.lightOff * 60 < now_time + line_set.sunriseSunSet)
                             {
-                                temp_stage = ((line_set.lightOff * 60 - now_time) *1000 / mPeroid)/(line_set.byPower - line->d_value);
+                                temp_stage = ((line_set.lightOff * 60 - now_time) *1000 / mPeroid)/(line_set.byPower - line->port[0].ctrl.d_value);
                             }
                         }
                     }
@@ -1974,10 +2071,10 @@ void lineProgram_new(type_monitor_t *monitor, u8 line_no, type_uart_class lineUa
                         //(日升日落 - 当前时间)/(目标值 - 当前值)
                         if(line_set.sunriseSunSet * 60 > temp_time)
                         {
-                            if(line_set.byPower > line->d_value)
+                            if(line_set.byPower > line->port[0].ctrl.d_value)
                             {
                                 temp_stage = ((line_set.sunriseSunSet * 60 - temp_time)*1000/mPeroid)/
-                                        (line_set.byPower - line->d_value);
+                                        (line_set.byPower - line->port[0].ctrl.d_value);
                             }
                         }
                     }
@@ -1986,9 +2083,9 @@ void lineProgram_new(type_monitor_t *monitor, u8 line_no, type_uart_class lineUa
                         //(结束时间 - 当前时间)/(当前值 - 最小值)
                         if(line_set.duration <= temp_time + line_set.sunriseSunSet * 60)//结束时间 - 当前时间 <= 日升日落
                         {
-                            if(line->d_value > LINE_MIN_VALUE)
+                            if(line->port[0].ctrl.d_value > LINE_MIN_VALUE)
                             {
-                                temp_stage = ((line_set.duration - temp_time) * 1000/mPeroid) / (line->d_value - LINE_MIN_VALUE);
+                                temp_stage = ((line_set.duration - temp_time) * 1000/mPeroid) / (line->port[0].ctrl.d_value - LINE_MIN_VALUE);
                             }
                         }
                     }
@@ -2105,7 +2202,7 @@ void lineProgram_new(type_monitor_t *monitor, u8 line_no, type_uart_class lineUa
         value = 0;
     }
 
-    lineUart.LineCtrl(monitor, line_no, state, value);
+    lineUart.LineCtrl(line, 0, state, value);
 }
 
 void timmerProgram(type_monitor_t *monitor, type_uart_class deviceUart)

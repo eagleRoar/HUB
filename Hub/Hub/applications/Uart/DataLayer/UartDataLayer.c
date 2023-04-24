@@ -528,11 +528,13 @@ rt_err_t setLineDefault(line_t *line)
 {
     strncpy(line->name, "line", MODULE_NAMESZ);
     line->ctrl_addr = 0x0060;
-    line->d_state = 0;
-    line->d_value = 0;
-
-    line->_manual.manual = MANUAL_NO_HAND;
-    line->_manual.manual_on_time = MANUAL_TIME_DEFAULT;
+    for(int i = 0; i < LINE_PORT_MAX; i++)
+    {
+        line->port[i].ctrl.d_state = 0;
+        line->port[i].ctrl.d_value = 0;
+        line->port[i]._manual.manual = MANUAL_NO_HAND;
+        line->port[i]._manual.manual_on_time = MANUAL_TIME_DEFAULT;
+    }
 
     return RT_EOK;
 }

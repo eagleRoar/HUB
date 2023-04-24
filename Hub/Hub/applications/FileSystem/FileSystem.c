@@ -314,7 +314,7 @@ static void SaveSensorByJson(sensor_t sensor, u8 no, char *saveFile)
         cJSON_AddNumberToObject(cjson, "reg_state", sensor.reg_state);
         cJSON_AddNumberToObject(cjson, "save_state", sensor.save_state);
         cJSON_AddNumberToObject(cjson, "storage_size", sensor.storage_size);
-
+        cJSON_AddNumberToObject(cjson, "isMainSensor", sensor.isMainSensor);
 
         port = cJSON_CreateArray();
         if(port)
@@ -589,14 +589,28 @@ static void SaveLineByJson(line_t light, u8 no, char *saveFile)
         cJSON_AddStringToObject(cjson, "name", light.name);
         cJSON_AddNumberToObject(cjson, "addr", light.addr);
         cJSON_AddNumberToObject(cjson, "ctrl_addr", light.ctrl_addr);
-        cJSON_AddNumberToObject(cjson, "d_state", light.d_state);
-        cJSON_AddNumberToObject(cjson, "d_value", light.d_value);
         cJSON_AddNumberToObject(cjson, "save_state", light.save_state);
         cJSON_AddNumberToObject(cjson, "conn_state", light.conn_state);
+        cJSON_AddNumberToObject(cjson, "storage_size", light.storage_size);
 
-        cJSON_AddNumberToObject(cjson, "manual", light._manual.manual);
-        cJSON_AddNumberToObject(cjson, "manual_on_time", light._manual.manual_on_time);
-        cJSON_AddNumberToObject(cjson, "manual_on_time_save", light._manual.manual_on_time_save);
+        cJSON *portList = cJSON_CreateArray();
+        if(portList)
+        {
+            for(int i = 0; i < LINE_PORT_MAX; i++)
+            {
+                cJSON *item = cJSON_CreateObject();
+                if(item)
+                {
+                    cJSON_AddNumberToObject(item, "d_state", light.port[i].ctrl.d_state);
+                    cJSON_AddNumberToObject(item, "d_value", light.port[i].ctrl.d_value);
+                    cJSON_AddNumberToObject(item, "manual", light.port[i]._manual.manual);
+                    cJSON_AddNumberToObject(item, "manual_on_time", light.port[i]._manual.manual_on_time);
+                    cJSON_AddNumberToObject(item, "manual_on_time_save", light.port[i]._manual.manual_on_time_save);
+                    cJSON_AddItemToArray(portList, item);
+                }
+            }
+            cJSON_AddItemToObject(cjson, "port", portList);
+        }
 
         //3. 存储sensor数据
         str = cJSON_PrintUnformatted(cjson);
@@ -605,9 +619,9 @@ static void SaveLineByJson(line_t light, u8 no, char *saveFile)
         if(str)
         {
             int size = strlen(str);
-//            LOG_I("file size = %d",size);
+
             sprintf(file, "%s%s%d%s", saveFile, "/line", no, "/line.txt");
-//            LOG_D("file name = %s",file);
+
             RemoveFileDirectory(file);
             if(RT_ERROR == WriteFileData(file, str, 0, size))
             {
@@ -1734,6 +1748,7 @@ static void GetSensorFromFile(sensor_t *sensor, u8 no, char *fromFile)
                     GetValueByU8(cjson, "reg_state", &sensor->reg_state);
                     GetValueByU8(cjson, "save_state", &sensor->save_state);
                     GetValueByU8(cjson, "storage_size", &sensor->storage_size);
+                    GetValueByU8(cjson, "isMainSensor", &sensor->isMainSensor);
 
                     //获取端口
                     cJSON *port = cJSON_GetObjectItem(cjson, "port");
@@ -1798,14 +1813,29 @@ static void GetLineFromFile(line_t *line, u8 no, char *fromFile)
                     GetValueByC16(cjson, "name", line->name, MODULE_NAMESZ);
                     GetValueByU8(cjson, "addr", &line->addr);
                     GetValueByU16(cjson, "ctrl_addr", &line->ctrl_addr);
-                    GetValueByU8(cjson, "d_state", &line->d_state);
-                    GetValueByU8(cjson, "d_value", &line->d_value);
                     GetValueByU8(cjson, "save_state", &line->save_state);
                     GetValueByU8(cjson, "conn_state", &line->conn_state);
+                    GetValueByU8(cjson, "storage_size", &line->storage_size);
 
-                    GetValueByU8(cjson, "manual", &line->_manual.manual);
-                    GetValueByU16(cjson, "manual_on_time", &line->_manual.manual_on_time);
-                    GetValueByU32(cjson, "manual_on_time_save", &line->_manual.manual_on_time_save);
+                    cJSON *portList = cJSON_GetObjectItem(cjson, "port");
+                    if(portList)
+                    {
+                        u8 size = cJSON_GetArraySize(portList);
+                        size = size < LINE_PORT_MAX ? size : LINE_PORT_MAX;
+                        for(int i = 0; i < size; i++)
+                        {
+                            cJSON *item = cJSON_GetArrayItem(portList, i);
+
+                            if(item)
+                            {
+                                GetValueByU8(item, "d_state", &line->port[i].ctrl.d_state);
+                                GetValueByU8(item, "d_value", &line->port[i].ctrl.d_value);
+                                GetValueByU8(item, "manual", &line->port[i]._manual.manual);
+                                GetValueByU16(item, "manual_on_time", &line->port[i]._manual.manual_on_time);
+                                GetValueByU32(item, "manual_on_time_save", &line->port[i]._manual.manual_on_time_save);
+                            }
+                        }
+                    }
 
                     //释放空间
                     cJSON_Delete(cjson);
@@ -2574,8 +2604,11 @@ static void CheckLineNeedSave(type_monitor_t *monitor)
         line.conn_state = CON_SUCCESS;
         line.save_state = 0;
 
-        line.d_state = 0;
-        line.d_value = 0;
+        for(int i = 0; i < LINE_PORT_MAX; i++)
+        {
+            line.port[i].ctrl.d_state = 0;
+            line.port[i].ctrl.d_value = 0;
+        }
 
         crc = usModbusRTU_CRC((u8 *)&line + 2, sizeof(line_t) - 2);
 
@@ -2591,18 +2624,12 @@ static void CheckLineNeedSave(type_monitor_t *monitor)
 
 static void CheckSysSetNeedSave(sys_set_t *set)
 {
-//    u16         crc = 0;
     char        sys_set_dir[]       = "/main/sysSet";
 
-//    crc = usModbusRTU_CRC((u8 *)set + 2, sizeof(sys_set_t) - 2);
-
-//    if(crc != set->crc)
     if(YES == set->saveFlag)
     {
         LOG_I("CheckSysSetNeedSave");
-//        LOG_I("crc = %x, set.crc = %x",crc,set->crc);//Justin
-        //存储
-//        set->crc = crc;
+
         SaveSysSetByJson(*set, sys_set_dir);
 
         set->saveFlag = NO;
@@ -2636,6 +2663,8 @@ void FileSystemEntry(void* parameter)
 {
     static      u8              Timer1sTouch    = OFF;
     static      u16             time1S = 0;
+    static      u8              Timer30sTouch    = OFF;
+    static      u16             time30S = 0;
     static      u8              sensorSize = 0;
     static      u8              deviceSize = 0;
     static      u8              lineSize = 0;
@@ -2648,9 +2677,24 @@ void FileSystemEntry(void* parameter)
     while(1)
     {
         time1S = TimerTask(&time1S, 1000/FILE_SYS_PERIOD, &Timer1sTouch);
+        time30S = TimerTask(&time30S, 30000/FILE_SYS_PERIOD, &Timer30sTouch);
 
+        //1s 任务
+        if(ON == Timer1sTouch)
         {
+            //2.存储系统信息
+            CheckSysSetNeedSave(GetSysSet());//Justin debug 这个函数一直在存储 有问题
+#if(HUB_SELECT == HUB_ENVIRENMENT)
+            //3.存储配方
+            CheckSysRecipeNeedSave(GetSysRecipt());
+#elif(HUB_SELECT == HUB_IRRIGSTION)
+            CheckSysTankNeedSave(GetSysTank());
+#endif
+        }
 
+        //10s 任务
+        if(ON == Timer30sTouch)
+        {
             //存储分配的地址
             if(monitorAddrCrc !=
                     usModbusRTU_CRC(GetMonitor()->allocateStr.address, sizeof(GetMonitor()->allocateStr.address)))
@@ -2675,19 +2719,6 @@ void FileSystemEntry(void* parameter)
             CheckSensorNeedSave(GetMonitor());
 #if(HUB_SELECT == HUB_ENVIRENMENT)
             CheckLineNeedSave(GetMonitor());
-#endif
-        }
-
-        //1s 任务
-        if(ON == Timer1sTouch)
-        {
-            //2.存储系统信息
-            CheckSysSetNeedSave(GetSysSet());//Justin debug 这个函数一直在存储 有问题
-#if(HUB_SELECT == HUB_ENVIRENMENT)
-            //3.存储配方
-            CheckSysRecipeNeedSave(GetSysRecipt());
-#elif(HUB_SELECT == HUB_IRRIGSTION)
-            CheckSysTankNeedSave(GetSysTank());
 #endif
         }
 
