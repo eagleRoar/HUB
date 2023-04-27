@@ -11,6 +11,7 @@
 #include "UartDataLayer.h"
 #include "DeviceUartClass.h"
 #include "Module.h"
+#include "Recipe.h"
 
 u8 sys_warn[WARN_MAX];
 #if(HUB_IRRIGSTION == HUB_SELECT)
@@ -21,6 +22,7 @@ ec_cal_t ec_cal[SENSOR_MAX];
 phcal_data_t phdataTemp[SENSOR_MAX];
 eccal_data_t ecdataTemp[SENSOR_MAX];
 #elif(HUB_ENVIRENMENT == HUB_SELECT)
+#define LINE_OFF        0
 #define LINE_UP         1
 #define LINE_DOWN       2
 #define LINE_STABLE     3//稳定
@@ -1290,7 +1292,7 @@ void menualHandProgram(type_monitor_t *monitor, type_uart_class deviceUart, type
 #if(HUB_ENVIRENMENT == HUB_SELECT)
 //获取当前的参数设置
 void GetNowSysSet(proTempSet_t *tempSet, proCo2Set_t *co2Set, proHumiSet_t *humiSet,
-        proLine_t *line1Set, proLine_t *line2Set, struct recipeInfor *info)
+        proLine_t *line1Set, proLine_4_t *line_4Set, proLine_t *line2Set, struct recipeInfor *info)
 {
     u8              item = 0;
     u8              index = 0;
@@ -1299,6 +1301,7 @@ void GetNowSysSet(proTempSet_t *tempSet, proCo2Set_t *co2Set, proHumiSet_t *humi
     sys_recipe_t    *recipe = GetSysRecipt();
     u8              usedCalFlg = OFF; // 如果为OFF 则使用系统设置 否则
     type_sys_time   time;
+    char firstStartAt[15] = "";//Justin 灯的cycle的开始时间为这个配方开始的时间  未完待续
 
     changeCharToDate(set->stageSet.starts, &time);
     starts = changeDataToTimestamp(time.year, time.month, time.day, time.hour, time.minute, time.second);
@@ -1321,6 +1324,21 @@ void GetNowSysSet(proTempSet_t *tempSet, proCo2Set_t *co2Set, proHumiSet_t *humi
                     {
                         if(recipe->recipe[item].id == set->stageSet._list[index].recipeId)
                         {
+                            struct tm *myTime;
+
+                            if(index)
+                            {
+                                myTime = getTimeStampByDate(&starts);
+                            }
+                            else
+                            {
+                                time_t startT = starts + set->stageSet._list[index - 1].duration_day * 24 * 60 * 60;
+                                myTime = getTimeStampByDate(&startT);
+                            }
+                            sprintf(firstStartAt,"%02d%02d%02d%02d%02d%02d",
+                                    myTime->tm_year + 1900, myTime->tm_mon + 1, myTime->tm_mday,
+                                    myTime->tm_hour, myTime->tm_min, myTime->tm_sec);
+
                             usedCalFlg = ON;
                             break;
                         }
@@ -1411,8 +1429,11 @@ void GetNowSysSet(proTempSet_t *tempSet, proCo2Set_t *co2Set, proHumiSet_t *humi
             line1Set->mode = recipe->recipe[item].line_list[0].mode;
             line1Set->lightOn = recipe->recipe[item].line_list[0].lightOn;
             line1Set->lightOff = recipe->recipe[item].line_list[0].lightOff;
-            line1Set->firstCycleTime = recipe->recipe[item].line_list[0].firstCycleTime;
-            line1Set->firstRuncycleTime = recipe->recipe[item].line_list[0].firstRuncycleTime;
+//            line1Set->firstCycleTime = recipe->recipe[item].line_list[0].firstCycleTime;
+//            line1Set->firstRuncycleTime = recipe->recipe[item].line_list[0].firstRuncycleTime;
+            changeCharToDate(firstStartAt, &time);
+            line1Set->firstCycleTime = time.hour * 60 + time.minute;// 云服务器修改协议，后续逻辑修改较多，在此转化
+            line1Set->firstRuncycleTime = systimeToTimestamp(time.year, time.month, time.day, time.hour, time.minute, 0);
             line1Set->duration = recipe->recipe[item].line_list[0].duration;
             line1Set->pauseTime = recipe->recipe[item].line_list[0].pauseTime;
         }
@@ -1426,8 +1447,11 @@ void GetNowSysSet(proTempSet_t *tempSet, proCo2Set_t *co2Set, proHumiSet_t *humi
             line2Set->mode = recipe->recipe[item].line_list[1].mode;
             line2Set->lightOn = recipe->recipe[item].line_list[1].lightOn;
             line2Set->lightOff = recipe->recipe[item].line_list[1].lightOff;
-            line2Set->firstCycleTime = recipe->recipe[item].line_list[1].firstCycleTime;
-            line2Set->firstRuncycleTime = recipe->recipe[item].line_list[1].firstRuncycleTime;
+//            line2Set->firstCycleTime = recipe->recipe[item].line_list[1].firstCycleTime;
+//            line2Set->firstRuncycleTime = recipe->recipe[item].line_list[1].firstRuncycleTime;
+            changeCharToDate(firstStartAt, &time);
+            line2Set->firstCycleTime = time.hour * 60 + time.minute;// 云服务器修改协议，后续逻辑修改较多，在此转化
+            line2Set->firstRuncycleTime = systimeToTimestamp(time.year, time.month, time.day, time.hour, time.minute, 0);
             line2Set->duration = recipe->recipe[item].line_list[1].duration;
             line2Set->pauseTime = recipe->recipe[item].line_list[1].pauseTime;
         }
@@ -1443,11 +1467,11 @@ void GetNowSysSet(proTempSet_t *tempSet, proCo2Set_t *co2Set, proHumiSet_t *humi
             mon[2] = '\0';
             strncpy(day, &set->stageSet.starts[6], 2);
             day[2] = '\0';
-            time_t time = changeDataToTimestamp(atoi(year), atoi(mon), atoi(day), 0, 0, 0);
-            if(getTimeStamp() > time)
+            time_t time1 = changeDataToTimestamp(atoi(year), atoi(mon), atoi(day), 0, 0, 0);
+            if(getTimeStamp() > time1)
             {
-                info->week = (getTimeStamp() - time) / (24 * 60 * 60) / 7;//天化为星期
-                info->day = (getTimeStamp() - time) / (24 * 60 * 60) % 7;
+                info->week = (getTimeStamp() - time1) / (24 * 60 * 60) / 7;//天化为星期
+                info->day = (getTimeStamp() - time1) / (24 * 60 * 60) % 7;
             }
         }
     }
@@ -1463,7 +1487,7 @@ void co2Program(type_monitor_t *monitor, type_uart_class uart, u16 mPeriod)
     u8              switchFlg   = 0;
     proCo2Set_t     co2Set;
 
-    GetNowSysSet(RT_NULL, &co2Set, RT_NULL, RT_NULL, RT_NULL, RT_NULL);
+    GetNowSysSet(RT_NULL, &co2Set, RT_NULL, RT_NULL, RT_NULL, RT_NULL, RT_NULL);
 
     if(SENSOR_CTRL_AVE == GetSysSet()->sensorMainType)//平均模式
     {
@@ -1595,7 +1619,7 @@ void humiProgram(type_monitor_t *monitor, type_uart_class uart)
     proHumiSet_t    humiSet;
     proTempSet_t    tempSet;
 
-    GetNowSysSet(&tempSet, RT_NULL, &humiSet, RT_NULL, RT_NULL, RT_NULL);
+    GetNowSysSet(&tempSet, RT_NULL, &humiSet, RT_NULL, RT_NULL, RT_NULL, RT_NULL);
 
     if(SENSOR_CTRL_AVE == GetSysSet()->sensorMainType)//平均模式
     {
@@ -1672,7 +1696,7 @@ void tempProgram(type_monitor_t *monitor, type_uart_class uart)
     u16             HeatTarge           = 0;
     proTempSet_t    tempSet;
 
-    GetNowSysSet(&tempSet, RT_NULL, RT_NULL, RT_NULL, RT_NULL, RT_NULL);
+    GetNowSysSet(&tempSet, RT_NULL, RT_NULL, RT_NULL, RT_NULL, RT_NULL, RT_NULL);
 
     if(SENSOR_CTRL_AVE == GetSysSet()->sensorMainType)//平均模式
     {
@@ -1731,13 +1755,13 @@ void tempProgram(type_monitor_t *monitor, type_uart_class uart)
     }
 }
 
-void dimmingLineCtrl(type_monitor_t *monitor, u8 *stage, u16 ppfd)
+void dimmingLineCtrl(u8 *stage, u16 ppfd)
 {
     //stage 范围在10 - 115之间，一档为5 %
     int         par         = 0;
     static u8   STAGE_VALUE = 5;
 
-    par = getSensorDataByFunc(monitor, F_S_PAR);
+    par = getSensorDataByFunc(GetMonitor(), F_S_PAR);
     if(VALUE_NULL != par)
     {
         if(par + 50 <= ppfd)
@@ -1757,7 +1781,344 @@ void dimmingLineCtrl(type_monitor_t *monitor, u8 *stage, u16 ppfd)
     }
 }
 
-void lineProgram_new(type_monitor_t *monitor, u8 line_no, type_uart_class lineUart, u16 mPeroid)
+//统一时间单位为秒
+static u8 GetLineUpState(u16 on, u16 off, u16 now, u8 sunrise)//获取当前上升下降的状态//Justin debug 仅仅测试 未完成
+{
+    //没有跨天的情况
+    if(off > on)
+    {
+        if((now > on) && (now <= on + sunrise))
+        {
+            return LINE_UP;
+        }
+        else if(now > on + sunrise)
+        {
+            //如果距离结束时间不足sunrise
+            if(off > now)
+            {
+                if(off <= now + sunrise)
+                {
+                    return LINE_DOWN;
+                }
+                else
+                {
+                    return LINE_STABLE;
+                }
+            }
+            else
+            {
+                //now > off
+                return LINE_OFF;
+            }
+        }
+        else
+        {
+            //now < on
+            return LINE_OFF;
+        }
+    }
+    //跨天
+    else
+    {
+        if(now >= off && now < on)
+        {
+            return LINE_OFF;
+        }
+        else
+        {
+            //未完待续
+            if(now >= on && now < on + sunrise)
+            {
+                return LINE_UP;
+            }
+            else if(now + sunrise > off)
+            {
+                return LINE_DOWN;
+            }
+            else
+            {
+                return LINE_STABLE;
+            }
+        }
+    }
+}
+
+//返回一个周期需要的时间 单位s
+static void GetLine_4CyclePeriodTime(proLine_4_t *set, time_t *time)
+{
+    *time = 0;
+    for(int i = 0; i < LINE_4_CYCLE_MAX; i++)
+    {
+        *time += set->cycleList[i].duration;
+    }
+    *time += set->pauseTime;
+
+    *time *= 60;
+}
+
+/**
+ *
+ * @param startT    ：开始时间时间戳
+ * @param continueT ：持续时间
+ * @param sunrise   ：日升日落时间
+ * @param nowV      ：当前时间戳
+ * @param TargetV   ：目标值
+ * @param retV 当前灯光需要设置的值
+ * 时间单位 s
+ */
+//Justin 未完待续
+static void GetLine4Value(time_t nowT, time_t startT, time_t continueT, u16 sunrise, u8 lowV, u8 TargetV, u8 *retV)
+{
+    u16 slowUpT = 0;//日升日落需要的时间
+    float value = 0;
+
+    if(continueT < sunrise)//日升日落时间比开始的持续时间还久
+    {
+        slowUpT = continueT;
+    }
+    else
+    {
+        slowUpT = sunrise;
+    }
+
+    if(nowT > startT)
+    {
+        //上升阶段
+        if(nowT < startT + continueT)
+        {
+            //Justin 未完待续 默认从0开始增加
+            if(TargetV > lowV)
+            {
+                value = (TargetV - lowV) / slowUpT;
+                *retV = value * (nowT - startT);
+            }
+            else
+            {
+                *retV = TargetV;
+            }
+        }
+        //下降阶段
+        //nowT - startT >= continueT - sunrise
+        else if(nowT + sunrise >= startT + continueT)
+        {
+            if(TargetV > lowV)
+            {
+                value = (TargetV - lowV) / slowUpT;
+                *retV = value * (continueT - (nowT - startT));
+            }
+        }
+        else
+        {
+            *retV = TargetV;
+        }
+    }
+    else
+    {
+        *retV = lowV;
+    }
+}
+
+//Justin 仅仅为第一路灯使用
+void line_4Program(line_t *line, type_uart_class lineUart)
+{
+    u8              state                   = 0;
+    u8              value[LINE_PORT_MAX]    = {0,0,0,0};
+    time_t          now_time                = 0;    //化当前时间为hour + minute +second 格式
+    proLine_4_t     line_4set;
+    line_4_timer_t  *nowTimerSet            = RT_NULL;
+    type_sys_time   time;
+    u8 lineRecipeNo                         = 0;
+    time_t          startOnTime             = 0;    //开始开启的时间戳
+    time_t          onContineTime           = 0;    //持续开启的时间
+    u8              stage[LINE_PORT_MAX]    = {0,0,0,0};
+    sys_set_t       *sys_set                = GetSysSet();
+
+    //1.获取灯光设置
+    GetNowSysSet(RT_NULL, RT_NULL, RT_NULL, RT_NULL, &line_4set, RT_NULL, RT_NULL);
+
+    //3.判断模式是recycle 还是 timer,是否需要开灯
+    getRealTimeForMat(&time);
+    now_time = time.hour * 60 * 60 + time.minute * 60 + time.second;//精确到秒
+    LOG_I("line_4Program line_4set.mode = %d",line_4set.mode);//Justin  mode的数据是错误的
+    if(LINE_BY_TIMER == line_4set.mode)
+    {
+        //3.1 选中定时器设置
+        for(int i = 0; i < LINE_4_TIMER_MAX; i++)
+        {
+            u16 onTime = line_4set.timerList[i].on;
+            u16 offTime = line_4set.timerList[i].off;
+
+            //判断是否是跨天
+            if(offTime > onTime)
+            {
+                if(now_time >= onTime * 60 &&
+                   now_time < offTime * 60)
+                {
+                    nowTimerSet = &line_4set.timerList[i];
+                    break;
+                }
+            }
+            else
+            {
+                if((now_time >= onTime * 60 && now_time <= 24 * 60 * 60) ||
+                   (now_time < offTime * 60))
+                {
+                    nowTimerSet = &line_4set.timerList[i];
+                    break;
+                }
+            }
+        }
+
+        //3.1.1
+        if(nowTimerSet)
+        {
+           //开
+           state = nowTimerSet->en;
+           lineRecipeNo = nowTimerSet->no;
+           //将开始的时间转化为timestamp
+            time_t time1 = getTimeStamp();
+            struct tm *timeTemp = getTimeStampByDate(&time1);
+
+            startOnTime = systimeToTimestamp(timeTemp->tm_year + 1900, timeTemp->tm_mon + 1, timeTemp->tm_mday,
+                nowTimerSet->no / 60, nowTimerSet->no % 60, time.second);
+            if(nowTimerSet->off > nowTimerSet->on)
+            {
+                onContineTime = (nowTimerSet->off - nowTimerSet->on) * 60;
+            }
+            else
+            {
+                onContineTime = (nowTimerSet->off + 24 * 60 - nowTimerSet->on) * 60;
+            }
+
+            LOG_D("line_4Program 1");//Justin
+        }
+        else
+        {
+            LOG_D("line_4Program 2");//Justin
+           state = OFF;
+        }
+    }
+    else if(LINE_BY_CYCLE == line_4set.mode)
+    {
+        //1.判断当前时间是否是满足进入循环周期的条件,即大于开始时间
+        type_sys_time getTime;
+        changeCharToDate(line_4set.firstStartAt, &getTime);
+        //time_t firstCycleTime = getTime.hour * 60 + getTime.minute;
+        time_t isStartTime = systimeToTimestamp(getTime.year, getTime.month, getTime.day, getTime.hour, getTime.minute, 0);
+
+        if(getTimeStamp() >= isStartTime)
+        {
+            time_t timeStage = getTimeStamp() - isStartTime;    //当前和开始时间相比走了多久
+            time_t periodTime = 0;
+            GetLine_4CyclePeriodTime(&line_4set, &periodTime);  //获取一个周期的时间
+
+            //获取当前的配方号以及开关状态
+            time_t timeAdd = 0;
+            int i = 0;
+            for(i = 0; i < LINE_4_CYCLE_MAX; i++)
+            {
+                if(((timeStage % periodTime) >= timeAdd) &&
+                   ((timeStage % periodTime) < timeAdd + line_4set.cycleList[i].duration))
+                {
+                    state = ON;
+                    lineRecipeNo = line_4set.cycleList[i].no;
+                    time_t time1 = getTimeStamp();
+                    struct tm *timeTemp = getTimeStampByDate(&time1);
+                    startOnTime = systimeToTimestamp(timeTemp->tm_year + 1900, timeTemp->tm_mon + 1, timeTemp->tm_mday,
+                                    timeAdd / (60 * 60), (nowTimerSet->no % 60) / 60, time.second);
+                    onContineTime = line_4set.cycleList[i].duration;
+                    break;
+                }
+                timeAdd += line_4set.cycleList[i].duration;
+            }
+            //如果是不开启的状态
+            if(i == LINE_4_CYCLE_MAX)
+            {
+                state = OFF;
+            }
+        }
+        else
+        {
+            state = OFF;
+        }
+    }
+
+    //4.固定比例 / 恒光模式
+    if(ON == state)
+    {
+        //如果是恒光模式
+        if(LINE_MODE_AUTO_DIMMING == line_4set.brightMode)
+        {
+            dimmingLineCtrl(&stage[0], sys_set->lineRecipeList[lineRecipeNo].output1);
+            dimmingLineCtrl(&stage[1], sys_set->lineRecipeList[lineRecipeNo].output2);
+            dimmingLineCtrl(&stage[2], sys_set->lineRecipeList[lineRecipeNo].output3);
+            dimmingLineCtrl(&stage[3], sys_set->lineRecipeList[lineRecipeNo].output4);
+        }
+        //如果是按照比例
+        else if(LINE_MODE_BY_POWER == line_4set.brightMode)
+        {
+            //日升日落
+            if(0 == line_4set.sunriseSunSet)
+            {
+                state = OFF;
+            }
+            else
+            {
+                GetLine4Value(getTimeStamp(), startOnTime, onContineTime, line_4set.sunriseSunSet * 60,
+                              sys_set->dimmingCurve.onOutput1, sys_set->lineRecipeList[lineRecipeNo].output1, &stage[0]);
+                GetLine4Value(getTimeStamp(), startOnTime, onContineTime, line_4set.sunriseSunSet * 60,
+                              sys_set->dimmingCurve.onOutput2, sys_set->lineRecipeList[lineRecipeNo].output2, &stage[1]);
+                GetLine4Value(getTimeStamp(), startOnTime, onContineTime, line_4set.sunriseSunSet * 60,
+                              sys_set->dimmingCurve.onOutput3, sys_set->lineRecipeList[lineRecipeNo].output3, &stage[2]);
+                GetLine4Value(getTimeStamp(), startOnTime, onContineTime, line_4set.sunriseSunSet * 60,
+                              sys_set->dimmingCurve.onOutput4, sys_set->lineRecipeList[lineRecipeNo].output4, &stage[3]);
+            }
+        }
+
+        //获取温度
+        s16 temperature = 0;
+        for(u8 index = 0; index < GetMonitor()->sensor_size; index++)
+        {
+            for(u8 item = 0; item < GetMonitor()->sensor[index].storage_size; item++)
+            {
+                if(F_S_TEMP == GetMonitor()->sensor[index].__stora[item].func)
+                {
+                    temperature = GetMonitor()->sensor[index].__stora[item].value;
+                }
+            }
+        }
+
+        //过温保护
+        if(temperature >= line_4set.tempOffDimming)
+        {
+            LOG_D("------in dimin off");
+            state = OFF;
+        }
+        else if(temperature >= line_4set.tempStartDimming)
+        {
+            LOG_D("------in dimin");
+            for(int port = 0; port < LINE_PORT_MAX; port++)
+            {
+                value[port] = stage[port] / 2;
+            }
+        }
+    }
+    else
+    {
+        for(int port = 0; port < LINE_PORT_MAX; port++)
+        {
+            value[port] = 0;
+        }
+    }
+
+    for(int port = 0; port < LINE_PORT_MAX; port++)
+    {
+//        lineUart.LineCtrl(line, port, state, value[port]);//Justin debug 仅仅测试
+    }
+    LOG_I("line_4Program state = %d",state);//Justin
+}
+
+void lineProgram(type_monitor_t *monitor, u8 line_no, type_uart_class lineUart, u16 mPeroid)
 {
     u8              state           = 0;
     u8              value           = 0;
@@ -1778,12 +2139,12 @@ void lineProgram_new(type_monitor_t *monitor, u8 line_no, type_uart_class lineUa
     if(0 == line_no)
     {
         line = &monitor->line[0];
-        GetNowSysSet(RT_NULL, RT_NULL, RT_NULL, &line_set, RT_NULL, RT_NULL);
+        GetNowSysSet(RT_NULL, RT_NULL, RT_NULL, &line_set, RT_NULL, RT_NULL, RT_NULL);
     }
     else if(1 == line_no)
     {
         line = &monitor->line[1];
-        GetNowSysSet(RT_NULL, RT_NULL, RT_NULL, RT_NULL, &line_set, RT_NULL);
+        GetNowSysSet(RT_NULL, RT_NULL, RT_NULL, RT_NULL, RT_NULL, &line_set, RT_NULL);
     }
     else
     {
@@ -1946,6 +2307,7 @@ void lineProgram_new(type_monitor_t *monitor, u8 line_no, type_uart_class lineUa
     }
     else if(LINE_BY_CYCLE == line_set.mode)
     {
+
         //1.判断当前时间是否是满足进入循环周期的条件,即大于开始时间
         now_time = time.hour * 60 * 60 + time.minute * 60 + time.second;
         start_time = line_set.firstCycleTime * 60;
@@ -2096,7 +2458,7 @@ void lineProgram_new(type_monitor_t *monitor, u8 line_no, type_uart_class lineUa
         //4.1 恒光模式
         if(LINE_MODE_AUTO_DIMMING == line_set.brightMode)
         {
-            dimmingLineCtrl(monitor, &stage[line_no], line_set.byAutoDimming);
+            dimmingLineCtrl(&stage[line_no], line_set.byAutoDimming);
             value = stage[line_no];
         }
         //4.2 固定比例

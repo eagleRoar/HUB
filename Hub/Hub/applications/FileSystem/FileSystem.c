@@ -1347,6 +1347,193 @@ static void CheckSysTankNeedSave(sys_tank_t *list)
 
 #endif
 
+static void saveSysLineDimmingCurve(dimmingCurve_t *curve)
+{
+    cJSON       *cjson                      = RT_NULL;
+    char        sys_line4Dimming_dir[]      = "/main/sysSet/line4Dimming.txt";
+    char        *str                        = RT_NULL;
+
+    cjson = cJSON_CreateObject();
+    if(cjson)
+    {
+        cJSON_AddNumberToObject(cjson, "onOutput1", curve->onOutput1);
+        cJSON_AddNumberToObject(cjson, "onOutput2", curve->onOutput2);
+        cJSON_AddNumberToObject(cjson, "onOutput3", curve->onOutput3);
+        cJSON_AddNumberToObject(cjson, "onOutput4", curve->onOutput4);
+        cJSON_AddNumberToObject(cjson, "onVoltage1", curve->onVoltage1);
+        cJSON_AddNumberToObject(cjson, "onVoltage2", curve->onVoltage2);
+        cJSON_AddNumberToObject(cjson, "onVoltage3", curve->onVoltage3);
+        cJSON_AddNumberToObject(cjson, "onVoltage4", curve->onVoltage4);
+        cJSON_AddNumberToObject(cjson, "fullVoltage1", curve->fullVoltage1);
+        cJSON_AddNumberToObject(cjson, "fullVoltage2", curve->fullVoltage2);
+        cJSON_AddNumberToObject(cjson, "fullVoltage3", curve->fullVoltage3);
+        cJSON_AddNumberToObject(cjson, "fullVoltage4", curve->fullVoltage4);
+
+        str = cJSON_PrintUnformatted(cjson);
+        //释放空间
+        cJSON_Delete(cjson);
+
+        if(str)
+        {
+            int size = strlen(str);
+
+            RemoveFileDirectory(sys_line4Dimming_dir);
+            if(RT_ERROR == WriteFileData(sys_line4Dimming_dir, str, 0, size))
+            {
+                LOG_E("saveSysLineDimmingCurve, write to %s err",sys_line4Dimming_dir);
+            }
+            else
+            {
+                LOG_I("saveSysLineDimmingCurve write to file ok");
+
+            }
+            //释放空间
+            cJSON_free(str);
+        }
+        else
+        {
+            LOG_E("saveSysLineDimmingCurve reply memory err");
+        }
+    }
+}
+
+static void saveSysLightRecipeByJson(line_4_recipe_t *recipe)
+{
+    cJSON       *cjson                      = RT_NULL;
+    char        sys_line4Recipe_dir[]       = "/main/sysSet/line_4_recipeList.txt";
+    char        *str                        = RT_NULL;
+
+    cjson = cJSON_CreateArray();
+    if(cjson)
+    {
+        for(int i = 0; i < LINE_4_RECIPE_MAX; i++)
+        {
+            cJSON *item = cJSON_CreateObject();
+
+            if(item)
+            {
+                cJSON_AddNumberToObject(item, "no", recipe[i].no);
+                cJSON_AddNumberToObject(item, "output1", recipe[i].output1);
+                cJSON_AddNumberToObject(item, "output2", recipe[i].output2);
+                cJSON_AddNumberToObject(item, "output3", recipe[i].output3);
+                cJSON_AddNumberToObject(item, "output4", recipe[i].output4);
+
+                cJSON_AddItemToArray(cjson, item);
+            }
+        }
+
+        str = cJSON_PrintUnformatted(cjson);
+        //释放空间
+        cJSON_Delete(cjson);
+
+        if(str)
+        {
+            int size = strlen(str);
+
+            RemoveFileDirectory(sys_line4Recipe_dir);
+            if(RT_ERROR == WriteFileData(sys_line4Recipe_dir, str, 0, size))
+            {
+                LOG_E("saveSysLightRecipeByJson, write to %s err",sys_line4Recipe_dir);
+            }
+            else
+            {
+                LOG_I("saveSysLightRecipeByJson write to file ok");
+
+            }
+            //释放空间
+            cJSON_free(str);
+        }
+        else
+        {
+            LOG_E("saveSysLightRecipeByJson reply memory err");
+        }
+    }
+}
+
+static void saveSysLine4ByJson(proLine_4_t* line_4)
+{
+    cJSON       *line               = RT_NULL;
+    char        sys_line4_dir[]      = "/main/sysSet/line_4.txt";
+    char        *str                = RT_NULL;
+
+    line = cJSON_CreateObject();
+    if(line)
+    {
+        cJSON_AddNumberToObject(line, "brightMode", line_4->brightMode);
+        cJSON_AddNumberToObject(line, "byAutoDimming", line_4->byAutoDimming);
+        cJSON_AddNumberToObject(line, "mode", line_4->mode);
+        cJSON_AddStringToObject(line, "firstStartAt", line_4->firstStartAt);
+        cJSON_AddNumberToObject(line, "pauseTime", line_4->pauseTime);
+        cJSON_AddNumberToObject(line, "tempStartDimming", line_4->tempStartDimming);
+        cJSON_AddNumberToObject(line, "tempOffDimming", line_4->tempOffDimming);
+        cJSON_AddNumberToObject(line, "sunriseSunSet", line_4->sunriseSunSet);
+
+        cJSON *timerList = cJSON_CreateArray();
+        if(timerList)
+        {
+            for(int i = 0; i < LINE_4_TIMER_MAX; i++)
+            {
+                cJSON *item = cJSON_CreateObject();
+
+                if(item)
+                {
+                    cJSON_AddNumberToObject(item, "on", line_4->timerList[i].on);
+                    cJSON_AddNumberToObject(item, "off", line_4->timerList[i].off);
+                    cJSON_AddNumberToObject(item, "en", line_4->timerList[i].en);
+                    cJSON_AddNumberToObject(item, "no", line_4->timerList[i].no);
+
+                    cJSON_AddItemToArray(timerList, item);
+                }
+            }
+            cJSON_AddItemToObject(line, "timerList", timerList);
+        }
+
+        cJSON *cycleList = cJSON_CreateArray();
+        if(cycleList)
+        {
+            for(int i = 0; i < LINE_4_CYCLE_MAX; i++)
+            {
+                cJSON *item = cJSON_CreateObject();
+
+                if(item)
+                {
+                    cJSON_AddNumberToObject(item, "duration", line_4->cycleList[i].duration);
+                    cJSON_AddNumberToObject(item, "no", line_4->cycleList[i].no);
+
+                    cJSON_AddItemToArray(cycleList, item);
+                }
+            }
+            cJSON_AddItemToObject(line, "cycleList", cycleList);
+        }
+
+        str = cJSON_PrintUnformatted(line);
+        //释放空间
+        cJSON_Delete(line);
+
+        if(str)
+        {
+            int size = strlen(str);
+
+            RemoveFileDirectory(sys_line4_dir);
+            if(RT_ERROR == WriteFileData(sys_line4_dir, str, 0, size))
+            {
+                LOG_E("saveSysLine4ByJson, write to %s err",sys_line4_dir);
+            }
+            else
+            {
+                LOG_I("saveSysLine4ByJson write to file ok");
+
+            }
+            //释放空间
+            cJSON_free(str);
+        }
+        else
+        {
+            LOG_E("saveSysParaByJson reply memory err");
+        }
+    }
+}
+
 static void saveSysParaByJson(sys_para_t *sysPara)
 {
     cJSON       *cjson              = RT_NULL;
@@ -1399,15 +1586,15 @@ static void SaveSysSetByJson(sys_set_t sys_set,char *saveFile)//Justin 存储这
 {
     cJSON       *cjson              = RT_NULL;
     cJSON       *line               = RT_NULL;
-//    cJSON       *sysPara            = RT_NULL;
     char        file[50]            = "";//存储device类设备
     char        *str                = RT_NULL;
 
     //1.生成json 格式
     cjson = cJSON_CreateObject();
-    LOG_I("SaveSysSetByJson");//Justin
+
     if(cjson)
     {
+        sys_set.crc = usModbusRTU_CRC((u8 *)&sys_set + 2, sizeof(sys_set_t) - 2);
         cJSON_AddNumberToObject(cjson, "crc", sys_set.crc);
         cJSON_AddNumberToObject(cjson, "dayCoolingTarget", sys_set.tempSet.dayCoolingTarget);
         cJSON_AddNumberToObject(cjson, "dayHeatingTarget", sys_set.tempSet.dayHeatingTarget);
@@ -1516,6 +1703,9 @@ static void SaveSysSetByJson(sys_set_t sys_set,char *saveFile)//Justin 存储这
         SaveSysStageList(&sys_set.stageSet);
         SaveSysWarn(&sys_set.sysWarn);
         saveSysParaByJson(&sys_set.sysPara);//Justin 未测试
+        saveSysLine4ByJson(&sys_set.line1_4Set);//Justin 未测试
+        saveSysLightRecipeByJson(sys_set.lineRecipeList);//Justin 未测试
+        saveSysLineDimmingCurve(&sys_set.dimmingCurve);
 #elif(HUB_SELECT == HUB_IRRIGSTION)
 
         SaveSysPhCalByJson(sys_set, saveFile);
@@ -1880,6 +2070,179 @@ static void GetCo2CalFromFile(sys_set_t *set)
                             for(u8 i = 0; i < num; i++)
                             {
                                 set->co2Cal[i] = cJSON_GetArrayItem(cjson, i)->valueint;
+                            }
+                        }
+
+                        cJSON_Delete(cjson);
+                    }
+                }
+            }
+        }
+    }
+}
+
+static void GetSysLine4DimmingFromFile(dimmingCurve_t *curve)
+{
+    char        sys_line4Dimming_dir[]      = "/main/sysSet/line4Dimming.txt";
+    int         file_size                   = 0;
+    char        *str                        = RT_NULL;
+
+    if(RT_EOK == CheckDirectory(sys_line4Dimming_dir))
+    {
+        file_size = GetFileLength(sys_line4Dimming_dir);
+
+        if(file_size)
+        {
+            //1.1申请内存
+            str = rt_malloc(file_size);
+
+            if(str)
+            {
+                //1.2读取文件
+                if(RT_EOK == ReadFileData(sys_line4Dimming_dir, str, 0, file_size))
+                {
+                    //1.3解析数据
+                    cJSON *cjson = cJSON_Parse(str);
+                    rt_free(str);
+
+                    if(cjson)
+                    {
+                        GetValueByU8(cjson, "onOutput1", &curve->onOutput1);
+                        GetValueByU8(cjson, "onOutput2", &curve->onOutput2);
+                        GetValueByU8(cjson, "onOutput3", &curve->onOutput3);
+                        GetValueByU8(cjson, "onOutput4", &curve->onOutput4);
+                        GetValueByU8(cjson, "onVoltage1", &curve->onVoltage1);
+                        GetValueByU8(cjson, "onVoltage2", &curve->onVoltage2);
+                        GetValueByU8(cjson, "onVoltage3", &curve->onVoltage3);
+                        GetValueByU8(cjson, "onVoltage4", &curve->onVoltage4);
+                        GetValueByU8(cjson, "fullVoltage1", &curve->fullVoltage1);
+                        GetValueByU8(cjson, "fullVoltage2", &curve->fullVoltage2);
+                        GetValueByU8(cjson, "fullVoltage3", &curve->fullVoltage3);
+                        GetValueByU8(cjson, "fullVoltage4", &curve->fullVoltage4);
+
+                        cJSON_Delete(cjson);
+                    }
+                }
+            }
+        }
+    }
+}
+
+static void GetSysLightRecipeFromFile(line_4_recipe_t *recipe)
+{
+    char        sys_line4Recipe_dir[]       = "/main/sysSet/line_4_recipeList.txt";
+    int         file_size                   = 0;
+    char        *str                        = RT_NULL;
+
+    if(RT_EOK == CheckDirectory(sys_line4Recipe_dir))
+    {
+        file_size = GetFileLength(sys_line4Recipe_dir);
+
+        if(file_size)
+        {
+            //1.1申请内存
+            str = rt_malloc(file_size);
+
+            if(str)
+            {
+                //1.2读取文件
+                if(RT_EOK == ReadFileData(sys_line4Recipe_dir, str, 0, file_size))
+                {
+                    //1.3解析数据
+                    cJSON *cjson = cJSON_Parse(str);
+                    rt_free(str);
+
+                    if(cjson)
+                    {
+                        u8 size = cJSON_GetArraySize(cjson);
+                        size = size < LINE_4_RECIPE_MAX ? size : LINE_4_RECIPE_MAX;
+                        for(int i = 0; i < size; i++)
+                        {
+                            cJSON *item = cJSON_GetArrayItem(cjson, i);
+                            if(item)
+                            {
+                                GetValueByU8(item, "no", &recipe[i].no);
+                                GetValueByU8(item, "output1", &recipe[i].output1);
+                                GetValueByU8(item, "output2", &recipe[i].output2);
+                                GetValueByU8(item, "output3", &recipe[i].output3);
+                                GetValueByU8(item, "output4", &recipe[i].output4);
+                            }
+                        }
+
+                        cJSON_Delete(cjson);
+                    }
+                }
+            }
+        }
+    }
+}
+
+static void GetSysLine4FromFile(proLine_4_t *line_4)
+{
+    char        sys_line4_dir[]      = "/main/sysSet/line_4.txt";
+    int         file_size            = 0;
+    char        *str                 = RT_NULL;
+
+    if(RT_EOK == CheckDirectory(sys_line4_dir))
+    {
+        file_size = GetFileLength(sys_line4_dir);
+
+        if(file_size)
+        {
+            //1.1申请内存
+            str = rt_malloc(file_size);
+
+            if(str)
+            {
+                //1.2读取文件
+                if(RT_EOK == ReadFileData(sys_line4_dir, str, 0, file_size))
+                {
+                    //1.3解析数据
+                    cJSON *cjson = cJSON_Parse(str);
+                    rt_free(str);
+
+                    if(cjson)
+                    {
+                        GetValueByU8(cjson, "brightMode", &line_4->brightMode);
+                        GetValueByU16(cjson, "byAutoDimming", &line_4->byAutoDimming);
+                        GetValueByU8(cjson, "mode", &line_4->mode);
+                        GetValueByC16(cjson, "firstStartAt", line_4->firstStartAt, 15);
+                        GetValueByU16(cjson, "pauseTime", &line_4->pauseTime);
+                        GetValueByU16(cjson, "tempStartDimming", &line_4->tempStartDimming);
+                        GetValueByU16(cjson, "tempOffDimming", &line_4->tempOffDimming);
+                        GetValueByU8(cjson, "sunriseSunSet", &line_4->sunriseSunSet);
+
+                        cJSON *timerList = cJSON_GetObjectItem(cjson, "timerList");
+                        if(timerList)
+                        {
+                            u8 size = cJSON_GetArraySize(timerList);
+                            size = size < LINE_4_TIMER_MAX ? size : LINE_4_TIMER_MAX;
+                            for(int i = 0; i < size; i++)
+                            {
+                                cJSON *item = cJSON_GetArrayItem(timerList, i);
+                                if(item)
+                                {
+                                    GetValueByU16(item, "on", &line_4->timerList[i].on);
+                                    GetValueByU16(item, "off", &line_4->timerList[i].off);
+                                    GetValueByU8(item, "en", &line_4->timerList[i].en);
+                                    GetValueByU8(item, "no", &line_4->timerList[i].no);
+                                }
+                            }
+                        }
+
+                        cJSON *cycleList = cJSON_GetObjectItem(cjson, "cycleList");
+                        if(cycleList)
+                        {
+                            u8 size = cJSON_GetArraySize(cycleList);
+                            size = size < LINE_4_CYCLE_MAX ? size : LINE_4_CYCLE_MAX;
+                            for(int i = 0; i < size; i++)
+                            {
+                                cJSON *item = cJSON_GetArrayItem(cycleList, i);
+                                if(item)
+                                {
+                                    GetValueByU16(item, "duration", &line_4->cycleList[i].duration);
+                                    GetValueByU8(item, "no", &line_4->cycleList[i].no);
+                                }
                             }
                         }
 
@@ -2326,6 +2689,7 @@ static void GetSysSetFromFile(sys_set_t *set)//Justin 存储这个太大了 可�
                             GetValueByU8(line, "mode", &set->line1Set.mode);
                             GetValueByU16(line, "lightOn", &set->line1Set.lightOn);
                             GetValueByU16(line, "lightOff", &set->line1Set.lightOff);
+                            LOG_I("GetSysSetFromFile lightOn = %d, lightOff = %d",set->line1Set.lightOn,set->line1Set.lightOff);//Justin
                             GetValueByU16(line, "firstCycleTime", &set->line1Set.firstCycleTime);
                             GetValueByInt(line, "duration", &set->line1Set.duration);
                             GetValueByInt(line, "pauseTime", &set->line1Set.pauseTime);
@@ -2387,6 +2751,9 @@ static void GetSysSetFromFile(sys_set_t *set)//Justin 存储这个太大了 可�
     GetSysStageListFromFile(&set->stageSet);
     GetSysWarnFromFile(&set->sysWarn);
     GetSysParaFromFile(&set->sysPara);//Justin 未测试
+    GetSysLine4FromFile(&set->line1_4Set);//Justin 未测试
+    GetSysLightRecipeFromFile(set->lineRecipeList);//Justin 未测试
+    GetSysLine4DimmingFromFile(&set->dimmingCurve);//Justin 未测试
 #elif(HUB_SELECT == HUB_IRRIGSTION)
     GetPhCalFromFile(set);
     GetEcCalFromFile(set);
@@ -2898,6 +3265,8 @@ void FileSystemInit(void)
 
     //4.标记文件系统准备完成
     SetFileSystemState(YES);
+
+    //LOG_E("sys_set lightOn = %d, lightOff = %d",GetSysSet()->line1Set.lightOn,GetSysSet()->line1Set.lightOff);//Justin
 
     //5.文件系统线程
     if(RT_EOK != rt_thread_init(&file_sys_thread,

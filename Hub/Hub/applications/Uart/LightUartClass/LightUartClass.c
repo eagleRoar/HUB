@@ -647,10 +647,10 @@ static void RecvListHandle(void)
                 if(WRITE_SINGLE == rwType)
                 {
                     //判断是否是开关寄存器
-                    if(reg == line->ctrl_addr)
+                    if((reg >= line->ctrl_addr) && (reg < line->ctrl_addr + line->storage_size))
                     {
-                        line->port[0].ctrl.d_state = tail->keyData.dataSegment.data[4];
-                        line->port[0].ctrl.d_value = tail->keyData.dataSegment.data[5];
+                        line->port[reg - line->ctrl_addr].ctrl.d_state = tail->keyData.dataSegment.data[4];
+                        line->port[reg - line->ctrl_addr].ctrl.d_value = tail->keyData.dataSegment.data[5];
                     }
                 }
                 //针对设置4路调光  //Justin debug

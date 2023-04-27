@@ -1884,16 +1884,16 @@ void CmdSetLightRecipe(char *data, line_4_recipe_t *repice, cloudcmd_t *cmd)
     {
         GetValueByU8(temp, "no", &no);
 
-        if((no > 0) && (no + 1 <= LINE_4_RECIPE_MAX))
+        if((no > 0) && (no <= LINE_4_RECIPE_MAX))
         {
             cmd->setLightRecipeNo = no;
             no = no - 1;//因为下标和no 差1
 
             repice[no].no = no + 1;
-            GetValueByU8(temp, "ouput1", &repice[no].ouput1);
-            GetValueByU8(temp, "ouput2", &repice[no].ouput2);
-            GetValueByU8(temp, "ouput3", &repice[no].ouput3);
-            GetValueByU8(temp, "ouput4", &repice[no].ouput4);
+            GetValueByU8(temp, "output1", &repice[no].output1);
+            GetValueByU8(temp, "output2", &repice[no].output2);
+            GetValueByU8(temp, "output3", &repice[no].output3);
+            GetValueByU8(temp, "output4", &repice[no].output4);
         }
 
         GetValueByC16(temp, "msgid", cmd->msgid, KEYVALUE_VALUE_SIZE);
@@ -1916,7 +1916,9 @@ void CmdSetLine(char *data, proLine_t *line, proLine_4_t *line_4, cloudcmd_t *cm
         GetValueByC16(temp, "msgid", cmd->msgid, KEYVALUE_VALUE_SIZE);
         GetValueByU8(temp, "lineType", &lineType);
 
-        if((1 == lineType) || (RT_NULL == line_4))//第二路没有4路调光的功能
+        LOG_E("lineType = %d",lineType);//Justin
+
+        if((1 == lineType) || (RT_NULL == line_4))//第二路没有4路调光的功能//Justin
         {
             GetValueByU8(temp, "lightType", &line->lightsType);
             GetValueByU8(temp, "brightMode", &line->brightMode);
@@ -1936,7 +1938,6 @@ void CmdSetLine(char *data, proLine_t *line, proLine_4_t *line_4, cloudcmd_t *cm
             }
             else if(LINE_BY_CYCLE == line->mode)
             {
-
                 GetValueByC16(temp, "firstStartAt", firstStartAt, 15);
                 firstStartAt[14] = '\0';
                 changeCharToDate(firstStartAt, &time);
@@ -1989,8 +1990,8 @@ void CmdSetLine(char *data, proLine_t *line, proLine_4_t *line_4, cloudcmd_t *cm
                 }
             }
             GetValueByU16(temp, "pauseTime", &line_4->pauseTime);
-            GetValueByU8(temp, "tempStartDimming", &line_4->tempStartDimming);
-            GetValueByU8(temp, "tempOffDimming", &line_4->tempOffDimming);
+            GetValueByU16(temp, "tempStartDimming", &line_4->tempStartDimming);
+            GetValueByU16(temp, "tempOffDimming", &line_4->tempOffDimming);
             GetValueByU8(temp, "sunriseSunSet", &line_4->sunriseSunSet);
         }
         cJSON_Delete(temp);
@@ -2426,13 +2427,13 @@ char *ReplySetLightRecipe(char *cmd, line_4_recipe_t *recipe, cloudcmd_t cloud)
         cJSON_AddStringToObject(json, "msgid", cloud.msgid);
         cJSON_AddNumberToObject(json, "no", cloud.setLightRecipeNo);
         no = cloud.setLightRecipeNo;
-        if((no > 0) && (no + 1 <= LINE_4_RECIPE_MAX))
+        if((no > 0) && (no <= LINE_4_RECIPE_MAX))
         {
             no = no - 1;
-            cJSON_AddNumberToObject(json, "ouput1", recipe[no].ouput1);
-            cJSON_AddNumberToObject(json, "ouput2", recipe[no].ouput2);
-            cJSON_AddNumberToObject(json, "ouput3", recipe[no].ouput3);
-            cJSON_AddNumberToObject(json, "ouput4", recipe[no].ouput4);
+            cJSON_AddNumberToObject(json, "output1", recipe[no].output1);
+            cJSON_AddNumberToObject(json, "output2", recipe[no].output2);
+            cJSON_AddNumberToObject(json, "output3", recipe[no].output3);
+            cJSON_AddNumberToObject(json, "output4", recipe[no].output4);
         }
 
         cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
@@ -2513,10 +2514,10 @@ char *ReplyGetLine(u8 lineNo, char *cmd, char *msgid, proLine_t line, proLine_4_
                     if(item)
                     {
                         cJSON_AddItemToArray(item, cJSON_CreateNumber(recipe[i].no));
-                        cJSON_AddItemToArray(item, cJSON_CreateNumber(recipe[i].ouput1));
-                        cJSON_AddItemToArray(item, cJSON_CreateNumber(recipe[i].ouput2));
-                        cJSON_AddItemToArray(item, cJSON_CreateNumber(recipe[i].ouput3));
-                        cJSON_AddItemToArray(item, cJSON_CreateNumber(recipe[i].ouput4));
+                        cJSON_AddItemToArray(item, cJSON_CreateNumber(recipe[i].output1));
+                        cJSON_AddItemToArray(item, cJSON_CreateNumber(recipe[i].output2));
+                        cJSON_AddItemToArray(item, cJSON_CreateNumber(recipe[i].output3));
+                        cJSON_AddItemToArray(item, cJSON_CreateNumber(recipe[i].output4));
 
                         cJSON_AddItemToArray(recipeList, item);
                     }
@@ -2526,45 +2527,59 @@ char *ReplyGetLine(u8 lineNo, char *cmd, char *msgid, proLine_t line, proLine_4_
             }
 
             cJSON_AddNumberToObject(json, "mode", line_4.mode);
-            cJSON *timeList = cJSON_CreateArray();
-            if(timeList)
+            if(LINE_BY_TIMER == line_4.mode)
             {
-                for(int i = 0; i < LINE_4_TIMER_MAX; i++)
+                cJSON *timeList = cJSON_CreateArray();
+                if(timeList)
                 {
-                    cJSON *item = cJSON_CreateObject();
-                    if(item)
+                    for(int i = 0; i < LINE_4_TIMER_MAX; i++)
                     {
-                        cJSON_AddNumberToObject(item, "on", line_4.timerList[i].on);
-                        cJSON_AddNumberToObject(item, "off", line_4.timerList[i].off);
-                        cJSON_AddNumberToObject(item, "en", line_4.timerList[i].en);
-                        cJSON_AddNumberToObject(item, "no", line_4.timerList[i].no);
+                        if(!((0 == line_4.timerList[i].en) &&
+                           (0 == line_4.timerList[i].no) &&
+                           (0 == line_4.timerList[i].on) &&
+                           (0 == line_4.timerList[i].off)))
+                        {
+                            cJSON *item = cJSON_CreateObject();
+                            if(item)
+                            {
+                                cJSON_AddNumberToObject(item, "on", line_4.timerList[i].on);
+                                cJSON_AddNumberToObject(item, "off", line_4.timerList[i].off);
+                                cJSON_AddNumberToObject(item, "en", line_4.timerList[i].en);
+                                cJSON_AddNumberToObject(item, "no", line_4.timerList[i].no);
 
-                        cJSON_AddItemToArray(timeList, item);
+                                cJSON_AddItemToArray(timeList, item);
+                            }
+                        }
                     }
-                }
 
-                cJSON_AddItemToObject(json, "timerList", timeList);
+                    cJSON_AddItemToObject(json, "timerList", timeList);
+                }
             }
-            cJSON_AddStringToObject(json, "firstStartAt", line_4.firstStartAt);
-            cJSON *cycleList = cJSON_CreateArray();
-            if(cycleList)
+            else if(LINE_BY_CYCLE == line_4.mode)
             {
-                for(int i = 0; i < LINE_4_CYCLE_MAX; i++)
+                cJSON_AddStringToObject(json, "firstStartAt", line_4.firstStartAt);
+                cJSON *cycleList = cJSON_CreateArray();
+                if(cycleList)
                 {
-                    cJSON *item = cJSON_CreateObject();
-
-                    if(item)
+                    for(int i = 0; i < LINE_4_CYCLE_MAX; i++)
                     {
-                        cJSON_AddNumberToObject(item, "duration", line_4.cycleList[i].duration);
-                        cJSON_AddNumberToObject(item, "no", line_4.cycleList[i].no);
-
-                        cJSON_AddItemToArray(cycleList, item);
+                        if(!(0 == line_4.cycleList[i].duration &&
+                             0 == line_4.cycleList[i].no))
+                        {
+                            cJSON *item = cJSON_CreateObject();
+                            if(item)
+                            {
+                                cJSON_AddNumberToObject(item, "duration", line_4.cycleList[i].duration);
+                                cJSON_AddNumberToObject(item, "no", line_4.cycleList[i].no);
+                                cJSON_AddItemToArray(cycleList, item);
+                            }
+                        }
                     }
-                }
 
-                cJSON_AddItemToObject(json, "cycleList", cycleList);
+                    cJSON_AddItemToObject(json, "cycleList", cycleList);
+                }
+                cJSON_AddNumberToObject(json, "pauseTime", line_4.pauseTime);
             }
-            cJSON_AddNumberToObject(json, "pauseTime", line_4.pauseTime);
             cJSON_AddNumberToObject(json, "tempStartDimming", line_4.tempStartDimming);
             cJSON_AddNumberToObject(json, "tempOffDimming", line_4.tempOffDimming);
             cJSON_AddNumberToObject(json, "sunriseSunSet", line_4.sunriseSunSet);
@@ -2798,6 +2813,14 @@ char *ReplyAddRecipe(char *cmd, cloudcmd_t cloud)
         recipe.line_list[0].byPower = POWER_VALUE;
         recipe.line_list[0].byAutoDimming = AUTO_DIMMING;
         recipe.line_list[0].mode = LINE_BY_TIMER;
+        recipe.line_4.brightMode = LINE_MODE_BY_POWER;
+        recipe.line_4.byAutoDimming = AUTO_DIMMING;
+        rt_memset(recipe.line_4.cycleList, 0, sizeof(line_4_cycle_t) * LINE_4_CYCLE_MAX);
+        rt_memset(recipe.line_4.timerList, 0, sizeof(line_4_timer_t) * LINE_4_TIMER_MAX);
+        recipe.line_4.pauseTime = 0;
+        recipe.line_4.tempStartDimming = 350;
+        recipe.line_4.tempOffDimming = 400;
+        recipe.line_4.sunriseSunSet = 0;
         recipe.line_list[1].brightMode = LINE_MODE_BY_POWER;
         recipe.line_list[1].byPower = POWER_VALUE;
         recipe.line_list[1].byAutoDimming = AUTO_DIMMING;
@@ -3999,7 +4022,7 @@ char *ReplyGetHubState(char *cmd, cloudcmd_t cloud)
         list = cJSON_CreateObject();
         if(RT_NULL != list)
         {
-            GetNowSysSet(RT_NULL, RT_NULL, RT_NULL, RT_NULL, RT_NULL, &info);
+            GetNowSysSet(RT_NULL, RT_NULL, RT_NULL, RT_NULL, RT_NULL, RT_NULL, &info);
             if(0 == strcmp(info.name, "--"))
             {
                 cJSON_AddStringToObject(list, "name", "--");
@@ -4173,7 +4196,9 @@ char *ReplySetRecipe(char *cmd, cloudcmd_t cloud)
                     line = cJSON_CreateObject();
                     if(RT_NULL != line)
                     {
-                        if((0 == index && 1 == GetLineType(GetMonitor())) || (1 == index))
+                        u8 lineType = GetLineType(GetMonitor());
+                        cJSON_AddNumberToObject(line, "lineType", lineType);
+                        if((0 == index && 1 == lineType) || (1 == index))
                         {
                             cJSON_AddNumberToObject(line, "brightMode", recipe->line_list[index].brightMode);
                             cJSON_AddNumberToObject(line, "byPower", recipe->line_list[index].byPower);
@@ -4206,7 +4231,7 @@ char *ReplySetRecipe(char *cmd, cloudcmd_t cloud)
                             cJSON_AddNumberToObject(line, "duration", recipe->line_list[index].duration);
                             cJSON_AddNumberToObject(line, "pauseTime", recipe->line_list[index].pauseTime);
                         }
-                        else if(0 == index && 2 == GetLineType(GetMonitor()))
+                        else if(0 == index && 2 == lineType)
                         {
                             cJSON_AddNumberToObject(line, "brightMode", recipe->line_4.brightMode);
                             cJSON_AddNumberToObject(line, "byAutoDimming", recipe->line_4.byAutoDimming);
@@ -5179,8 +5204,9 @@ char *ReplyGetDeviceList_new(char *cmd, char *msgid, u8 deviceType, u8 no)
                     cJSON_AddNumberToObject(item, "online", 1);
                     cJSON_AddNumberToObject(item, "workingStatus", line.port[0].ctrl.d_state);
                 }
-
-                if(1 == GetLineType(GetMonitor()))
+                u8 lineType = GetLineType(GetMonitor());
+                cJSON_AddNumberToObject(item, "lineType", lineType);
+                if(1 == lineType)
                 {
                     if(0 == no)
                     {
@@ -5193,15 +5219,15 @@ char *ReplyGetDeviceList_new(char *cmd, char *msgid, u8 deviceType, u8 no)
 
                     cJSON_AddNumberToObject(item, "lightPower", line.port[0].ctrl.d_value);
                 }
-                else if(2 == GetLineType(GetMonitor()))
+                else if(2 == lineType)
                 {
                     cJSON *out = cJSON_CreateArray();
                     if(out)
                     {
-                        cJSON_AddItemToArray(out, cJSON_CreateNumber(GetNowLine_4_output()->ouput1));
-                        cJSON_AddItemToArray(out, cJSON_CreateNumber(GetNowLine_4_output()->ouput2));
-                        cJSON_AddItemToArray(out, cJSON_CreateNumber(GetNowLine_4_output()->ouput3));
-                        cJSON_AddItemToArray(out, cJSON_CreateNumber(GetNowLine_4_output()->ouput4));
+                        cJSON_AddItemToArray(out, cJSON_CreateNumber(GetNowLine_4_output()->output1));
+                        cJSON_AddItemToArray(out, cJSON_CreateNumber(GetNowLine_4_output()->output2));
+                        cJSON_AddItemToArray(out, cJSON_CreateNumber(GetNowLine_4_output()->output3));
+                        cJSON_AddItemToArray(out, cJSON_CreateNumber(GetNowLine_4_output()->output4));
 
                         cJSON_AddItemToObject(item, "outputRatio", out);
                     }

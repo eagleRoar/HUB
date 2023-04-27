@@ -223,17 +223,17 @@ struct proLine_4{
     char firstStartAt[15]; //第一次循环开始时间，日期到秒 初始默认当天0点
     line_4_cycle_t cycleList[LINE_4_CYCLE_MAX];
     u16 pauseTime; //循环停止时间 s,
-    u8 tempStartDimming; //灯光自动调光温度点 0℃-60.0℃/32℉-140℉
-    u8 tempOffDimming; // 灯光自动关闭温度点 0℃-60.0℃/32℉-140℉
+    u16 tempStartDimming; //灯光自动调光温度点 0℃-60.0℃/32℉-140℉
+    u16 tempOffDimming; // 灯光自动关闭温度点 0℃-60.0℃/32℉-140℉
     u8 sunriseSunSet; //0-30min /0 表示关闭状态
 };
 
 typedef struct Line_4_recipe{
     u8 no;
-    u8 ouput1;
-    u8 ouput2;
-    u8 ouput3;
-    u8 ouput4;
+    u8 output1;
+    u8 output2;
+    u8 output3;
+    u8 output4;
 }line_4_recipe_t;
 
 typedef struct tankWarnOld{

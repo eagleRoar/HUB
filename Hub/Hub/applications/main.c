@@ -203,8 +203,15 @@ int main(void)
                     tempProgram(GetMonitor(), *deviceObj);
                     co2Program(GetMonitor(), *deviceObj, 1000);
                     humiProgram(GetMonitor(), *deviceObj);
-                    lineProgram_new(GetMonitor(), 0, *lineObj, 1000);
-                    lineProgram_new(GetMonitor(), 1, *lineObj, 1000);
+                    if(1 == GetLineType(GetMonitor()))
+                    {
+                        lineProgram(GetMonitor(), 0, *lineObj, 1000);
+                    }
+                    else if(2 == GetLineType(GetMonitor()))
+                    {
+                        line_4Program(&GetMonitor()->line[0], *lineObj);
+                    }
+                    lineProgram(GetMonitor(), 1, *lineObj, 1000);//Justin debug
                     timmerProgram(GetMonitor(), *deviceObj);
                 }
 
@@ -251,7 +258,12 @@ int main(void)
             //报警功能
             warnProgram(GetMonitor(), GetSysSet());             //监听告警信息//Justin debug
 
-            //LOG_I("ir func = %d",GetDeviceByType(GetMonitor(), IR_AIR_TYPE)->port[0].func);//Justin
+//            time_t time1 = getTimeStamp();
+//            struct tm *time = getTimeStampByDate(&time1);
+//            LOG_E("now %d %d %d, nowtimestamp = %d %d",
+//                    time->tm_hour,time->tm_min,time->tm_sec,
+//                    time1,
+//                    systimeToTimestamp(time->tm_year + 1900, time->tm_mon + 1, time->tm_mday, time->tm_hour, time->tm_min, time->tm_sec));
         }
 
         //10s

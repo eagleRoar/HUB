@@ -410,7 +410,7 @@ void CtrlAllDeviceByFunc(type_monitor_t *monitor, u8 func, u8 en, u8 value)
     device_t    *device     = RT_NULL;
     proTempSet_t    tempSet;
 
-    GetNowSysSet(&tempSet, RT_NULL, RT_NULL, RT_NULL, RT_NULL, RT_NULL);
+    GetNowSysSet(&tempSet, RT_NULL, RT_NULL, RT_NULL, RT_NULL, RT_NULL, RT_NULL);
 
     if(DAY_TIME == GetSysSet()->dayOrNight)
     {
@@ -1355,7 +1355,7 @@ rt_err_t SetLineDefault(type_monitor_t *monitor, u32 uuid, u8 type, u8 addr)
                 line.type = type;
                 line.addr = addr;
                 strncpy(line.name, "line_4", MODULE_NAMESZ);
-                line.ctrl_addr = 0x0100;
+                line.ctrl_addr = /*0x0100*/0x0440;//Justin debug仅仅测试
                 for(int i = 0; i < 4; i++)
                 {
                     line.port[i].ctrl.d_state = 0;
@@ -1398,7 +1398,17 @@ u8 IsExistFunc(type_monitor_t *monitor, u8 addr,u8 func)
 
 u8 GetLineType(type_monitor_t *monitor)
 {
-    if(GetLineByAddr(monitor, LINE_4_TYPE))
+    int i = 0;
+
+    for(i = 0; i < monitor->device_size; i++)
+    {
+        if(LINE_4_TYPE == monitor->device[i].type)
+        {
+            break;
+        }
+    }
+
+    if(i == monitor->device_size)
     {
         return 2;
     }

@@ -122,7 +122,7 @@ static void GenerateIrAirCtrlData(u8 state, u16 *res)
     u16         temp        = 0;
 
     proTempSet_t    tempSet;
-    GetNowSysSet(&tempSet, RT_NULL, RT_NULL, RT_NULL, RT_NULL, RT_NULL);
+    GetNowSysSet(&tempSet, RT_NULL, RT_NULL, RT_NULL, RT_NULL, RT_NULL, RT_NULL);
 
     if(ON == state)
     {

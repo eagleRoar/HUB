@@ -339,6 +339,13 @@ void initCloudProtocol(void)
     strcpy(sys_set.sysPara.ntpzone, "+00:00");
 
     rt_memset(&sys_set.line1_4Set, 0, sizeof(proLine_4_t));
+
+    sys_set.line1_4Set.brightMode = LINE_MODE_BY_POWER;
+    sys_set.line1_4Set.byAutoDimming = AUTO_DIMMING;
+    sys_set.line1_4Set.mode = 1;
+    sys_set.line1_4Set.tempStartDimming = 350;
+    sys_set.line1_4Set.tempOffDimming = 400;
+    sys_set.line1_4Set.sunriseSunSet = 10;
     rt_memset(&sys_set.lineRecipeList, 0, sizeof(line_4_recipe_t) * LINE_4_RECIPE_MAX);
     rt_memset(&sys_set.dimmingCurve, 0, sizeof(dimmingCurve_t));
 
