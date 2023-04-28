@@ -1960,6 +1960,7 @@ void CmdSetLine(char *data, proLine_t *line, proLine_4_t *line_4, cloudcmd_t *cm
             GetValueByU8(temp, "brightMode", &line_4->brightMode);
             GetValueByU16(temp, "byAutoDimming", &line_4->byAutoDimming);
             GetValueByU8(temp, "mode", &line_4->mode);
+
             cJSON *timer_list = cJSON_GetObjectItem(temp, "timerList");
             if(timer_list)
             {
@@ -5224,10 +5225,10 @@ char *ReplyGetDeviceList_new(char *cmd, char *msgid, u8 deviceType, u8 no)
                     cJSON *out = cJSON_CreateArray();
                     if(out)
                     {
-                        cJSON_AddItemToArray(out, cJSON_CreateNumber(GetNowLine_4_output()->output1));
-                        cJSON_AddItemToArray(out, cJSON_CreateNumber(GetNowLine_4_output()->output2));
-                        cJSON_AddItemToArray(out, cJSON_CreateNumber(GetNowLine_4_output()->output3));
-                        cJSON_AddItemToArray(out, cJSON_CreateNumber(GetNowLine_4_output()->output4));
+                        cJSON_AddItemToArray(out, cJSON_CreateNumber(line.port[0].ctrl.d_value));
+                        cJSON_AddItemToArray(out, cJSON_CreateNumber(line.port[1].ctrl.d_value));
+                        cJSON_AddItemToArray(out, cJSON_CreateNumber(line.port[2].ctrl.d_value));
+                        cJSON_AddItemToArray(out, cJSON_CreateNumber(line.port[3].ctrl.d_value));
 
                         cJSON_AddItemToObject(item, "outputRatio", out);
                     }

@@ -1383,6 +1383,11 @@ void GetNowSysSet(proTempSet_t *tempSet, proCo2Set_t *co2Set, proHumiSet_t *humi
             rt_memcpy((u8 *)line2Set, (u8 *)&set->line2Set, sizeof(proLine_t));
         }
 
+        if(RT_NULL != line_4Set)
+        {
+            rt_memcpy((u8 *)line_4Set, (u8 *)&set->line1_4Set, sizeof(proLine_4_t));
+        }
+
         if(RT_NULL != info)
         {
             strncpy(info->name, "--", RECIPE_NAMESZ - 1);
@@ -1429,8 +1434,6 @@ void GetNowSysSet(proTempSet_t *tempSet, proCo2Set_t *co2Set, proHumiSet_t *humi
             line1Set->mode = recipe->recipe[item].line_list[0].mode;
             line1Set->lightOn = recipe->recipe[item].line_list[0].lightOn;
             line1Set->lightOff = recipe->recipe[item].line_list[0].lightOff;
-//            line1Set->firstCycleTime = recipe->recipe[item].line_list[0].firstCycleTime;
-//            line1Set->firstRuncycleTime = recipe->recipe[item].line_list[0].firstRuncycleTime;
             changeCharToDate(firstStartAt, &time);
             line1Set->firstCycleTime = time.hour * 60 + time.minute;// 云服务器修改协议，后续逻辑修改较多，在此转化
             line1Set->firstRuncycleTime = systimeToTimestamp(time.year, time.month, time.day, time.hour, time.minute, 0);
@@ -1447,13 +1450,16 @@ void GetNowSysSet(proTempSet_t *tempSet, proCo2Set_t *co2Set, proHumiSet_t *humi
             line2Set->mode = recipe->recipe[item].line_list[1].mode;
             line2Set->lightOn = recipe->recipe[item].line_list[1].lightOn;
             line2Set->lightOff = recipe->recipe[item].line_list[1].lightOff;
-//            line2Set->firstCycleTime = recipe->recipe[item].line_list[1].firstCycleTime;
-//            line2Set->firstRuncycleTime = recipe->recipe[item].line_list[1].firstRuncycleTime;
             changeCharToDate(firstStartAt, &time);
             line2Set->firstCycleTime = time.hour * 60 + time.minute;// 云服务器修改协议，后续逻辑修改较多，在此转化
             line2Set->firstRuncycleTime = systimeToTimestamp(time.year, time.month, time.day, time.hour, time.minute, 0);
             line2Set->duration = recipe->recipe[item].line_list[1].duration;
             line2Set->pauseTime = recipe->recipe[item].line_list[1].pauseTime;
+        }
+
+        if(RT_NULL != line_4Set)
+        {
+            rt_memcpy((u8 *)line_4Set, (u8 *)&recipe->recipe[item].line_4, sizeof(proLine_4_t));
         }
 
         if(RT_NULL != info)
@@ -1884,13 +1890,19 @@ static void GetLine4Value(time_t nowT, time_t startT, time_t continueT, u16 sunr
     if(nowT > startT)
     {
         //上升阶段
-        if(nowT < startT + continueT)
+        if(nowT < startT + slowUpT)
         {
             //Justin 未完待续 默认从0开始增加
             if(TargetV > lowV)
             {
-                value = (TargetV - lowV) / slowUpT;
-                *retV = value * (nowT - startT);
+                value = (float)(TargetV - lowV) / slowUpT;
+                *retV = value * (nowT - startT) + lowV;
+                if(*retV > TargetV)
+                {
+                    *retV = TargetV;
+                }
+                LOG_D("GetLine4Value slowUpT = %d, now - startT = %d, *retV = %d",
+                        slowUpT, nowT - startT, *retV);//Justin
             }
             else
             {
@@ -1903,8 +1915,8 @@ static void GetLine4Value(time_t nowT, time_t startT, time_t continueT, u16 sunr
         {
             if(TargetV > lowV)
             {
-                value = (TargetV - lowV) / slowUpT;
-                *retV = value * (continueT - (nowT - startT));
+                value = (float)(TargetV - lowV) / slowUpT;
+                *retV = value * (continueT - (nowT - startT)) + lowV;
             }
         }
         else
@@ -1922,12 +1934,11 @@ static void GetLine4Value(time_t nowT, time_t startT, time_t continueT, u16 sunr
 void line_4Program(line_t *line, type_uart_class lineUart)
 {
     u8              state                   = 0;
-    u8              value[LINE_PORT_MAX]    = {0,0,0,0};
     time_t          now_time                = 0;    //化当前时间为hour + minute +second 格式
     proLine_4_t     line_4set;
     line_4_timer_t  *nowTimerSet            = RT_NULL;
     type_sys_time   time;
-    u8 lineRecipeNo                         = 0;
+    u8              lineRecipeNo            = 0;
     time_t          startOnTime             = 0;    //开始开启的时间戳
     time_t          onContineTime           = 0;    //持续开启的时间
     u8              stage[LINE_PORT_MAX]    = {0,0,0,0};
@@ -1939,7 +1950,7 @@ void line_4Program(line_t *line, type_uart_class lineUart)
     //3.判断模式是recycle 还是 timer,是否需要开灯
     getRealTimeForMat(&time);
     now_time = time.hour * 60 * 60 + time.minute * 60 + time.second;//精确到秒
-    LOG_I("line_4Program line_4set.mode = %d",line_4set.mode);//Justin  mode的数据是错误的
+
     if(LINE_BY_TIMER == line_4set.mode)
     {
         //3.1 选中定时器设置
@@ -1980,7 +1991,7 @@ void line_4Program(line_t *line, type_uart_class lineUart)
             struct tm *timeTemp = getTimeStampByDate(&time1);
 
             startOnTime = systimeToTimestamp(timeTemp->tm_year + 1900, timeTemp->tm_mon + 1, timeTemp->tm_mday,
-                nowTimerSet->no / 60, nowTimerSet->no % 60, time.second);
+                nowTimerSet->on / 60, nowTimerSet->on % 60, 0);//Justin debug 仅仅测试
             if(nowTimerSet->off > nowTimerSet->on)
             {
                 onContineTime = (nowTimerSet->off - nowTimerSet->on) * 60;
@@ -1989,12 +2000,9 @@ void line_4Program(line_t *line, type_uart_class lineUart)
             {
                 onContineTime = (nowTimerSet->off + 24 * 60 - nowTimerSet->on) * 60;
             }
-
-            LOG_D("line_4Program 1");//Justin
         }
         else
         {
-            LOG_D("line_4Program 2");//Justin
            state = OFF;
         }
     }
@@ -2025,7 +2033,7 @@ void line_4Program(line_t *line, type_uart_class lineUart)
                     time_t time1 = getTimeStamp();
                     struct tm *timeTemp = getTimeStampByDate(&time1);
                     startOnTime = systimeToTimestamp(timeTemp->tm_year + 1900, timeTemp->tm_mon + 1, timeTemp->tm_mday,
-                                    timeAdd / (60 * 60), (nowTimerSet->no % 60) / 60, time.second);
+                                    timeAdd / (60 * 60), (timeAdd % 60) / 60, 0);
                     onContineTime = line_4set.cycleList[i].duration;
                     break;
                 }
@@ -2046,6 +2054,8 @@ void line_4Program(line_t *line, type_uart_class lineUart)
     //4.固定比例 / 恒光模式
     if(ON == state)
     {
+        //lineRecipeNo 指的是配方名称 配方名称比下标多1
+        lineRecipeNo -= 1;
         //如果是恒光模式
         if(LINE_MODE_AUTO_DIMMING == line_4set.brightMode)
         {
@@ -2072,6 +2082,10 @@ void line_4Program(line_t *line, type_uart_class lineUart)
                               sys_set->dimmingCurve.onOutput3, sys_set->lineRecipeList[lineRecipeNo].output3, &stage[2]);
                 GetLine4Value(getTimeStamp(), startOnTime, onContineTime, line_4set.sunriseSunSet * 60,
                               sys_set->dimmingCurve.onOutput4, sys_set->lineRecipeList[lineRecipeNo].output4, &stage[3]);
+//                LOG_D("output = %d %d",
+//                        sys_set->dimmingCurve.onOutput1,
+//                        sys_set->lineRecipeList[lineRecipeNo].output1);//Justin
+//                LOG_D("line_4Program %d %d %d %d",getTimeStamp(), startOnTime, onContineTime, line_4set.sunriseSunSet * 60);
             }
         }
 
@@ -2099,7 +2113,7 @@ void line_4Program(line_t *line, type_uart_class lineUart)
             LOG_D("------in dimin");
             for(int port = 0; port < LINE_PORT_MAX; port++)
             {
-                value[port] = stage[port] / 2;
+                stage[port] /= 2;
             }
         }
     }
@@ -2107,15 +2121,14 @@ void line_4Program(line_t *line, type_uart_class lineUart)
     {
         for(int port = 0; port < LINE_PORT_MAX; port++)
         {
-            value[port] = 0;
+            stage[port] = 0;
         }
     }
 
-    for(int port = 0; port < LINE_PORT_MAX; port++)
-    {
-//        lineUart.LineCtrl(line, port, state, value[port]);//Justin debug 仅仅测试
-    }
-    LOG_I("line_4Program state = %d",state);//Justin
+    lineUart.Line4Ctrl(line, stage);//Justin debug 仅仅测试
+//    LOG_I("line_4Program state = %d, recipe no = %d,value = %d %d %d %d",
+//            state, lineRecipeNo, stage[0], stage[1], stage[2], stage[3]);//Justin
+
 }
 
 void lineProgram(type_monitor_t *monitor, u8 line_no, type_uart_class lineUart, u16 mPeroid)

@@ -258,12 +258,11 @@ int main(void)
             //报警功能
             warnProgram(GetMonitor(), GetSysSet());             //监听告警信息//Justin debug
 
-//            time_t time1 = getTimeStamp();
-//            struct tm *time = getTimeStampByDate(&time1);
-//            LOG_E("now %d %d %d, nowtimestamp = %d %d",
-//                    time->tm_hour,time->tm_min,time->tm_sec,
-//                    time1,
-//                    systimeToTimestamp(time->tm_year + 1900, time->tm_mon + 1, time->tm_mday, time->tm_hour, time->tm_min, time->tm_sec));
+//            char testc[5];
+//            sprintf(testc,"%3d %3d",98,100);
+//            LOG_I("%s",testc);
+//            sprintf(testc,"%3d %3d",4,93);
+//            LOG_I("%s",testc);
         }
 
         //10s

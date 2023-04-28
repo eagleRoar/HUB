@@ -504,7 +504,7 @@ typedef     void (*FAC_FUNC)(type_monitor_t *);
 #define     LINE_TYPE       0x22        //灯光类
 #define     LINE1_TYPE      0x23        //灯光类//Justin debug 该类型为默认地址 需要和黄工确认
 #define     LINE2_TYPE      0x24        //灯光类//Justin debug 该类型为默认地址 需要和黄工确认
-#define     LINE_4_TYPE     0x81//0x25        //灯光类 Justin debug 仅仅测试
+#define     LINE_4_TYPE     0x25        //灯光类
 #define     BHS_TYPE        0x03
 #define     PHEC_TYPE       0x05
 #define     PAR_TYPE        0x08
@@ -525,7 +525,7 @@ typedef     void (*FAC_FUNC)(type_monitor_t *);
 #define     HVAC_6_TYPE     0x61
 #define     AC_4_TYPE       0x50
 #define     IO_12_TYPE      0x80
-#define     IO_4_TYPE       0x25//0x81 Justin debug 仅仅测试
+#define     IO_4_TYPE       0x81
 #define     IR_AIR_TYPE     0xB4        //红外空调
 
 /**************************************从机 End*******************************************/

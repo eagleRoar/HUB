@@ -1355,7 +1355,7 @@ rt_err_t SetLineDefault(type_monitor_t *monitor, u32 uuid, u8 type, u8 addr)
                 line.type = type;
                 line.addr = addr;
                 strncpy(line.name, "line_4", MODULE_NAMESZ);
-                line.ctrl_addr = /*0x0100*/0x0440;//Justin debug仅仅测试
+                line.ctrl_addr = 0x0100;
                 for(int i = 0; i < 4; i++)
                 {
                     line.port[i].ctrl.d_state = 0;
