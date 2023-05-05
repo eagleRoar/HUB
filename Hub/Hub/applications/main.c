@@ -178,14 +178,30 @@ int main(void)
             {
                 getRealTimeForMat(&time);
 
-                if(((time.hour * 60 + time.minute) > GetSysSet()->sysPara.dayTime) &&
-                   ((time.hour * 60 + time.minute) <= GetSysSet()->sysPara.nightTime))
+                if(GetSysSet()->sysPara.dayTime < GetSysSet()->sysPara.nightTime)
                 {
-                    GetSysSet()->dayOrNight = DAY_TIME;
+                    if(((time.hour * 60 + time.minute) >= GetSysSet()->sysPara.dayTime) &&
+                       ((time.hour * 60 + time.minute) < GetSysSet()->sysPara.nightTime))
+                    {
+                        GetSysSet()->dayOrNight = DAY_TIME;
+                    }
+                    else
+                    {
+                        GetSysSet()->dayOrNight = NIGHT_TIME;
+                    }
+
                 }
                 else
                 {
-                    GetSysSet()->dayOrNight = NIGHT_TIME;
+                    if(((time.hour * 60 + time.minute) >= GetSysSet()->sysPara.nightTime) &&
+                       ((time.hour * 60 + time.minute) < GetSysSet()->sysPara.dayTime))
+                    {
+                        GetSysSet()->dayOrNight = NIGHT_TIME;
+                    }
+                    else
+                    {
+                        GetSysSet()->dayOrNight = DAY_TIME;
+                    }
                 }
             }
             else if(DAY_BY_PHOTOCELL == GetSysSet()->sysPara.dayNightMode)//按灯光分辨
