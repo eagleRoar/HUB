@@ -728,6 +728,11 @@ rt_err_t ReplyDataToCloud(mqtt_client *client, int *sock, u8 sendCloudFlg)
         {
             str = ReplySetSensorName(CMD_SET_SENSOR_NAME, cloudCmd.setSensorNameId, cloudCmd.msgid);
         }
+        else if(0 == rt_memcmp(CMD_SET_TANK_PV, cloudCmd.cmd, sizeof(CMD_SET_TANK_PV)) ||
+                0 == rt_memcmp(CMD_DEL_TANK_PV, cloudCmd.cmd, sizeof(CMD_DEL_TANK_PV))) //设置泵子阀
+        {
+            str = ReplySetTankPV(&cloudCmd);
+        }
         else
         {
         }
@@ -740,8 +745,9 @@ rt_err_t ReplyDataToCloud(mqtt_client *client, int *sock, u8 sendCloudFlg)
                 GetSnName(name, 12);
                 strcpy(name + 11, "/reply");
                 name[19] = '\0';
+                LOG_D("--------ReplyDataToCloud    1, strlen = %d",strlen(str));//Justin debug
                 paho_mqtt_publish(client, QOS1, name, str, strlen(str));
-
+                LOG_D("--------ReplyDataToCloud    2");//Justin debug
                 ret = RT_EOK;
             }
             else
@@ -1099,7 +1105,6 @@ void analyzeCloudData(char *data, u8 cloudFlg)
             {
                 CmdGetDimmingCurve(data, &cloudCmd);
                 setCloudCmd(cmd->valuestring, ON, cloudFlg);
-                GetSysSet()->saveFlag = YES;
             }
             else if(0 == rt_memcmp(CMD_SET_DIMMING_CURVE, cmd->valuestring, strlen(CMD_SET_DIMMING_CURVE)))
             {
@@ -1132,6 +1137,18 @@ void analyzeCloudData(char *data, u8 cloudFlg)
             {
                 CmdDeleteSensor(data, &cloudCmd);
                 setCloudCmd(cmd->valuestring, ON, cloudFlg);
+            }
+            else if(0 == rt_memcmp(CMD_SET_TANK_PV, cmd->valuestring, sizeof(CMD_SET_TANK_PV)))
+            {
+                CmdSetTankPV(data, &cloudCmd);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
+                GetSysTank()->saveFlag = YES;
+            }
+            else if(0 == rt_memcmp(CMD_DEL_TANK_PV, cmd->valuestring, sizeof(CMD_DEL_TANK_PV)))
+            {
+                CmdDelTankPV(data, &cloudCmd);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
+                GetSysTank()->saveFlag = YES;
             }
         }
         else

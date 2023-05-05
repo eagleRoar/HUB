@@ -357,8 +357,8 @@ void CmdFindLocation(char *data, cloudcmd_t *cmd)
 {
     cJSON       *temp       = RT_NULL;
     u8          addr        = 0;
-    device_t    *device     = RT_NULL;
-    line_t      *line       = RT_NULL;
+    device_t    device;
+    line_t      line;
 
     temp = cJSON_Parse(data);
     if(RT_NULL != temp)
@@ -376,16 +376,16 @@ void CmdFindLocation(char *data, cloudcmd_t *cmd)
             addr = cmd->get_id;
         }
 
-        device = GetDeviceByAddr(GetMonitor(), addr);
-        line = GetLineByAddr(GetMonitor(), addr);
-        if(device)
-        {
-            GetDeviceObject()->AskDevice(*device, UART_FINDLOCATION_REG);
-        }
-        else if(line)
-        {
-            GetLightObject()->AskLine(*line, UART_FINDLOCATION_REG);
-        }
+//        if(GetDeviceByAddr(GetMonitor(), addr))//Justin debug 仅仅测试
+//        {
+//            device = *GetDeviceByAddr(GetMonitor(), addr);
+//            GetDeviceObject()->AskDevice(device, UART_FINDLOCATION_REG);
+//        }
+//        else if(GetLineByAddr(GetMonitor(), addr))
+//        {
+//            line = *GetLineByAddr(GetMonitor(), addr);
+//            GetLightObject()->AskLine(line, UART_FINDLOCATION_REG);
+//        }
 
         cJSON_Delete(temp);
     }
@@ -829,6 +829,7 @@ void CmdSetDeviceType(char *data, cloudcmd_t *cmd)
     u8      port        = 0;
 
     temp = cJSON_Parse(data);
+
     if(RT_NULL != temp)
     {
         GetValueByC16(temp, "msgid", cmd->msgid, KEYVALUE_VALUE_SIZE);
@@ -836,8 +837,14 @@ void CmdSetDeviceType(char *data, cloudcmd_t *cmd)
         GetValueByU8(temp, "type", &type);
         cmd->chg_dev_id = id;
 
-        GetDeviceObject()->DeviceChgType(GetMonitor(), id, type);
-
+        if(GetDeviceObject()->DeviceChgType)
+        {
+            GetDeviceObject()->DeviceChgType(GetMonitor(), id, type);
+        }
+        else
+        {
+            LOG_E("DeviceChgType is NULL");//Justin
+        }
         if(id > 0xFF)
         {
             addr = id >> 8;
@@ -879,7 +886,6 @@ void CmdGetRecipe(char *data, cloudcmd_t *cmd)
 
 void CmdSetRecipe(char *data, cloudcmd_t *cmd)
 {
-    u16             tempValue   = 0;
     char            firstStartAt[15] = "";
     type_sys_time   time;
     cJSON           *temp       = RT_NULL;
@@ -1790,9 +1796,7 @@ void CmdSetSensorName(char *data, cloudcmd_t *cmd)
 void CmdDeleteSensor(char *data, cloudcmd_t *cmd)
 {
     cJSON   *json       = RT_NULL;
-    char    name[MODULE_NAMESZ];
     u8      addr        = 0;
-    u8      port        = 0;
     sensor_t *sensor    = RT_NULL;
 
     json = cJSON_Parse(data);
@@ -1815,6 +1819,114 @@ void CmdDeleteSensor(char *data, cloudcmd_t *cmd)
         if(sensor)
         {
             DeleteModule(GetMonitor(), sensor->uuid);
+        }
+
+        cJSON_Delete(json);
+    }
+}
+
+void CmdSetTankPV(char *data, cloudcmd_t *cmd)
+{
+    cJSON   *json       = RT_NULL;
+    u8      addr        = 0;
+    u8      port        = 0;
+    device_t *device    = RT_NULL;
+
+    json = cJSON_Parse(data);
+
+    if(json)
+    {
+        GetValueByC16(json, "msgid", cmd->msgid, KEYVALUE_VALUE_SIZE);
+        GetValueByU16(json, "id", &cmd->deleteSensorId);
+        GetValueByU8(json, "tankNo", &cmd->setTankPvNo);
+        GetValueByU16(json, "id", &cmd->setTankPvId);
+
+        if(cmd->setTankPvId < 0xFF)
+        {
+            addr = cmd->setTankPvId;
+            port = 0;
+        }
+        else
+        {
+            addr = cmd->setTankPvId >> 8;
+            port = cmd->setTankPvId;
+        }
+
+        if(cmd->setTankPvNo > 0 && cmd->setTankPvNo <= TANK_LIST_MAX)
+        {
+            device = GetDeviceByAddr(GetMonitor(), addr);
+            if(device)
+            {
+                if(PUMP_TYPE == device->port[port].type)
+                {
+                    GetSysTank()->tank[cmd->setTankPvNo - 1].pumpId = cmd->setTankPvId;
+                }
+                else if(VALVE_TYPE == device->port[port].type)
+                {
+                    for(int i = 0; i < VALVE_MAX; i++)
+                    {
+                        if(0 == GetSysTank()->tank[cmd->setTankPvNo - 1].valve[i])
+                        {
+                            GetSysTank()->tank[cmd->setTankPvNo - 1].nopump_valve[i] = cmd->setTankPvId;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        cJSON_Delete(json);
+    }
+}
+
+void CmdDelTankPV(char *data, cloudcmd_t *cmd)
+{
+    cJSON   *json       = RT_NULL;
+    u8      addr        = 0;
+    u8      port        = 0;
+    device_t *device    = RT_NULL;
+
+    json = cJSON_Parse(data);
+
+    if(json)
+    {
+        GetValueByC16(json, "msgid", cmd->msgid, KEYVALUE_VALUE_SIZE);
+        GetValueByU16(json, "id", &cmd->deleteSensorId);
+        GetValueByU8(json, "tankNo", &cmd->delTankPvNo);
+        GetValueByU16(json, "id", &cmd->delTankPvId);
+
+        if(cmd->delTankPvId < 0xFF)
+        {
+            addr = cmd->delTankPvId;
+            port = 0;
+        }
+        else
+        {
+            addr = cmd->delTankPvId >> 8;
+            port = cmd->delTankPvId;
+        }
+
+        if(cmd->delTankPvNo > 0 && cmd->delTankPvNo <= TANK_LIST_MAX)
+        {
+            device = GetDeviceByAddr(GetMonitor(), addr);
+            if(device)
+            {
+                if(PUMP_TYPE == device->port[port].type)
+                {
+                    GetSysTank()->tank[cmd->delTankPvNo - 1].pumpId = 0;
+                }
+                else if(VALVE_TYPE == device->port[port].type)
+                {
+                    for(int i = 0; i < VALVE_MAX; i++)
+                    {
+                        if(cmd->delTankPvId == GetSysTank()->tank[cmd->delTankPvNo - 1].valve[i])
+                        {
+                            GetSysTank()->tank[cmd->delTankPvNo - 1].nopump_valve[i] = 0;
+                            break;
+                        }
+                    }
+                }
+            }
         }
 
         cJSON_Delete(json);
@@ -2886,25 +2998,38 @@ char *ReplySetTank(char *cmd, cloudcmd_t cloud)
     return str;
 }
 
+void str_replace(char *original, char *pattern, char *replacement)
+{
+    char buffer[2048];
+    char *insert_point;
+    size_t pattern_len = strlen(pattern);
+    size_t replacement_len = strlen(replacement);
+
+    while ((insert_point = strstr(original, pattern))) {
+        *insert_point = '\0';
+        insert_point += pattern_len;
+        sprintf(buffer, "%s%s%s", original, replacement, insert_point);
+        strcpy(original, buffer);
+    }
+}
+
 char *ReplyGetTank(char *cmd, cloudcmd_t cloud)
 {
     char            *str        = RT_NULL;
-    char            name[MODULE_NAMESZ*2 + 2] = " ";
+    char            *str1       = RT_NULL;
+    char            *LastStr     = RT_NULL;
     cJSON           *json       = cJSON_CreateObject();
-    cJSON           *pump       = RT_NULL;
     cJSON           *list       = RT_NULL;
     cJSON           *sen_item   = RT_NULL;
     tank_t          *tank       = RT_NULL;
-    u8              addr        = 0;
-    u8              port        = 0;
+    device_t        *device     = RT_NULL;
 
     if(RT_NULL != json)
     {
         cJSON_AddStringToObject(json, "cmd", cmd);
         cJSON_AddStringToObject(json, "msgid", cloud.msgid);
 
-//        tank = GetTankByNo(GetSysTank(), cloud.tank_no);
-        LOG_D("-----------------------------cloud.tank_no = %d",cloud.tank_no);
+//        LOG_D("-----------------------------cloud.tank_no = %d",cloud.tank_no);
         if((cloud.tank_no > 0) && (cloud.tank_no <= TANK_LIST_MAX))
         {
             tank = &GetSysTank()->tank[cloud.tank_no - 1];
@@ -2925,52 +3050,9 @@ char *ReplyGetTank(char *cmd, cloudcmd_t cloud)
             cJSON_AddNumberToObject(json, "ecMonitorOnly", tank->ecMonitorOnly);
             cJSON_AddNumberToObject(json, "wlMonitorOnly", tank->wlMonitorOnly);
 
-            pump = cJSON_CreateObject();
-            if(RT_NULL != pump)
-            {
-                cJSON_AddNumberToObject(pump, "id", tank->pumpId);
-                if(tank->pumpId > 0xff)
-                {
-                    addr = tank->pumpId >> 8;
-                    port = tank->pumpId;
-                }
-                else
-                {
-                    addr = tank->pumpId;
-                    port = 0;
-                }
+            cJSON_AddItemToObject(json, "pumpList", cJSON_CreateString("pumpList_replace"));
+            cJSON_AddItemToObject(json, "valveList", cJSON_CreateString("valveList_replace"));
 
-                if(1 == GetDeviceByAddr(GetMonitor(), addr)->storage_size)
-                {
-                    cJSON_AddStringToObject(pump, "name", GetDeviceByAddr(GetMonitor(), addr)->name);
-                }
-                else
-                {
-                    strcpy(name, GetDeviceByAddr(GetMonitor(), addr)->name);
-                    strcat(name, "_");
-                    strcat(name, GetDeviceByAddr(GetMonitor(), addr)->port[port].name);
-                    name[MODULE_NAMESZ*2 + 1] = '\0';
-                    cJSON_AddStringToObject(pump, "name", name);
-                }
-
-                cJSON_AddNumberToObject(pump, "color", tank->color);
-
-                list = cJSON_CreateArray();
-                if(RT_NULL != list)
-                {
-                    for(u8 valve = 0; valve < VALVE_MAX; valve++)
-                    {
-                        if(0 != tank->valve[valve])
-                        {
-                            cJSON_AddItemToArray(list, cJSON_CreateNumber(tank->valve[valve]));
-                        }
-                    }
-
-                    cJSON_AddItemToObject(pump, "valve", list);
-                }
-
-                cJSON_AddItemToObject(json, "pump", pump);
-            }
 
             list = cJSON_CreateArray();
             if(RT_NULL != list)
@@ -3002,45 +3084,6 @@ char *ReplyGetTank(char *cmd, cloudcmd_t cloud)
 
                                 cJSON_AddItemToArray(list, sen_item);
                             }
-//                            else if(F_S_PH == GetSensorByAddr(GetMonitor(), tank->sensorId[0][item])->__stora[stora].func)
-//                            {
-//                                sen_item = cJSON_CreateObject();
-//
-//                                cJSON_AddNumberToObject(sen_item, "id", tank->sensorId[0][item]);
-//                                cJSON_AddNumberToObject(sen_item, "mid", tank->sensorId[0][item]);
-//                                cJSON_AddStringToObject(sen_item, "name","pH");
-//                                cJSON_AddNumberToObject(sen_item, "value",
-//                                        getSensorDataByAddr(GetMonitor(), tank->sensorId[0][item], stora));
-//                                cJSON_AddStringToObject(sen_item, "sensorType",GetTankSensorSByType(F_S_PH));
-//
-//                                cJSON_AddItemToArray(list, sen_item);
-//                            }
-//                            else if(F_S_WT == GetSensorByAddr(GetMonitor(), tank->sensorId[0][item])->__stora[stora].func)
-//                            {
-//                                sen_item = cJSON_CreateObject();
-//
-//                                cJSON_AddNumberToObject(sen_item, "id", tank->sensorId[0][item]);
-//                                cJSON_AddNumberToObject(sen_item, "mid", tank->sensorId[0][item]);
-//                                cJSON_AddStringToObject(sen_item, "name","Temp");
-//                                cJSON_AddNumberToObject(sen_item, "value",
-//                                        getSensorDataByAddr(GetMonitor(), tank->sensorId[0][item], stora));
-//                                cJSON_AddStringToObject(sen_item, "sensorType",GetTankSensorSByType(F_S_WT));
-//
-//                                cJSON_AddItemToArray(list, sen_item);
-//                            }
-//                            else if(F_S_WL == GetSensorByAddr(GetMonitor(), tank->sensorId[0][item])->__stora[stora].func)
-//                            {
-//                                sen_item = cJSON_CreateObject();
-//
-//                                cJSON_AddNumberToObject(sen_item, "id", tank->sensorId[0][item]);
-//                                cJSON_AddNumberToObject(sen_item, "mid", tank->sensorId[0][item]);
-//                                cJSON_AddStringToObject(sen_item, "name","WaterLv");
-//                                cJSON_AddNumberToObject(sen_item, "value",
-//                                        getSensorDataByAddr(GetMonitor(), tank->sensorId[0][item], stora));
-//                                cJSON_AddStringToObject(sen_item, "sensorType",GetTankSensorSByType(F_S_WL));
-//
-//                                cJSON_AddItemToArray(list, sen_item);
-//                            }
                         }
                     }
                 }
@@ -3078,42 +3121,6 @@ char *ReplyGetTank(char *cmd, cloudcmd_t cloud)
 
                                 cJSON_AddItemToArray(list, sen_item);
                             }
-//                            else if(F_S_PH == GetSensorByAddr(GetMonitor(), tank->sensorId[1][item])->__stora[stora].func)
-//                            {
-//                                sen_item = cJSON_CreateObject();
-//
-//                                cJSON_AddNumberToObject(sen_item, "id", tank->sensorId[1][item]);
-//                                cJSON_AddNumberToObject(sen_item, "mid", tank->sensorId[1][item]);
-//                                cJSON_AddStringToObject(sen_item, "name","pH");
-//                                cJSON_AddNumberToObject(sen_item, "value",
-//                                        getSensorDataByAddr(GetMonitor(), tank->sensorId[1][item], stora));
-//
-//                                cJSON_AddItemToArray(list, sen_item);
-//                            }
-//                            else if(F_S_WT == GetSensorByAddr(GetMonitor(), tank->sensorId[1][item])->__stora[stora].func)
-//                            {
-//                                sen_item = cJSON_CreateObject();
-//
-//                                cJSON_AddNumberToObject(sen_item, "id", tank->sensorId[1][item]);
-//                                cJSON_AddNumberToObject(sen_item, "mid", tank->sensorId[1][item]);
-//                                cJSON_AddStringToObject(sen_item, "name","Temp");
-//                                cJSON_AddNumberToObject(sen_item, "value",
-//                                        getSensorDataByAddr(GetMonitor(), tank->sensorId[1][item], stora));
-//
-//                                cJSON_AddItemToArray(list, sen_item);
-//                            }
-//                            else if(F_S_WL == GetSensorByAddr(GetMonitor(), tank->sensorId[1][item])->__stora[stora].func)
-//                            {
-//                                sen_item = cJSON_CreateObject();
-//
-//                                cJSON_AddNumberToObject(sen_item, "id", tank->sensorId[1][item]);
-//                                cJSON_AddNumberToObject(sen_item, "mid", tank->sensorId[1][item]);
-//                                cJSON_AddStringToObject(sen_item, "name","WaterLv");
-//                                cJSON_AddNumberToObject(sen_item, "value",
-//                                        getSensorDataByAddr(GetMonitor(), tank->sensorId[1][item], stora));
-//
-//                                cJSON_AddItemToArray(list, sen_item);
-//                            }
                         }
                     }
                 }
@@ -3130,7 +3137,114 @@ char *ReplyGetTank(char *cmd, cloudcmd_t cloud)
         cJSON_Delete(json);
     }
 
-    return str;
+    json = cJSON_CreateArray();
+    if(json)
+    {
+       cJSON *pumpItem = cJSON_CreateObject();
+       if(pumpItem)
+       {
+           u8 pumpId = 0;
+           u8 pumpPort = 0;
+           if(tank->pumpId < 0xff)
+           {
+               pumpId = tank->pumpId;
+               pumpPort = 0;
+           }
+           else
+           {
+               pumpId = tank->pumpId >> 8;
+               pumpPort = tank->pumpId;
+           }
+           device = GetDeviceByAddr(GetMonitor(), pumpId);
+           cJSON_AddNumberToObject(pumpItem, "id", tank->pumpId);
+           if(device)
+           {
+               cJSON_AddStringToObject(pumpItem, "name", device->port[pumpPort].name);
+           }
+           else
+           {
+               cJSON_AddStringToObject(pumpItem, "name", "");
+           }
+           cJSON_AddNumberToObject(pumpItem, "color", tank->color);
+           cJSON *valveI = cJSON_CreateArray();
+           if(valveI)
+           {
+               for(int i = 0; i < VALVE_MAX; i++)
+               {
+                   if(0 != tank->valve[i])
+                   {
+                       cJSON_AddItemToArray(valveI, cJSON_CreateNumber(tank->valve[i]));
+                   }
+               }
+               cJSON_AddItemToObject(pumpItem, "valve", valveI);
+           }
+
+           cJSON_AddItemToArray(json, pumpItem);
+       }
+
+        str1 = cJSON_PrintUnformatted(json);
+        cJSON_Delete(json);
+    }
+
+    LastStr = rt_malloc(2048);
+    if(LastStr)
+    {
+        rt_memset(LastStr, 0, 2047);
+        LastStr[2047] = '\n';
+        LastStr[strlen(LastStr) - 1] = '\n';
+        strncpy(LastStr, str, strlen(str));
+    }
+    cJSON_free(str);
+    if(LastStr)
+    {
+        str_replace(LastStr, "\"pumpList_replace\"", str1);
+        cJSON_free(str1);
+    }
+
+   json = cJSON_CreateArray();
+   if(json)
+   {
+       for(int i = 0; i < VALVE_MAX; i++)
+       {
+           u8 addr = 0;
+           u8 port = 0;
+
+           if(tank->nopump_valve[i] < 0xff)
+           {
+               addr = tank->nopump_valve[i];
+               port = 0;
+           }
+           else
+           {
+               addr = tank->nopump_valve[i] >> 8;
+               port = tank->nopump_valve[i];
+           }
+
+           device = GetDeviceByAddr(GetMonitor(), addr);
+           if(device)
+           {
+               cJSON *valveItem = cJSON_CreateObject();
+               if(valveItem)
+               {
+                   cJSON_AddNumberToObject(valveItem, "id", tank->nopump_valve[i]);
+                   cJSON_AddStringToObject(valveItem, "name", device->port[port].name);
+
+                   cJSON_AddItemToArray(json, valveItem);
+               }
+           }
+       }
+
+       str1 = cJSON_PrintUnformatted(json);
+       cJSON_Delete(json);
+   }
+
+   if(LastStr)
+   {
+       str_replace(LastStr, "\"valveList_replace\"", str1);
+       cJSON_free(str1);
+   }
+
+    return LastStr;
 }
 
 char *ReplySetWarn(char *cmd, cloudcmd_t cloud, sys_warn_t warn)
@@ -3757,7 +3871,7 @@ char *ReplySetDeviceType(char *cmd, cloudcmd_t cloud)
     u8              addr        = 0;
     u8              port        = 0;
     u8              fatherFlg           = 0;
-
+LOG_I("ReplySetDeviceType");//Justin
     if(RT_NULL != json)
     {
         cJSON_AddStringToObject(json, "cmd", cmd);
@@ -4932,6 +5046,126 @@ char *ReplySetSensorName(char *cmd, u16 id, char *msgid)
         }
 
         cJSON_AddStringToObject(json, "name", GetSensorByAddr(GetMonitor(), addr)->__stora[port].name);
+
+        str = cJSON_PrintUnformatted(json);
+        cJSON_Delete(json);
+    }
+
+    return str;
+}
+
+char *ReplySetTankPV(cloudcmd_t *cmd)
+{
+    cJSON   *json       = cJSON_CreateObject();
+    char    *str        = RT_NULL;
+    u8      no          = 0;
+    u16     id          = 0;
+    device_t *device    = RT_NULL;
+
+    if(json)
+    {
+        cJSON_AddStringToObject(json, "cmd", cmd->cmd);
+        cJSON_AddStringToObject(json, "msgid", cmd->msgid);
+        if(0 == rt_memcmp(CMD_SET_TANK_PV, cmd->cmd, sizeof(CMD_SET_TANK_PV)))
+        {
+            no = cmd->setTankPvNo;
+            id = cmd->setTankPvId;
+        }
+        else if(0 == rt_memcmp(CMD_DEL_TANK_PV, cmd->cmd, sizeof(CMD_DEL_TANK_PV)))
+        {
+            no = cmd->delTankPvNo;
+            id = cmd->delTankPvId;
+        }
+        cJSON_AddNumberToObject(json, "tankNo", no);
+        cJSON_AddNumberToObject(json, "id", id);
+
+        if(no > 0 && no <= TANK_LIST_MAX)
+        {
+            tank_t *tank = &GetSysTank()->tank[no - 1];
+            cJSON *pumpList = cJSON_CreateArray();
+            if(pumpList)
+            {
+               cJSON *pumpItem = cJSON_CreateObject();
+               if(pumpItem)
+               {
+                   u8 pumpId = 0;
+                   u8 pumpPort = 0;
+                   if(tank->pumpId < 0xff)
+                   {
+                       pumpId = tank->pumpId;
+                       pumpPort = 0;
+                   }
+                   else
+                   {
+                       pumpId = tank->pumpId >> 8;
+                       pumpPort = tank->pumpId;
+                   }
+                   device = GetDeviceByAddr(GetMonitor(), pumpId);
+                   cJSON_AddNumberToObject(pumpItem, "id", tank->pumpId);
+                   if(device)
+                   {
+                       cJSON_AddStringToObject(pumpItem, "name", device->port[pumpPort].name);
+                   }
+                   else
+                   {
+                       cJSON_AddStringToObject(pumpItem, "name", "");
+                   }
+                   cJSON_AddNumberToObject(pumpItem, "color", tank->color);
+                   cJSON *valveI = cJSON_CreateArray();
+                   if(valveI)
+                   {
+                       for(int i = 0; i < VALVE_MAX; i++)
+                       {
+                           if(0 != tank->valve[i])
+                           {
+                               cJSON_AddItemToArray(valveI, cJSON_CreateNumber(tank->valve[i]));
+                           }
+                       }
+                       cJSON_AddItemToObject(pumpItem, "valve", valveI);
+                   }
+
+                   cJSON_AddItemToArray(pumpList, pumpItem);
+               }
+
+               cJSON_AddItemToObject(json, "pumpList", pumpList);
+            }
+
+            cJSON *valveList = cJSON_CreateArray();
+            if(valveList)
+            {
+               for(int i = 0; i < VALVE_MAX; i++)
+               {
+                   u8 addr = 0;
+                   u8 port = 0;
+
+                   if(tank->nopump_valve[i] < 0xff)
+                   {
+                       addr = tank->nopump_valve[i];
+                       port = 0;
+                   }
+                   else
+                   {
+                       addr = tank->nopump_valve[i] >> 8;
+                       port = tank->nopump_valve[i];
+                   }
+
+                   device = GetDeviceByAddr(GetMonitor(), addr);
+                   if(device)
+                   {
+                       cJSON *valveItem = cJSON_CreateObject();
+                       if(valveItem)
+                       {
+                           cJSON_AddNumberToObject(valveItem, "id", tank->nopump_valve[i]);
+                           cJSON_AddStringToObject(valveItem, "name", device->port[port].name);
+
+                           cJSON_AddItemToArray(valveList, valveItem);
+                       }
+                   }
+               }
+
+               cJSON_AddItemToObject(json, "valveList", valveList);
+            }
+        }
 
         str = cJSON_PrintUnformatted(json);
         cJSON_Delete(json);

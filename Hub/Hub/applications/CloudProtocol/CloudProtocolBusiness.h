@@ -102,6 +102,10 @@ struct cloudCmd{
     u16             setMainSensorId;            //设置主sensor的ID
     u16             setSensorNameId;            //设置sensor名称的id
     u16             deleteSensorId;             //设置sensor名称的id
+    u8              setTankPvNo;
+    u16             setTankPvId;
+    u8              delTankPvNo;
+    u16             delTankPvId;
 };
 
 //cmd : getTempSetting
@@ -525,6 +529,7 @@ struct tank{
     u8      wlMonitorOnly;                  //水位监视 1-On 0-off 默认监视
     u16     pumpId;                         //水泵Id
     u16     valve[VALVE_MAX];               //关联的阀的ID
+    u16     nopump_valve[VALVE_MAX];        //未指定的阀ID
     u8      sensorId[TANK_SINGLE_GROUD][TANK_SENSOR_MAX];   //桶内存在两个sensor 一个是测试桶内的 一个测试管道的
     u8      color;                          //颜色
     u16     poolTimeout;
@@ -676,6 +681,8 @@ enum{
 #define         CMD_SET_MAIN_SENSOR     "setMainSensor"         //设置主 Sensor
 #define         CMD_SET_SENSOR_SHOW_TYPE "setSensorShowType"    //设置 Sensor 显示方式
 #define         CMD_SET_SENSOR_NAME     "setSensorName"         //设置 Sensor 名字
+#define         CMD_SET_TANK_PV         "setTankPV"             //设置泵子阀
+#define         CMD_DEL_TANK_PV         "delTankPV"             //删除泵子阀
 
 rt_err_t GetValueByU8(cJSON *, char *, u8 *);
 rt_err_t GetValueByU16(cJSON *, char *, u16 *);
@@ -773,10 +780,12 @@ char *ReplyDeleteSensor(char *cmd, u16 addr, char *msgid);
 char *ReplySetMainSensor(char *cmd, u16 addr, char *msgid);
 char *ReplySetSensorShow(char *cmd, u8 showType, char *msgid);
 char *ReplySetSensorName(char *cmd, u16 id, char *msgid);
+char *ReplySetTankPV(cloudcmd_t *cmd);
 void CmdSetLightRecipe(char *data, line_4_recipe_t *repice, cloudcmd_t *cmd);
 void CmdGetSensorEList(char *data, cloudcmd_t *cmd);
 void CmdSetMainSensor(char *data, cloudcmd_t *cmd);
 void CmdSetSensorShowType(char *data, cloudcmd_t *cmd);
 void CmdSetSensorName(char *data, cloudcmd_t *cmd);
 void CmdDeleteSensor(char *data, cloudcmd_t *cmd);
+
 #endif /* APPLICATIONS_CLOUDPROTOCOL_CLOUDPROTOCOLBUSINESS_H_ */

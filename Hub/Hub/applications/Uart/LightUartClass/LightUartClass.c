@@ -40,29 +40,25 @@ static void GenerateVuleByCtrl(line_t *line, u8 port, u8 state, u8 value, u16 *r
     }
 }
 
-static void GenerateLine4VuleByCtrl(line_t *line, u8 *value, u16 *res)
+static void GenerateLine4VuleByCtrl(line_t *line, u16 *value, u16 *res)
 {
-    u8 temp[4] = {0x00,0x00,0x00,0x00};
     if(LINE_4_TYPE == line->type)
     {
         for(int i = 0; i < 4; i++)
         {
             if(MANUAL_HAND_ON == line->port[i]._manual.manual)
             {
-                temp[i] = 100;
+                res[i] = 0x6464;
             }
             else if(MANUAL_HAND_OFF == line->port[i]._manual.manual)
             {
-                temp[i] = 0x00;
+                res[i] = 0x0000;
             }
             else
             {
-                temp[i] = value[i];
+                res[i] = value[i];
             }
         }
-
-        res[1] = (temp[0] << 8) | temp[1];
-        res[0] = (temp[2] << 8) | temp[3];
     }
 }
 
@@ -84,21 +80,25 @@ static void GenerateSendData(line_t *light, u8 port, u16 ctrl, u8 *data)
 //发送Line4数据
 static void GenerateSendLine4Data(line_t *light, u16 *ctrl, u8 *data)
 {
-    rt_memset(data, 0, 8);
+    rt_memset(data, 0, 17);
 
     data[0] = light->addr;
     data[1] = WRITE_MUTI;
     data[2] = light->ctrl_addr >> 8;
     data[3] = light->ctrl_addr;
     data[4] = 0x00;
-    data[5] = 0x02;
-    data[6] = 0x04;
-    data[7] = ctrl[1] >> 8;
-    data[8] = ctrl[1];
-    data[9] = ctrl[0] >> 8;
-    data[10] = ctrl[0];
-    data[11] = usModbusRTU_CRC(data, 11);
-    data[12] = usModbusRTU_CRC(data, 11) >> 8;
+    data[5] = 0x04;
+    data[6] = 0x08;
+    data[7] = ctrl[0] >> 8;
+    data[8] = ctrl[0];
+    data[9] = ctrl[1] >> 8;
+    data[10] = ctrl[1];
+    data[11] = ctrl[2] >> 8;
+    data[12] = ctrl[2];
+    data[13] = ctrl[3] >> 8;
+    data[14] = ctrl[3];
+    data[15] = usModbusRTU_CRC(data, 15);
+    data[16] = usModbusRTU_CRC(data, 15) >> 8;
 }
 
 //生成可以加载到keyValue 的数据
@@ -110,6 +110,27 @@ static rt_err_t GenerateKVData(KV *kv, line_t light, u8 port, u8 *data, u8 len)
     seq_key.regH = (light.ctrl_addr + port) >> 8;
     seq_key.regL = (light.ctrl_addr + port);
     seq_key.regSize = 1;
+    kv->key = SeqKeyToLong(seq_key);
+    kv->dataSegment.len = len;
+    kv->dataSegment.data = rt_malloc(kv->dataSegment.len);
+
+    if(kv->dataSegment.data)
+    {
+        rt_memcpy(kv->dataSegment.data, data, kv->dataSegment.len);
+        return RT_EOK;
+    }
+
+    return RT_ERROR;
+}
+
+static rt_err_t GenerateLine4KVData(KV *kv, line_t light, u8 *data, u8 len)
+{
+    seq_key_t   seq_key;
+
+    seq_key.addr = light.addr;
+    seq_key.regH = light.ctrl_addr >> 8;
+    seq_key.regL = light.ctrl_addr;
+    seq_key.regSize = 4;
     kv->key = SeqKeyToLong(seq_key);
     kv->dataSegment.len = len;
     kv->dataSegment.data = rt_malloc(kv->dataSegment.len);
@@ -439,9 +460,9 @@ static void LineCtrl(line_t *line, u8 port, u8 state, u8 value)
     }
 }
 
-static void Line4Ctrl(line_t *line, u8 *value)
+static void Line4Ctrl(line_t *line, u16 *value)
 {
-    u8          data[13];
+    u8          data[17];
     KV          keyValue;
     seq_key_t   seq_key;
 
@@ -453,15 +474,15 @@ static void Line4Ctrl(line_t *line, u8 *value)
     if(LINE_4_TYPE == line->type)
     {
         //3.加入到发送列表
-        u16 ctrl[2];
+        u16 ctrl[LINE_PORT_MAX];
         GenerateLine4VuleByCtrl(line, value, ctrl);
 
         GenerateSendLine4Data(line, ctrl, data);
 
-        if((YES == IsCtrlChange(line->addr, 0, ctrl[1] >> 8)) ||
-           (YES == IsCtrlChange(line->addr, 1, ctrl[1] & 0x00FF)) ||
-           (YES == IsCtrlChange(line->addr, 2, ctrl[0] >> 8)) ||
-           (YES == IsCtrlChange(line->addr, 3, ctrl[0] & 0x00FF)))
+        if((YES == IsCtrlChange(line->addr, 0, ctrl[0])) ||
+           (YES == IsCtrlChange(line->addr, 1, ctrl[1])) ||
+           (YES == IsCtrlChange(line->addr, 2, ctrl[2])) ||
+           (YES == IsCtrlChange(line->addr, 3, ctrl[3])))
         {
             //4.添加到taskList 之后会在统一接口中实现数据的发送
             seq_key.addr = line->addr;
@@ -469,7 +490,7 @@ static void Line4Ctrl(line_t *line, u8 *value)
             seq_key.regL = line->ctrl_addr;
             seq_key.regSize = 4;
             keyValue.key = SeqKeyToLong(seq_key);
-            keyValue.dataSegment.len = 13;
+            keyValue.dataSegment.len = 17;
             keyValue.dataSegment.data = rt_malloc(keyValue.dataSegment.len);
             if(keyValue.dataSegment.data)
             {
@@ -518,16 +539,16 @@ static void AskLine(line_t line, u16 regAddr)
 static void KeepConnect(type_monitor_t *monitor)
 {
     KV          keyValue;
-    u16         lastCtrl    = 0;
-    u8          data[13];
+    u16         lastCtrl[LINE_PORT_MAX]    = {0,0,0,0};
+    u8          data[17];
     static u8   i           = 0;
 
-    if(YES == IsNeedSendCtrToConnect(monitor->line[i].addr, 0, &lastCtrl))
+    if(LINE_TYPE == monitor->line[i].type || LINE1_TYPE == monitor->line[i].type || LINE2_TYPE == monitor->line[i].type)
     {
-        //1.如果是在线 则发送前一次的数据保持连续
-        if(LINE_TYPE == monitor->line[i].type || LINE1_TYPE == monitor->line[i].type || LINE2_TYPE == monitor->line[i].type)
+        if(YES == IsNeedSendCtrToConnect(monitor->line[i].addr, 0, &lastCtrl[0]))
         {
-            GenerateSendData(&monitor->line[i], 0, lastCtrl, data);
+            //1.如果是在线 则发送前一次的数据保持连续
+            GenerateSendData(&monitor->line[i], 0, lastCtrl[0], data);
             if(RT_EOK == GenerateKVData(&keyValue, monitor->line[i], 0, data, 8))
             {
                 lightObject.taskList.AddToList(keyValue, NO);
@@ -536,20 +557,26 @@ static void KeepConnect(type_monitor_t *monitor)
                 rt_free(keyValue.dataSegment.data);
             }
         }
-//        else if(LINE_4_TYPE == monitor->line[i].type)//Justin debug 有问题
-//        {
-//            u16 ctrl[2];
-//            ctrl[1] = (monitor->line[i].port[0].ctrl.d_value << 8) | monitor->line[i].port[1].ctrl.d_value;
-//            ctrl[0] = (monitor->line[i].port[2].ctrl.d_value << 8) | monitor->line[i].port[3].ctrl.d_value;
-//            GenerateSendLine4Data(&monitor->line[i], ctrl, data);
-//            if(RT_EOK == GenerateKVData(&keyValue, monitor->line[i], 0, data, 13))
-//            {
-//                lightObject.taskList.AddToList(keyValue, NO);
-//
-//                //3.回收空间
-//                rt_free(keyValue.dataSegment.data);
-//            }
-//        }
+    }
+    else if(LINE_4_TYPE == monitor->line[i].type)
+    {
+        u8 state = NO;
+         for(int port = 0; port < LINE_PORT_MAX; port++)
+         {
+             state = IsNeedSendCtrToConnect(monitor->line[i].addr, port, &lastCtrl[port]);
+         }
+
+         if(YES == state)
+         {
+             GenerateSendLine4Data(&monitor->line[i], lastCtrl, data);
+             if(RT_EOK == GenerateLine4KVData(&keyValue, monitor->line[i], data, 17))
+             {
+                 lightObject.taskList.AddToList(keyValue, NO);
+
+                 //3.回收空间
+                 rt_free(keyValue.dataSegment.data);
+             }
+         }
     }
 
     if((i + 1) < monitor->line_size)
@@ -561,6 +588,15 @@ static void KeepConnect(type_monitor_t *monitor)
         i = 0;
     }
 }
+
+//void printSendMoni1(void)//Justin
+//{
+//    LOG_I("printSendMoni1-----------------------------");
+//    for(int i = 0; i < GetMonitor()->line_size; i++)
+//    {
+//        LOG_W("addr = %x, last ctrl = %x, send = %d",sendMoni[i].addr, sendMoni[i].ctrl,sendMoni[i].sendTime);
+//    }
+//}
 
 static void RecvCmd(u8* data, u8 len)
 {
@@ -641,12 +677,14 @@ static void SendCmd(void)
             {
                 for(int i = 0; i < 4; i++)
                 {
-                    u16 value = first->keyData.dataSegment.data[7 + i] & 0x00FF;
+                    u16 value = (first->keyData.dataSegment.data[7 + 2 * i] << 8) | first->keyData.dataSegment.data[8 + 2 * i];
                     AddLastCtrl(LongToSeqKey(first->keyData.key).addr, i, value);
                     //使用0x10命令的话不会回复数据的值因此要提前就设置到d_value
-                    GetLineByAddr(GetMonitor(), LongToSeqKey(first->keyData.key).addr)->port[i].ctrl.d_value = value;
+                    GetLineByAddr(GetMonitor(), LongToSeqKey(first->keyData.key).addr)->port[i].ctrl.d_value = value >> 8;
+
                 }
             }
+            SignLightSendFlag(LongToSeqKey(first->keyData.key).addr);
         }
     }
 

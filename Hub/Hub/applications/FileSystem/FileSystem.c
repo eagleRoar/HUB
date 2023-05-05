@@ -3049,6 +3049,11 @@ void FileSystemEntry(void* parameter)
         //1s 任务
         if(ON == Timer1sTouch)
         {
+        }
+
+        //10s 任务
+        if(ON == Timer30sTouch)
+        {
             //2.存储系统信息
             CheckSysSetNeedSave(GetSysSet());//Justin debug 这个函数一直在存储 有问题
 #if(HUB_SELECT == HUB_ENVIRENMENT)
@@ -3057,11 +3062,6 @@ void FileSystemEntry(void* parameter)
 #elif(HUB_SELECT == HUB_IRRIGSTION)
             CheckSysTankNeedSave(GetSysTank());
 #endif
-        }
-
-        //10s 任务
-        if(ON == Timer30sTouch)
-        {
             //存储分配的地址
             if(monitorAddrCrc !=
                     usModbusRTU_CRC(GetMonitor()->allocateStr.address, sizeof(GetMonitor()->allocateStr.address)))

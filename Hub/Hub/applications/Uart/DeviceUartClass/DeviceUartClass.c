@@ -97,15 +97,17 @@ static void GenerateAskData(device_t device, u16 reg, u8 *data)
     data[7] = usModbusRTU_CRC(data, 6) >> 8;
 }
 
-static void GenerateChangeType(device_t device, u8 port, u8 type, u8 *data)
+static void GenerateChangeType(device_t *device, u8 port, u8 type, u8 *data)
 {
     u16 reg = 0;
 
     rt_memset(data, 0, 8);
 
-    data[0] = device.addr;
+    data[0] = device->addr;
     data[1] = WRITE_SINGLE;
-    GetReadRegAddrByType(device.type, &reg);
+
+    GetReadRegAddrByType(device->type, &reg);
+
     reg += port;
     data[2] = reg >> 8;
     data[3] = reg;
@@ -886,17 +888,14 @@ static void DeviceChgType(type_monitor_t *monitor, u16 id, u8 type)
     {
         return;
     }
-
     //2 生成数据
-    GenerateChangeType(*device, port, type, data);
-
+    GenerateChangeType(device, port, type, data);
     //2.
     GetReadRegAddrByType(device->type, &reg);
     seq_key.addr = device->addr;
     seq_key.regH = reg >> 8;
     seq_key.regL = reg;
     seq_key.regSize = port;
-
     keyValue.key = SeqKeyToLong(seq_key);
     keyValue.dataSegment.len = 8;
     keyValue.dataSegment.data = rt_malloc(keyValue.dataSegment.len);
@@ -1045,13 +1044,13 @@ static void SendCmd(void)
         }
     }
 
-//    rt_kprintf("sendCmd : ");
-//    for(int i = 0; i < first->keyData.dataSegment.len; i++)
-//    {
-//        rt_kprintf(" %x",first->keyData.dataSegment.data[i]);
-//
-//    }
-//    rt_kprintf("\r\n");
+    rt_kprintf("sendCmd : ");
+    for(int i = 0; i < first->keyData.dataSegment.len; i++)
+    {
+        rt_kprintf(" %x",first->keyData.dataSegment.data[i]);
+
+    }
+    rt_kprintf("\r\n");
 
     //5.将这个任务从任务列表中移出去
     uart2Object.taskList.DeleteToList(first->keyData);
@@ -1329,7 +1328,6 @@ void printSendMoni(void)
 {
     for(int i = 0; i < GetMonitor()->device_size; i++)
     {
-
         LOG_W("addr = %x, last ctrl = %x",sendMoni[i].addr, sendMoni[i].ctrl);
     }
 }

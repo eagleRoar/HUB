@@ -24,6 +24,7 @@
 #include "TcpProgram.h"
 #include "FileSystem.h"
 #include "UartAction.h"
+#include "CloudProtocol.h"
 
 #define DBG_TAG "main"
 #define DBG_LVL DBG_LOG
@@ -116,6 +117,13 @@ int main(void)
 
     //MQTT线程
     mqtt_start();
+
+    GetSysTank()->tank_size = TANK_LIST_MAX;
+    for(int i = 0; i < TANK_LIST_MAX; i++)
+    {
+        GetSysTank()->tank[i].tankNo = i + 1;
+    }
+
     while(1)
     {
         time100mS = TimerTask(&time100mS, 100/MAIN_PERIOD, &Timer100msTouch);             //100毫秒任务定时器
@@ -169,14 +177,29 @@ int main(void)
             {
                 getRealTimeForMat(&time);
 
-                if(((time.hour * 60 + time.minute) > GetSysSet()->sysPara.dayTime) &&
-                   ((time.hour * 60 + time.minute) <= GetSysSet()->sysPara.nightTime))
+                if(GetSysSet()->sysPara.dayTime < GetSysSet()->sysPara.nightTime)
                 {
-                    GetSysSet()->dayOrNight = DAY_TIME;
+                    if(((time.hour * 60 + time.minute) >= GetSysSet()->sysPara.dayTime) &&
+                       ((time.hour * 60 + time.minute) < GetSysSet()->sysPara.nightTime))
+                    {
+                        GetSysSet()->dayOrNight = DAY_TIME;
+                    }
+                    else
+                    {
+                        GetSysSet()->dayOrNight = NIGHT_TIME;
+                    }
                 }
                 else
                 {
-                    GetSysSet()->dayOrNight = NIGHT_TIME;
+                    if(((time.hour * 60 + time.minute) >= GetSysSet()->sysPara.nightTime) &&
+                       ((time.hour * 60 + time.minute) < GetSysSet()->sysPara.dayTime))
+                    {
+                        GetSysSet()->dayOrNight = NIGHT_TIME;
+                    }
+                    else
+                    {
+                        GetSysSet()->dayOrNight = DAY_TIME;
+                    }
                 }
             }
             else if(DAY_BY_PHOTOCELL == GetSysSet()->sysPara.dayNightMode)//按灯光分辨

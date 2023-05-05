@@ -48,6 +48,7 @@ typedef     struct eth_heart                eth_heart_t;
 #define     LINE_PORT_MAX                   4
 #define     LINE_MAX                        16
 #define     VALVE_MAX                       16
+#define     TANK_PUMP_LIST_MX               4
 #define     TANK_SINGLE_GROUD               2
 #define     TANK_SENSOR_MAX                 4
 #define     SENSOR_VALUE_MAX                4

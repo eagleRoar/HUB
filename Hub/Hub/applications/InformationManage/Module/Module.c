@@ -1400,9 +1400,9 @@ u8 GetLineType(type_monitor_t *monitor)
 {
     int i = 0;
 
-    for(i = 0; i < monitor->device_size; i++)
+    for(i = 0; i < monitor->line_size; i++)
     {
-        if(LINE_4_TYPE == monitor->device[i].type)
+        if(LINE_4_TYPE == monitor->line[i].type)
         {
             break;
         }
@@ -1410,11 +1410,11 @@ u8 GetLineType(type_monitor_t *monitor)
 
     if(i == monitor->device_size)
     {
-        return 2;
+        return 1;
     }
     else
     {
-        return 1;
+        return 2;
     }
 }
 

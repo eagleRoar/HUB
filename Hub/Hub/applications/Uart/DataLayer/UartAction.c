@@ -1930,19 +1930,72 @@ static void GetLine4Value(time_t nowT, time_t startT, time_t continueT, u16 sunr
     }
 }
 
-//Justin 仅仅为第一路灯使用
+//获取真正的地址
+void GetRealLine4V(dimmingCurve_t* curve, u8 port, u8 value, u8 *real)
+{
+    int x1 = 0;
+    int x2 = 0;
+    int y1 = 0;
+    int y2 = 0;
+    float a = 0.0;
+    float b = 0.0;
+
+    switch(port)
+    {
+        case 0:
+            x1 = curve->onOutput1;
+            y1 = curve->onVoltage1;
+            x2 = 100;
+            y2 = curve->fullVoltage1;
+            break;
+        case 1:
+            x1 = curve->onOutput2;
+            y1 = curve->onVoltage2;
+            x2 = 100;
+            y2 = curve->fullVoltage2;
+            break;
+        case 2:
+            x1 = curve->onOutput3;
+            y1 = curve->onVoltage3;
+            x2 = 100;
+            y2 = curve->fullVoltage3;
+            break;
+        case 3:
+            x1 = curve->onOutput4;
+            y1 = curve->onVoltage4;
+            x2 = 100;
+            y2 = curve->fullVoltage4;
+            break;
+        default : break;
+    }
+
+    a = (float)(y2 - y1)/(x2 - x1);
+    b = (float)(x2*y1 - x1*y2)/(x2 - x1);
+//    printf("GetRealLine4V a = %f, b = %f\r\n",a,b);//Justin
+
+    int res = a * value + b;
+    if(res > 0)
+    {
+        *real = res;
+    }
+    else {
+        *real = 0;
+    }
+}
+
 void line_4Program(line_t *line, type_uart_class lineUart)
 {
-    u8              state                   = 0;
-    time_t          now_time                = 0;    //化当前时间为hour + minute +second 格式
+    u8              state                       = 0;
+    time_t          now_time                    = 0;    //化当前时间为hour + minute +second 格式
     proLine_4_t     line_4set;
-    line_4_timer_t  *nowTimerSet            = RT_NULL;
+    line_4_timer_t  *nowTimerSet                = RT_NULL;
     type_sys_time   time;
-    u8              lineRecipeNo            = 0;
-    time_t          startOnTime             = 0;    //开始开启的时间戳
-    time_t          onContineTime           = 0;    //持续开启的时间
-    u8              stage[LINE_PORT_MAX]    = {0,0,0,0};
-    sys_set_t       *sys_set                = GetSysSet();
+    u8              lineRecipeNo                = 0;
+    time_t          startOnTime                 = 0;    //开始开启的时间戳
+    time_t          onContineTime               = 0;    //持续开启的时间
+    u8              stage[LINE_PORT_MAX]        = {0,0,0,0};
+    u16             ctrlValue[LINE_PORT_MAX]    = {0,0,0,0};
+    sys_set_t       *sys_set                    = GetSysSet();
 
     //1.获取灯光设置
     GetNowSysSet(RT_NULL, RT_NULL, RT_NULL, RT_NULL, &line_4set, RT_NULL, RT_NULL);
@@ -2082,10 +2135,7 @@ void line_4Program(line_t *line, type_uart_class lineUart)
                               sys_set->dimmingCurve.onOutput3, sys_set->lineRecipeList[lineRecipeNo].output3, &stage[2]);
                 GetLine4Value(getTimeStamp(), startOnTime, onContineTime, line_4set.sunriseSunSet * 60,
                               sys_set->dimmingCurve.onOutput4, sys_set->lineRecipeList[lineRecipeNo].output4, &stage[3]);
-//                LOG_D("output = %d %d",
-//                        sys_set->dimmingCurve.onOutput1,
-//                        sys_set->lineRecipeList[lineRecipeNo].output1);//Justin
-//                LOG_D("line_4Program %d %d %d %d",getTimeStamp(), startOnTime, onContineTime, line_4set.sunriseSunSet * 60);
+
             }
         }
 
@@ -2125,10 +2175,15 @@ void line_4Program(line_t *line, type_uart_class lineUart)
         }
     }
 
-    lineUart.Line4Ctrl(line, stage);//Justin debug 仅仅测试
+    for(int i = 0; i < LINE_PORT_MAX; i++)
+    {
+        u8 res = 0;
+        GetRealLine4V(&GetSysSet()->dimmingCurve, i, stage[i], &res);
+        ctrlValue[i] = (stage[i] << 8) | res;
+    }
+    lineUart.Line4Ctrl(line, ctrlValue);//Justin debug 仅仅测试
 //    LOG_I("line_4Program state = %d, recipe no = %d,value = %d %d %d %d",
 //            state, lineRecipeNo, stage[0], stage[1], stage[2], stage[3]);//Justin
-
 }
 
 void lineProgram(type_monitor_t *monitor, u8 line_no, type_uart_class lineUart, u16 mPeroid)
@@ -2578,6 +2633,23 @@ void lineProgram(type_monitor_t *monitor, u8 line_no, type_uart_class lineUart, 
     }
 
     lineUart.LineCtrl(line, 0, state, value);
+    for(int i = 0; i < GetMonitor()->line_size; i++)
+    {
+        if((0 == line_no) && (1 == GetLineType(GetMonitor())))
+        {
+            if(LINE1_TYPE == GetMonitor()->line[i].type)
+            {
+                lineUart.LineCtrl(&GetMonitor()->line[i], 0, state, value);
+            }
+        }
+        else if(1 == line_no)
+        {
+            if(LINE2_TYPE == GetMonitor()->line[i].type)
+            {
+                lineUart.LineCtrl(&GetMonitor()->line[i], 0, state, value);
+            }
+        }
+    }
 }
 
 void timmerProgram(type_monitor_t *monitor, type_uart_class deviceUart)
@@ -3006,13 +3078,11 @@ void pumpProgram(type_monitor_t *monitor, sys_tank_t *tank_list, type_uart_class
 
         if(ADD_WATER == waterState[tank])
         {
-//            GetDeviceByAddr(GetMonitor(), addr)->port[port].ctrl.d_state = ON;
             deviceUart.DeviceCtrlSingle(GetDeviceByAddr(monitor, addr), port, ON);
 
         }
         else if(NO_ADD_WATER == waterState[tank])
         {
-//            GetDeviceByAddr(monitor, addr)->port[port].ctrl.d_state = OFF;
             deviceUart.DeviceCtrlSingle(GetDeviceByAddr(monitor, addr), port, OFF);
         }
 
@@ -3040,7 +3110,6 @@ void pumpProgram(type_monitor_t *monitor, sys_tank_t *tank_list, type_uart_class
                    ((ph > tank_list->tank[tank].highPhProtection) && (ON != tank_list->tank[tank].phMonitorOnly)) ||
                    ((ec > tank_list->tank[tank].highEcProtection) && (ON != tank_list->tank[tank].ecMonitorOnly)))
                 {
-//                    GetDeviceByAddr(monitor, addr)->port[port].ctrl.d_state = OFF;
                     state = OFF;
                 }
 
@@ -3079,7 +3148,6 @@ void pumpProgram(type_monitor_t *monitor, sys_tank_t *tank_list, type_uart_class
                ((ph > tank_list->tank[tank].highPhProtection) && (ON != tank_list->tank[tank].phMonitorOnly)) ||
                ((ec > tank_list->tank[tank].highEcProtection) && (ON != tank_list->tank[tank].ecMonitorOnly)))
             {
-//                GetDeviceByAddr(monitor, addr)->port[port].ctrl.d_state = OFF;
                 state = OFF;
             }
 
@@ -3125,14 +3193,43 @@ void pumpProgram(type_monitor_t *monitor, sys_tank_t *tank_list, type_uart_class
             if(VALVE_MAX == valve_index1)
             {
                 //所关联的阀门状态为全关,则关闭水泵
-//                GetDeviceByAddr(monitor, addr)->port[port].ctrl.d_state = OFF;
                 deviceUart.DeviceCtrlSingle(GetDeviceByAddr(monitor, addr), port, OFF);
             }
             else
             {
                 //所关联的阀门状态有开着的，打开水泵
-//                GetDeviceByAddr(monitor, addr)->port[port].ctrl.d_state = ON;
                 deviceUart.DeviceCtrlSingle(GetDeviceByAddr(monitor, addr), port, ON);
+            }
+        }
+
+        //5.阀门开的条件为: 定时器满足 ph ec 水位满足
+        for(int index = 0; index < VALVE_MAX; index++)
+        {
+            u8 state = OFF;
+            if(0 != tank_list->tank[tank].nopump_valve[index])
+            {
+                if(tank_list->tank[tank].nopump_valve[index] > 0xFF)
+                {
+                    addr = tank_list->tank[tank].nopump_valve[index] >> 8;
+                    port = tank_list->tank[tank].nopump_valve[index];
+                }
+                else
+                {
+                    addr = tank_list->tank[tank].nopump_valve[index];
+                    port = 0;
+                }
+
+                state = pumpDoing(addr, port);
+
+                if(((wl < tank_list->tank[tank].autoFillHeight) && (ON != tank_list->tank[tank].wlMonitorOnly)) ||
+                   ((ph < tank_list->tank[tank].lowPhProtection) && (ON != tank_list->tank[tank].phMonitorOnly)) ||
+                   ((ph > tank_list->tank[tank].highPhProtection) && (ON != tank_list->tank[tank].phMonitorOnly)) ||
+                   ((ec > tank_list->tank[tank].highEcProtection) && (ON != tank_list->tank[tank].ecMonitorOnly)))
+                {
+                    state = OFF;
+                }
+
+                deviceUart.DeviceCtrlSingle(GetDeviceByAddr(monitor, addr), port, state);
             }
         }
     }
