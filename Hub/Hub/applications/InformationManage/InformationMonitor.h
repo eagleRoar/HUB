@@ -16,7 +16,8 @@
 
 #include "Gpio.h"
 
-#define     name_null                       "null"     //长度32的空字符串
+#define     HUB_VER_NO                      2           //区分现在hub第几期
+#define     name_null                       "null"      //长度32的空字符串
 #define     VALUE_NULL                      -9999       //如果没有值上传给MQTT的值
 
 #define     ALLOCATE_ADDRESS_SIZE           256
@@ -94,6 +95,12 @@ enum{
     WORK_UP,
 };
 
+typedef struct sen_stora_Old{
+    char            name[9];
+    u8              func;
+    s16             value;
+}sen_storaOld_t;
+
 struct sen_stora{
     char            name[STORAGE_NAMESZ];
     u8              func;
@@ -104,7 +111,7 @@ typedef struct sensorOld
 {
     u16             crc;
     u32             uuid;
-    char            name[MODULE_NAMESZ];                    //产品名称
+    char            name[9];                            //产品名称
     u8              addr;                                   //hub管控的地址
     u8              type;                                   //产品类型号
     u16             ctrl_addr;                              //终端控制的寄存器地址
@@ -112,7 +119,7 @@ typedef struct sensorOld
     u8              reg_state;                              //注册状态
     u8              save_state;                             //是否已经存储
     u8              storage_size;                           //寄存器数量
-    sen_stora_t     __stora[SENSOR_VALUE_MAX];
+    sen_stora_t     __stora[4];
 }sensorOld_t;//占35字节
 
 struct sensor
@@ -128,7 +135,7 @@ struct sensor
     u8              save_state;                             //是否已经存储
     u8              storage_size;                           //寄存器数量
     u8              isMainSensor;                           //是否是主传感器（目前只有四合一才设置主传感器）
-    sen_stora_t     __stora[SENSOR_VALUE_MAX];
+    sen_storaOld_t     __stora[SENSOR_VALUE_MAX];
 };//占35字节
 
 typedef struct cycleOld
@@ -193,7 +200,7 @@ typedef struct lineOld{
     u16             crc;
     u8              type;                                   //产品类型号
     u32             uuid;
-    char            name[MODULE_NAMESZ];                    //产品名称
+    char            name[9];                    //产品名称
     u8              addr;                                   //hub管控的地址
     u16             ctrl_addr;                              //终端控制的寄存器地址
     u8              d_state;                                //device 的状态位
@@ -210,8 +217,6 @@ struct line{
     char            name[MODULE_NAMESZ];                    //产品名称
     u8              addr;                                   //hub管控的地址
     u16             ctrl_addr;                              //终端控制的寄存器地址
-//    u8              d_state;                                //device 的状态位
-//    u8              d_value;                                //device 的控制数值
     struct linePort{
         type_ctrl_t     ctrl;
         type_manual_t   _manual;
@@ -236,18 +241,18 @@ typedef struct deviceOld{
     u8              color;                                  //颜色
     //12个端口需要 state time cycle
     struct portOld{
-        char    name[STORAGE_NAMESZ];
+        char    name[9];
         u16     addr;
         u8      type;                                       //类型
         u8      hotStartDelay;                              //对于制冷 制热 除湿设备需要有该保护
         u8      mode;                                       // 模式 1-By Schedule 2-By Recycle
         u8      func;
         //timer
-        type_timmerOld_t timer[TIMER_GROUP];
+        type_timmerOld_t timer[12];
         type_cycleOld_t cycle;
         type_manualOld_t manual;
         type_ctrlOld_t ctrl;
-    }port[DEVICE_PORT_MAX];
+    }port[12];
     //特殊处理
     struct hvacOld
     {
@@ -465,9 +470,9 @@ typedef struct monitorOld
     u8                  sensor_size;
     u8                  device_size;
     u8                  line_size;
-    sensorOld_t         sensor[SENSOR_MAX];
-    deviceOld_t         device[DEVICE_MAX];
-    lineOld_t           line[LINE_MAX];
+    sensorOld_t         sensor[20];
+    deviceOld_t         device[16];
+    lineOld_t           line[2];
     u16                 crc;
 }type_monitorOld_t;
 

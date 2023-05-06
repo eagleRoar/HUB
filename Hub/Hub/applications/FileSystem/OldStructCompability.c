@@ -1209,3 +1209,196 @@ void OldDataMigration(void)
 #endif
     }
 }
+
+//按照原来的数据结构的
+//未完待续 Justin debug
+void OldDataMigration1(void)
+{
+    char            old_dev_file[]      = "/backup/moduleInfo/module.bin";
+    char            old_sysset_file[]   = "/backup/moduleInfo/sys_set.bin";
+    char            old_recipe_file[]   = "/backup/moduleInfo/recipe.bin";
+    char            old_tank_file[]     = "/backup/moduleInfo/tank.bin";
+    static u8       FileHeadSpace       = 5;
+    u8              temp                = 0;
+    type_monitor_t  *newMonitor         = GetMonitor();
+    u16             lenght              = 0;
+    struct allocate_old     allocateStr;
+    u8              size[3];
+    sensorOld_t     sensor;
+    deviceOld_t     device;
+    lineOld_t       line;
+    sys_set_t       *newSet             = GetSysSet();
+    sys_setOld_t    oldSet;
+    sys_recipe_t    *newRecipeList      = GetSysRecipt();
+    recipeOld_t     oldRecipe;
+
+    //读取旧数据
+    //1.monitor
+    lenght = FileHeadSpace;
+    if(RT_EOK == ReadFileData(old_dev_file, &allocateStr, lenght, sizeof(struct allocate_old)))
+    {
+        rt_memcpy(newMonitor->allocateStr, allocateStr, sizeof(struct allocate_old));
+    }
+    lenght += sizeof(struct allocate_old);
+
+    if(RT_EOK == ReadFileData(old_dev_file, size, lenght, sizeof(size)))
+    {
+        newMonitor->sensor_size = size[0];
+        newMonitor->device_size = size[1];
+        newMonitor->line_size = size[2];
+    }
+    lenght += sizeof(size);
+
+    temp = newMonitor->sensor_size < SENSOR_MAX ? newMonitor->sensor_size : SENSOR_MAX;
+    for(int i = 0; i < temp; i++)
+    {
+        if(RT_EOK == ReadFileData(old_dev_file, &sensor, lenght, sizeof(sensorOld_t)))
+        {
+            newMonitor->sensor[i].crc = sensor.crc;
+            newMonitor->sensor[i].uuid = sensor.uuid;
+            strncpy(newMonitor->sensor[i].name, sensor.name, MODULE_NAMESZ);
+            newMonitor->sensor[i].addr = sensor.addr;
+            newMonitor->sensor[i].type = sensor.type;
+            newMonitor->sensor[i].ctrl_addr = sensor.ctrl_addr;
+            newMonitor->sensor[i].conn_state = sensor.conn_state;
+            newMonitor->sensor[i].reg_state = sensor.reg_state;
+            newMonitor->sensor[i].save_state = sensor.save_state;
+            newMonitor->sensor[i].storage_size = sensor.storage_size;
+            newMonitor->sensor[i].isMainSensor = NO;
+            rt_memcpy(newMonitor->sensor[i].__stora, sensor.__stora, size(sen_storaOld_t) * 4);
+        }
+
+    }
+    lenght += sizeof(sensorOld_t) * 20;
+
+    temp = newMonitor->device_size < DEVICE_MAX ? newMonitor->device_size : DEVICE_MAX;
+    for(int i = 0; i < temp; i++)
+    {
+        if(RT_EOK == ReadFileData(old_dev_file, &device, lenght, sizeof(deviceOld_t)))
+        {
+
+            newMonitor->device[i].crc = device.crc;
+            newMonitor->device[i].uuid = device.uuid;
+            strncpy(newMonitor->device[i].name, device.name, MODULE_NAMESZ);
+            newMonitor->device[i].addr = device.addr;
+            newMonitor->device[i].type = device.type;
+            newMonitor->device[i].ctrl_addr = device.ctrl_addr;
+            newMonitor->device[i].main_type = device.main_type;
+            newMonitor->device[i].conn_state = device.conn_state;
+            newMonitor->device[i].reg_state = device.reg_state;
+            newMonitor->device[i].save_state = device.save_state;
+            newMonitor->device[i].storage_size = device.storage_size;
+            newMonitor->device[i].color = device.color;
+            for(int port = 0; port < 12; port++)
+            {
+                strncpy(newMonitor->device[i].port[port].name, device.port[port].name, 9);
+                newMonitor->device[i].port[port].addr = device.port[port].addr;
+                newMonitor->device[i].port[port].type = device.port[port].type;
+                newMonitor->device[i].port[port].hotStartDelay = device.port[port].hotStartDelay;
+                newMonitor->device[i].port[port].mode = device.port[port].mode;
+                newMonitor->device[i].port[port].func = device.port[port].func;
+                rt_memcpy(newMonitor->device[i].port[port].timer, device.port[port].timer, sizeof(type_timmerOld_t));
+                rt_memcpy((u8 *)&newMonitor->device[i].port[port].cycle, (u8 *)&device.port[port].cycle, sizeof(type_cycleOld_t));
+                rt_memset((u8 *)&newMonitor->device[i].port[port].cycle1, 0, sizeof(type_cycleOld_t));
+                rt_memcpy((u8 *)&newMonitor->device[i].port[port].manual, (u8 *)&device.port[port].manual, sizeof(type_manualOld_t));
+                rt_memcpy((u8 *)&newMonitor->device[i].port[port].ctrl, (u8 *)&device.port[port].ctrl, sizeof(type_ctrlOld_t));
+            }
+            newMonitor->device[i]._hvac.manualOnMode = device._hvac.manualOnMode;
+            newMonitor->device[i]._hvac.fanNormallyOpen = device._hvac.fanNormallyOpen;
+            newMonitor->device[i]._hvac.hvacMode = device._hvac.hvacMode;
+        }
+
+    }
+    lenght += sizeof(deviceOld_t) * 16;
+
+    temp = newMonitor->line_size < LINE_MAX ? newMonitor->line_size : LINE_MAX;
+    for(int i = 0; i < 2; i++)
+    {
+        if(RT_EOK == ReadFileData(old_dev_file, &line, lenght, sizeof(lineOld_t)))
+        {
+            newMonitor->line[i].crc = line.crc;
+            newMonitor->line[i].type = line.type;
+            newMonitor->line[i].uuid = line.uuid;
+            strncpy(newMonitor->line[i].name, line.name, MODULE_NAMESZ);
+            newMonitor->line[i].addr = line.addr;
+            newMonitor->line[i].ctrl_addr = line.ctrl_addr;
+            newMonitor->line[i].port[0].ctrl.d_state = line.d_state;
+            newMonitor->line[i].port[0].ctrl.d_value = line.d_value;
+            rt_memcpy(newMonitor->line[i].port[0]._manual, line._manual, sizeof(type_manual_t));
+            newMonitor->line[i].storage_size = 1;
+            newMonitor->line[i].save_state = line.save_state;
+            newMonitor->line[i].conn_state = line.conn_state;
+        }
+    }
+    lenght += sizeof(lineOld_t) * 2;
+
+    ReadFileData(old_dev_file, &newMonitor->crc, lenght, 2);
+
+    //2.获取sys_set
+    lenght = FileHeadSpace;
+    if(RT_EOK == ReadFileData(old_sysset_file, &oldSet, lenght, sizeof(sys_setOld_t)))
+    {
+        rt_memset(&newSet, 0, sizeof(sys_set_t));
+
+        newSet->crc = oldSet.crc;
+        rt_memcpy((u8 *)&newSet->tempSet, (u8 *)&oldSet.tempSet, sizeof(proTempSetOld_t));
+        rt_memcpy((u8 *)&newSet->co2Set, (u8 *)&oldSet.co2Set, sizeof(proCo2SetOld_t));
+        rt_memcpy((u8 *)&newSet->humiSet, (u8 *)&oldSet.humiSet, sizeof(proHumiSetOld_t));
+        rt_memcpy((u8 *)&newSet->line1Set, (u8 *)&oldSet.line1Set, sizeof(proLineOld_t));
+        newSet->line1_4Set.brightMode = LINE_MODE_BY_POWER;
+        newSet->line1_4Set.byAutoDimming = AUTO_DIMMING;
+        newSet->line1_4Set.mode = 1;
+        newSet->line1_4Set.tempStartDimming = 350;
+        newSet->line1_4Set.tempOffDimming = 400;
+        newSet->line1_4Set.sunriseSunSet = 10;
+        rt_memcpy((u8 *)&newSet->line2Set, (u8 *)&oldSet.line2Set, sizeof(proLineOld_t));
+        rt_memcpy((u8 *)&newSet->stageSet, (u8 *)&oldSet.stageSet, sizeof(stageOld_t));
+        rt_memcpy(newSet->co2Cal, oldSet.co2Cal, 20);
+        for(int port = 0; port < 20; port++)
+        {
+            newSet->ph[port].ph_a = oldSet.ph[port].ph_a;
+            newSet->ph[port].ph_b = oldSet.ph[port].ph_b;
+            newSet->ph[port].uuid = oldSet.ph[port].uuid;
+        }
+
+        for(int port = 0; port < 20; port++)
+        {
+            newSet->ec[port].ec_a = oldSet.ec[port].ec_a;
+            newSet->ec[port].ec_b = oldSet.ec[port].ec_b;
+            newSet->ec[port].uuid = oldSet.ec[port].uuid;
+        }
+        newSet->startCalFlg = oldSet.startCalFlg;
+        newSet->hub_info = oldSet.hub_info;
+        newSet->ver = HUB_VER_NO;
+    }
+
+    //3.获取recipe
+    lenght = FileHeadSpace;
+    ReadFileData(old_recipe_file, &newRecipeList->crc, lenght, 2);
+    lenght += 2;
+
+    ReadFileData(old_recipe_file, &newRecipeList->recipe_size, lenght, 1);
+    lenght += 1;
+
+    for(int i = 0; i < 10; i++)
+    {
+        rt_memset((u8 *)&newRecipeList->recipe[i], 0, sizeof(recipe_t));
+        if(RT_EOK == ReadFileData(old_recipe_file, &oldRecipe, lenght, sizeof(recipeOld_t)))
+        {
+            rt_memcpy((u8 *)&newRecipeList->recipe[i], (u8 *)&oldRecipe, sizeof(recipeOld_t));
+            newRecipeList->recipe[i].line_4.brightMode = LINE_MODE_BY_POWER;
+            newRecipeList->recipe[i].line_4.byAutoDimming = AUTO_DIMMING;
+            newRecipeList->recipe[i].line_4.mode = 1;
+            newRecipeList->recipe[i].line_4.tempStartDimming = 350;
+            newRecipeList->recipe[i].line_4.tempOffDimming = 400;
+            newRecipeList->recipe[i].line_4.sunriseSunSet = 10;
+        }
+
+        lenght += sizeof(recipeOld_t);
+    }
+
+    ReadFileData(old_recipe_file, newRecipeList->allot_add, lenght, 10);
+    lenght += 10;
+
+    ReadFileData(old_recipe_file, newRecipeList->saveFlag, lenght, 1);
+}

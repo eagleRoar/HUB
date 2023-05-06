@@ -488,6 +488,14 @@ struct recipe{//配方 限制10个
     proLine_4_t line_4;
 };
 
+typedef struct sys_recipeOld{
+    u16 crc;
+    u8 recipe_size;
+    recipe_t recipe[RECIPE_LIST_MAX];
+    u8 allot_add[REC_ALLOT_ADDR];
+    u8 saveFlag;
+}sys_recipeOld_t;
+
 struct sys_recipe{
     u16 crc;
     u8 recipe_size;
@@ -558,25 +566,25 @@ typedef struct sysSetOld
     proHumiSetOld_t    humiSet;
     proLineOld_t       line1Set;
     proLineOld_t       line2Set;
-    tankWarnOld_t      tankWarnSet[TANK_LIST_MAX][TANK_WARN_ITEM_MAX];
+    tankWarnOld_t      tankWarnSet[4][8];
     stageOld_t         stageSet;   //阶段(日历)
     sys_paraOld_t      sysPara;
     sys_warnOld_t      sysWarn;
     u8              dayOrNight;//白天黑夜 白天0 黑夜1
-    u8              warn[WARN_MAX];
-    u8              offline[DEVICE_MAX];
-    u16             warn_value[WARN_MAX];//该值主要为了显示使用 数据
-    int             co2Cal[SENSOR_MAX];   //co2校准值
+    u8              warn[34];
+    u8              offline[16];
+    u16             warn_value[34];//该值主要为了显示使用 数据
+    int             co2Cal[20];   //co2校准值
     struct phCalOld{
         float ph_a;
         float ph_b;
         u32 uuid;
-    }ph[SENSOR_MAX];
+    }ph[20];
     struct ecCalOld{
         float ec_a;
         float ec_b;
         u32 uuid;
-    }ec[SENSOR_MAX];
+    }ec[20];
     u8              startCalFlg;
     hubOld_t           hub_info;
     u8              saveFlag;

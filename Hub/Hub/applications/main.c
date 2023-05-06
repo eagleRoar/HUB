@@ -44,7 +44,7 @@ static void InitParameter(void)
     initSysRecipe();
     initSysTank();
     initSysSet();
-    GetSysSet()->ver = 2;
+    GetSysSet()->ver = HUB_VER_NO;
     GetSnName(GetSysSet()->hub_info.name, 13);
 }
 
