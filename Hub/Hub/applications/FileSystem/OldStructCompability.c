@@ -1401,4 +1401,6 @@ void OldDataMigration1(void)
     lenght += 10;
 
     ReadFileData(old_recipe_file, newRecipeList->saveFlag, lenght, 1);
+
+    //4.获取
 }
