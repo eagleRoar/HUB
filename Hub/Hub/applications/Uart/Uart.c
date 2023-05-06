@@ -144,6 +144,106 @@ static void UartRegister(void)
     rt_device_set_rx_indicate(uart3_serial, Uart3_input);
 }
 
+static void GenerateBroadcast(type_uart_class *uart)
+{
+    KV          keyValue;
+    seq_key_t   seq_key;
+    time_t time = getTimeStamp();
+    u8          data[13];
+
+    //1.生成数据
+    data[0] = 0x00;
+    data[1] = WRITE_MUTI;
+    data[2] = 0x00;
+    data[3] = 0x09;
+    data[4] = 0x00;
+    data[5] = 0x02;
+    data[6] = 0x04;
+    data[7] = time >> 24;
+    data[8] = time >> 16;
+    data[9] = time >> 8;
+    data[10] = time;
+    data[11] = usModbusRTU_CRC(data, 11);
+    data[12] = usModbusRTU_CRC(data, 11) >> 8;
+
+    seq_key.addr = 0x00;
+    seq_key.regH = 0x00;
+    seq_key.regL = 0x09;
+    seq_key.regSize = 2;
+    keyValue.key = SeqKeyToLong(seq_key);
+    keyValue.dataSegment.len = 13;
+    keyValue.dataSegment.data = rt_malloc(keyValue.dataSegment.len);
+    if(keyValue.dataSegment.data)
+    {
+        //5.复制实际数据
+        rt_memcpy(keyValue.dataSegment.data, data, keyValue.dataSegment.len);
+
+        uart->taskList.AddToList(keyValue, NO);
+
+        //6.回收空间
+        rt_free(keyValue.dataSegment.data);
+        keyValue.dataSegment.data = RT_NULL;
+    }
+}
+
+static void getRegisterData(u8* data, u8 len, u32 uuid,u8 type)
+{
+    if(len >= 13)
+    {
+        data[0] = 0xFA;
+        data[1] = 0x00;
+        data[2] = 0x00;
+        data[3] = 0x00;
+        data[4] = 0x00;
+        data[5] = 0x00;
+        data[6] = 6;
+        data[7] = 0x01;
+        data[8] = type;
+        data[9] = uuid >> 24;
+        data[10] = uuid >> 16;
+        data[11] = uuid >> 8;
+        data[12] = uuid;
+    }
+}
+
+//特殊注册
+static void specialRegister(type_monitor_t *monitor)
+{
+    u8                          data[13];
+#if (HUB_SELECT == HUB_ENVIRENMENT)
+                //特殊设备处理
+                getRegisterData(data, 13, 0x00000000, PAR_TYPE);
+                SetSensorDefault(monitor, 0x00000000, PAR_TYPE, 0x18);
+#elif (HUB_SELECT == HUB_IRRIGSTION)
+                getRegisterData(data, 13, 0x00000001,PHEC_TYPE);
+                SetSensorDefault(monitor, 0x00000001, PHEC_TYPE, 0xE0);
+                getRegisterData(data, 13, 0x00000002,PHEC_TYPE);
+                SetSensorDefault(monitor, 0x00000002, PHEC_TYPE, 0xE1);
+                getRegisterData(data, 13, 0x00000003,PHEC_TYPE);
+                SetSensorDefault(monitor, 0x00000003, PHEC_TYPE, 0xE2);
+                getRegisterData(data, 13, 0x00000004,PHEC_TYPE);
+                SetSensorDefault(monitor, 0x00000004, PHEC_TYPE, 0xE3);
+
+                getRegisterData(data, 13, 0x00000005,WATERlEVEL_TYPE);
+                SetSensorDefault(monitor, 0x00000005, WATERlEVEL_TYPE, 0xE4);
+                getRegisterData(data, 13, 0x00000006,WATERlEVEL_TYPE);
+                SetSensorDefault(monitor, 0x00000006, WATERlEVEL_TYPE, 0xE5);
+                getRegisterData(data, 13, 0x00000007,WATERlEVEL_TYPE);
+                SetSensorDefault(monitor, 0x00000007, WATERlEVEL_TYPE, 0xE6);
+                getRegisterData(data, 13, 0x00000008,WATERlEVEL_TYPE);
+                SetSensorDefault(monitor, 0x00000008, WATERlEVEL_TYPE, 0xE7);
+
+                getRegisterData(data, 13, 0x00000009, SOIL_T_H_TYPE);
+                SetSensorDefault(monitor, 0x00000009, SOIL_T_H_TYPE, 0xE8);
+                getRegisterData(data, 13, 0x0000000a, SOIL_T_H_TYPE);
+                SetSensorDefault(monitor, 0x0000000a, SOIL_T_H_TYPE, 0xE9);
+                getRegisterData(data, 13, 0x0000000b, SOIL_T_H_TYPE);
+                SetSensorDefault(monitor, 0x0000000b, SOIL_T_H_TYPE, 0xEA);
+                getRegisterData(data, 13, 0x0000000c, SOIL_T_H_TYPE);
+                SetSensorDefault(monitor, 0x0000000c, SOIL_T_H_TYPE, 0xEB);
+#endif
+
+}
 
 /**
  * @brief  : 传感器类串口线程入口
@@ -153,9 +253,11 @@ void SensorUart2TaskEntry(void* parameter)
     static      u8              Timer1sTouch    = OFF;
     static      u8              Timer300msTouch    = OFF;
     static      u8              Timer10sTouch   = OFF;
+    static      u8              Timer10mTouch   = OFF;
     static      u16             time1S = 0;
     static      u16             time300mS = 0;
     static      u16             time10S = 0;
+    static      u16             time10M = 0;
     static      u8              deviceSize = NO;
     type_uart_class             *deviceObj          = GetDeviceObject();
     type_uart_class             *sensorObj          = GetSensorObject();
@@ -174,11 +276,14 @@ void SensorUart2TaskEntry(void* parameter)
     deviceObj->ConfigureUart(&uart2_serial);
     lineObj->ConfigureUart(&uart3_serial);
 
+    specialRegister(GetMonitor());
+
     while (1)
     {
         time1S = TimerTask(&time1S, 1000/UART_PERIOD, &Timer1sTouch);                       //1s定时任务
-        time300mS = TimerTask(&time300mS, 300/UART_PERIOD, &Timer300msTouch);                       //3s定时任务
-        time10S = TimerTask(&time10S, 10000/UART_PERIOD, &Timer10sTouch);                   //5s定时任务
+        time300mS = TimerTask(&time300mS, 300/UART_PERIOD, &Timer300msTouch);               //300ms定时任务
+        time10S = TimerTask(&time10S, 10000/UART_PERIOD, &Timer10sTouch);                   //10s定时任务
+        time10M = TimerTask(&time10M, 600000/UART_PERIOD, &Timer10mTouch);                   //10m定时任务
 
         //1.文件系统如果没有准备好
         if(YES != GetFileSystemState())
@@ -238,7 +343,6 @@ void SensorUart2TaskEntry(void* parameter)
             }
         }
 
-        //Justin 应该优化成保持长连接的数据应该分解成毫秒级随机数发送
         if(ON == Timer1sTouch)
         {
             //1.数据处理,包括设备注册以及设备开关状态接收
@@ -279,11 +383,17 @@ void SensorUart2TaskEntry(void* parameter)
                     {
                         u16 reg = 0;
                         GetReadRegAddrByType(device->type, &reg);
-                        deviceObj->AskDevice(*device, reg);
+                        deviceObj->AskDevice(device, reg);
                     }
                 }
             }
 
+        }
+
+        if(ON == Timer10mTouch)
+        {
+            //发送广播时间
+            GenerateBroadcast(deviceObj);
         }
 
         rt_thread_mdelay(UART_PERIOD);

@@ -53,9 +53,9 @@ typedef struct uartClass{
     void(*DeviceChgType)(type_monitor_t *, u16 id, u8 type);       //发送设置端口type
     void (*LineCtrl)(line_t *line, u8 port, u8 state, u8 value);
     void (*Line4Ctrl)(line_t *line, u16 *value);
-    void(*AskDevice)(device_t , u16);                           //发送串口数据
+    void(*AskDevice)(device_t* , u16);                           //发送串口数据
     void(*AskSensor)(sensor_t , u16);                           //发送串口数据
-    void(*AskLine)(line_t , u16);                               //发送串口数据
+    void(*AskLine)(line_t* , u16);                               //发送串口数据
     void(*KeepConnect)(type_monitor_t*);
     void(*Optimization)(type_monitor_t*);
     void(*RecvCmd)(u8*, u8);                                    //接收串口数据

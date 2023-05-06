@@ -75,11 +75,11 @@ static void GenerateSendData(device_t device, u16 ctrl, u8 *data)
     data[7] = usModbusRTU_CRC(data, 6) >> 8;
 }
 
-static void GenerateAskData(device_t device, u16 reg, u8 *data)
+static void GenerateAskData(device_t *device, u16 reg, u8 *data)
 {
     rt_memset(data, 0, 8);
 
-    data[0] = device.addr;
+    data[0] = device->addr;
     data[1] = READ_MUTI;
     data[2] = reg >> 8;
     data[3] = reg;
@@ -90,8 +90,8 @@ static void GenerateAskData(device_t device, u16 reg, u8 *data)
     }
     else
     {
-        data[4] = device.storage_size >> 8;
-        data[5] = device.storage_size;
+        data[4] = device->storage_size >> 8;
+        data[5] = device->storage_size;
     }
     data[6] = usModbusRTU_CRC(data, 6);
     data[7] = usModbusRTU_CRC(data, 6) >> 8;
@@ -243,7 +243,7 @@ static void GenerateVuleBySingleCtrl(device_t device, u8 port, u8 state, u16 *va
                     *value = 0x0100;//开启
                 }
             }
-            else if(OFF == state)//Justin 考虑hvac被关的时候 未完待续
+            else if(OFF == state)
             {
 #if(HUB_ENVIRENMENT == HUB_SELECT)
                 if(HVAC_6_TYPE == device.type)
@@ -264,7 +264,7 @@ static void GenerateVuleBySingleCtrl(device_t device, u8 port, u8 state, u16 *va
     }
     else//多个寄存器
     {
-        for(u8 i = 0; i < device.storage_size; i++)//Justin 组合数据有问题 未完待续
+        for(u8 i = 0; i < device.storage_size; i++)
         {
             //如果先前是开着的就制1
             if(MANUAL_HAND_ON == device.port[i].manual.manual)
@@ -348,7 +348,6 @@ static void GenerateVuleByCtrl(device_t device, u8 func, u8 state, u16 *value)
                     if(IR_AIR_TYPE == device.type)
                     {
                         GenerateIrAirCtrlData(ON, value);
-//                        LOG_I("GenerateVuleByCtrl ir_air value = %x",*value);
                     }
                     else if(HVAC_6_TYPE == device.type)
                     {
@@ -389,7 +388,7 @@ static void GenerateVuleByCtrl(device_t device, u8 func, u8 state, u16 *value)
     }
     else//多个寄存器
     {
-        for(u8 port = 0; port < device.storage_size; port++)//Justin 组合数据有问题 未完待续
+        for(u8 port = 0; port < device.storage_size; port++)
         {
             //如果先前是开着的就制1
             if(MANUAL_HAND_ON == device.port[port].manual.manual)
@@ -633,7 +632,6 @@ static void Optimization(type_monitor_t *monitor)
             }
         }
 
-//        LOG_D("addr = %x, sendCnt = %d",sendMoni[i].addr,sendMoni[i].SendCnt);//Justin debug
     }
 }
 /****************Check List START***************************************************************/
@@ -787,7 +785,7 @@ static void DeviceCtrl(type_monitor_t *monitor, u8 func, u8 state)
     }
 }
 
-static void DeviceCtrlSingle(device_t *device, u8 port, u8 state)//Justin 未完待续
+static void DeviceCtrlSingle(device_t *device, u8 port, u8 state)
 {
     u8          data[8];
     u16         value       = 0;
@@ -833,7 +831,7 @@ static void DeviceCtrlSingle(device_t *device, u8 port, u8 state)//Justin 未完
 }
 
 //询问device 寄存器 regAddr为寄存器地址
-static void UartAsk(device_t device, u16 regAddr)
+static void UartAsk(device_t *device, u16 regAddr)
 {
     u8          data[8];
     KV          keyValue;
@@ -842,10 +840,10 @@ static void UartAsk(device_t device, u16 regAddr)
     GenerateAskData(device, regAddr, data);
 
     //2.
-    seq_key.addr = device.addr;
+    seq_key.addr = device->addr;
     seq_key.regH = regAddr >> 8;
     seq_key.regL = regAddr;
-    seq_key.regSize = device.storage_size;
+    seq_key.regSize = device->storage_size;
 
     keyValue.key = SeqKeyToLong(seq_key);
     keyValue.dataSegment.len = 8;
@@ -1240,8 +1238,7 @@ static void RecvListHandle(void)
                             device->port[port].type = type;
                             device->port[port].func = GetFuncByType(type);
                         }
-//                        LOG_D("-------------------- addr %x, type = %x %x %x %x",
-//                                device->addr,device->port[0].type,device->port[1].type,device->port[2].type,device->port[3].type);//Justin
+
                     }
                 }
             }

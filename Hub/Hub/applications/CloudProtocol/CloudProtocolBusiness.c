@@ -23,9 +23,7 @@ extern  rt_device_t     uart2_serial;
 
 extern void getAppVersion(char *);
 extern void getRealTimeForMat(type_sys_time *);
-//extern void GetNowSysSet(proTempSet_t *, proCo2Set_t *, proHumiSet_t *, proLine_t *, proLine_t *, struct recipeInfor *);
 extern  cloudcmd_t              cloudCmd;
-extern  line_4_recipe_t *GetNowLine_4_output(void);
 
 rt_err_t GetValueU8(cJSON *temp, type_kv_u8 *data)
 {
@@ -357,8 +355,8 @@ void CmdFindLocation(char *data, cloudcmd_t *cmd)
 {
     cJSON       *temp       = RT_NULL;
     u8          addr        = 0;
-    device_t    device;
-    line_t      line;
+    device_t    *device;
+    line_t      *line;
 
     temp = cJSON_Parse(data);
     if(RT_NULL != temp)
@@ -376,16 +374,16 @@ void CmdFindLocation(char *data, cloudcmd_t *cmd)
             addr = cmd->get_id;
         }
 
-//        if(GetDeviceByAddr(GetMonitor(), addr))//Justin debug 仅仅测试
-//        {
-//            device = *GetDeviceByAddr(GetMonitor(), addr);
-//            GetDeviceObject()->AskDevice(device, UART_FINDLOCATION_REG);
-//        }
-//        else if(GetLineByAddr(GetMonitor(), addr))
-//        {
-//            line = *GetLineByAddr(GetMonitor(), addr);
-//            GetLightObject()->AskLine(line, UART_FINDLOCATION_REG);
-//        }
+        if(GetDeviceByAddr(GetMonitor(), addr))
+        {
+            device = GetDeviceByAddr(GetMonitor(), addr);
+            GetDeviceObject()->AskDevice(device, UART_FINDLOCATION_REG);
+        }
+        else if(GetLineByAddr(GetMonitor(), addr))
+        {
+            line = GetLineByAddr(GetMonitor(), addr);
+            GetLightObject()->AskLine(line, UART_FINDLOCATION_REG);
+        }
 
         cJSON_Delete(temp);
     }
@@ -454,13 +452,12 @@ void CmdSetPortSet(char *data, cloudcmd_t *cmd)
 
         if(device != RT_NULL)
         {
-            LOG_I("find device name %s",device->name);
             GetValueByU8(temp, "manual", &device->port[port].manual.manual);
             GetValueByU16(temp, "manualOnTime", &device->port[port].manual.manual_on_time);
 
             if(MANUAL_HAND_ON == device->port[port].manual.manual)
             {
-                device->port[port].manual.manual_on_time_save = getTimeStamp();//Justin 未测试
+                device->port[port].manual.manual_on_time_save = getTimeStamp();
             }
 
             if((COOL_TYPE == device->port[port].type) ||
@@ -541,7 +538,7 @@ void CmdSetPortSet(char *data, cloudcmd_t *cmd)
 
             if(MANUAL_HAND_ON == line->port[0]._manual.manual)
             {
-                line->port[0]._manual.manual_on_time_save = getTimeStamp();//Justin 未测试
+                line->port[0]._manual.manual_on_time_save = getTimeStamp();
             }
         }
         else
@@ -837,14 +834,8 @@ void CmdSetDeviceType(char *data, cloudcmd_t *cmd)
         GetValueByU8(temp, "type", &type);
         cmd->chg_dev_id = id;
 
-        if(GetDeviceObject()->DeviceChgType)
-        {
-            GetDeviceObject()->DeviceChgType(GetMonitor(), id, type);
-        }
-        else
-        {
-            LOG_E("DeviceChgType is NULL");//Justin
-        }
+        GetDeviceObject()->DeviceChgType(GetMonitor(), id, type);
+
         if(id > 0xFF)
         {
             addr = id >> 8;
@@ -926,12 +917,6 @@ void CmdSetRecipe(char *data, cloudcmd_t *cmd)
                     GetValueByU16(line, "lightOn", &recipe->line_list[0].lightOn);
                     GetValueByU16(line, "lightOff", &recipe->line_list[0].lightOff);
 
-    //                GetValueByC16(line, "firstStartAt", firstStartAt, 15);//Justin debug 注意该功能需要修改
-                    firstStartAt[14] = '\0';
-                    changeCharToDate(firstStartAt, &time);
-
-                    recipe->line_list[0].firstCycleTime = time.hour * 60 + time.minute;
-                    recipe->line_list[0].firstRuncycleTime = systimeToTimestamp(time.year, time.month, time.day, time.hour, time.minute, 0);
                     GetValueByInt(line, "duration", &recipe->line_list[0].duration);
                     GetValueByInt(line, "pauseTime", &recipe->line_list[0].pauseTime);
                 }
@@ -986,12 +971,6 @@ void CmdSetRecipe(char *data, cloudcmd_t *cmd)
                 GetValueByU16(line, "lightOn", &recipe->line_list[1].lightOn);
                 GetValueByU16(line, "lightOff", &recipe->line_list[1].lightOff);
 
-//                GetValueByC16(line, "firstStartAt", firstStartAt, 15);//Justin debug 注意该功能需要修改
-                firstStartAt[14] = '\0';
-                changeCharToDate(firstStartAt, &time);
-
-                recipe->line_list[1].firstCycleTime = time.hour * 60 + time.minute;
-                recipe->line_list[1].firstRuncycleTime = systimeToTimestamp(time.year, time.month, time.day, time.hour, time.minute, 0);
                 GetValueByInt(line, "duration", &recipe->line_list[1].duration);
                 GetValueByInt(line, "pauseTime", &recipe->line_list[1].pauseTime);
             }
@@ -2014,7 +1993,7 @@ void CmdSetLightRecipe(char *data, line_4_recipe_t *repice, cloudcmd_t *cmd)
     }
 }
 
-void CmdSetLine(char *data, proLine_t *line, proLine_4_t *line_4, cloudcmd_t *cmd)//Justin 未测试
+void CmdSetLine(char *data, proLine_t *line, proLine_4_t *line_4, cloudcmd_t *cmd)
 {
     cJSON           *temp = RT_NULL;
     u8              lineType = 0;
@@ -2028,9 +2007,7 @@ void CmdSetLine(char *data, proLine_t *line, proLine_4_t *line_4, cloudcmd_t *cm
         GetValueByC16(temp, "msgid", cmd->msgid, KEYVALUE_VALUE_SIZE);
         GetValueByU8(temp, "lineType", &lineType);
 
-        LOG_E("lineType = %d",lineType);//Justin
-
-        if((1 == lineType) || (RT_NULL == line_4))//第二路没有4路调光的功能//Justin
+        if((1 == lineType) || (RT_NULL == line_4))//第二路没有4路调光的功能
         {
             GetValueByU8(temp, "lightType", &line->lightsType);
             GetValueByU8(temp, "brightMode", &line->brightMode);
@@ -2067,7 +2044,7 @@ void CmdSetLine(char *data, proLine_t *line, proLine_4_t *line_4, cloudcmd_t *cm
             GetValueByU16(temp, "tempOffDimming", &line->tempOffDimming);
             GetValueByU8(temp, "sunriseSunSet", &line->sunriseSunSet);
         }
-        else if(2 == lineType)//Justin 增加光谱
+        else if(2 == lineType)
         {
             GetValueByU8(temp, "brightMode", &line_4->brightMode);
             GetValueByU16(temp, "byAutoDimming", &line_4->byAutoDimming);
@@ -3871,7 +3848,7 @@ char *ReplySetDeviceType(char *cmd, cloudcmd_t cloud)
     u8              addr        = 0;
     u8              port        = 0;
     u8              fatherFlg           = 0;
-LOG_I("ReplySetDeviceType");//Justin
+
     if(RT_NULL != json)
     {
         cJSON_AddStringToObject(json, "cmd", cmd);
@@ -4958,8 +4935,7 @@ char *ReplyGetSensorEList(char *cmd, char *msgid)
             cJSON_AddItemToObject(json, "list", senlist);
         }
 
-        //Justin debug仅仅测试
-        cJSON_AddNumberToObject(json, "showType", /*GetSysSet()->sensorMainType*/2);
+        cJSON_AddNumberToObject(json, "showType", GetSysSet()->sensorMainType);
         cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
 
         str = cJSON_PrintUnformatted(json);
@@ -5207,8 +5183,6 @@ u8 getColorFromTankList(u16 address, sys_tank_t *list)
 //顺序先发送device再发送line
 char *ReplyGetDeviceList_new(char *cmd, char *msgid, u8 deviceType, u8 no)
 {
-//    u8              index       = 0;
-//    u8              line_no     = 0;
     u8              storage     = 0;
     u8              work_state  = 0;
     char            *str        = RT_NULL;
@@ -5267,7 +5241,7 @@ char *ReplyGetDeviceList_new(char *cmd, char *msgid, u8 deviceType, u8 no)
         else
         {
             strcpy(msgidName, msgid);
-            strcat(msgidName, "up");//Justin debug
+            strcat(msgidName, "up");
         }
         cJSON_AddStringToObject(json, "msgid", msgidName);
         cJSON_AddStringToObject(json, "sn", GetSnName(name, 12));

@@ -144,11 +144,11 @@ static rt_err_t GenerateLine4KVData(KV *kv, line_t light, u8 *data, u8 len)
     return RT_ERROR;
 }
 
-static void GenerateAskData(line_t line, u16 reg, u8 *data)
+static void GenerateAskData(line_t *line, u16 reg, u8 *data)
 {
     rt_memset(data, 0, 8);
 
-    data[0] = line.addr;
+    data[0] = line->addr;
     data[1] = READ_MUTI;
     data[2] = reg >> 8;
     data[3] = reg;
@@ -506,7 +506,7 @@ static void Line4Ctrl(line_t *line, u16 *value)
     }
 }
 
-static void AskLine(line_t line, u16 regAddr)
+static void AskLine(line_t *line, u16 regAddr)
 {
     u8          data[8];
     KV          keyValue;
@@ -515,7 +515,7 @@ static void AskLine(line_t line, u16 regAddr)
     GenerateAskData(line, regAddr, data);
 
     //2.
-    seq_key.addr = line.addr;
+    seq_key.addr = line->addr;
     seq_key.regH = regAddr >> 8;
     seq_key.regL = regAddr;
     seq_key.regSize = 1;
@@ -588,15 +588,6 @@ static void KeepConnect(type_monitor_t *monitor)
         i = 0;
     }
 }
-
-//void printSendMoni1(void)//Justin
-//{
-//    LOG_I("printSendMoni1-----------------------------");
-//    for(int i = 0; i < GetMonitor()->line_size; i++)
-//    {
-//        LOG_W("addr = %x, last ctrl = %x, send = %d",sendMoni[i].addr, sendMoni[i].ctrl,sendMoni[i].sendTime);
-//    }
-//}
 
 static void RecvCmd(u8* data, u8 len)
 {
@@ -688,13 +679,13 @@ static void SendCmd(void)
         }
     }
 
-    rt_kprintf("sendCmd : ");
-    for(int i = 0; i < first->keyData.dataSegment.len; i++)
-    {
-        rt_kprintf(" %x",first->keyData.dataSegment.data[i]);
-
-    }
-    rt_kprintf("\r\n");
+//    rt_kprintf("sendCmd : ");
+//    for(int i = 0; i < first->keyData.dataSegment.len; i++)
+//    {
+//        rt_kprintf(" %x",first->keyData.dataSegment.data[i]);
+//
+//    }
+//    rt_kprintf("\r\n");
 
     //5.将这个任务从任务列表中移出去
     lightObject.taskList.DeleteToList(first->keyData);
@@ -815,7 +806,7 @@ static void RecvListHandle(void)
                         line->port[reg - line->ctrl_addr].ctrl.d_state = tail->keyData.dataSegment.data[4];
                         line->port[reg - line->ctrl_addr].ctrl.d_value = tail->keyData.dataSegment.data[5];
                     }
-                    LOG_I("name %d, port = %d,value = %d",line->name,reg - line->ctrl_addr,line->port[reg - line->ctrl_addr].ctrl.d_value);//Justin debug
+
                 }
                 //针对设置4路调光
                 else if(WRITE_MUTI == rwType)

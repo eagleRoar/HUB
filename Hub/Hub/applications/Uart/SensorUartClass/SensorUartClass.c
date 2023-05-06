@@ -192,6 +192,13 @@ static void SendCmd(void)
     SignSensorSendFlag(LongToSeqKey(first->keyData.key).addr);
     AddLastCtrl(LongToSeqKey(first->keyData.key).addr);
 
+//    rt_kprintf("sendcmd : ");
+//    for(int i = 0; i < first->keyData.dataSegment.len; i++)
+//    {
+//        rt_kprintf(" %x",first->keyData.dataSegment.data[i]);
+//    }
+//    rt_kprintf("\r\n");
+
     //5.将这个任务从任务列表中移出去
     SensorObject.taskList.DeleteToList(first->keyData);
 }

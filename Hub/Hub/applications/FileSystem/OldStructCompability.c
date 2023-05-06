@@ -713,7 +713,7 @@ static void SaveOldSysSetByJson(sys_setOld_t sys_set,char *saveFile)
 
     //1.生成json 格式
     cjson = cJSON_CreateObject();
-    LOG_I("SaveSysSetByJson");//Justin
+
     if(cjson)
     {
         cJSON_AddNumberToObject(cjson, "crc", sys_set.crc);

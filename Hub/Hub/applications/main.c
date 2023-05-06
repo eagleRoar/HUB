@@ -35,7 +35,7 @@ extern int tcp_sock;
 extern const u8    HEAD_CODE[4];
 
 extern rt_uint8_t GetEthDriverLinkStatus(void);            //获取网口连接状态
-extern cloudcmd_t      cloudCmd;//Justin
+extern cloudcmd_t      cloudCmd;
 
 //初始化一些必要的参数
 static void InitParameter(void)
@@ -234,7 +234,7 @@ int main(void)
                     {
                         line_4Program(&GetMonitor()->line[0], *lineObj);
                     }
-                    lineProgram(GetMonitor(), 1, *lineObj, 1000);//Justin debug
+                    lineProgram(GetMonitor(), 1, *lineObj, 1000);
                     timmerProgram(GetMonitor(), *deviceObj);
                 }
 
@@ -279,14 +279,9 @@ int main(void)
             //执行手动功能
             menualHandProgram(GetMonitor(), *deviceObj, *lineObj);
             //报警功能
-            warnProgram(GetMonitor(), GetSysSet());             //监听告警信息//Justin debug
-
-//            char testc[5];
-//            sprintf(testc,"%3d %3d",98,100);
-//            LOG_I("%s",testc);
-//            sprintf(testc,"%3d %3d",4,93);
-//            LOG_I("%s",testc);
+            warnProgram(GetMonitor(), GetSysSet());             //监听告警信息
         }
+
 
         //10s
         if(ON == Timer10sTouch)

@@ -1270,6 +1270,18 @@ rt_err_t SetSensorDefault(type_monitor_t *monitor, u32 uuid, u8 type, u8 addr)
                     sensor.__stora[2].value = 0;
                     sensor.__stora[2].func = F_S_WT;
                     break;
+                case PHEC_NEW_TYPE:
+                    setSensorDefaultPara(&sensor, "BSB-I", 0x0100, sensor.type, 3);
+                    strncpy(sensor.__stora[0].name, "Ec", STORAGE_NAMESZ);
+                    strncpy(sensor.__stora[1].name, "Ph", STORAGE_NAMESZ);
+                    strncpy(sensor.__stora[2].name, "Wt", STORAGE_NAMESZ);
+                    sensor.__stora[0].value = 0;
+                    sensor.__stora[0].func = F_S_EC;
+                    sensor.__stora[1].value = 0;
+                    sensor.__stora[1].func = F_S_PH;
+                    sensor.__stora[2].value = 0;
+                    sensor.__stora[2].func = F_S_WT;
+                    break;
                 case WATERlEVEL_TYPE:
                     setSensorDefaultPara(&sensor, "BLS-WL", 0x0004, sensor.type, 1);
                     strncpy(sensor.__stora[0].name, "Wl", STORAGE_NAMESZ);

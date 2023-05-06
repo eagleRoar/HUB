@@ -341,203 +341,203 @@ char *GetFunNameByType(u8 type, char *name, u8 len)
     return name;
 }
 
-rt_err_t setSensorDefault(sensor_t *module)
-{
-    rt_err_t ret = RT_EOK;
-    sen_stora_t sen_stora[4];
-    switch (module->type)
-    {
-        case BHS_TYPE:
-            setSensorDefaultPara(module, "BLS-4", 0x0010, module->type, 4);
-            strncpy(sen_stora[0].name, "Co2", STORAGE_NAMESZ);
-            strncpy(sen_stora[1].name, "Humi", STORAGE_NAMESZ);
-            strncpy(sen_stora[2].name, "Temp", STORAGE_NAMESZ);
-            strncpy(sen_stora[3].name, "Light", STORAGE_NAMESZ);
-            sen_stora[0].value = 0;
-            sen_stora[1].value = 0;
-            sen_stora[2].value = 0;
-            sen_stora[3].value = 0;
-            sen_stora[0].func = F_S_CO2;
-            sen_stora[1].func = F_S_HUMI;
-            sen_stora[2].func = F_S_TEMP;
-            sen_stora[3].func = F_S_LIGHT;
-            setSensorDefuleStora(module, sen_stora[0], sen_stora[1], sen_stora[2], sen_stora[3]);
-            break;
-        case PAR_TYPE:
-            setSensorDefaultPara(module, "BLS-PAR", 0x0000, module->type, 1);
-            strncpy(module->__stora[0].name, "Par", STORAGE_NAMESZ);
-            module->__stora[0].value = 0;
-            module->__stora[0].func = F_S_PAR;
-            break;
-        case PHEC_TYPE:
-            setSensorDefaultPara(module, "BSB-I", 0x0000, module->type, 3);
-            strncpy(module->__stora[0].name, "Ec", STORAGE_NAMESZ);
-            strncpy(module->__stora[1].name, "Ph", STORAGE_NAMESZ);
-            strncpy(module->__stora[2].name, "Wt", STORAGE_NAMESZ);
-            module->__stora[0].value = 0;
-            module->__stora[0].func = F_S_EC;
-            module->__stora[1].value = 0;
-            module->__stora[1].func = F_S_PH;
-            module->__stora[2].value = 0;
-            module->__stora[2].func = F_S_WT;
-            break;
-        case WATERlEVEL_TYPE:
-            setSensorDefaultPara(module, "BLS-WL", 0x0004, module->type, 1);
-            strncpy(module->__stora[0].name, "Wl", STORAGE_NAMESZ);
-            module->__stora[0].value = 0;
-            module->__stora[0].func = F_S_WL;
-            break;
-        case SOIL_T_H_TYPE:     //土壤温湿度
-            setSensorDefaultPara(module, "BLS-MM", 0x0000, module->type, 3);
-            strncpy(module->__stora[0].name, "Soil_W", STORAGE_NAMESZ);
-            module->__stora[0].value = 0;
-            module->__stora[0].func = F_S_SW;
-            strncpy(module->__stora[1].name, "Soil_T", STORAGE_NAMESZ);
-            module->__stora[1].value = 0;
-            module->__stora[1].func = F_S_ST;
-            strncpy(module->__stora[2].name, "Soil_EC", STORAGE_NAMESZ);
-            module->__stora[2].value = 0;
-            module->__stora[2].func = F_S_SEC;
-            break;
-        case SMOG_TYPE:
-            setSensorDefaultPara(module, "BLS-SD", 0x0010, module->type, 1);
-            strncpy(module->__stora[0].name, "Water", STORAGE_NAMESZ);
-            module->__stora[0].value = 0;
-            module->__stora[0].func = F_S_SM;
-            break;
-        case LEAKAGE_TYPE:
-            setSensorDefaultPara(module, "BLS-WD", 0x0010, module->type, 1);
-            strncpy(module->__stora[0].name, "Smoke", STORAGE_NAMESZ);
-            module->__stora[0].value = 0;
-            module->__stora[0].func = F_S_LK;
-            break;
-        case O2_TYPE:
-            setSensorDefaultPara(module, "BLS-O2", 0x0010, module->type, 1);//寄存器为0x0010
-            strncpy(module->__stora[0].name, "O2", STORAGE_NAMESZ);
-            module->__stora[0].value = 0;
-            module->__stora[0].func = F_S_O2;
-            break;
-        default:
-            ret = RT_ERROR;
-            break;
-    }
+//rt_err_t setSensorDefault(sensor_t *module)
+//{
+//    rt_err_t ret = RT_EOK;
+//    sen_stora_t sen_stora[4];
+//    switch (module->type)
+//    {
+//        case BHS_TYPE:
+//            setSensorDefaultPara(module, "BLS-4", 0x0010, module->type, 4);
+//            strncpy(sen_stora[0].name, "Co2", STORAGE_NAMESZ);
+//            strncpy(sen_stora[1].name, "Humi", STORAGE_NAMESZ);
+//            strncpy(sen_stora[2].name, "Temp", STORAGE_NAMESZ);
+//            strncpy(sen_stora[3].name, "Light", STORAGE_NAMESZ);
+//            sen_stora[0].value = 0;
+//            sen_stora[1].value = 0;
+//            sen_stora[2].value = 0;
+//            sen_stora[3].value = 0;
+//            sen_stora[0].func = F_S_CO2;
+//            sen_stora[1].func = F_S_HUMI;
+//            sen_stora[2].func = F_S_TEMP;
+//            sen_stora[3].func = F_S_LIGHT;
+//            setSensorDefuleStora(module, sen_stora[0], sen_stora[1], sen_stora[2], sen_stora[3]);
+//            break;
+//        case PAR_TYPE:
+//            setSensorDefaultPara(module, "BLS-PAR", 0x0000, module->type, 1);
+//            strncpy(module->__stora[0].name, "Par", STORAGE_NAMESZ);
+//            module->__stora[0].value = 0;
+//            module->__stora[0].func = F_S_PAR;
+//            break;
+//        case PHEC_TYPE:
+//            setSensorDefaultPara(module, "BSB-I", 0x0000, module->type, 3);
+//            strncpy(module->__stora[0].name, "Ec", STORAGE_NAMESZ);
+//            strncpy(module->__stora[1].name, "Ph", STORAGE_NAMESZ);
+//            strncpy(module->__stora[2].name, "Wt", STORAGE_NAMESZ);
+//            module->__stora[0].value = 0;
+//            module->__stora[0].func = F_S_EC;
+//            module->__stora[1].value = 0;
+//            module->__stora[1].func = F_S_PH;
+//            module->__stora[2].value = 0;
+//            module->__stora[2].func = F_S_WT;
+//            break;
+//        case WATERlEVEL_TYPE:
+//            setSensorDefaultPara(module, "BLS-WL", 0x0004, module->type, 1);
+//            strncpy(module->__stora[0].name, "Wl", STORAGE_NAMESZ);
+//            module->__stora[0].value = 0;
+//            module->__stora[0].func = F_S_WL;
+//            break;
+//        case SOIL_T_H_TYPE:     //土壤温湿度
+//            setSensorDefaultPara(module, "BLS-MM", 0x0000, module->type, 3);
+//            strncpy(module->__stora[0].name, "Soil_W", STORAGE_NAMESZ);
+//            module->__stora[0].value = 0;
+//            module->__stora[0].func = F_S_SW;
+//            strncpy(module->__stora[1].name, "Soil_T", STORAGE_NAMESZ);
+//            module->__stora[1].value = 0;
+//            module->__stora[1].func = F_S_ST;
+//            strncpy(module->__stora[2].name, "Soil_EC", STORAGE_NAMESZ);
+//            module->__stora[2].value = 0;
+//            module->__stora[2].func = F_S_SEC;
+//            break;
+//        case SMOG_TYPE:
+//            setSensorDefaultPara(module, "BLS-SD", 0x0010, module->type, 1);
+//            strncpy(module->__stora[0].name, "Water", STORAGE_NAMESZ);
+//            module->__stora[0].value = 0;
+//            module->__stora[0].func = F_S_SM;
+//            break;
+//        case LEAKAGE_TYPE:
+//            setSensorDefaultPara(module, "BLS-WD", 0x0010, module->type, 1);
+//            strncpy(module->__stora[0].name, "Smoke", STORAGE_NAMESZ);
+//            module->__stora[0].value = 0;
+//            module->__stora[0].func = F_S_LK;
+//            break;
+//        case O2_TYPE:
+//            setSensorDefaultPara(module, "BLS-O2", 0x0010, module->type, 1);//寄存器为0x0010
+//            strncpy(module->__stora[0].name, "O2", STORAGE_NAMESZ);
+//            module->__stora[0].value = 0;
+//            module->__stora[0].func = F_S_O2;
+//            break;
+//        default:
+//            ret = RT_ERROR;
+//            break;
+//    }
+//
+//    return ret;
+//}
 
-    return ret;
-}
+//rt_err_t setDeviceDefault(device_t *module)
+//{
+//    rt_err_t    ret = RT_EOK;
+//    u16         addr;
+//    char        name[STORAGE_NAMESZ] = " ";
+//    switch (module->type) {
+//
+//        case CO2_UP_TYPE:
+//            setDeviceDefaultPara(module, "BCS-PU", 0x0040, S_CO2, module->type, 1);
+//            addr = module->addr;
+//            setDeviceDefaultStora(module, 0 ,"Co2_U", F_Co2_UP, module->type, addr , MANUAL_NO_HAND, 0);
+//            break;
+//        case CO2_DOWN_TYPE:
+//            setDeviceDefaultPara(module, "BCS-PD", 0x0040, S_CO2, module->type, 1);
+//            addr = module->addr;
+//            setDeviceDefaultStora(module, 0 ,"Co2_D", F_Co2_DOWN, module->type, addr , MANUAL_NO_HAND, 0);
+//            break;
+//        case HEAT_TYPE:
+//            setDeviceDefaultPara(module, "BTS-H", 0x0040, S_TEMP, module->type, 1);
+//            addr = module->addr;
+//            setDeviceDefaultStora(module, 0 ,"Heat", F_HEAT, module->type, addr , MANUAL_NO_HAND, 0);
+//            break;
+//        case HUMI_TYPE:
+//            setDeviceDefaultPara(module, "BHS-H", 0x0040, S_HUMI, module->type, 1);
+//            addr = module->addr;
+//            setDeviceDefaultStora(module, 0 , "Humi", F_HUMI, module->type, addr , MANUAL_NO_HAND, 0);
+//            break;
+//        case DEHUMI_TYPE:
+//            setDeviceDefaultPara(module, "BHS-D", 0x0040, S_HUMI, module->type, 1);
+//            addr = module->addr;
+//            setDeviceDefaultStora(module, 0 , "Dehumi", F_DEHUMI, module->type, addr , MANUAL_NO_HAND, 0);
+//            break;
+//        case COOL_TYPE:
+//            setDeviceDefaultPara(module, "BTS-C", 0x0040, S_TEMP, module->type, 1);
+//            addr = module->addr;
+//            setDeviceDefaultStora(module, 0 , "Cool", F_COOL, module->type, addr , MANUAL_NO_HAND, 0);
+//            break;
+//        case HVAC_6_TYPE:
+//            setDeviceDefaultPara(module, "BTS-1", 0x0401, S_TEMP, module->type, 1);
+//            addr = module->addr;
+//            setDeviceDefaultStora(module, 0 , "Hvac", F_COOL, module->type, addr, MANUAL_NO_HAND, 0);
+//            break;
+//        case TIMER_TYPE:
+//            setDeviceDefaultPara(module, "BPS", 0x0040, S_TIMER, module->type, 1);
+//            addr = module->addr;
+//            setDeviceDefaultStora(module, 0 , "Timer", F_TIMER, module->type, addr , MANUAL_NO_HAND, 0);
+//            break;
+//        case AC_4_TYPE:
+//            setDeviceDefaultPara(module, "BSS-4", 0x0401, S_AC_4, module->type, 4);
+//            for(u8 index = 0; index < module->storage_size; index++)
+//            {
+//                strcpy(name," ");
+//                sprintf(name,"%s%d","port",index+1);
+//                strncpy(module->port[index].name, name, STORAGE_NAMESZ);
+//                module->port[index].manual.manual_on_time = MANUAL_TIME_DEFAULT;
+//            }
+//            break;
+//        case PUMP_TYPE:
+//            setDeviceDefaultPara(module, "BIS-P", 0x0040, S_PUMP, module->type, 1);
+//            addr = module->addr;
+//            setDeviceDefaultStora(module, 0 , "Pump", F_PUMP, module->type, addr , MANUAL_NO_HAND, 0);
+//            break;
+//        case IO_12_TYPE:
+//            setDeviceDefaultPara(module, "BCB-12", 0x0401, S_IO_12, module->type, 12);
+//            for(u8 index = 0; index < module->storage_size; index++)
+//            {
+//                module->port[index].type = VALVE_TYPE;//目前暂定都是阀
+//                module->port[index].func = F_VALVE;
+//                strcpy(name," ");
+//                sprintf(name,"%s%d","port",index+1);
+//                strncpy(module->port[index].name, name, STORAGE_NAMESZ);
+//                module->port[index].manual.manual_on_time = MANUAL_TIME_DEFAULT;
+//            }
+//            break;
+//        case IO_4_TYPE:
+//            setDeviceDefaultPara(module, "BDC-4", 0x0401, S_IO_4, module->type, 4);
+//            for(u8 index = 0; index < module->storage_size; index++)
+//            {
+//                module->port[index].type = VALVE_TYPE;//目前暂定都是阀
+//                module->port[index].func = F_VALVE;
+//                strcpy(name," ");
+//                sprintf(name,"%s%d","port",index+1);
+//                strncpy(module->port[index].name, name, STORAGE_NAMESZ);
+//                module->port[index].manual.manual_on_time = MANUAL_TIME_DEFAULT;
+//            }
+//            break;
+//        case IR_AIR_TYPE:
+//            setDeviceDefaultPara(module, "BTS-AR", 0x0100, S_TEMP, module->type, 1);
+//            addr = module->addr;
+//            setDeviceDefaultStora(module, 0 , "IR_AIR", F_COOL, module->type, addr , MANUAL_NO_HAND, 0);
+//            break;
+//        default:
+//            ret = RT_ERROR;
+//            break;
+//    }
+//
+//    return ret;
+//}
 
-rt_err_t setDeviceDefault(device_t *module)
-{
-    rt_err_t    ret = RT_EOK;
-    u16         addr;
-    char        name[STORAGE_NAMESZ] = " ";
-    switch (module->type) {
-
-        case CO2_UP_TYPE:
-            setDeviceDefaultPara(module, "BCS-PU", 0x0040, S_CO2, module->type, 1);
-            addr = module->addr;
-            setDeviceDefaultStora(module, 0 ,"Co2_U", F_Co2_UP, module->type, addr , MANUAL_NO_HAND, 0);
-            break;
-        case CO2_DOWN_TYPE:
-            setDeviceDefaultPara(module, "BCS-PD", 0x0040, S_CO2, module->type, 1);
-            addr = module->addr;
-            setDeviceDefaultStora(module, 0 ,"Co2_D", F_Co2_DOWN, module->type, addr , MANUAL_NO_HAND, 0);
-            break;
-        case HEAT_TYPE:
-            setDeviceDefaultPara(module, "BTS-H", 0x0040, S_TEMP, module->type, 1);
-            addr = module->addr;
-            setDeviceDefaultStora(module, 0 ,"Heat", F_HEAT, module->type, addr , MANUAL_NO_HAND, 0);
-            break;
-        case HUMI_TYPE:
-            setDeviceDefaultPara(module, "BHS-H", 0x0040, S_HUMI, module->type, 1);
-            addr = module->addr;
-            setDeviceDefaultStora(module, 0 , "Humi", F_HUMI, module->type, addr , MANUAL_NO_HAND, 0);
-            break;
-        case DEHUMI_TYPE:
-            setDeviceDefaultPara(module, "BHS-D", 0x0040, S_HUMI, module->type, 1);
-            addr = module->addr;
-            setDeviceDefaultStora(module, 0 , "Dehumi", F_DEHUMI, module->type, addr , MANUAL_NO_HAND, 0);
-            break;
-        case COOL_TYPE:
-            setDeviceDefaultPara(module, "BTS-C", 0x0040, S_TEMP, module->type, 1);
-            addr = module->addr;
-            setDeviceDefaultStora(module, 0 , "Cool", F_COOL, module->type, addr , MANUAL_NO_HAND, 0);
-            break;
-        case HVAC_6_TYPE:
-            setDeviceDefaultPara(module, "BTS-1", 0x0401, S_TEMP, module->type, 1);
-            addr = module->addr;
-            setDeviceDefaultStora(module, 0 , "Hvac", F_COOL, module->type, addr, MANUAL_NO_HAND, 0);
-            break;
-        case TIMER_TYPE:
-            setDeviceDefaultPara(module, "BPS", 0x0040, S_TIMER, module->type, 1);
-            addr = module->addr;
-            setDeviceDefaultStora(module, 0 , "Timer", F_TIMER, module->type, addr , MANUAL_NO_HAND, 0);
-            break;
-        case AC_4_TYPE:
-            setDeviceDefaultPara(module, "BSS-4", 0x0401, S_AC_4, module->type, 4);
-            for(u8 index = 0; index < module->storage_size; index++)
-            {
-                strcpy(name," ");
-                sprintf(name,"%s%d","port",index+1);
-                strncpy(module->port[index].name, name, STORAGE_NAMESZ);
-                module->port[index].manual.manual_on_time = MANUAL_TIME_DEFAULT;
-            }
-            break;
-        case PUMP_TYPE:
-            setDeviceDefaultPara(module, "BIS-P", 0x0040, S_PUMP, module->type, 1);
-            addr = module->addr;
-            setDeviceDefaultStora(module, 0 , "Pump", F_PUMP, module->type, addr , MANUAL_NO_HAND, 0);
-            break;
-        case IO_12_TYPE:
-            setDeviceDefaultPara(module, "BCB-12", 0x0401, S_IO_12, module->type, 12);
-            for(u8 index = 0; index < module->storage_size; index++)
-            {
-                module->port[index].type = VALVE_TYPE;//目前暂定都是阀
-                module->port[index].func = F_VALVE;
-                strcpy(name," ");
-                sprintf(name,"%s%d","port",index+1);
-                strncpy(module->port[index].name, name, STORAGE_NAMESZ);
-                module->port[index].manual.manual_on_time = MANUAL_TIME_DEFAULT;
-            }
-            break;
-        case IO_4_TYPE:
-            setDeviceDefaultPara(module, "BDC-4", 0x0401, S_IO_4, module->type, 4);
-            for(u8 index = 0; index < module->storage_size; index++)
-            {
-                module->port[index].type = VALVE_TYPE;//目前暂定都是阀
-                module->port[index].func = F_VALVE;
-                strcpy(name," ");
-                sprintf(name,"%s%d","port",index+1);
-                strncpy(module->port[index].name, name, STORAGE_NAMESZ);
-                module->port[index].manual.manual_on_time = MANUAL_TIME_DEFAULT;
-            }
-            break;
-        case IR_AIR_TYPE:
-            setDeviceDefaultPara(module, "BTS-AR", 0x0100, S_TEMP, module->type, 1);
-            addr = module->addr;
-            setDeviceDefaultStora(module, 0 , "IR_AIR", F_COOL, module->type, addr , MANUAL_NO_HAND, 0);
-            break;
-        default:
-            ret = RT_ERROR;
-            break;
-    }
-
-    return ret;
-}
-
-rt_err_t setLineDefault(line_t *line)
-{
-    strncpy(line->name, "line", MODULE_NAMESZ);
-    line->ctrl_addr = 0x0060;
-    for(int i = 0; i < LINE_PORT_MAX; i++)
-    {
-        line->port[i].ctrl.d_state = 0;
-        line->port[i].ctrl.d_value = 0;
-        line->port[i]._manual.manual = MANUAL_NO_HAND;
-        line->port[i]._manual.manual_on_time = MANUAL_TIME_DEFAULT;
-    }
-
-    return RT_EOK;
-}
+//rt_err_t setLineDefault(line_t *line)
+//{
+//    strncpy(line->name, "line", MODULE_NAMESZ);
+//    line->ctrl_addr = 0x0060;
+//    for(int i = 0; i < LINE_PORT_MAX; i++)
+//    {
+//        line->port[i].ctrl.d_state = 0;
+//        line->port[i].ctrl.d_value = 0;
+//        line->port[i]._manual.manual = MANUAL_NO_HAND;
+//        line->port[i]._manual.manual_on_time = MANUAL_TIME_DEFAULT;
+//    }
+//
+//    return RT_EOK;
+//}
 
 //获取当前分配的最大的地址
 u8 getMonitorMaxAddr(type_monitor_t *monitor)
@@ -630,6 +630,7 @@ u8 TypeSupported(u8 type)
         case BHS_TYPE:
         case PAR_TYPE:
         case PHEC_TYPE:
+        case PHEC_NEW_TYPE:
         case WATERlEVEL_TYPE:
         case SOIL_T_H_TYPE:
         case SMOG_TYPE:
@@ -669,125 +670,125 @@ u8 TypeSupported(u8 type)
 
 /* 注册新模块 */
 //specialAddr 仅仅适用于PHEC 水位
-void AnlyzeDeviceRegister(type_monitor_t *monitor, rt_device_t serial, u8 *data, u8 dataLen, u8 specialAddr)
-{
-    u8                  no          = 0;
-    u8                  s_or_d      = 0;
-    sensor_t            sensor;
-    device_t            device;
-    line_t              line;
-
-    rt_memset(&sensor, 0, sizeof(sensor_t));
-    rt_memset(&device, 0, sizeof(device_t));
-    rt_memset(&line, 0, sizeof(line_t));
-
-    sensor.type = data[8];
-    sensor.uuid = (data[9] << 24) | (data[10] << 16) | (data[11] << 8) | data[12];
-    device.type = data[8];
-    device.uuid = (data[9] << 24) | (data[10] << 16) | (data[11] << 8) | data[12];
-    line.type = data[8];
-    line.uuid = (data[9] << 24) | (data[10] << 16) | (data[11] << 8) | data[12];
-
-    s_or_d = TypeSupported(data[8]);
-
-    if(SENSOR_TYPE == s_or_d)
-    {
-        //1.该判断为了避免sensor device line类型插到错误的接口
-        if(serial == rt_device_find(DEVICE_UART1))
-        {
-            if(NO == FindSensor(monitor, sensor, &no))
-            {
-                if((PHEC_TYPE != sensor.type) &&
-                   (WATERlEVEL_TYPE != sensor.type) &&
-                   (PAR_TYPE != sensor.type) &&
-                   (SOIL_T_H_TYPE != sensor.type))
-                {
-                    sensor.addr = getAllocateAddress(monitor);
-                }
-                else
-                {
-                    sensor.addr = specialAddr;
-                }
-                if(RT_EOK == setSensorDefault(&sensor))
-                {
-                    InsertSensorToTable(monitor, sensor, no);
-                }
-                else
-                {
-                    LOG_E("The sensor is not supported");
-                }
-            }
-            else
-            {
-                LOG_D("sensor name %s have exist",GetSensorByType(monitor, sensor.type)->name);
-            }
-            /* 发送注册回复 */
-            //特殊处理 如果是PAR 不用回复
-            if((PAR_TYPE != sensor.type) &&
-               (PHEC_TYPE != sensor.type) &&
-               (WATERlEVEL_TYPE != sensor.type))
-            {
-                senRegisterAnswer(monitor, serial, sensor.uuid);
-            }
-        }
-        else
-        {
-            LOG_E("The 485 line is wrong");
-        }
-    }
-    else if(DEVICE_TYPE == s_or_d)
-    {
-        if(serial == rt_device_find(DEVICE_UART2))
-        {
-            if(NO == FindDevice(monitor, device, &no))
-            {
-                device.addr = getAllocateAddress(monitor);
-                if(RT_EOK == setDeviceDefault(&device))
-                {
-                    InsertDeviceToTable(monitor, device, no);
-                }
-                else
-                {
-                    LOG_E("The device is not supported");
-                }
-            }
-            else
-            {
-
-                LOG_D("device have exist, type = %x, really addr = %d",
-                        data[8],data[7]);
-            }
-            /* 发送注册回复 */
-            devRegisterAnswer(monitor, serial, device.uuid);
-        }
-        else
-        {
-            LOG_E("The 485 line is wrong");
-        }
-    }
-    else if(LINE1OR2_TYPE == s_or_d)
-    {
-        if(serial == rt_device_find(DEVICE_UART3))
-        {
-            if(NO == FindLine(monitor, line, &no))
-            {
-                line.addr = getAllocateAddress(monitor);
-                setLineDefault(&line);
-                InsertLineToTable(monitor, line, no);
-            }
-            else
-            {
-                LOG_D("line have exist");
-            }
-
-            lineAnswer(monitor, serial, line.uuid);
-        }
-        else
-        {
-            LOG_E("The 485 line is wrong");
-        }
-    }
-}
+//void AnlyzeDeviceRegister(type_monitor_t *monitor, rt_device_t serial, u8 *data, u8 dataLen, u8 specialAddr)
+//{
+//    u8                  no          = 0;
+//    u8                  s_or_d      = 0;
+//    sensor_t            sensor;
+//    device_t            device;
+//    line_t              line;
+//
+//    rt_memset(&sensor, 0, sizeof(sensor_t));
+//    rt_memset(&device, 0, sizeof(device_t));
+//    rt_memset(&line, 0, sizeof(line_t));
+//
+//    sensor.type = data[8];
+//    sensor.uuid = (data[9] << 24) | (data[10] << 16) | (data[11] << 8) | data[12];
+//    device.type = data[8];
+//    device.uuid = (data[9] << 24) | (data[10] << 16) | (data[11] << 8) | data[12];
+//    line.type = data[8];
+//    line.uuid = (data[9] << 24) | (data[10] << 16) | (data[11] << 8) | data[12];
+//
+//    s_or_d = TypeSupported(data[8]);
+//
+//    if(SENSOR_TYPE == s_or_d)
+//    {
+//        //1.该判断为了避免sensor device line类型插到错误的接口
+//        if(serial == rt_device_find(DEVICE_UART1))
+//        {
+//            if(NO == FindSensor(monitor, sensor, &no))
+//            {
+//                if((PHEC_TYPE != sensor.type) &&
+//                   (WATERlEVEL_TYPE != sensor.type) &&
+//                   (PAR_TYPE != sensor.type) &&
+//                   (SOIL_T_H_TYPE != sensor.type))
+//                {
+//                    sensor.addr = getAllocateAddress(monitor);
+//                }
+//                else
+//                {
+//                    sensor.addr = specialAddr;
+//                }
+//                if(RT_EOK == setSensorDefault(&sensor))
+//                {
+//                    InsertSensorToTable(monitor, sensor, no);
+//                }
+//                else
+//                {
+//                    LOG_E("The sensor is not supported");
+//                }
+//            }
+//            else
+//            {
+//                LOG_D("sensor name %s have exist",GetSensorByType(monitor, sensor.type)->name);
+//            }
+//            /* 发送注册回复 */
+//            //特殊处理 如果是PAR 不用回复
+//            if((PAR_TYPE != sensor.type) &&
+//               (PHEC_TYPE != sensor.type) &&
+//               (WATERlEVEL_TYPE != sensor.type))
+//            {
+//                senRegisterAnswer(monitor, serial, sensor.uuid);
+//            }
+//        }
+//        else
+//        {
+//            LOG_E("The 485 line is wrong");
+//        }
+//    }
+//    else if(DEVICE_TYPE == s_or_d)
+//    {
+//        if(serial == rt_device_find(DEVICE_UART2))
+//        {
+//            if(NO == FindDevice(monitor, device, &no))
+//            {
+//                device.addr = getAllocateAddress(monitor);
+//                if(RT_EOK == setDeviceDefault(&device))
+//                {
+//                    InsertDeviceToTable(monitor, device, no);
+//                }
+//                else
+//                {
+//                    LOG_E("The device is not supported");
+//                }
+//            }
+//            else
+//            {
+//
+//                LOG_D("device have exist, type = %x, really addr = %d",
+//                        data[8],data[7]);
+//            }
+//            /* 发送注册回复 */
+//            devRegisterAnswer(monitor, serial, device.uuid);
+//        }
+//        else
+//        {
+//            LOG_E("The 485 line is wrong");
+//        }
+//    }
+//    else if(LINE1OR2_TYPE == s_or_d)
+//    {
+//        if(serial == rt_device_find(DEVICE_UART3))
+//        {
+//            if(NO == FindLine(monitor, line, &no))
+//            {
+//                line.addr = getAllocateAddress(monitor);
+//                setLineDefault(&line);
+//                InsertLineToTable(monitor, line, no);
+//            }
+//            else
+//            {
+//                LOG_D("line have exist");
+//            }
+//
+//            lineAnswer(monitor, serial, line.uuid);
+//        }
+//        else
+//        {
+//            LOG_E("The 485 line is wrong");
+//        }
+//    }
+//}
 
 void senRegisterAnswer(type_monitor_t *monitor, rt_device_t serial, u32 uuid)
 {

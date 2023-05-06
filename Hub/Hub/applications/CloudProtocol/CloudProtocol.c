@@ -409,7 +409,6 @@ void setCloudCmd(char *cmd, u8 flag, u8 cloud_app)
     }
 }
 
-//该函数要加上锁操作 Justin debug
 rt_err_t ReplyDeviceListDataToCloud(mqtt_client *client, int *sock, u8 sendCloudFlg)
 {
     char        name[20];
@@ -452,8 +451,6 @@ rt_err_t ReplyDeviceListDataToCloud(mqtt_client *client, int *sock, u8 sendCloud
                         rt_free(page);
                     }
                 }
-
-//                LOG_I("str = %s",str);//Justin
 
                 //获取数据完之后需要free否知数据泄露
                 cJSON_free(str);
@@ -499,8 +496,6 @@ rt_err_t ReplyDeviceListDataToCloud(mqtt_client *client, int *sock, u8 sendCloud
                         rt_free(page);
                     }
                 }
-
-                //LOG_I("str = %s",str);//Justin
 
                 //获取数据完之后需要free否知数据泄露
                 cJSON_free(str);
@@ -745,9 +740,7 @@ rt_err_t ReplyDataToCloud(mqtt_client *client, int *sock, u8 sendCloudFlg)
                 GetSnName(name, 12);
                 strcpy(name + 11, "/reply");
                 name[19] = '\0';
-                LOG_D("--------ReplyDataToCloud    1, strlen = %d",strlen(str));//Justin debug
                 paho_mqtt_publish(client, QOS1, name, str, strlen(str));
-                LOG_D("--------ReplyDataToCloud    2");//Justin debug
                 ret = RT_EOK;
             }
             else
@@ -1859,11 +1852,4 @@ void ecCalibrate1(sensor_t *sensor, type_monitor_t *monitor, ec_cal_t *ec, sys_s
             set->saveFlag = YES;
         }
     }
-}
-
-line_4_recipe_t *GetNowLine_4_output(void)
-{
-    //Justin debug 未完待续 在此判断当前的输出设置
-
-    return &GetSysSet()->lineRecipeList[0];//Justin 仅仅测试
 }

@@ -1301,7 +1301,7 @@ void GetNowSysSet(proTempSet_t *tempSet, proCo2Set_t *co2Set, proHumiSet_t *humi
     sys_recipe_t    *recipe = GetSysRecipt();
     u8              usedCalFlg = OFF; // 如果为OFF 则使用系统设置 否则
     type_sys_time   time;
-    char firstStartAt[15] = "";//Justin 灯的cycle的开始时间为这个配方开始的时间  未完待续
+    char firstStartAt[15] = "";
 
     changeCharToDate(set->stageSet.starts, &time);
     starts = changeDataToTimestamp(time.year, time.month, time.day, time.hour, time.minute, time.second);
@@ -1787,68 +1787,6 @@ void dimmingLineCtrl(u8 *stage, u16 ppfd)
     }
 }
 
-//统一时间单位为秒
-static u8 GetLineUpState(u16 on, u16 off, u16 now, u8 sunrise)//获取当前上升下降的状态//Justin debug 仅仅测试 未完成
-{
-    //没有跨天的情况
-    if(off > on)
-    {
-        if((now > on) && (now <= on + sunrise))
-        {
-            return LINE_UP;
-        }
-        else if(now > on + sunrise)
-        {
-            //如果距离结束时间不足sunrise
-            if(off > now)
-            {
-                if(off <= now + sunrise)
-                {
-                    return LINE_DOWN;
-                }
-                else
-                {
-                    return LINE_STABLE;
-                }
-            }
-            else
-            {
-                //now > off
-                return LINE_OFF;
-            }
-        }
-        else
-        {
-            //now < on
-            return LINE_OFF;
-        }
-    }
-    //跨天
-    else
-    {
-        if(now >= off && now < on)
-        {
-            return LINE_OFF;
-        }
-        else
-        {
-            //未完待续
-            if(now >= on && now < on + sunrise)
-            {
-                return LINE_UP;
-            }
-            else if(now + sunrise > off)
-            {
-                return LINE_DOWN;
-            }
-            else
-            {
-                return LINE_STABLE;
-            }
-        }
-    }
-}
-
 //返回一个周期需要的时间 单位s
 static void GetLine_4CyclePeriodTime(proLine_4_t *set, time_t *time)
 {
@@ -1872,7 +1810,7 @@ static void GetLine_4CyclePeriodTime(proLine_4_t *set, time_t *time)
  * @param retV 当前灯光需要设置的值
  * 时间单位 s
  */
-//Justin 未完待续
+
 static void GetLine4Value(time_t nowT, time_t startT, time_t continueT, u16 sunrise, u8 lowV, u8 TargetV, u8 *retV)
 {
     u16 slowUpT = 0;//日升日落需要的时间
@@ -1892,7 +1830,6 @@ static void GetLine4Value(time_t nowT, time_t startT, time_t continueT, u16 sunr
         //上升阶段
         if(nowT < startT + slowUpT)
         {
-            //Justin 未完待续 默认从0开始增加
             if(TargetV > lowV)
             {
                 value = (float)(TargetV - lowV) / slowUpT;
@@ -1901,8 +1838,6 @@ static void GetLine4Value(time_t nowT, time_t startT, time_t continueT, u16 sunr
                 {
                     *retV = TargetV;
                 }
-                LOG_D("GetLine4Value slowUpT = %d, now - startT = %d, *retV = %d",
-                        slowUpT, nowT - startT, *retV);//Justin
             }
             else
             {
@@ -1969,9 +1904,11 @@ void GetRealLine4V(dimmingCurve_t* curve, u8 port, u8 value, u8 *real)
         default : break;
     }
 
-    a = (float)(y2 - y1)/(x2 - x1);
-    b = (float)(x2*y1 - x1*y2)/(x2 - x1);
-//    printf("GetRealLine4V a = %f, b = %f\r\n",a,b);//Justin
+    if(x2 > x1)
+    {
+        a = (float)(y2 - y1)/(x2 - x1);
+        b = (float)(x2*y1 - x1*y2)/(x2 - x1);
+    }
 
     int res = a * value + b;
     if(res > 0)
@@ -2044,7 +1981,7 @@ void line_4Program(line_t *line, type_uart_class lineUart)
             struct tm *timeTemp = getTimeStampByDate(&time1);
 
             startOnTime = systimeToTimestamp(timeTemp->tm_year + 1900, timeTemp->tm_mon + 1, timeTemp->tm_mday,
-                nowTimerSet->on / 60, nowTimerSet->on % 60, 0);//Justin debug 仅仅测试
+                nowTimerSet->on / 60, nowTimerSet->on % 60, 0);
             if(nowTimerSet->off > nowTimerSet->on)
             {
                 onContineTime = (nowTimerSet->off - nowTimerSet->on) * 60;
@@ -2181,9 +2118,8 @@ void line_4Program(line_t *line, type_uart_class lineUart)
         GetRealLine4V(&GetSysSet()->dimmingCurve, i, stage[i], &res);
         ctrlValue[i] = (stage[i] << 8) | res;
     }
-    lineUart.Line4Ctrl(line, ctrlValue);//Justin debug 仅仅测试
-//    LOG_I("line_4Program state = %d, recipe no = %d,value = %d %d %d %d",
-//            state, lineRecipeNo, stage[0], stage[1], stage[2], stage[3]);//Justin
+    lineUart.Line4Ctrl(line, ctrlValue);
+
 }
 
 void lineProgram(type_monitor_t *monitor, u8 line_no, type_uart_class lineUart, u16 mPeroid)
@@ -2861,6 +2797,7 @@ u8 pumpDoing(u8 addr, u8 port)
     u8                  item            = 0;
     type_sys_time       sys_time;
     device_t            *device         = GetDeviceByAddr(GetMonitor(), addr);
+    time_t              time            = getTimeStamp();
 
     getRealTimeForMat(&sys_time);
 
@@ -2873,24 +2810,42 @@ u8 pumpDoing(u8 addr, u8 port)
             if(BY_RECYCLE == device->port[port].mode)
             {
                 //1.判断当前时间是否是满足进入循环周期的条件,即大于开始时间
-                if(getTimeStamp() > device->port[port].cycle.start_at_timestamp)
+                if(time > device->port[port].cycle.start_at_timestamp)
                 {
-                    if(((getTimeStamp() - device->port[port].cycle.start_at_timestamp) %
-                        (device->port[port].cycle.duration + device->port[port].cycle.pauseTime)) <=
-                        device->port[port].cycle.duration)
+                    if((time - device->port[port].cycle.start_at_timestamp) <=
+                       (device->port[port].cycle.duration + device->port[port].cycle.pauseTime) * device->port[port].cycle.times)
                     {
-                        //device->port[port].ctrl.d_state = ON;
-                        state = ON;
+                        if(((time - device->port[port].cycle.start_at_timestamp) %
+                            (device->port[port].cycle.duration + device->port[port].cycle.pauseTime)) <=
+                            device->port[port].cycle.duration)
+                        {
+                            state = ON;
+                        }
+                        else
+                        {
+                            state = OFF;
+                        }
                     }
-                    else
+                }
+                else if(time > device->port[port].cycle1.start_at_timestamp)
+                {
+                    if((time - device->port[port].cycle1.start_at_timestamp) <=
+                       (device->port[port].cycle1.duration + device->port[port].cycle1.pauseTime) * device->port[port].cycle1.times)
                     {
-                        //device->port[port].ctrl.d_state = OFF;
-                        state = OFF;
+                        if(((time - device->port[port].cycle1.start_at_timestamp) %
+                            (device->port[port].cycle1.duration + device->port[port].cycle1.pauseTime)) <=
+                            device->port[port].cycle1.duration)
+                        {
+                            state = ON;
+                        }
+                        else
+                        {
+                            state = OFF;
+                        }
                     }
                 }
                 else
                 {
-                    //device->port[port].ctrl.d_state = OFF;
                     state = OFF;
                 }
             }
@@ -2905,7 +2860,6 @@ u8 pumpDoing(u8 addr, u8 port)
                         if(sys_time.hour * 60 * 60 + sys_time.minute * 60 + sys_time.second <= (device->port[port].timer[item].on_at *60
                                 + device->port[port].timer[item].duration) )
                         {
-//                            device->port[port].ctrl.d_state = device->port[port].timer[item].en;
                             state = device->port[port].timer[item].en;
                             break;
                         }
@@ -2920,7 +2874,6 @@ u8 pumpDoing(u8 addr, u8 port)
                             if((sys_time.hour * 60 * 60 + sys_time.minute * 60 + sys_time.second) <
                                     ((device->port[port].timer[item].on_at *60 + device->port[port].timer[item].duration)- 24 * 60 * 60))
                             {
-//                                device->port[port].ctrl.d_state = device->port[port].timer[item].en;
                                 state = device->port[port].timer[item].en;
                                 break;
                             }
@@ -2930,8 +2883,6 @@ u8 pumpDoing(u8 addr, u8 port)
 
                 if(item == TIMER_GROUP)
                 {
-//                    device->port[port].ctrl.d_state = 0;
-//                    device->port[port].ctrl.d_value = 0;
                     state = OFF;
                 }
             }

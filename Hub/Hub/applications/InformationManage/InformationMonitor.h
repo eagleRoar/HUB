@@ -65,6 +65,7 @@ typedef     struct eth_heart                eth_heart_t;
 #define     AUTO_DIMMING                    1200
 #define     MANUAL_TIME_DEFAULT             10
 
+#pragma pack(1)
 typedef struct hubOld{
     u16 crc;
     char name[HUB_NAMESZ];
@@ -280,6 +281,7 @@ struct device{
         //timer
         type_timmer_t timer[TIMER_GROUP];
         type_cycle_t cycle;
+        type_cycle_t cycle1;//灌溉泵有白天黑夜的cycle模式
         type_manual_t manual;
         type_ctrl_t ctrl;
     }port[DEVICE_PORT_MAX];
@@ -456,7 +458,6 @@ struct allocate
 
 /** 一下结构顺序不能打乱 否则存取SD卡的GetMonitorFromSdCard相关逻辑要改 **/
 
-#pragma pack(1)
 typedef struct monitorOld
 {
     /* 以下为统一分配 */
@@ -501,33 +502,34 @@ typedef     void (*FAC_FUNC)(type_monitor_t *);
 #define     NAME_ENV                "hub_envi"                   //环境控制从机hub名称
 #define     NAME_IRR                "hub_irri"                   //灌溉控制从机hub名称
 
-#define     HUB_TYPE        0xFF
-#define     LINE_TYPE       0x22        //灯光类
-#define     LINE1_TYPE      0x23        //灯光类//Justin debug 该类型为默认地址 需要和黄工确认
-#define     LINE2_TYPE      0x24        //灯光类//Justin debug 该类型为默认地址 需要和黄工确认
-#define     LINE_4_TYPE     0x25        //灯光类
-#define     BHS_TYPE        0x03
-#define     PHEC_TYPE       0x05
-#define     PAR_TYPE        0x08
-#define     WATERlEVEL_TYPE 0x0A
-#define     SOIL_T_H_TYPE   0x0D        //土壤温湿度
-#define     O2_TYPE         0x0E        //氧气传感器
-#define     SMOG_TYPE       0x16        //烟雾传感器
-#define     LEAKAGE_TYPE    0x17        //漏水传感器
-#define     CO2_UP_TYPE     0x41
-#define     HEAT_TYPE       0x42
-#define     HUMI_TYPE       0x43
-#define     DEHUMI_TYPE     0x44
-#define     COOL_TYPE       0x45
-#define     VALVE_TYPE      0x49        //阀
-#define     CO2_DOWN_TYPE   0x4A
-#define     PUMP_TYPE       0x4B        //水泵
-#define     TIMER_TYPE      0x4f
-#define     HVAC_6_TYPE     0x61
-#define     AC_4_TYPE       0x50
-#define     IO_12_TYPE      0x80
-#define     IO_4_TYPE       0x81
-#define     IR_AIR_TYPE     0xB4        //红外空调
+#define     HUB_TYPE            0xFF
+#define     LINE_TYPE           0x22        //灯光类
+#define     LINE1_TYPE          0x23        //灯光类
+#define     LINE2_TYPE          0x24        //灯光类
+#define     LINE_4_TYPE         0x25        //灯光类
+#define     PHEC_NEW_TYPE       0x02
+#define     BHS_TYPE            0x03
+#define     PHEC_TYPE           0x05
+#define     PAR_TYPE            0x08
+#define     WATERlEVEL_TYPE     0x0A
+#define     SOIL_T_H_TYPE       0x0D        //土壤温湿度
+#define     O2_TYPE             0x0E        //氧气传感器
+#define     SMOG_TYPE           0x16        //烟雾传感器
+#define     LEAKAGE_TYPE        0x17        //漏水传感器
+#define     CO2_UP_TYPE         0x41
+#define     HEAT_TYPE           0x42
+#define     HUMI_TYPE           0x43
+#define     DEHUMI_TYPE         0x44
+#define     COOL_TYPE           0x45
+#define     VALVE_TYPE          0x49        //阀
+#define     CO2_DOWN_TYPE       0x4A
+#define     PUMP_TYPE           0x4B        //水泵
+#define     TIMER_TYPE          0x4f
+#define     HVAC_6_TYPE         0x61
+#define     AC_4_TYPE           0x50
+#define     IO_12_TYPE          0x80
+#define     IO_4_TYPE           0x81
+#define     IR_AIR_TYPE         0xB4        //红外空调
 
 /**************************************从机 End*******************************************/
 

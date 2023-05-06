@@ -752,7 +752,6 @@ static void SaveRecipeSizeByJson(u8 recipe_size, u16 crc)
     cJSON       *cjson              = RT_NULL;
     char        *str                = RT_NULL;
 
-    LOG_I("SaveRecipeSizeByJson");//Justin
     cjson = cJSON_CreateObject();
     if(cjson)
     {
@@ -2872,7 +2871,6 @@ static void GetMonitorFromFile(type_monitor_t *monitor)
     {
         GetDeviceFromFile(&monitor->device[i], i, reg_device);
 
-        //Justin
         printDevice(monitor->device[i]);
     }
 
@@ -3051,43 +3049,44 @@ void FileSystemEntry(void* parameter)
         {
         }
 
+        //Justin debug 暂时屏蔽
         //10s 任务
-        if(ON == Timer30sTouch)
-        {
-            //2.存储系统信息
-            CheckSysSetNeedSave(GetSysSet());//Justin debug 这个函数一直在存储 有问题
-#if(HUB_SELECT == HUB_ENVIRENMENT)
-            //3.存储配方
-            CheckSysRecipeNeedSave(GetSysRecipt());
-#elif(HUB_SELECT == HUB_IRRIGSTION)
-            CheckSysTankNeedSave(GetSysTank());
-#endif
-            //存储分配的地址
-            if(monitorAddrCrc !=
-                    usModbusRTU_CRC(GetMonitor()->allocateStr.address, sizeof(GetMonitor()->allocateStr.address)))
-            {
-                monitorAddrCrc = usModbusRTU_CRC(GetMonitor()->allocateStr.address, sizeof(GetMonitor()->allocateStr.address));
-                SaveMonitorAddrByJson(GetMonitor()->allocateStr);
-            }
-
-            //1.存储设备注册表
-            if((sensorSize != GetMonitor()->sensor_size) ||
-               (deviceSize != GetMonitor()->device_size) ||
-               (lineSize != GetMonitor()->line_size))
-            {
-                sensorSize = GetMonitor()->sensor_size;
-                deviceSize = GetMonitor()->device_size;
-                lineSize = GetMonitor()->line_size;
-
-                SaveMonitorSizeByJson(GetMonitor()->sensor_size, GetMonitor()->device_size, GetMonitor()->line_size);
-            }
-
-            CheckDeviceNeedSave(GetMonitor());
-            CheckSensorNeedSave(GetMonitor());
-#if(HUB_SELECT == HUB_ENVIRENMENT)
-            CheckLineNeedSave(GetMonitor());
-#endif
-        }
+//        if(ON == Timer30sTouch)
+//        {
+//            //2.存储系统信息
+//            CheckSysSetNeedSave(GetSysSet());//Justin debug 这个函数一直在存储 有问题
+//#if(HUB_SELECT == HUB_ENVIRENMENT)
+//            //3.存储配方
+//            CheckSysRecipeNeedSave(GetSysRecipt());
+//#elif(HUB_SELECT == HUB_IRRIGSTION)
+//            CheckSysTankNeedSave(GetSysTank());
+//#endif
+//            //存储分配的地址
+//            if(monitorAddrCrc !=
+//                    usModbusRTU_CRC(GetMonitor()->allocateStr.address, sizeof(GetMonitor()->allocateStr.address)))
+//            {
+//                monitorAddrCrc = usModbusRTU_CRC(GetMonitor()->allocateStr.address, sizeof(GetMonitor()->allocateStr.address));
+//                SaveMonitorAddrByJson(GetMonitor()->allocateStr);
+//            }
+//
+//            //1.存储设备注册表
+//            if((sensorSize != GetMonitor()->sensor_size) ||
+//               (deviceSize != GetMonitor()->device_size) ||
+//               (lineSize != GetMonitor()->line_size))
+//            {
+//                sensorSize = GetMonitor()->sensor_size;
+//                deviceSize = GetMonitor()->device_size;
+//                lineSize = GetMonitor()->line_size;
+//
+//                SaveMonitorSizeByJson(GetMonitor()->sensor_size, GetMonitor()->device_size, GetMonitor()->line_size);
+//            }
+//
+//            CheckDeviceNeedSave(GetMonitor());
+//            CheckSensorNeedSave(GetMonitor());
+//#if(HUB_SELECT == HUB_ENVIRENMENT)
+//            CheckLineNeedSave(GetMonitor());
+//#endif
+//        }
 
         rt_thread_mdelay(FILE_SYS_PERIOD);
     }
@@ -3249,7 +3248,7 @@ void FileSystemInit(void)
     {
         initCloudProtocol();
     }
-#if(HUB_SELECT == HUB_ENVIRENMENT)//Justin
+#if(HUB_SELECT == HUB_ENVIRENMENT)
     GetSysRecipeListFromFile(GetSysRecipt());
     if(0x00 == GetSysRecipt()->crc)
     {
@@ -3265,8 +3264,6 @@ void FileSystemInit(void)
 
     //4.标记文件系统准备完成
     SetFileSystemState(YES);
-
-    //LOG_E("sys_set lightOn = %d, lightOff = %d",GetSysSet()->line1Set.lightOn,GetSysSet()->line1Set.lightOff);//Justin
 
     //5.文件系统线程
     if(RT_EOK != rt_thread_init(&file_sys_thread,
