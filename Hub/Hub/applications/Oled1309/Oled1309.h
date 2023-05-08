@@ -43,21 +43,23 @@ struct pageSelect
 enum
 {
 //一级界面
-HOME_PAGE = 0x00,//主页面
-SETTING_PAGE,//主页面
-FACTORY_PAGE,//工厂界面
+HOME_PAGE = 0x00,       //主页面
+SETTING_PAGE,           //主页面
+FACTORY_PAGE,           //工厂界面
 //二级界面
-SENSOR_STATE_PAGE,//
-DEVICE_STATE_PAGE,//
-LINE_STATE_PAGE,//
-QRCODE_PAGE,//
-APP_UPDATE_PAGE,//
-CO2_CALIBRATE_PAGE,//CO2校准
-PHEC_CALIBRATE_PAGE,//phec 校准
+SENSOR_STATE_PAGE,      //
+DEVICE_STATE_PAGE,      //
+LINE_STATE_PAGE,        //
+QRCODE_PAGE,            //
+APP_UPDATE_PAGE,        //
+CO2_CALIBRATE_PAGE,     //CO2校准
+PHEC_CALIBRATE_PAGE,    //phec 校准
 PH_ONLINE_PAGE,
 PH_CALIBRATE_PAGE,
 EC_ONLINE_PAGE,
 EC_CALIBRATE_PAGE,
+DATA_EXPORT,            //数据导出
+DATA_IMPORT,            //数据导入
 //工厂版本
 FA_SENSOR_PAGE,
 FA_DEVICE_PAGE,

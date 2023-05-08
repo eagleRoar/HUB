@@ -125,7 +125,12 @@ char *GetModelByType(u8 type, char *name, u8 len)
             strncpy(name, "BPS", len);
             break;
         case LINE_TYPE:
+        case LINE1_TYPE:
+        case LINE2_TYPE:
             strncpy(name, "LDA", len);
+            break;
+        case LINE_4_TYPE:
+            strncpy(name, "LDA-SPE", len);
             break;
         case PUMP_TYPE:
             strncpy(name, "BIS-P", len);
@@ -156,6 +161,10 @@ char *GetModelByType(u8 type, char *name, u8 len)
             break;
         case O2_TYPE:
             strncpy(name, "BLS-O2", len);
+            break;
+        case PHEC_NEW_TYPE:
+        case PHEC_TYPE:
+            strncpy(name, "BSB-I", len);
             break;
         default:
             break;

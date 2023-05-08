@@ -221,9 +221,9 @@ static void pageSetting(u8 page)
             break;
         case SETTING_PAGE:
 #if(HUB_SELECT == HUB_ENVIRENMENT)
-            pageSelectSet(YES, 1, 6);
+            pageSelectSet(YES, 1, 8);
 #elif(HUB_SELECT == HUB_IRRIGSTION)
-            pageSelectSet(YES, 1, 5);
+            pageSelectSet(YES, 1, 7);
 #endif
             break;
         case FACTORY_PAGE:
@@ -274,6 +274,13 @@ static void pageSetting(u8 page)
 
         case PH_CALIBRATE_PAGE:
             pageSelectSet(NO, 1, 3);
+            break;
+        case DATA_EXPORT:
+            pageSelectSet(NO, 1, 2);
+            break;
+
+        case DATA_IMPORT:
+            pageSelectSet(NO, 1, 2);
             break;
 
         case FA_SENSOR_PAGE:
@@ -361,6 +368,16 @@ static void pageProgram(u8 page)
                     pageInfor <<= 8;
                     pageInfor |= CO2_CALIBRATE_PAGE;
                 }
+                else if(7 == pageSelect.cusor)
+                {
+                    pageInfor <<= 8;
+                    pageInfor |= DATA_EXPORT;
+                }
+                else if(8 == pageSelect.cusor)
+                {
+                    pageInfor <<= 8;
+                    pageInfor |= DATA_IMPORT;
+                }
 #elif (HUB_SELECT == HUB_IRRIGSTION)
 
                 if(1 == pageSelect.cusor)
@@ -387,6 +404,16 @@ static void pageProgram(u8 page)
                 {
                     pageInfor <<= 8;
                     pageInfor |= PHEC_CALIBRATE_PAGE;
+                }
+                else if(6 == pageSelect.cusor)
+                {
+                    pageInfor <<= 8;
+                    pageInfor |= DATA_EXPORT;
+                }
+                else if(7 == pageSelect.cusor)
+                {
+                    pageInfor <<= 8;
+                    pageInfor |= DATA_IMPORT;
                 }
 #endif
                 pageSelect.select = OFF;
@@ -562,6 +589,22 @@ static void pageProgram(u8 page)
 
         case TEST_PAGE:
             testPage();
+            break;
+
+        case DATA_EXPORT:
+            dataExportPage(&pageSelect, &pageInfor);
+            if(ON == pageSelect.select)
+            {
+                pageSelect.select = OFF;
+            }
+            break;
+
+        case DATA_IMPORT:
+            dataImportPage(&pageSelect, &pageInfor);
+            if(ON == pageSelect.select)
+            {
+                pageSelect.select = OFF;
+            }
             break;
 
         default:

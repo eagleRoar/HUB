@@ -17,6 +17,7 @@
 #include <rtdevice.h>
 #include <sys/types.h>
 #include <dfs_posix.h>
+#include <dfs_file.h>
 
 #include <unistd.h>
 #include <netdb.h>

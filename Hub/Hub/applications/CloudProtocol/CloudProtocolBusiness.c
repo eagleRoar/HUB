@@ -5222,6 +5222,38 @@ u8 getColorFromTankList(u16 address, sys_tank_t *list)
     return color;
 }
 
+void GetTankNoById(sys_tank_t *list, u16 id, u8 *tankNo)
+{
+    *tankNo = 0;
+    for(int i = 0; i < list->tank_size; i++)
+    {
+        if(id == list->tank[i].autoFillValveId)
+        {
+            *tankNo = list->tank[i].tankNo;
+            return;
+        }
+        else if(id == list->tank[i].pumpId)
+        {
+            *tankNo = list->tank[i].tankNo;
+            return;
+        }
+
+        for(int j = 0; j < VALVE_MAX; j++)
+        {
+            if(id == list->tank[i].valve[j])
+            {
+                *tankNo = list->tank[i].tankNo;
+                return;
+            }
+            else if(id == list->tank[i].nopump_valve[j])
+            {
+                *tankNo = list->tank[i].tankNo;
+                return;
+            }
+        }
+    }
+}
+
 //顺序先发送device再发送line
 char *ReplyGetDeviceList_new(char *cmd, char *msgid, u8 deviceType, u8 no)
 {
@@ -5338,30 +5370,40 @@ char *ReplyGetDeviceList_new(char *cmd, char *msgid, u8 deviceType, u8 no)
                     cJSON_AddNumberToObject(item, "workingStatus", work_state);
 
                     cJSON_AddNumberToObject(item, "color", getColorFromTankList(module->addr, GetSysTank()));
+                    u8 no = 0;
+                    u8 autoNo = 0;
                     if(PUMP_TYPE == module->port[0].type)
                     {
-                        for(u8 tank_no = 0; tank_no < GetSysTank()->tank_size; tank_no++)
+                        GetTankNoById(GetSysTank(), module->addr, &no);
+                        cJSON_AddNumberToObject(item, "tankNo", no);
+                        valveList = cJSON_CreateArray();
+                        if(RT_NULL != valveList)
                         {
-                            if(module->addr == GetSysTank()->tank[tank_no].pumpId)
+                            if(no > 0)
                             {
-                                cJSON_AddNumberToObject(item, "autoFillValveId",
-                                        GetSysTank()->tank[tank_no].autoFillValveId);
-
-                                valveList = cJSON_CreateArray();
-                                if(RT_NULL != valveList)
+                                for(u8 valve_i = 0; valve_i < VALVE_MAX; valve_i++)
                                 {
-                                    for(u8 valve_i = 0; valve_i < VALVE_MAX; valve_i++)
+                                    if(0 != GetSysTank()->tank[no - 1].valve[valve_i])
                                     {
-                                        if(0 != GetSysTank()->tank[tank_no].valve[valve_i])
-                                        {
-                                            cJSON_AddItemToArray(valveList, cJSON_CreateNumber(GetSysTank()->tank[tank_no].valve[valve_i]));
-                                        }
+                                        cJSON_AddItemToArray(valveList, cJSON_CreateNumber(GetSysTank()->tank[no - 1].valve[valve_i]));
                                     }
-
-                                    cJSON_AddItemToObject(item, "valve", valveList);
                                 }
                             }
+                            cJSON_AddItemToObject(item, "valve", valveList);
                         }
+                    }
+                    else if(VALVE_TYPE == module->type)
+                    {
+                        GetTankNoById(GetSysTank(), module->addr, &no);
+                        cJSON_AddNumberToObject(item, "tankNo", no);
+                        if(no > 0)
+                        {
+                            if(module->addr == GetSysTank()->tank[no - 1].autoFillValveId)
+                            {
+                                autoNo = no;
+                            }
+                        }
+                        cJSON_AddNumberToObject(item, "autoFillValveTankNo", autoNo);
                     }
                 }
                 //2.多个口的如  AC_4 IO_12
@@ -5403,30 +5445,40 @@ char *ReplyGetDeviceList_new(char *cmd, char *msgid, u8 deviceType, u8 no)
 
                                 cJSON_AddNumberToObject(port, "color",
                                         getColorFromTankList((module->addr << 8) | storage, GetSysTank()));
+                                u8 no = 0;
+                                u8 autoNo = 0;
                                 if(PUMP_TYPE == module->port[storage].type)
                                 {
-                                    for(u8 tank_no = 0; tank_no < GetSysTank()->tank_size; tank_no++)
+                                    GetTankNoById(GetSysTank(), (module->addr << 8) | storage, &no);
+                                    cJSON_AddNumberToObject(port, "tankNo", no);
+                                    valveList = cJSON_CreateArray();
+                                    if(RT_NULL != valveList)
                                     {
-                                        if(((module->addr << 8) | storage) == GetSysTank()->tank[tank_no].pumpId)
+                                        if(no > 0)
                                         {
-                                            cJSON_AddNumberToObject(port, "autoFillValveId",
-                                                    GetSysTank()->tank[tank_no].autoFillValveId);
-
-                                            valveList = cJSON_CreateArray();
-                                            if(RT_NULL != valveList)
+                                            for(u8 valve_i = 0; valve_i < VALVE_MAX; valve_i++)
                                             {
-                                                for(u8 valve_i = 0; valve_i < VALVE_MAX; valve_i++)
+                                                if(0 != GetSysTank()->tank[no - 1].valve[valve_i])
                                                 {
-                                                    if(0 != GetSysTank()->tank[tank_no].valve[valve_i])
-                                                    {
-                                                        cJSON_AddItemToArray(valveList, cJSON_CreateNumber(GetSysTank()->tank[tank_no].valve[valve_i]));
-                                                    }
+                                                    cJSON_AddItemToArray(valveList, cJSON_CreateNumber(GetSysTank()->tank[no - 1].valve[valve_i]));
                                                 }
-
-                                                cJSON_AddItemToObject(port, "valve", valveList);
                                             }
                                         }
+                                        cJSON_AddItemToObject(port, "valve", valveList);
                                     }
+                                }
+                                else if(VALVE_TYPE == module->port[storage].type)
+                                {
+                                    GetTankNoById(GetSysTank(), (module->addr << 8) | storage, &no);
+                                    cJSON_AddNumberToObject(port, "tankNo", no);
+                                    if(no > 0)
+                                    {
+                                        if(module->addr == GetSysTank()->tank[no - 1].autoFillValveId)
+                                        {
+                                            autoNo = no;
+                                        }
+                                    }
+                                    cJSON_AddNumberToObject(port, "autoFillValveTankNo", autoNo);
                                 }
 
                                 cJSON_AddItemToArray(portList, port);

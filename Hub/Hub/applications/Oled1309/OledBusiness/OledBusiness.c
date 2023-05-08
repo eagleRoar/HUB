@@ -19,6 +19,7 @@
 #include "ST7567.h"
 #include "SDCard.h"
 #include "UartAction.h"
+#include "FileSystem.h"
 
 char    data[80];
 u32     now_phec_uuid = 0;
@@ -569,9 +570,11 @@ void SettingPage(type_page_t page, u8 canShow)
     char                temp1[4];
     type_sys_time       time_for;
 #if(HUB_SELECT == HUB_ENVIRENMENT)
-    char                show[6][16] = {"Sensor List", "Device List", "Light List", "QR Code", "Update Firmware", "CO2 Calibration"};
+    char                show[8][16] = {"Sensor List", "Device List", "Light List", "QR Code", "Update Firmware", "CO2 Calibration",
+                                       "Data Export", "Data Import"};
 #elif (HUB_SELECT == HUB_IRRIGSTION)
-    char                show[5][16] = {"Sensor List", "Device List", "QR Code", "Update Firmware", "Sensor Calibrate"};
+    char                show[7][16] = {"Sensor List", "Device List", "QR Code", "Update Firmware", "Sensor Calibrate",
+                                       "Data Export", "Data Import"};
 #endif
     type_sys_time       sys_time;
     u8                  line        = LINE_HIGHT;
@@ -1390,6 +1393,7 @@ void UpdateAppProgram(type_page_t *page, u64 *info)
                 ST7567_GotoXY(LINE_HIGHT, 0);
                 ST7567_Puts("Download OK", &Font_8x16, 1);
                 ST7567_UpdateScreen();
+                rt_hw_cpu_reset();
             }
             else if(DOWNLOAD_NONEED == downloadRes)
             {
@@ -2417,5 +2421,109 @@ void testPage(void)
     ST7567_GotoXY(LINE_HIGHT, 32);
     ST7567_Puts(show, &Font_8x16, 1);
 
+    ST7567_UpdateScreen();
+}
+
+void dataExportPage(type_page_t *page, u64 *info)
+{
+    u8              line        = LINE_HIGHT;
+    u8              column      = 0;
+
+    //2.提示是否要下载
+    ST7567_GotoXY(LINE_HIGHT, 0);
+    ST7567_Puts("export data?", &Font_8x16, 1);
+
+    //3.确定是否升级
+    line = 28;
+    column = 32;
+    ST7567_GotoXY(line, column);
+    if(1 == page->cusor)
+    {
+        ST7567_Puts("NO", &Font_12x24, 0);
+    }
+    else
+    {
+        ST7567_Puts("NO", &Font_12x24, 1);
+    }
+
+    line = 64;
+    column = 32;
+    ST7567_GotoXY(line, column);
+    if(2 == page->cusor)
+    {
+        ST7567_Puts("YES", &Font_12x24, 0);
+    }
+    else
+    {
+        ST7567_Puts("YES", &Font_12x24, 1);
+    }
+
+    //4.判断按键确定是否
+    if(ON == page->select)
+    {
+        if(2 == page->cusor)
+        {
+            DataExport();
+            LOG_I("export data");
+        }
+
+        //返回上一页
+        *info >>= 8;
+    }
+
+    //5.刷新界面
+    ST7567_UpdateScreen();
+}
+
+void dataImportPage(type_page_t *page, u64 *info)
+{
+    u8              line        = LINE_HIGHT;
+    u8              column      = 0;
+
+    //2.提示是否要下载
+    ST7567_GotoXY(LINE_HIGHT, 0);
+    ST7567_Puts("import data?", &Font_8x16, 1);
+
+    //3.确定是否升级
+    line = 28;
+    column = 32;
+    ST7567_GotoXY(line, column);
+    if(1 == page->cusor)
+    {
+        ST7567_Puts("NO", &Font_12x24, 0);
+    }
+    else
+    {
+        ST7567_Puts("NO", &Font_12x24, 1);
+    }
+
+    line = 64;
+    column = 32;
+    ST7567_GotoXY(line, column);
+    if(2 == page->cusor)
+    {
+        ST7567_Puts("YES", &Font_12x24, 0);
+    }
+    else
+    {
+        ST7567_Puts("YES", &Font_12x24, 1);
+    }
+
+    //4.判断按键确定是否
+    if(ON == page->select)
+    {
+        if(2 == page->cusor)
+        {
+            DataImport();
+            LOG_I("Import data");
+            //重启
+            rt_hw_cpu_reset();
+        }
+
+        //返回上一页
+        *info >>= 8;
+    }
+
+    //5.刷新界面
     ST7567_UpdateScreen();
 }

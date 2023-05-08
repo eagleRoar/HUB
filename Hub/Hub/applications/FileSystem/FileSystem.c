@@ -22,6 +22,15 @@ __attribute__((section(".ccmbss"))) struct rt_thread file_sys_thread;
 rt_mutex_t dynamic_mutex = RT_NULL;
 static u8 fileSystemState = NO;
 extern u8 saveModuleFlag;
+char            new_dev_file[]          = "/main/informations/module.bin";
+char            new_sysset_file[]       = "/main/informations/sys_set.bin";
+char            new_recipe_file[]       = "/main/informations/recipe.bin";
+char            new_tank_file[]         = "/main/informations/tank.bin";
+
+char            backup_dev_file[]       = "/backup/informations/module.bin";
+char            backup_sysset_file[]    = "/backup/informations/sys_set.bin";
+char            backup_recipe_file[]    = "/backup/informations/recipe.bin";
+char            backup_tank_file[]      = "/backup/informations/tank.bin";
 
 u8 GetFileSystemState(void)
 {
@@ -211,14 +220,14 @@ rt_err_t CreateDirectory(char* name)
     }
 }
 
-static void GetMonitorFromFile(type_monitor_t *monitor)
+static void GetMonitorFromFile(type_monitor_t *monitor, char *fileName)
 {
     static u8       FileHeadSpace       = 5;
     u16             length              = 0;
-    char            old_dev_file[]      = "/main/informations/module.bin";
+    //char            new_dev_file[]      = "/main/informations/module.bin";
 
     length = FileHeadSpace;
-    if(RT_EOK == ReadFileData(old_dev_file, (u8 *)monitor, length, sizeof(type_monitor_t)))
+    if(RT_EOK == ReadFileData(fileName, (u8 *)monitor, length, sizeof(type_monitor_t)))
     {
         LOG_I("Get monitor data OK");
     }
@@ -228,15 +237,15 @@ static void GetMonitorFromFile(type_monitor_t *monitor)
     }
 }
 
-static void SaveMonitorToFile(type_monitor_t *monitor)
+static void SaveMonitorToFile(type_monitor_t *monitor, char *fileName)
 {
     static u8       FileHeadSpace       = 5;
     u16             length              = 0;
-    char            new_dev_file[]      = "/main/informations/module.bin";
+    //char            new_dev_file[]      = "/main/informations/module.bin";
 
     length = FileHeadSpace;
-    RemoveFileDirectory(new_dev_file);
-    if(RT_EOK == WriteFileData(new_dev_file, (u8 *)monitor, length, sizeof(type_monitor_t)))
+    RemoveFileDirectory(fileName);
+    if(RT_EOK == WriteFileData(fileName, (u8 *)monitor, length, sizeof(type_monitor_t)))
     {
         LOG_I("save monitor data OK");
     }
@@ -246,14 +255,14 @@ static void SaveMonitorToFile(type_monitor_t *monitor)
     }
 }
 
-static void GetSysSetFromFile(sys_set_t *set)
+static void GetSysSetFromFile(sys_set_t *set, char *fileName)
 {
     static u8       FileHeadSpace       = 5;
     u16             length              = 0;
-    char            old_sysset_file[]   = "/main/informations/sys_set.bin";
+    //char            new_sysset_file[]   = "/main/informations/sys_set.bin";
 
     length = FileHeadSpace;
-    if(RT_EOK == ReadFileData(old_sysset_file, (u8 *)set, length, sizeof(sys_set_t)))
+    if(RT_EOK == ReadFileData(fileName, (u8 *)set, length, sizeof(sys_set_t)))
     {
         LOG_I("Get sysSet data OK");
     }
@@ -263,15 +272,15 @@ static void GetSysSetFromFile(sys_set_t *set)
     }
 }
 
-static void SaveSysSetToFile(sys_set_t *set)
+static void SaveSysSetToFile(sys_set_t *set, char *fileName)
 {
     static u8       FileHeadSpace       = 5;
     u16             length              = 0;
-    char            new_sysset_file[]   = "/main/informations/sys_set.bin";
+    //char            new_sysset_file[]   = "/main/informations/sys_set.bin";
 
     length = FileHeadSpace;
-    RemoveFileDirectory(new_sysset_file);
-    if(RT_EOK == WriteFileData(new_sysset_file, (u8 *)set, length, sizeof(sys_set_t)))
+    RemoveFileDirectory(fileName);
+    if(RT_EOK == WriteFileData(fileName, (u8 *)set, length, sizeof(sys_set_t)))
     {
         LOG_I("save sysSet data OK");
     }
@@ -282,14 +291,14 @@ static void SaveSysSetToFile(sys_set_t *set)
 }
 
 #if(HUB_ENVIRENMENT == HUB_SELECT)
-static void GetRecipeListFromFile(sys_recipe_t *list)
+static void GetRecipeListFromFile(sys_recipe_t *list, char *fileName)
 {
     static u8       FileHeadSpace       = 5;
     u16             length              = 0;
-    char            old_recipe_file[]   = "/main/informations/recipe.bin";
+    //char            new_recipe_file[]   = "/main/informations/recipe.bin";
 
     length = FileHeadSpace;
-    if(RT_EOK == ReadFileData(old_recipe_file, (u8 *)list, length, sizeof(sys_recipe_t)))
+    if(RT_EOK == ReadFileData(fileName, (u8 *)list, length, sizeof(sys_recipe_t)))
     {
         LOG_I("Get recipeList data OK");
     }
@@ -299,15 +308,15 @@ static void GetRecipeListFromFile(sys_recipe_t *list)
     }
 }
 
-static void SaveRecipeListToFile(sys_recipe_t *list)
+static void SaveRecipeListToFile(sys_recipe_t *list, char *fileName)
 {
     static u8       FileHeadSpace       = 5;
     u16             length              = 0;
-    char            new_recipe_file[]   = "/main/informations/recipe.bin";
+    //char            new_recipe_file[]   = "/main/informations/recipe.bin";
 
     length = FileHeadSpace;
-    RemoveFileDirectory(new_recipe_file);
-    if(RT_EOK == WriteFileData(new_recipe_file, (u8 *)list, length, sizeof(sys_recipe_t)))
+    RemoveFileDirectory(fileName);
+    if(RT_EOK == WriteFileData(fileName, (u8 *)list, length, sizeof(sys_recipe_t)))
     {
         LOG_I("Get recipeList data OK");
     }
@@ -319,14 +328,14 @@ static void SaveRecipeListToFile(sys_recipe_t *list)
 
 #elif(HUB_IRRIGSTION == HUB_SELECT)
 
-static void GetSysTankFromFile(sys_tank_t *list)
+static void GetSysTankFromFile(sys_tank_t *list, char *fileName)
 {
     static u8       FileHeadSpace       = 5;
     u16             length              = 0;
-    char            old_tank_file[]     = "/main/informations/tank.bin";
+    //char            new_tank_file[]     = "/main/informations/tank.bin";
 
     length = FileHeadSpace;
-    if(RT_EOK == ReadFileData(old_tank_file, (u8 *)list, length, sizeof(sys_tank_t)))
+    if(RT_EOK == ReadFileData(fileName, (u8 *)list, length, sizeof(sys_tank_t)))
     {
         LOG_I("Get tankList data OK");
     }
@@ -336,15 +345,15 @@ static void GetSysTankFromFile(sys_tank_t *list)
     }
 }
 
-static void SaveSysTankToFile(sys_tank_t *list)
+static void SaveSysTankToFile(sys_tank_t *list, char *fileName)
 {
     static u8       FileHeadSpace       = 5;
     u16             length              = 0;
-    char            new_tank_file[]     = "/main/informations/tank.bin";
+    //char            new_tank_file[]     = "/main/informations/tank.bin";
 
     length = FileHeadSpace;
-    RemoveFileDirectory(new_tank_file);
-    if(RT_EOK == ReadFileData(new_tank_file, (u8 *)list, length, sizeof(sys_tank_t)))
+    RemoveFileDirectory(fileName);
+    if(RT_EOK == ReadFileData(fileName, (u8 *)list, length, sizeof(sys_tank_t)))
     {
         LOG_I("Get tankList data OK");
     }
@@ -355,6 +364,41 @@ static void SaveSysTankToFile(sys_tank_t *list)
 }
 
 #endif
+
+//数据导出
+void DataExport(void)
+{
+    char DirName[] = "/backup/informations";
+    if(RT_ERROR == CheckDirectory(DirName))
+    {
+        CreateDirectory(DirName);
+    }
+
+    copy(new_dev_file, backup_dev_file);
+    copy(new_sysset_file, backup_sysset_file);
+#if(HUB_ENVIRENMENT == HUB_SELECT)
+    copy(new_recipe_file, backup_recipe_file);
+#elif(HUB_IRRIGSTION == HUB_SELECT)
+    copy(new_tank_file, backup_tank_file);
+#endif
+}
+
+//数据导入
+void DataImport(void)
+{
+    RemoveFileDirectory(new_dev_file);
+    copy(backup_dev_file, new_dev_file);
+
+    RemoveFileDirectory(new_sysset_file);
+    copy(backup_sysset_file, new_sysset_file);
+#if(HUB_ENVIRENMENT == HUB_SELECT)
+    RemoveFileDirectory(new_recipe_file);
+    copy(backup_recipe_file, new_recipe_file);
+#elif(HUB_IRRIGSTION == HUB_SELECT)
+    RemoveFileDirectory(new_tank_file);
+    copy(backup_tank_file, new_tank_file);
+#endif
+}
 
 void FileSystemEntry(void* parameter)
 {
@@ -387,7 +431,7 @@ void FileSystemEntry(void* parameter)
                (lineSize != GetMonitor()->line_size) ||
                (YES == saveModuleFlag))
             {
-                SaveMonitorToFile(GetMonitor());
+                SaveMonitorToFile(GetMonitor(), new_dev_file);
 
                 sensorSize = GetMonitor()->sensor_size;
                 deviceSize = GetMonitor()->device_size;
@@ -397,7 +441,7 @@ void FileSystemEntry(void* parameter)
 
             if(YES == GetSysSet()->saveFlag)
             {
-                SaveSysSetToFile(GetSysSet());
+                SaveSysSetToFile(GetSysSet(), new_sysset_file);
 
                 GetSysSet()->crc = usModbusRTU_CRC((u8 *)GetSysSet()+2, sizeof(sys_set_t) - 2);
                 GetSysSet()->saveFlag = NO;
@@ -405,7 +449,7 @@ void FileSystemEntry(void* parameter)
 #if(HUB_ENVIRENMENT == HUB_SELECT)
             if(YES == GetSysRecipt()->saveFlag)
             {
-                SaveRecipeListToFile(GetSysRecipt());
+                SaveRecipeListToFile(GetSysRecipt(), new_recipe_file);
 
                 GetSysRecipt()->crc = usModbusRTU_CRC((u8 *)GetSysRecipt()+2, sizeof(sys_recipe_t) - 2);
                 GetSysRecipt()->saveFlag = NO;
@@ -413,7 +457,7 @@ void FileSystemEntry(void* parameter)
 #elif(HUB_IRRIGSTION == HUB_SELECT)
             if(YES == GetSysTank()->saveFlag)
             {
-                SaveSysTankToFile(GetSysTank());
+                SaveSysTankToFile(GetSysTank(), new_tank_file);
 
                 GetSysTank()->crc = usModbusRTU_CRC((u8 *)GetSysTank() + 2, sizeof(sys_tank_t) - 2);
                 GetSysTank()->saveFlag = NO;
@@ -436,7 +480,7 @@ void FileSystemInit(void)
 {
     char        mainFile[]          = "main";
     char        backupFile[]        = "backup";
-    char        main_information[]    = "/main/informations";
+    char        main_information[]  = "/main/informations";
     char        old_info[]          = "/backup/moduleInfo";
 
 
@@ -495,12 +539,12 @@ void FileSystemInit(void)
     else
     {
         //3.读取主存储设备数据
-        GetMonitorFromFile(GetMonitor());
-        GetSysSetFromFile(GetSysSet());
+        GetMonitorFromFile(GetMonitor(), new_dev_file);
+        GetSysSetFromFile(GetSysSet(), new_sysset_file);
 #if(HUB_ENVIRENMENT == HUB_SELECT)
-        GetRecipeListFromFile(GetSysRecipt());
+        GetRecipeListFromFile(GetSysRecipt(), new_recipe_file);
 #elif(HUB_IRRIGSTION == HUB_SELECT)
-        GetSysTankFromFile(GetSysTank());
+        GetSysTankFromFile(GetSysTank(), new_tank_file);
 #endif
     }
 

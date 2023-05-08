@@ -20,5 +20,6 @@ u8 GetFileSystemState(void);
 u8 WriteFileData(char* name, void* text, u32 offset, u32 l);
 u8 ReadFileData(char* name, void* text, u32 offset, u32 l);
 void OldDataMigration(void);
-
+void DataExport(void);
+void DataImport(void);
 #endif /* APPLICATIONS_FILESYSTEM_FILESYSTEM_H_ */
