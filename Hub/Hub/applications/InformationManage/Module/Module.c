@@ -1341,6 +1341,8 @@ rt_err_t SetLineDefault(type_monitor_t *monitor, u32 uuid, u8 type, u8 addr)
 {
     rt_err_t ret = RT_ERROR;
     line_t line;
+    int i = 0;
+    int j = 0;
 
     //1.判断line的注册数量是否已经满了
     if(monitor->line_size < LINE_MAX)
@@ -1360,6 +1362,36 @@ rt_err_t SetLineDefault(type_monitor_t *monitor, u32 uuid, u8 type, u8 addr)
                 line.port[0].ctrl.d_value = 0;
                 line.port[0]._manual.manual = MANUAL_NO_HAND;
                 line.port[0]._manual.manual_on_time = MANUAL_TIME_DEFAULT;
+                if(LINE_TYPE == type)
+                {
+                    for(i = 0; i < monitor->line_size; i++)
+                    {
+                        if(1 == monitor->line[i].lineNo)
+                        {
+                            break;
+                        }
+                    }
+
+                    if(i == monitor->line_size)
+                    {
+                        line.lineNo = 1;
+                    }
+                    else
+                    {
+                        for(j = 0; j < monitor->line_size; j++)
+                        {
+                            if(2 == monitor->line[j].lineNo)
+                            {
+                                break;
+                            }
+                        }
+
+                        if(j == monitor->line_size)
+                        {
+                            line.lineNo = 2;
+                        }
+                    }
+                }
             }
             else if(LINE_4_TYPE == type)
             {
@@ -1374,6 +1406,19 @@ rt_err_t SetLineDefault(type_monitor_t *monitor, u32 uuid, u8 type, u8 addr)
                     line.port[i].ctrl.d_value = 0;
                     line.port[i]._manual.manual = MANUAL_NO_HAND;
                     line.port[i]._manual.manual_on_time = MANUAL_TIME_DEFAULT;
+                }
+
+                for(i = 0; i < monitor->line_size; i++)
+                {
+                    if(1 == monitor->line[i].lineNo)
+                    {
+                        break;
+                    }
+                }
+
+                if(i == monitor->line_size)
+                {
+                    line.lineNo = 1;
                 }
             }
 
@@ -1420,7 +1465,7 @@ u8 GetLineType(type_monitor_t *monitor)
         }
     }
 
-    if(i == monitor->device_size)
+    if(i == monitor->line_size)
     {
         return 1;
     }

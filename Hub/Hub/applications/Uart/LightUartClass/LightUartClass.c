@@ -739,6 +739,33 @@ static void SendReplyRegister(u32 uuid, u8 addr)
     }
 }
 
+static u8 isLine0Conflict(type_monitor_t *monitor, u8 type)
+{
+    if(LINE_4_TYPE == type)
+    {
+        for(int i = 0; i < monitor->line_size; i++)
+        {
+            if(1 == monitor->line[i].lineNo)
+            {
+                //存在第一通道
+                return YES;
+            }
+        }
+    }
+    else if(LINE_TYPE == type)
+    {
+        for(int i = 0; i < monitor->line_size; i++)
+        {
+            if(LINE_4_TYPE == monitor->line[i].type)
+            {
+                return YES;
+            }
+        }
+    }
+
+    return NO;
+}
+
 //处理返回数据的列表,解析数据
 static void RecvListHandle(void)
 {
@@ -779,12 +806,16 @@ static void RecvListHandle(void)
             }
             else
             {
-                //6.之前没有注册过的直接注册
-                addr = getAllocateAddress(GetMonitor());
-                SetLineDefault(monitor, uuid, tail->keyData.dataSegment.data[8], addr);
-                //7.发送重新分配的地址
-                SendReplyRegister(uuid, addr);
-                LOG_I("----------RecvListHandle, register ");
+                //6.判断是否冲突，如果第一路存在line 则不能注册Line_4, 同理
+                if(NO == isLine0Conflict(GetMonitor(), tail->keyData.dataSegment.data[8]))
+                {
+                    //7.之前没有注册过的直接注册
+                    addr = getAllocateAddress(GetMonitor());
+                    SetLineDefault(monitor, uuid, tail->keyData.dataSegment.data[8], addr);
+                    //8.发送重新分配的地址
+                    SendReplyRegister(uuid, addr);
+                    LOG_I("----------RecvListHandle, register ");
+                }
             }
         }
         else

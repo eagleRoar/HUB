@@ -282,7 +282,6 @@ int main(void)
             warnProgram(GetMonitor(), GetSysSet());             //监听告警信息
         }
 
-
         //10s
         if(ON == Timer10sTouch)
         {

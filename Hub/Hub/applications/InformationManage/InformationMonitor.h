@@ -224,6 +224,7 @@ struct line{
     u8              storage_size;
     u8              save_state;                             //是否已经存储
     u8              conn_state;
+    u8              lineNo;                                 //指定该路灯是第几路
 };
 
 typedef struct deviceOld{

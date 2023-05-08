@@ -877,8 +877,6 @@ void CmdGetRecipe(char *data, cloudcmd_t *cmd)
 
 void CmdSetRecipe(char *data, cloudcmd_t *cmd)
 {
-    char            firstStartAt[15] = "";
-    type_sys_time   time;
     cJSON           *temp       = RT_NULL;
     cJSON           *line       = RT_NULL;
     recipe_t        *recipe     = RT_NULL;
@@ -1685,7 +1683,6 @@ void CmdSetMainSensor(char *data, cloudcmd_t *cmd)
 {
     cJSON   *json   = RT_NULL;
     u8      addr    = 0;
-    u8      port    = 0;
 
     json = cJSON_Parse(data);
 
@@ -1905,6 +1902,32 @@ void CmdDelTankPV(char *data, cloudcmd_t *cmd)
                         }
                     }
                 }
+            }
+        }
+
+        cJSON_Delete(json);
+    }
+}
+
+void CmdSetTankName(char *data, cloudcmd_t *cmd)
+{
+    cJSON   *json       = RT_NULL;
+
+    json = cJSON_Parse(data);
+
+    if(json)
+    {
+        GetValueByC16(json, "msgid", cmd->msgid, KEYVALUE_VALUE_SIZE);
+        GetValueByU16(json, "id", &cmd->deleteSensorId);
+        GetValueByU8(json, "tankNo", &cmd->setTankNameNo);
+        GetValueByC16(json, "name", cmd->setTankName, TANK_NAMESZ);
+
+        for(int i = 0; i < GetSysTank()->tank_size; i++)
+        {
+            if(GetSysTank()->tank[i].tankNo == cmd->setTankNameNo)
+            {
+                strncpy(GetSysTank()->tank[i].name, cmd->setTankName, TANK_NAMESZ);
+                break;
             }
         }
 
@@ -2980,7 +3003,7 @@ void str_replace(char *original, char *pattern, char *replacement)
     char buffer[2048];
     char *insert_point;
     size_t pattern_len = strlen(pattern);
-    size_t replacement_len = strlen(replacement);
+    //size_t replacement_len = strlen(replacement);
 
     while ((insert_point = strstr(original, pattern))) {
         *insert_point = '\0';
@@ -5150,6 +5173,25 @@ char *ReplySetTankPV(cloudcmd_t *cmd)
     return str;
 }
 
+char *ReplySetTankName(cloudcmd_t *cmd)
+{
+    cJSON   *json       = cJSON_CreateObject();
+    char    *str        = RT_NULL;
+
+    if(json)
+    {
+        cJSON_AddStringToObject(json, "cmd", cmd->cmd);
+        cJSON_AddStringToObject(json, "msgid", cmd->msgid);
+        cJSON_AddNumberToObject(json, "tankNo", cmd->setTankNameNo);
+        cJSON_AddStringToObject(json, "name", cmd->setTankName);
+
+        str = cJSON_PrintUnformatted(json);
+        cJSON_Delete(json);
+    }
+
+    return str;
+}
+
 u8 getColorFromTankList(u16 address, sys_tank_t *list)
 {
     u8      color       = 0;
@@ -5400,7 +5442,7 @@ char *ReplyGetDeviceList_new(char *cmd, char *msgid, u8 deviceType, u8 no)
                 cJSON_AddNumberToObject(item, "id", line.addr);
                 cJSON_AddNumberToObject(item, "mainType", 4);
                 cJSON_AddNumberToObject(item, "type", line.type);
-                cJSON_AddNumberToObject(item, "lineNo", no + 1);
+                cJSON_AddNumberToObject(item, "lineNo", line.lineNo);
                 cJSON_AddNumberToObject(item, "manual", line.port[0]._manual.manual);
 
                 if(CON_FAIL == line.conn_state)

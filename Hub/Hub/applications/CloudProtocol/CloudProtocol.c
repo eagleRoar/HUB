@@ -728,6 +728,10 @@ rt_err_t ReplyDataToCloud(mqtt_client *client, int *sock, u8 sendCloudFlg)
         {
             str = ReplySetTankPV(&cloudCmd);
         }
+        else if(0 == rt_memcmp(CMD_SET_TANK_NAME, cloudCmd.cmd, sizeof(CMD_SET_TANK_NAME)))
+        {
+            str = ReplySetTankName(&cloudCmd);
+        }
         else
         {
         }
@@ -1140,6 +1144,12 @@ void analyzeCloudData(char *data, u8 cloudFlg)
             else if(0 == rt_memcmp(CMD_DEL_TANK_PV, cmd->valuestring, sizeof(CMD_DEL_TANK_PV)))
             {
                 CmdDelTankPV(data, &cloudCmd);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
+                GetSysTank()->saveFlag = YES;
+            }
+            else if(0 == rt_memcmp(CMD_SET_TANK_NAME, cmd->valuestring, sizeof(CMD_SET_TANK_NAME)))
+            {
+                CmdSetTankName(data, &cloudCmd);
                 setCloudCmd(cmd->valuestring, ON, cloudFlg);
                 GetSysTank()->saveFlag = YES;
             }

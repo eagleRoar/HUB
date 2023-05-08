@@ -106,6 +106,8 @@ struct cloudCmd{
     u16             setTankPvId;
     u8              delTankPvNo;
     u16             delTankPvId;
+    u8              setTankNameNo;
+    char            setTankName[TANK_NAMESZ];
 };
 
 //cmd : getTempSetting
@@ -506,7 +508,7 @@ struct sys_recipe{
 
 typedef struct tankOld{
     u8      tankNo;                         //桶编号 1-9
-    char    name[TANK_NAMESZ];              //名称12字节
+    char    name[13];                       //名称12字节
     u16     autoFillValveId;                //自动补水阀 ID ,0 为未指定
     u8      autoFillHeight;                 //低水位补水高度,单位 cm
     u8      autoFillFulfilHeight;           //补满高度,单位 cm
@@ -517,8 +519,8 @@ typedef struct tankOld{
     u8      ecMonitorOnly;                  //1-On 0-off 默认监视
     u8      wlMonitorOnly;                  //水位监视 1-On 0-off 默认监视
     u16     pumpId;                         //水泵Id
-    u16     valve[VALVE_MAX];               //关联的阀的ID
-    u8      sensorId[TANK_SINGLE_GROUD][TANK_SENSOR_MAX];   //桶内存在两个sensor 一个是测试桶内的 一个测试管道的
+    u16     valve[16];                      //关联的阀的ID
+    u8      sensorId[2][4];                 //桶内存在两个sensor 一个是测试桶内的 一个测试管道的
     u8      color;                          //颜色
     u16     poolTimeout;
 }tankOld_t;
@@ -550,6 +552,13 @@ struct sys_tank{
     tank_t      tank[TANK_LIST_MAX];
     u8          saveFlag;
 };
+
+typedef struct sys_tankOld{
+    u16         crc;
+    u8          tank_size;
+    tankOld_t   tank[4];
+    u8          saveFlag;
+}sys_tankOld_t;
 
 struct recipeInfor{
     char            name[RECIPE_NAMESZ];
@@ -691,6 +700,7 @@ enum{
 #define         CMD_SET_SENSOR_NAME     "setSensorName"         //设置 Sensor 名字
 #define         CMD_SET_TANK_PV         "setTankPV"             //设置泵子阀
 #define         CMD_DEL_TANK_PV         "delTankPV"             //删除泵子阀
+#define         CMD_SET_TANK_NAME       "setTankName"
 
 rt_err_t GetValueByU8(cJSON *, char *, u8 *);
 rt_err_t GetValueByU16(cJSON *, char *, u16 *);
@@ -741,6 +751,14 @@ void CmdSetDeviceType(char *, cloudcmd_t *);
 void CmdDelTankSensor(char *data, cloudcmd_t *cmd);
 void CmdSetDimmingCurve(char *data, dimmingCurve_t *curve, cloudcmd_t *cmd);
 void CmdGetDimmingCurve(char *data, cloudcmd_t *cmd);
+void CmdSetLightRecipe(char *data, line_4_recipe_t *repice, cloudcmd_t *cmd);
+void CmdGetSensorEList(char *data, cloudcmd_t *cmd);
+void CmdSetMainSensor(char *data, cloudcmd_t *cmd);
+void CmdSetSensorShowType(char *data, cloudcmd_t *cmd);
+void CmdSetSensorName(char *data, cloudcmd_t *cmd);
+void CmdDeleteSensor(char *data, cloudcmd_t *cmd);
+void CmdSetTankName(char *data, cloudcmd_t *cmd);
+void CmdSetTankPV(char *data, cloudcmd_t *cmd);
 char *SendHubReport(char *, sys_set_t *);
 char *SendHubReportWarn(char *, sys_set_t *, u8, u16, u8);
 char *ReplySetSchedule(char *, cloudcmd_t);
@@ -789,11 +807,6 @@ char *ReplySetMainSensor(char *cmd, u16 addr, char *msgid);
 char *ReplySetSensorShow(char *cmd, u8 showType, char *msgid);
 char *ReplySetSensorName(char *cmd, u16 id, char *msgid);
 char *ReplySetTankPV(cloudcmd_t *cmd);
-void CmdSetLightRecipe(char *data, line_4_recipe_t *repice, cloudcmd_t *cmd);
-void CmdGetSensorEList(char *data, cloudcmd_t *cmd);
-void CmdSetMainSensor(char *data, cloudcmd_t *cmd);
-void CmdSetSensorShowType(char *data, cloudcmd_t *cmd);
-void CmdSetSensorName(char *data, cloudcmd_t *cmd);
-void CmdDeleteSensor(char *data, cloudcmd_t *cmd);
+char *ReplySetTankName(cloudcmd_t *cmd);
 
 #endif /* APPLICATIONS_CLOUDPROTOCOL_CLOUDPROTOCOLBUSINESS_H_ */

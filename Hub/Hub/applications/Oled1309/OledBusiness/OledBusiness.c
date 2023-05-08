@@ -276,7 +276,7 @@ void HomePage(type_page_t *page, type_monitor_t *monitor)
 
             for(sensor_i = 0; sensor_i < TANK_SENSOR_MAX; sensor_i++)
             {
-                if((0 == pagePart) || (2 == pagePart) || (3 == pagePart))//Justin debug 询问一下基质寄存器是否是在桶内
+                if((0 == pagePart) || (2 == pagePart) || (3 == pagePart))
                 {
                     if(tank->sensorId[0][sensor_i] > 0xFF)
                     {
