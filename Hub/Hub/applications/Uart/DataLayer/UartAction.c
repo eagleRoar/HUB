@@ -1483,6 +1483,39 @@ void GetNowSysSet(proTempSet_t *tempSet, proCo2Set_t *co2Set, proHumiSet_t *humi
     }
 }
 
+//专用于co2关联
+u8 GetDeviceStateByCo2Lock(type_monitor_t *monitor, u8 type)
+{
+    device_t    *device     = RT_NULL;
+
+    for(int i = 0; i < monitor->device_size; i++)
+    {
+        device = &monitor->device[i];
+        if(type == device->type)
+        {
+            if(ON == device->port[0].ctrl.d_state)
+            {
+                return YES;
+            }
+        }
+        else if(AC_4_TYPE == device->type)
+        {
+            for(int j = 0; j < device->storage_size; j++)
+            {
+                if(type == device->port[j].type)
+                {
+                    if(ON == device->port[j].ctrl.d_state)
+                    {
+                        return YES;
+                    }
+                }
+            }
+        }
+    }
+
+    return NO;
+}
+
 //mPeriod 周期 单位ms
 void co2Program(type_monitor_t *monitor, type_uart_class uart, u16 mPeriod)
 {
@@ -1556,8 +1589,8 @@ void co2Program(type_monitor_t *monitor, type_uart_class uart, u16 mPeriod)
 
                 if(1 == switchFlg)
                 {
-                    if(!((ON == co2Set.dehumidifyLock && ON == GetDeviceStateByFunc(monitor, F_DEHUMI)) ||
-                         (ON == co2Set.coolingLock && ON == GetDeviceStateByFunc(monitor, F_COOL))))
+                    if(!((ON == co2Set.dehumidifyLock && YES == GetDeviceStateByCo2Lock(monitor, DEHUMI_TYPE)) ||
+                         (ON == co2Set.coolingLock && YES == GetDeviceStateByCo2Lock(monitor, COOL_TYPE))))
                     {
                         if((VALUE_NULL == getSensorDataByFunc(monitor, F_S_O2)) ||
                            (getSensorDataByFunc(monitor, F_S_O2) >= 180))
@@ -1581,8 +1614,8 @@ void co2Program(type_monitor_t *monitor, type_uart_class uart, u16 mPeriod)
                 {
                     //如果和制冷联动 则制冷的时候不增加co2
                     //如果和除湿联动 则除湿的时候不增加co2
-                    if(!((ON == co2Set.dehumidifyLock && ON == GetDeviceStateByFunc(monitor, F_DEHUMI)) ||
-                         (ON == co2Set.coolingLock && ON == GetDeviceStateByFunc(monitor, F_COOL))))
+                    if(!((ON == co2Set.dehumidifyLock && YES == GetDeviceStateByCo2Lock(monitor, DEHUMI_TYPE)) ||
+                         (ON == co2Set.coolingLock && YES == GetDeviceStateByCo2Lock(monitor, COOL_TYPE))))
                     {
                         if((VALUE_NULL == getSensorDataByFunc(monitor, F_S_O2)) ||
                            (getSensorDataByFunc(monitor, F_S_O2) >= 180))
@@ -2617,18 +2650,15 @@ void timmerProgram(type_monitor_t *monitor, type_uart_class deviceUart)
                             (device->port[port].cycle.duration + device->port[port].cycle.pauseTime)) <=
                             device->port[port].cycle.duration)
                         {
-//                            device->port[port].ctrl.d_state = ON;
                             state = ON;
                         }
                         else
                         {
-//                            device->port[port].ctrl.d_state = OFF;
                             state = OFF;
                         }
                     }
                     else
                     {
-//                        device->port[port].ctrl.d_state = OFF;
                         state = OFF;
                     }
 
@@ -2645,7 +2675,6 @@ void timmerProgram(type_monitor_t *monitor, type_uart_class deviceUart)
                            if(sys_time.hour * 60 * 60 + sys_time.minute * 60 + sys_time.second <= (device->port[port].timer[item].on_at *60
                                    + device->port[port].timer[item].duration) )
                            {
-//                               device->port[port].ctrl.d_state = device->port[port].timer[item].en;
                                state = device->port[port].timer[item].en;
                                break;
                            }
@@ -2660,7 +2689,6 @@ void timmerProgram(type_monitor_t *monitor, type_uart_class deviceUart)
                                if((sys_time.hour * 60 * 60 + sys_time.minute * 60 + sys_time.second) <
                                        ((device->port[port].timer[item].on_at *60 + device->port[port].timer[item].duration)- 24 * 60 * 60))
                                {
-//                                   device->port[port].ctrl.d_state = device->port[port].timer[item].en;
                                    state = device->port[port].timer[item].en;
                                    break;
                                }
@@ -2670,14 +2698,33 @@ void timmerProgram(type_monitor_t *monitor, type_uart_class deviceUart)
 
                    if(item == TIMER_GROUP)
                    {
-//                       device->port[port].ctrl.d_state = 0;
-//                       device->port[port].ctrl.d_value = 0;
                        deviceUart.DeviceCtrlSingle(device, port, 0);
                    }
                    else
                    {
-//                       device->port[port].ctrl.d_state = state;
-                       deviceUart.DeviceCtrlSingle(device, port, state);
+                       //判断是否允许今日使能
+                       time_t nowTime = getTimeStamp();
+                       u8 today = getTimeStampByDate(&nowTime)->tm_wday;
+                       int day = 0;
+                       for(day = 0; day < 7; day++)
+                       {
+                           if(today == (day + 1))
+                           {
+                               if((device->port[port].weekDayEn >> day) & 0x01)
+                               {
+                                   break;
+                               }
+                           }
+                       }
+
+                       if(day == 7)
+                       {
+                           deviceUart.DeviceCtrlSingle(device, port, 0);
+                       }
+                       else
+                       {
+                           deviceUart.DeviceCtrlSingle(device, port, state);
+                       }
                    }
                 }
             }
@@ -2884,6 +2931,27 @@ u8 pumpDoing(u8 addr, u8 port)
                 if(item == TIMER_GROUP)
                 {
                     state = OFF;
+                }
+                else
+                {
+                    time_t nowTime = getTimeStamp();
+                    u8 today = getTimeStampByDate(&nowTime)->tm_wday;
+                    int day = 0;
+                    for(day = 0; day < 7; day++)
+                    {
+                       if(today == (day + 1))
+                       {
+                           if((device->port[port].weekDayEn >> day) & 0x01)
+                           {
+                               break;
+                           }
+                       }
+                    }
+
+                    if(7 == day)
+                    {
+                        state = OFF;
+                    }
                 }
             }
         }

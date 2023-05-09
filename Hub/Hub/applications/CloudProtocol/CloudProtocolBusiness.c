@@ -411,7 +411,7 @@ void CmdGetPortSet(char *data, cloudcmd_t *cmd)
     }
 }
 
-void CmdSetPortSet(char *data, cloudcmd_t *cmd)
+void CmdSetPortSet(char *data, cloudcmd_t *cmd)//Justin weekdayList未测试
 {
     u8              list_num    = 0;
     u8              addr        = 0;
@@ -498,6 +498,20 @@ void CmdSetPortSet(char *data, cloudcmd_t *cmd)
 
                             if(RT_NULL != list_item)
                             {
+                                cJSON *weekdayList = cJSON_GetObjectItem(list_item, "weekdayList");
+                                if(weekdayList)
+                                {
+                                    u8 size = cJSON_GetArraySize(list_item) < 7 ? cJSON_GetArraySize(list_item) : 7;
+                                    for(int day = 0; day < size; day++)
+                                    {
+                                        u8 num = cJSON_GetArrayItem(weekdayList, day)->valueint;
+                                        if(num > 0 && num <= 7)
+                                        {
+                                            device->port[port].weekDayEn |= 1 << (num - 1);
+                                        }
+                                    }
+                                }
+
                                 GetValueByInt(list_item, "onAt", &device->port[port].timer[index].on_at);
                                 GetValueByInt(list_item, "duration", &device->port[port].timer[index].duration);
                                 GetValueByU8(list_item, "en", &device->port[port].timer[index].en);
@@ -593,7 +607,8 @@ void CmdSetDeadBand(char *data, cloudcmd_t *cmd)
 
 void CmdDeleteDevice(char *data, cloudcmd_t *cmd)
 {
-    cJSON   *temp = RT_NULL;
+    cJSON       *temp   = RT_NULL;
+    u8          addr    = 0;
 
     temp = cJSON_Parse(data);
     if(RT_NULL != temp)
@@ -601,7 +616,24 @@ void CmdDeleteDevice(char *data, cloudcmd_t *cmd)
         GetValueByC16(temp, "msgid", cmd->msgid, KEYVALUE_VALUE_SIZE);
         GetValueByU16(temp, "id", &cmd->delete_id);
 
-        DeleteModule(GetMonitor(), GetDeviceByAddr(GetMonitor(), cloudCmd.delete_id)->uuid);
+        if(cmd->delete_id > 0xff)
+        {
+            addr = cmd->delete_id >> 8;
+        }
+        else
+        {
+            addr = cmd->delete_id;
+        }
+
+        if(GetDeviceByAddr(GetMonitor(), addr))
+        {
+            DeleteModule(GetMonitor(), GetDeviceByAddr(GetMonitor(), addr)->uuid);
+        }
+        else if(GetLineByAddr(GetMonitor(), addr))
+        {
+            DeleteModule(GetMonitor(), GetLineByAddr(GetMonitor(), addr)->uuid);
+        }
+
 
         cJSON_Delete(temp);
     }
@@ -1935,6 +1967,83 @@ void CmdSetTankName(char *data, cloudcmd_t *cmd)
     }
 }
 
+void CmdGetLightList(char *data, cloudcmd_t *cmd)
+{
+    cJSON   *json       = RT_NULL;
+
+    json = cJSON_Parse(data);
+
+    if(json)
+    {
+        GetValueByC16(json, "msgid", cmd->msgid, KEYVALUE_VALUE_SIZE);
+        GetValueByU16(json, "id", &cmd->getLightListId);
+
+        cJSON_Delete(json);
+    }
+}
+
+void CmdSetLightList(char *data, cloudcmd_t *cmd)//Justin 未测试
+{
+    cJSON       *json           = RT_NULL;
+    u8          addr            = 0;
+    char        charTemp[15]    = "";
+    device_t    *device         = RT_NULL;
+    type_sys_time time;
+
+    json = cJSON_Parse(data);
+
+    if(json)
+    {
+        GetValueByC16(json, "msgid", cmd->msgid, KEYVALUE_VALUE_SIZE);
+        GetValueByU16(json, "id", &cmd->getLightListId);
+
+        addr = cmd->getLightListId;
+        device = GetDeviceByAddr(GetMonitor(), addr);
+        if(device)
+        {
+            for(int port = 0; port < DEVICE_PORT_MAX; port++)
+            {
+                sprintf(charTemp, "%s%d", "port", port + 1);
+                cJSON *item = cJSON_GetObjectItem(json, charTemp);
+
+                if(item)
+                {
+                    GetValueByC16(item, "name", device->port[port].name, STORAGE_NAMESZ);
+                    GetValueByU8(item, "mode", &device->port[port].mode);
+                    GetValueByInt(item, "lightOn", &device->port[port].timer[0].on_at);
+                    GetValueByInt(item, "lightOff", &device->port[port].timer[0].duration);//将该值复用为关闭时间
+
+                    if(BY_RECYCLE == device->port[port].mode)
+                    {
+                        GetValueByC16(item, "firstStartAt", charTemp, 15);
+                        changeCharToDate(charTemp, &time);
+                        device->port[port].cycle.start_at_timestamp = systimeToTimestamp(time.year, time.month, time.day, time.hour, time.minute, 0);
+                    }
+
+                    GetValueByInt(item, "duration", &device->port[port].cycle.duration);
+                    GetValueByInt(item, "pauseTime", &device->port[port].cycle.pauseTime);
+
+                    cJSON *weekdayList = cJSON_GetObjectItem(json, "weekdayList");
+                    if(weekdayList)
+                    {
+                        u8 size = cJSON_GetArraySize(weekdayList) < 7 ? cJSON_GetArraySize(weekdayList) : 7;
+                        for(int day = 0; day < size; day++)
+                        {
+                            u8 num = cJSON_GetArrayItem(weekdayList, day)->valueint;
+                            if(num > 0 && num <= 7)
+                            {
+                                device->port[port].weekDayEn |= 1 << (num - 1);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        cJSON_Delete(json);
+    }
+}
+
 rt_err_t changeDataToChar(char* data, type_sys_time *time)
 {
     rt_err_t ret = RT_ERROR;
@@ -2996,21 +3105,6 @@ char *ReplySetTank(char *cmd, cloudcmd_t cloud)
     }
 
     return str;
-}
-
-void str_replace(char *original, char *pattern, char *replacement)
-{
-    char buffer[2048];
-    char *insert_point;
-    size_t pattern_len = strlen(pattern);
-    //size_t replacement_len = strlen(replacement);
-
-    while ((insert_point = strstr(original, pattern))) {
-        *insert_point = '\0';
-        insert_point += pattern_len;
-        sprintf(buffer, "%s%s%s", original, replacement, insert_point);
-        strcpy(original, buffer);
-    }
 }
 
 char *ReplyGetTank(char *cmd, cloudcmd_t cloud)
@@ -4723,6 +4817,20 @@ char *ReplyGetPortSet(char *cmd, cloudcmd_t cloud)
                             timer = cJSON_CreateObject();
                             if(RT_NULL != timer)
                             {
+                                cJSON *weekdayList = cJSON_CreateArray();
+                                if(weekdayList)
+                                {
+                                    for(int day = 0; day < 7; day++)
+                                    {
+                                        if((module->port[port].weekDayEn >> day) & 0x01)
+                                        {
+                                            cJSON_AddItemToArray(weekdayList, cJSON_CreateNumber(day + 1));
+                                        }
+                                    }
+
+                                    cJSON_AddItemToObject(timer, "weekdayList", weekdayList);
+                                }
+
                                 cJSON_AddNumberToObject(timer, "onAt", module->port[port].timer[group].on_at);
                                 cJSON_AddNumberToObject(timer, "duration", module->port[port].timer[group].duration);
                                 cJSON_AddNumberToObject(timer, "en", module->port[port].timer[group].en);
@@ -4878,6 +4986,35 @@ char *ReplySetDimmingCurve(char *cmd, dimmingCurve_t *curve, char *msgid)
     return str;
 }
 
+void GetTankSensorByAddr(sys_tank_t *list, u8 addr, u8 *tankNo, u8 *intank)
+{
+    *tankNo = 0;
+    *intank = 0;
+    for(int i = 0; i < list->tank_size; i++)
+    {
+        for(int sen_i = 0; sen_i < TANK_SINGLE_GROUD; sen_i++)
+        {
+            for(int sen_j = 0; sen_j < TANK_SENSOR_MAX; sen_j++)
+            {
+                if(addr == list->tank[i].sensorId[sen_i][sen_j])
+                {
+                    *tankNo = list->tank[i].tankNo;
+                    if(0 == sen_i)
+                    {
+                        *intank = TANK_SENSOR_TANK;
+                    }
+                    else
+                    {
+                        *intank = TANK_SENSOR_INLINE;
+                    }
+
+                    return;
+                }
+            }
+        }
+    }
+}
+
 char *ReplyGetSensorEList(char *cmd, char *msgid)
 {
     cJSON   *json       = cJSON_CreateObject();
@@ -4899,7 +5036,15 @@ char *ReplyGetSensorEList(char *cmd, char *msgid)
                 {
                     cJSON_AddNumberToObject(item, "id", sensor->addr);
                     cJSON_AddStringToObject(item, "name", sensor->name);
+#if(HUB_ENVIRENMENT == HUB_SELECT)
                     cJSON_AddNumberToObject(item, "isMain", sensor->isMainSensor);
+#elif(HUB_IRRIGSTION == HUB_SELECT)
+                    u8 tankNo = 0;
+                    u8 intank = 0;
+                    GetTankSensorByAddr(GetSysTank(), sensor->addr, &tankNo, &intank);
+                    cJSON_AddNumberToObject(item, "tankNo", tankNo);
+                    cJSON_AddNumberToObject(item, "type", intank);
+#endif
                     cJSON_AddNumberToObject(item, "sensorType", sensor->type);
                     u8 online = 0;
                     if(CON_FAIL == sensor->conn_state)
@@ -4920,7 +5065,7 @@ char *ReplyGetSensorEList(char *cmd, char *msgid)
                             if(portItem)
                             {
                                 u8 type = 0;
-                                // 1-co2 2-temp 3-humid 4-ph 5-ec 6-wt 7-wl 8-mm 9-me 10-mt
+                                // 1-co2 2-temp 3-humid 4-ph 5-ec 6-wt 7-wl 8-mm基质湿度  9-me基质 EC 10-mt基质温度
                                 //11-光敏 12-par 13-烟感(1:报警 0:正常) 14-漏水(1:报警 0:正常) 15-O2
                                 switch(sensor->__stora[port].func)
                                 {
@@ -4933,16 +5078,54 @@ char *ReplyGetSensorEList(char *cmd, char *msgid)
                                     case F_S_HUMI:
                                         type = 3;
                                         break;
+                                    case F_S_PH:
+                                        type = 4;
+                                        break;
+                                    case F_S_EC:
+                                        type = 5;
+                                        break;
+                                    case F_S_WT:
+                                        type = 6;
+                                        break;
+                                    case F_S_WL:
+                                        type = 7;
+                                        break;
+                                    case F_S_SW:
+                                        type = 8;
+                                        break;
+                                    case F_S_SEC:
+                                        type = 9;
+                                        break;
+                                    case F_S_ST:
+                                        type = 10;
+                                        break;
                                     case F_S_LIGHT:
                                         type = 11;
                                         break;
                                     case F_S_PAR:
                                         type = 12;
                                         break;
+                                    case F_S_SM:
+                                        type = 13;
+                                        break;
+                                    case F_S_LK:
+                                        type = 14;
+                                        break;
+                                    case F_S_O2:
+                                        type = 15;
+                                        break;
                                     default:break;
                                 }
                                 cJSON_AddNumberToObject(portItem, "type", type);
-                                cJSON_AddNumberToObject(portItem, "value", sensor->__stora[port].value);
+                                if(F_S_PH == sensor->__stora[port].func ||
+                                   F_S_WL == sensor->__stora[port].func)
+                                {
+                                    cJSON_AddNumberToObject(portItem, "value", sensor->__stora[port].value / 10);
+                                }
+                                else
+                                {
+                                    cJSON_AddNumberToObject(portItem, "value", sensor->__stora[port].value);
+                                }
 
                                 cJSON_AddItemToArray(itemList, portItem);
                             }
@@ -5184,6 +5367,87 @@ char *ReplySetTankName(cloudcmd_t *cmd)
         cJSON_AddStringToObject(json, "msgid", cmd->msgid);
         cJSON_AddNumberToObject(json, "tankNo", cmd->setTankNameNo);
         cJSON_AddStringToObject(json, "name", cmd->setTankName);
+
+        str = cJSON_PrintUnformatted(json);
+        cJSON_Delete(json);
+    }
+
+    return str;
+}
+
+
+char *ReplyGetLightList(cloudcmd_t *cmd)//Justin 未测试
+{
+    cJSON       *json           = cJSON_CreateObject();
+    char        *str            = RT_NULL;
+    device_t    *device         = RT_NULL;
+    u8          addr            = 0;
+    char        charTemp[15]    = "";
+    type_sys_time       format_time;
+
+    if(json)
+    {
+        cJSON_AddStringToObject(json, "cmd", cmd->cmd);
+        cJSON_AddStringToObject(json, "msgid", cmd->msgid);
+        cJSON_AddNumberToObject(json, "id", cmd->getLightListId);
+
+        addr = cmd->getLightListId;
+        device = GetDeviceByAddr(GetMonitor(), addr);
+        if(device)
+        {
+            for(int port = 0; port < DEVICE_PORT_MAX; port++)
+            {
+                cJSON *item = cJSON_CreateObject();
+
+                if(item)
+                {
+                    cJSON_AddNumberToObject(item, "id", (device->addr << 8) | port);
+                    cJSON_AddStringToObject(item, "name", device->port[port].name);
+                    cJSON_AddNumberToObject(item, "mode", device->port[port].mode);
+                    cJSON_AddNumberToObject(item, "lightOn", device->port[port].timer[0].on_at);
+                    cJSON_AddNumberToObject(item, "lightOff", device->port[port].timer[0].duration);//将该值复用为关闭时间
+                    if(0 != device->port[port].cycle.start_at_timestamp)
+                    {
+                        struct tm *time1 = getTimeStampByDate(&device->port[port].cycle.start_at_timestamp);
+                        format_time.year = time1->tm_year + 1900;
+                        format_time.month = time1->tm_mon + 1;
+                        format_time.day = time1->tm_mday;
+                        format_time.hour = device->port[port].cycle.start_at_timestamp / 60;
+                        format_time.minute = device->port[port].cycle.start_at_timestamp % 60;
+                        format_time.second = 0;
+                        changeDataToChar(charTemp, &format_time);
+                    }
+                    else
+                    {
+                        getRealTimeForMat(&format_time);
+                        format_time.hour = 0;
+                        format_time.minute = 0;
+                        format_time.second = 0;
+                        changeDataToChar(charTemp, &format_time);
+                    }
+                    cJSON_AddStringToObject(item, "firstStartAt", charTemp);
+                    cJSON_AddNumberToObject(item, "duration", device->port[port].cycle.duration);
+                    cJSON_AddNumberToObject(item, "pauseTime", device->port[port].cycle.pauseTime);
+
+                    cJSON *weekdayList = cJSON_CreateArray();
+                    if(weekdayList)
+                    {
+                        for(int day = 0; day < 7; day++)
+                        {
+                            if((device->port[port].weekDayEn >> day) & 0x01)
+                            {
+                                cJSON_AddItemToArray(weekdayList, cJSON_CreateNumber(day + 1));
+                            }
+                        }
+
+                        cJSON_AddItemToObject(item, "weekdayList", weekdayList);
+                    }
+
+                    sprintf(charTemp, "%s%d", "port", port + 1);
+                    cJSON_AddItemToObject(json, charTemp, item);
+                }
+            }
+        }
 
         str = cJSON_PrintUnformatted(json);
         cJSON_Delete(json);

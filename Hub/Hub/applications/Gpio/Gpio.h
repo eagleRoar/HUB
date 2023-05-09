@@ -52,7 +52,7 @@
 
 #define LED_HEART         GET_PIN(D, 14)  //蓝牙灯
 #endif
-#define ALARM_OUT         GET_PIN(B, 0)  //蓝牙灯
+#define ALARM_OUT         GET_PIN(B, 0)   //
 
 //#define LED_POWER         GET_PIN(D, 15)  //电源灯
 
@@ -109,4 +109,5 @@ u32 crc32_cal(u8 *, u32);
 time_t systimeToTimestamp(u16, u8, u8, u8, u8, u8);
 time_t changeDataToTimestamp(u16 , u8 , u8 , u8 , u8 , u8);
 u8 getAlarmFlag(void);
+void str_replace(char *original, char *pattern, char *replacement);
 #endif /* APPLICATIONS_GPIO_H_ */

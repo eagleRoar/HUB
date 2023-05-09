@@ -247,11 +247,11 @@ static void SaveMonitorToFile(type_monitor_t *monitor, char *fileName)
     RemoveFileDirectory(fileName);
     if(RT_EOK == WriteFileData(fileName, (u8 *)monitor, length, sizeof(type_monitor_t)))
     {
-        LOG_I("save monitor data OK");
+        LOG_I("-----------------save monitor data OK");
     }
     else
     {
-        LOG_I("save monitor data Fail");
+        LOG_I("-----------------save monitor data Fail");
     }
 }
 
@@ -421,11 +421,6 @@ void FileSystemEntry(void* parameter)
         //1s 任务
         if(ON == Timer1sTouch)
         {
-        }
-
-        //10s 任务
-        if(ON == Timer30sTouch)
-        {
             if((sensorSize != GetMonitor()->sensor_size) ||
                (deviceSize != GetMonitor()->device_size) ||
                (lineSize != GetMonitor()->line_size) ||
@@ -438,6 +433,11 @@ void FileSystemEntry(void* parameter)
                 lineSize = GetMonitor()->line_size;
                 saveModuleFlag = NO;
             }
+        }
+
+        //10s 任务
+        if(ON == Timer30sTouch)
+        {
 
             if(YES == GetSysSet()->saveFlag)
             {
@@ -541,6 +541,10 @@ void FileSystemInit(void)
         //3.读取主存储设备数据
         GetMonitorFromFile(GetMonitor(), new_dev_file);
         GetSysSetFromFile(GetSysSet(), new_sysset_file);
+        if(0 == GetSysSet()->crc)
+        {
+            initCloudProtocol();
+        }
 #if(HUB_ENVIRENMENT == HUB_SELECT)
         GetRecipeListFromFile(GetSysRecipt(), new_recipe_file);
 #elif(HUB_IRRIGSTION == HUB_SELECT)

@@ -193,6 +193,7 @@ void printLine(line_t line)
     LOG_D("type = %x",line.type);
     LOG_D("uuid = %x",line.uuid);
     LOG_D("name = %s",line.name);
+    LOG_D("lineNo = %d",line.lineNo);
     LOG_D("ctr addr = %x",line.ctrl_addr);
 }
 
@@ -286,6 +287,21 @@ void printRecipe(recipe_t *recipe)
     LOG_D("duration         %d", recipe->line_list[1].duration);
     LOG_D("pauseTime        %d", recipe->line_list[1].pauseTime);
     LOG_D("firstRuncycleTime %d", recipe->line_list[1].firstRuncycleTime);
+}
+
+void str_replace(char *original, char *pattern, char *replacement)
+{
+    char buffer[2048];
+    char *insert_point;
+    size_t pattern_len = strlen(pattern);
+    //size_t replacement_len = strlen(replacement);
+
+    while ((insert_point = strstr(original, pattern))) {
+        *insert_point = '\0';
+        insert_point += pattern_len;
+        sprintf(buffer, "%s%s%s", original, replacement, insert_point);
+        strcpy(original, buffer);
+    }
 }
 
 #endif /* APPLICATIONS_TEST_C_ */

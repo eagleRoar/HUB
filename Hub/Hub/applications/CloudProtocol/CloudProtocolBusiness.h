@@ -108,6 +108,7 @@ struct cloudCmd{
     u16             delTankPvId;
     u8              setTankNameNo;
     char            setTankName[TANK_NAMESZ];
+    u8              getLightListId;
 };
 
 //cmd : getTempSetting
@@ -701,6 +702,8 @@ enum{
 #define         CMD_SET_TANK_PV         "setTankPV"             //设置泵子阀
 #define         CMD_DEL_TANK_PV         "delTankPV"             //删除泵子阀
 #define         CMD_SET_TANK_NAME       "setTankName"
+#define         CMD_GET_LIGHT_LIST      "getLightList"          //获取12路灯光
+#define         CMD_SET_LIGHT_LIST      "setLightList"          //设置12路灯光
 
 rt_err_t GetValueByU8(cJSON *, char *, u8 *);
 rt_err_t GetValueByU16(cJSON *, char *, u16 *);

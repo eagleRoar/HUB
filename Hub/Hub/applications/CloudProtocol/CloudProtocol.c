@@ -703,7 +703,8 @@ rt_err_t ReplyDataToCloud(mqtt_client *client, int *sock, u8 sendCloudFlg)
         {
             str = ReplySetDimmingCurve(cloudCmd.cmd, &GetSysSet()->dimmingCurve, cloudCmd.msgid);
         }
-        else if(0 == rt_memcmp(CMD_GET_SENSOR_E_LIST, cloudCmd.cmd, sizeof(CMD_GET_SENSOR_E_LIST)))
+        else if(0 == rt_memcmp(CMD_GET_SENSOR_E_LIST, cloudCmd.cmd, sizeof(CMD_GET_SENSOR_E_LIST)) ||
+                0 == rt_memcmp(CMD_GET_SENSOR_I_LIST, cloudCmd.cmd, sizeof(CMD_GET_SENSOR_I_LIST)))
         {
             str = ReplyGetSensorEList(cloudCmd.cmd, cloudCmd.msgid);
         }
@@ -731,6 +732,11 @@ rt_err_t ReplyDataToCloud(mqtt_client *client, int *sock, u8 sendCloudFlg)
         else if(0 == rt_memcmp(CMD_SET_TANK_NAME, cloudCmd.cmd, sizeof(CMD_SET_TANK_NAME)))
         {
             str = ReplySetTankName(&cloudCmd);
+        }
+        else if(0 == rt_memcmp(CMD_GET_LIGHT_LIST, cloudCmd.cmd, sizeof(CMD_GET_LIGHT_LIST)) ||
+                0 == rt_memcmp(CMD_SET_LIGHT_LIST, cloudCmd.cmd, sizeof(CMD_SET_LIGHT_LIST)))
+        {
+            str = ReplyGetLightList(&cloudCmd);
         }
         else
         {
@@ -1109,7 +1115,8 @@ void analyzeCloudData(char *data, u8 cloudFlg)
                 setCloudCmd(cmd->valuestring, ON, cloudFlg);
                 GetSysSet()->saveFlag = YES;
             }
-            else if(0 == rt_memcmp(CMD_GET_SENSOR_E_LIST, cmd->valuestring, strlen(CMD_GET_SENSOR_E_LIST)))
+            else if(0 == rt_memcmp(CMD_GET_SENSOR_E_LIST, cmd->valuestring, strlen(CMD_GET_SENSOR_E_LIST)) ||
+                    0 == rt_memcmp(CMD_GET_SENSOR_I_LIST, cmd->valuestring, strlen(CMD_GET_SENSOR_I_LIST)))
             {
                 CmdGetSensorEList(data, &cloudCmd);
                 setCloudCmd(cmd->valuestring, ON, cloudFlg);
@@ -1152,6 +1159,17 @@ void analyzeCloudData(char *data, u8 cloudFlg)
                 CmdSetTankName(data, &cloudCmd);
                 setCloudCmd(cmd->valuestring, ON, cloudFlg);
                 GetSysTank()->saveFlag = YES;
+            }
+            else if(0 == rt_memcmp(CMD_GET_LIGHT_LIST, cmd->valuestring, sizeof(CMD_GET_LIGHT_LIST)))
+            {
+                CmdGetLightList(data, &cloudCmd);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
+            }
+            else if(0 == rt_memcmp(CMD_SET_LIGHT_LIST, cmd->valuestring, sizeof(CMD_SET_LIGHT_LIST)))
+            {
+                CmdSetLightList(data, &cloudCmd);
+                setCloudCmd(cmd->valuestring, ON, cloudFlg);
+                saveModuleFlag = YES;
             }
         }
         else

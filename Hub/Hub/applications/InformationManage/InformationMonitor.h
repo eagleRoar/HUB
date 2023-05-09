@@ -290,6 +290,7 @@ struct device{
         type_cycle_t cycle1;//灌溉泵有白天黑夜的cycle模式
         type_manual_t manual;
         type_ctrl_t ctrl;
+        u8  weekDayEn;//星期1-7使能 //Justin
     }port[DEVICE_PORT_MAX];
     //特殊处理
     struct hvac

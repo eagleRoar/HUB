@@ -81,6 +81,7 @@ void setDeviceDefaultStora(device_t *dev, u8 index, char *name, u8 func, u8 type
     dev->port[index].manual.manual = 0;
     dev->port[index].manual.manual_on_time = MANUAL_TIME_DEFAULT;
     dev->port[index].manual.manual_on_time_save = 0;
+    dev->port[index].weekDayEn = 0x7F;//默认1-7都开
 }
 
 char *GetModelByType(u8 type, char *name, u8 len)

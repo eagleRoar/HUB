@@ -932,11 +932,11 @@ rt_err_t CheckLineCorrect(type_monitor_t *monitor, u32 uuid, u8 addr, u8 type)
 //删除
 void DeleteModule(type_monitor_t *monitor, u32 uuid)
 {
-    //LOG_E("-------------------------------------DeleteModule");
     for(int i = 0; i < monitor->sensor_size; i++)
     {
         if(uuid == monitor->sensor[i].uuid)
         {
+
             monitor->allocateStr.address[monitor->sensor[i].addr] = 0;
             rt_memset((u8 *)&monitor->sensor[i], 0, sizeof(sensor_t));
 
@@ -1362,6 +1362,7 @@ rt_err_t SetLineDefault(type_monitor_t *monitor, u32 uuid, u8 type, u8 addr)
                 line.port[0].ctrl.d_value = 0;
                 line.port[0]._manual.manual = MANUAL_NO_HAND;
                 line.port[0]._manual.manual_on_time = MANUAL_TIME_DEFAULT;
+                line.storage_size = 1;
                 if(LINE_TYPE == type)
                 {
                     for(i = 0; i < monitor->line_size; i++)
@@ -1390,6 +1391,11 @@ rt_err_t SetLineDefault(type_monitor_t *monitor, u32 uuid, u8 type, u8 addr)
                         {
                             line.lineNo = 2;
                         }
+                        else
+                        {
+                            //如果line1 2 都有了
+                            return RT_ERROR;
+                        }
                     }
                 }
             }
@@ -1400,6 +1406,7 @@ rt_err_t SetLineDefault(type_monitor_t *monitor, u32 uuid, u8 type, u8 addr)
                 line.addr = addr;
                 strncpy(line.name, "line_4", MODULE_NAMESZ);
                 line.ctrl_addr = 0x0100;
+                line.storage_size = 4;
                 for(int i = 0; i < 4; i++)
                 {
                     line.port[i].ctrl.d_state = 0;
@@ -1419,6 +1426,10 @@ rt_err_t SetLineDefault(type_monitor_t *monitor, u32 uuid, u8 type, u8 addr)
                 if(i == monitor->line_size)
                 {
                     line.lineNo = 1;
+                }
+                else
+                {
+                    return RT_ERROR;
                 }
             }
 

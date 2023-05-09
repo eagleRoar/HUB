@@ -807,7 +807,7 @@ static void RecvListHandle(void)
             else
             {
                 //6.判断是否冲突，如果第一路存在line 则不能注册Line_4, 同理
-                if(NO == isLine0Conflict(GetMonitor(), tail->keyData.dataSegment.data[8]))
+//                if(NO == isLine0Conflict(GetMonitor(), tail->keyData.dataSegment.data[8]))
                 {
                     //7.之前没有注册过的直接注册
                     addr = getAllocateAddress(GetMonitor());
@@ -837,7 +837,6 @@ static void RecvListHandle(void)
                         line->port[reg - line->ctrl_addr].ctrl.d_state = tail->keyData.dataSegment.data[4];
                         line->port[reg - line->ctrl_addr].ctrl.d_value = tail->keyData.dataSegment.data[5];
                     }
-
                 }
                 //针对设置4路调光
                 else if(WRITE_MUTI == rwType)
