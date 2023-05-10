@@ -1254,10 +1254,8 @@ void menualHandProgram(type_monitor_t *monitor, type_uart_class deviceUart, type
             }
             else if(LINE_4_TYPE == line->type)
             {
-                for(port = 0; port < line->storage_size; port++)
-                {
-                    lineUart.LineCtrl(line, port, 0, 0);
-                }
+                u16 ctrlValue[LINE_PORT_MAX] = {0,0,0,0};
+                lineUart.Line4Ctrl(line, ctrlValue);
             }
         }
         else if(MANUAL_HAND_ON == line->port[0]._manual.manual)
@@ -1271,19 +1269,21 @@ void menualHandProgram(type_monitor_t *monitor, type_uart_class deviceUart, type
                 }
                 else if(LINE_4_TYPE == line->type)
                 {
-                    for(port = 0; port < line->storage_size; port++)
+                    u8 res = 0;
+                    u16 ctrlValue[LINE_PORT_MAX] = {0,0,0,0};
+                    for(int port = 0; port < LINE_PORT_MAX; port++)
                     {
-                        lineUart.LineCtrl(line, port, ON, 100);
+                        GetRealLine4V(&GetSysSet()->dimmingCurve, port, 100, &res);
+                        ctrlValue[port] = (100 << 8) | res;
                     }
+                    lineUart.Line4Ctrl(line, ctrlValue);
                 }
             }
             else
             {
                 line->port[0]._manual.manual = MANUAL_NO_HAND;
-                for(port = 0; port < line->storage_size; port++)
-                {
-                    lineUart.LineCtrl(line, port, 0, 0);
-                }
+                u16 ctrlValue[LINE_PORT_MAX] = {0,0,0,0};
+                lineUart.Line4Ctrl(line, ctrlValue);
             }
         }
     }

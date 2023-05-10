@@ -540,10 +540,13 @@ void FileSystemInit(void)
     {
         //3.读取主存储设备数据
         GetMonitorFromFile(GetMonitor(), new_dev_file);
-        GetSysSetFromFile(GetSysSet(), new_sysset_file);
-        if(0 == GetSysSet()->crc)
+        if(0 == GetFileLength(new_sysset_file))
         {
             initCloudProtocol();
+        }
+        else
+        {
+            GetSysSetFromFile(GetSysSet(), new_sysset_file);
         }
 #if(HUB_ENVIRENMENT == HUB_SELECT)
         GetRecipeListFromFile(GetSysRecipt(), new_recipe_file);

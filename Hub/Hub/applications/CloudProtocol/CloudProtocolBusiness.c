@@ -5771,7 +5771,16 @@ char *ReplyGetDeviceList_new(char *cmd, char *msgid, u8 deviceType, u8 no)
                     cJSON_AddNumberToObject(item, "online", 1);
                     cJSON_AddNumberToObject(item, "workingStatus", line.port[0].ctrl.d_state);
                 }
-                u8 lineType = GetLineType(GetMonitor());
+
+                u8 lineType = 0;
+                if(LINE_4_TYPE == line.type)
+                {
+                    lineType = 2;
+                }
+                else
+                {
+                    lineType = 1;
+                }
                 cJSON_AddNumberToObject(item, "lineType", lineType);
                 if(1 == lineType)
                 {

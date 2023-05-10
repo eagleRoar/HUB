@@ -42,15 +42,19 @@ static void GenerateVuleByCtrl(line_t *line, u8 port, u8 state, u8 value, u16 *r
 
 static void GenerateLine4VuleByCtrl(line_t *line, u16 *value, u16 *res)
 {
+    u8  vol = 0;
+    u8  manual = line->port[0]._manual.manual;
+
     if(LINE_4_TYPE == line->type)
     {
         for(int i = 0; i < 4; i++)
         {
-            if(MANUAL_HAND_ON == line->port[i]._manual.manual)
+            if(MANUAL_HAND_ON == manual)
             {
-                res[i] = 0x6464;
+                GetRealLine4V(&GetSysSet()->dimmingCurve, i, 100, &vol);
+                res[i] = (100 << 8) | vol;
             }
-            else if(MANUAL_HAND_OFF == line->port[i]._manual.manual)
+            else if(MANUAL_HAND_OFF == manual)
             {
                 res[i] = 0x0000;
             }
@@ -739,32 +743,32 @@ static void SendReplyRegister(u32 uuid, u8 addr)
     }
 }
 
-static u8 isLine0Conflict(type_monitor_t *monitor, u8 type)
-{
-    if(LINE_4_TYPE == type)
-    {
-        for(int i = 0; i < monitor->line_size; i++)
-        {
-            if(1 == monitor->line[i].lineNo)
-            {
-                //存在第一通道
-                return YES;
-            }
-        }
-    }
-    else if(LINE_TYPE == type)
-    {
-        for(int i = 0; i < monitor->line_size; i++)
-        {
-            if(LINE_4_TYPE == monitor->line[i].type)
-            {
-                return YES;
-            }
-        }
-    }
-
-    return NO;
-}
+//static u8 isLine0Conflict(type_monitor_t *monitor, u8 type)
+//{
+//    if(LINE_4_TYPE == type)
+//    {
+//        for(int i = 0; i < monitor->line_size; i++)
+//        {
+//            if(1 == monitor->line[i].lineNo)
+//            {
+//                //存在第一通道
+//                return YES;
+//            }
+//        }
+//    }
+//    else if(LINE_TYPE == type)
+//    {
+//        for(int i = 0; i < monitor->line_size; i++)
+//        {
+//            if(LINE_4_TYPE == monitor->line[i].type)
+//            {
+//                return YES;
+//            }
+//        }
+//    }
+//
+//    return NO;
+//}
 
 //处理返回数据的列表,解析数据
 static void RecvListHandle(void)
