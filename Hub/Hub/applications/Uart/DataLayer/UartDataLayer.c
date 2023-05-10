@@ -662,6 +662,7 @@ u8 TypeSupported(u8 type)
         case IO_12_TYPE:
         case IO_4_TYPE:
         case IR_AIR_TYPE:
+        case LIGHT_12_TYPE:
             ret = DEVICE_TYPE;
             break;
         case LINE_TYPE:

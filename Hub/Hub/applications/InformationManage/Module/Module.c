@@ -1170,6 +1170,21 @@ rt_err_t SetDeviceDefault(type_monitor_t *monitor, u32 uuid, u8 type, u8 addr)
                             sprintf(name,"%s%d","port",index+1);
                             strncpy(device->port[index].name, name, STORAGE_NAMESZ);
                             device->port[index].manual.manual_on_time = MANUAL_TIME_DEFAULT;
+                            device->port[index].weekDayEn = 0x7F;
+                        }
+                        ret = RT_EOK;
+                        break;
+                    case LIGHT_12_TYPE://Justin 需要找黄华分配model
+                        setDeviceDefaultPara(device, "BCB-12", 0x0401, S_LIGHT_12, device->type, 12);
+                        for(u8 index = 0; index < device->storage_size; index++)
+                        {
+                            device->port[index].type = TIMER_TYPE;//暂时指定为timer
+                            device->port[index].func = F_TIMER;
+                            strcpy(name," ");
+                            sprintf(name,"%s%d","port",index+1);
+                            strncpy(device->port[index].name, name, STORAGE_NAMESZ);
+                            device->port[index].manual.manual_on_time = MANUAL_TIME_DEFAULT;
+                            device->port[index].weekDayEn = 0x7F;
                         }
                         ret = RT_EOK;
                         break;

@@ -57,8 +57,8 @@
 #error "Please update the 'rtdbg.h' file to GitHub latest version (https://github.com/RT-Thread/rt-thread/blob/master/include/rtdbg.h)"
 #endif
 
-static char mqtt_thread_stack[1024 * /*3*/2];
-static struct rt_thread mqtt_thread;
+__attribute__((section(".ccmbss"))) char mqtt_thread_stack[1024 * 2];
+__attribute__((section(".ccmbss"))) struct rt_thread mqtt_thread;
 
 /*********************************************************************************************************
 **  mqtt�ͻ���ͨ����

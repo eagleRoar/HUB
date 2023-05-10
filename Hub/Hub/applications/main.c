@@ -237,7 +237,6 @@ int main(void)
                     lineProgram(GetMonitor(), 1, *lineObj, 1000);
                     timmerProgram(GetMonitor(), *deviceObj);
                 }
-
             }
 
             //co2 校准

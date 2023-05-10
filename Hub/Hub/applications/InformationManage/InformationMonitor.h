@@ -535,6 +535,7 @@ typedef     void (*FAC_FUNC)(type_monitor_t *);
 #define     HVAC_6_TYPE         0x61
 #define     AC_4_TYPE           0x50
 #define     IO_12_TYPE          0x80
+#define     LIGHT_12_TYPE       0x82        //12路灯光干接点
 #define     IO_4_TYPE           0x81
 #define     IR_AIR_TYPE         0xB4        //红外空调
 
@@ -563,7 +564,8 @@ enum{
     S_PUMP,
     S_VALVE,
     S_IO_12,
-    S_IO_4
+    S_IO_4,
+    S_LIGHT_12,
 };
 
 enum{

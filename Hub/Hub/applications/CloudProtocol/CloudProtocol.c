@@ -247,9 +247,11 @@ void initCloudProtocol(void)
     sys_set.sysWarn.dayTempMin = 170;
     sys_set.sysWarn.dayTempMax = 350;
     sys_set.sysWarn.dayTempEn = ON;
+    sys_set.sysWarn.dayTempBuzz = ON;
     sys_set.sysWarn.dayhumidMin = 500;
     sys_set.sysWarn.dayhumidMax = 900;
     sys_set.sysWarn.dayhumidEn = ON;
+    sys_set.sysWarn.dayhumidBuzz = ON;
     sys_set.sysWarn.dayCo2Min = 500;
     sys_set.sysWarn.dayCo2Max = 3000;
     sys_set.sysWarn.dayCo2En = ON;
