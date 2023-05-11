@@ -904,7 +904,7 @@ void CmdGetRecipe(char *data, cloudcmd_t *cmd)
     }
 }
 
-void CmdSetRecipe(char *data, cloudcmd_t *cmd)
+void CmdSetRecipe(char *data, cloudcmd_t *cmd)//Justin 设置line_4 By schedule 有问题 只设置一组试一下
 {
     cJSON           *temp       = RT_NULL;
     cJSON           *line       = RT_NULL;
@@ -957,6 +957,7 @@ void CmdSetRecipe(char *data, cloudcmd_t *cmd)
                     {
                         u8 timeSize = cJSON_GetArraySize(timer_list);
                         timeSize = timeSize > LINE_4_TIMER_MAX ? LINE_4_TIMER_MAX : timeSize;
+                        LOG_I("timeSize = %d",timeSize);//Justin
                         for(int i = 0; i < timeSize; i++)
                         {
                             cJSON *timer = cJSON_GetArrayItem(timer_list, i);
@@ -973,6 +974,7 @@ void CmdSetRecipe(char *data, cloudcmd_t *cmd)
                     {
                         u8 cycleSize = cJSON_GetArraySize(cycle_list);
                         cycleSize = cycleSize > LINE_4_CYCLE_MAX ? LINE_4_CYCLE_MAX : cycleSize;
+                        LOG_I("cycleSize = %d",cycleSize);//Justin
                         for(int i = 0; i < cycleSize; i++)
                         {
                             cJSON *cycle = cJSON_GetArrayItem(cycle_list, i);
@@ -982,8 +984,8 @@ void CmdSetRecipe(char *data, cloudcmd_t *cmd)
                         }
                     }
                     GetValueByU16(line, "pauseTime", &recipe->line_4.pauseTime);
-                    GetValueByU8(line, "tempStartDimming", &recipe->line_4.tempStartDimming);
-                    GetValueByU8(line, "tempOffDimming", &recipe->line_4.tempOffDimming);
+                    GetValueByU16(line, "tempStartDimming", &recipe->line_4.tempStartDimming);
+                    GetValueByU16(line, "tempOffDimming", &recipe->line_4.tempOffDimming);
                     GetValueByU8(line, "sunriseSunSet", &recipe->line_4.sunriseSunSet);
                 }
             }
@@ -2013,8 +2015,7 @@ void CmdSetLightList(char *data, cloudcmd_t *cmd)
                         GetValueByC16(item, "firstStartAt", charTemp, 15);
                         changeCharToDate(charTemp, &time);
                         device->port[port].cycle.start_at_timestamp = systimeToTimestamp(time.year, time.month, time.day, time.hour, time.minute, 0);
-                        LOG_D("%s hour = %d, min = %d, %d",
-                                charTemp,time.hour,time.minute, getTimeStampByDate(&device->port[port].cycle.start_at_timestamp)->tm_hour);
+
                         GetValueByInt(item, "duration", &device->port[port].cycle.duration);
                         GetValueByInt(item, "pauseTime", &device->port[port].cycle.pauseTime);
                     }
@@ -4413,7 +4414,6 @@ char *ReplySetRecipe(char *cmd, cloudcmd_t cloud)
                             cJSON_AddNumberToObject(line, "mode", recipe->line_list[index].mode);
                             cJSON_AddNumberToObject(line, "lightOn", recipe->line_list[index].lightOn);
                             cJSON_AddNumberToObject(line, "lightOff", recipe->line_list[index].lightOff);
-    //                        cJSON_AddNumberToObject(line, "firstCycleTime", recipe->line_list[index].firstCycleTime);
                             if(0 != recipe->line_list[index].firstRuncycleTime)
                             {
                                 struct tm *time1 = getTimeStampByDate(&recipe->line_list[index].firstRuncycleTime);
@@ -4448,15 +4448,21 @@ char *ReplySetRecipe(char *cmd, cloudcmd_t cloud)
                             {
                                 for(int i = 0; i < LINE_4_TIMER_MAX; i++)
                                 {
-                                    cJSON *item = cJSON_CreateObject();
-                                    if(item)
+                                    if(!(0 == recipe->line_4.timerList[i].on &&
+                                         0 == recipe->line_4.timerList[i].off &&
+                                         0 == recipe->line_4.timerList[i].en &&
+                                         0 == recipe->line_4.timerList[i].no))
                                     {
-                                        cJSON_AddNumberToObject(item, "on", recipe->line_4.timerList[i].on);
-                                        cJSON_AddNumberToObject(item, "off", recipe->line_4.timerList[i].off);
-                                        cJSON_AddNumberToObject(item, "en", recipe->line_4.timerList[i].en);
-                                        cJSON_AddNumberToObject(item, "no", recipe->line_4.timerList[i].no);
+                                        cJSON *item = cJSON_CreateObject();
+                                        if(item)
+                                        {
+                                            cJSON_AddNumberToObject(item, "on", recipe->line_4.timerList[i].on);
+                                            cJSON_AddNumberToObject(item, "off", recipe->line_4.timerList[i].off);
+                                            cJSON_AddNumberToObject(item, "en", recipe->line_4.timerList[i].en);
+                                            cJSON_AddNumberToObject(item, "no", recipe->line_4.timerList[i].no);
 
-                                        cJSON_AddItemToArray(timeList, item);
+                                            cJSON_AddItemToArray(timeList, item);
+                                        }
                                     }
                                 }
 
@@ -4468,14 +4474,18 @@ char *ReplySetRecipe(char *cmd, cloudcmd_t cloud)
                             {
                                 for(int i = 0; i < LINE_4_CYCLE_MAX; i++)
                                 {
-                                    cJSON *item = cJSON_CreateObject();
-
-                                    if(item)
+                                    if(!(0 == recipe->line_4.cycleList[i].duration &&
+                                         0 == recipe->line_4.cycleList[i].no))
                                     {
-                                        cJSON_AddNumberToObject(item, "duration", recipe->line_4.cycleList[i].duration);
-                                        cJSON_AddNumberToObject(item, "no", recipe->line_4.cycleList[i].no);
+                                        cJSON *item = cJSON_CreateObject();
 
-                                        cJSON_AddItemToArray(cycleList, item);
+                                        if(item)
+                                        {
+                                            cJSON_AddNumberToObject(item, "duration", recipe->line_4.cycleList[i].duration);
+                                            cJSON_AddNumberToObject(item, "no", recipe->line_4.cycleList[i].no);
+
+                                            cJSON_AddItemToArray(cycleList, item);
+                                        }
                                     }
                                 }
 

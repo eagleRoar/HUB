@@ -1974,6 +1974,9 @@ void line_4Program(line_t *line, type_uart_class lineUart)
     getRealTimeForMat(&time);
     now_time = time.hour * 60 * 60 + time.minute * 60 + time.second;//精确到秒
 
+    LOG_E("line_4Program mode = %d, on = %d, off = %d",
+            line_4set.mode);//Justin
+
     if(LINE_BY_TIMER == line_4set.mode)
     {
         //3.1 选中定时器设置
