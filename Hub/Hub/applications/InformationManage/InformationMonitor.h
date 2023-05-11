@@ -509,6 +509,7 @@ typedef     void (*FAC_FUNC)(type_monitor_t *);
 #define     NAME_ENV                "hub_envi"                   //环境控制从机hub名称
 #define     NAME_IRR                "hub_irri"                   //灌溉控制从机hub名称
 
+#define     NULL_TYPE           0x00
 #define     HUB_TYPE            0xFF
 #define     LINE_TYPE           0x22        //灯光类
 #define     LINE1_TYPE          0x23        //灯光类
@@ -570,6 +571,7 @@ enum{
 
 enum{
     /*****************************device 类型功能*/
+    F_NULL = 0,
     F_Co2_UP = 1,
     F_Co2_DOWN,
     F_HUMI,

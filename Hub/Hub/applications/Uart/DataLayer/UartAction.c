@@ -2621,6 +2621,97 @@ void lineProgram(type_monitor_t *monitor, u8 line_no, type_uart_class lineUart, 
     }
 }
 
+//Justin 12 路灯干接点
+void Light12Program(type_monitor_t *monitor, type_uart_class deviceUart)
+{
+    u8                  index               = 0;
+    u8                  port                = 0;
+    u8                  state               = 0;
+    device_t            *device             = RT_NULL;
+    time_t              startOnTime         = 0;    //开始开启的时间戳
+    int                 on_time             = 0;
+    int                 off_time            = 0;
+
+    for(index = 0; index < monitor->device_size; index++)
+    {
+        device = &monitor->device[index];
+
+        //1.仅仅针对12灯光
+        if(LIGHT_12_TYPE != device->type)
+        {
+            continue;
+        }
+
+        //2.
+        for(port = 0; port < device->storage_size; port++)
+        {
+            state = 0;
+            if(BY_RECYCLE == device->port[port].mode)
+            {
+                //1.判断当前时间是否是满足进入循环周期的条件,即大于开始时间
+                if(getTimeStamp() > device->port[port].cycle.start_at_timestamp)
+                {
+                    if(((getTimeStamp() - device->port[port].cycle.start_at_timestamp) %
+                        (device->port[port].cycle.duration + device->port[port].cycle.pauseTime)) <=
+                        device->port[port].cycle.duration)
+                    {
+                        state = ON;
+                    }
+                    else
+                    {
+                        state = OFF;
+                    }
+                }
+                else
+                {
+                    state = OFF;
+                }
+            }
+            else if(BY_SCHEDULE == device->port[port].mode)
+            {
+               //将开始的时间转化为timestamp
+                time_t time1 = getTimeStamp();
+                struct tm *timeTemp = getTimeStampByDate(&time1);
+
+                startOnTime = timeTemp->tm_hour * 60 * 60 + timeTemp->tm_min * 60 + timeTemp->tm_sec;
+                on_time = device->port[port].timer[0].on_at * 60;
+                off_time = device->port[port].timer[0].duration * 60;
+                //正常一天的设置 //duration在这里是offtime
+                if(!(0 == off_time && 0 == on_time))
+                {
+                    if(off_time > on_time)
+                    {
+                        if(startOnTime >= on_time &&
+                           startOnTime < off_time)
+                        {
+                            state = ON;
+                        }
+                        else
+                        {
+                            state = OFF;
+                        }
+                    }
+                    //跨天 offtime < ontime
+                    else
+                    {
+                        if(startOnTime >= on_time ||
+                           startOnTime < off_time)
+                        {
+                            state = ON;
+                        }
+                        else
+                        {
+                            state = OFF;
+                        }
+                    }
+                }
+            }
+            device->port[port].ctrl.d_state = state;
+        }
+        deviceUart.DeviceCtrlSingle(device, 0, device->port[0].ctrl.d_state );
+    }
+}
+
 void timmerProgram(type_monitor_t *monitor, type_uart_class deviceUart)
 {
     u8                  index       = 0;
@@ -2662,6 +2753,7 @@ void timmerProgram(type_monitor_t *monitor, type_uart_class deviceUart)
                         state = OFF;
                     }
 
+                    device->port[port].ctrl.d_state = state;//Justin
                     deviceUart.DeviceCtrlSingle(device, port, state);
                 }
                 else if(BY_SCHEDULE == device->port[port].mode)//定时器模式
@@ -2698,6 +2790,7 @@ void timmerProgram(type_monitor_t *monitor, type_uart_class deviceUart)
 
                    if(item == TIMER_GROUP)
                    {
+                       device->port[port].ctrl.d_state = 0;//Justin
                        deviceUart.DeviceCtrlSingle(device, port, 0);
                    }
                    else
@@ -2719,10 +2812,12 @@ void timmerProgram(type_monitor_t *monitor, type_uart_class deviceUart)
 
                        if(day == 7)
                        {
+                           device->port[port].ctrl.d_state = 0;//Justin
                            deviceUart.DeviceCtrlSingle(device, port, 0);
                        }
                        else
                        {
+                           device->port[port].ctrl.d_state = state;//Justin
                            deviceUart.DeviceCtrlSingle(device, port, state);
                        }
                    }

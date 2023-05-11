@@ -16,7 +16,7 @@
 #include "FileSystem.h"
 
 
-__attribute__((section(".ccmbss"))) u8          udp_task[1024 * 2];
+__attribute__((section(".ccmbss"))) u8          udp_task[1024 * 4];
 __attribute__((section(".ccmbss"))) struct      rt_thread udp_thread;
 __attribute__((section(".ccmbss"))) u8          tcp_task[1024 * 2];
 __attribute__((section(".ccmbss"))) struct      rt_thread tcp_thread;

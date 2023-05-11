@@ -483,7 +483,6 @@ void FileSystemInit(void)
     char        main_information[]  = "/main/informations";
     char        old_info[]          = "/backup/moduleInfo";
 
-
     //1.首先将flash作为主存储区挂载到根文件夹 sd卡作为备份存储区挂载到根目录下的文件夹
     if (0 != dfs_mount(FLASH_MEMORY_NAME, "/", "elm", 0, 0))
     {

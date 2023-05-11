@@ -236,6 +236,7 @@ int main(void)
                     }
                     lineProgram(GetMonitor(), 1, *lineObj, 1000);
                     timmerProgram(GetMonitor(), *deviceObj);
+                    Light12Program(GetMonitor(), *deviceObj);
                 }
             }
 

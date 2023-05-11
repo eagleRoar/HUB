@@ -28,6 +28,7 @@ void lineProgram(type_monitor_t *monitor, u8 line_no, type_uart_class lineUart, 
 void line_4Program(line_t *line, type_uart_class lineUart);
 void timmerProgram(type_monitor_t *monitor, type_uart_class deviceUart);
 void co2Calibrate1(type_monitor_t *monitor, int *data, u8 *do_cal_flg, u8 *saveFlg, PAGE_CB cb);
+void Light12Program(type_monitor_t *monitor, type_uart_class deviceUart);
 #elif(HUB_IRRIGSTION == HUB_SELECT)
 void setPhCalWithUUID(u32 uuid);
 void setEcCalWithUUID(u32 uuid);

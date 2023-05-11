@@ -411,7 +411,7 @@ void CmdGetPortSet(char *data, cloudcmd_t *cmd)
     }
 }
 
-void CmdSetPortSet(char *data, cloudcmd_t *cmd)//Justin weekdayList未测试
+void CmdSetPortSet(char *data, cloudcmd_t *cmd)
 {
     u8              list_num    = 0;
     u8              addr        = 0;
@@ -530,19 +530,16 @@ void CmdSetPortSet(char *data, cloudcmd_t *cmd)//Justin weekdayList未测试
                     GetValueByU16(temp, "times", &device->port[port].cycle.times);
                 }
 
-                //Justin weekdayList 修改成字符串类型
                 GetValueByC16(temp, "weekdayList", firstStartAt, 15);
+
                 device->port[port].weekDayEn = 0x00;
                 for(int i = 0; i < 7; i++)
                 {
-                    char num;
-                    itoa(i + 1 ,&num, 10);
-                    if(strchr(charTemp, num))
+                    if(strchr(firstStartAt, i + 1 + 0x30))//+0x30转化为ascii码
                     {
                         device->port[port].weekDayEn |= 1 << i;
                     }
                 }
-
             }
         }
         else if(line != RT_NULL)
@@ -1994,7 +1991,6 @@ void CmdSetLightList(char *data, cloudcmd_t *cmd)
 
     if(json)
     {
-        LOG_I("CmdSetLightList  1");//Justin
         GetValueByC16(json, "msgid", cmd->msgid, KEYVALUE_VALUE_SIZE);
         GetValueByU8(json, "id", &cmd->getLightListId);
 
@@ -2002,7 +1998,6 @@ void CmdSetLightList(char *data, cloudcmd_t *cmd)
         device = GetDeviceByAddr(GetMonitor(), addr);
         if(device)
         {
-            LOG_I("CmdSetLightList  2");//Justin
             for(int port = 0; port < DEVICE_PORT_MAX; port++)
             {
                 sprintf(charTemp, "%s%d", "port", port + 1);
@@ -2012,43 +2007,38 @@ void CmdSetLightList(char *data, cloudcmd_t *cmd)
                 {
                     GetValueByC16(item, "name", device->port[port].name, STORAGE_NAMESZ);
                     GetValueByU8(item, "mode", &device->port[port].mode);
-                    GetValueByInt(item, "lightOn", &device->port[port].timer[0].on_at);
-                    GetValueByInt(item, "lightOff", &device->port[port].timer[0].duration);//将该值复用为关闭时间
 
                     if(BY_RECYCLE == device->port[port].mode)
                     {
                         GetValueByC16(item, "firstStartAt", charTemp, 15);
                         changeCharToDate(charTemp, &time);
                         device->port[port].cycle.start_at_timestamp = systimeToTimestamp(time.year, time.month, time.day, time.hour, time.minute, 0);
+                        LOG_D("%s hour = %d, min = %d, %d",
+                                charTemp,time.hour,time.minute, getTimeStampByDate(&device->port[port].cycle.start_at_timestamp)->tm_hour);
+                        GetValueByInt(item, "duration", &device->port[port].cycle.duration);
+                        GetValueByInt(item, "pauseTime", &device->port[port].cycle.pauseTime);
                     }
-
-                    GetValueByInt(item, "duration", &device->port[port].cycle.duration);
-                    GetValueByInt(item, "pauseTime", &device->port[port].cycle.pauseTime);
-
-                    GetValueByC16(item, "weekdayList", charTemp, 15);
-                    device->port[port].weekDayEn = 0x00;
-                    for(int i = 0; i < 7; i++)
+                    else if(BY_SCHEDULE == device->port[port].mode)
                     {
-                        char num;
-                        itoa(i + 1 ,&num, 10);
-                        if(strchr(charTemp, num))
+                        GetValueByInt(item, "lightOn", &device->port[port].timer[0].on_at);
+                        GetValueByInt(item, "lightOff", &device->port[port].timer[0].duration);//将该值复用为关闭时间
+
+                        GetValueByC16(item, "weekdayList", charTemp, 15);
+                        device->port[port].weekDayEn = 0x00;
+                        for(int i = 0; i < 7; i++)
                         {
-                            device->port[port].weekDayEn |= 1 << i;
+                            if(strchr(charTemp, i + 1 + 0x30))//+0x30转化为ascii码
+                            {
+                                device->port[port].weekDayEn |= 1 << i;
+                            }
                         }
                     }
-                }
-                else
-                {
-                    LOG_E("CmdSetLightList 0");//Justin
+
                 }
             }
         }
 
         cJSON_Delete(json);
-    }
-    else
-    {
-        LOG_E("CmdSetLightList");//Justin
     }
 }
 
@@ -4698,7 +4688,7 @@ char *ReplyGetSchedule(char *cmd, cloudcmd_t cloud)
     return str;
 }
 
-char *ReplyGetPortSet(char *cmd, cloudcmd_t cloud)//Justin debug 未测试
+char *ReplyGetPortSet(char *cmd, cloudcmd_t cloud)
 {
     char            name[12];
     char            model[15];
@@ -4717,8 +4707,8 @@ char *ReplyGetPortSet(char *cmd, cloudcmd_t cloud)//Justin debug 未测试
     u8              fatherFlg   = 0;            //判断是否是父模块 区别端口
 #if(HUB_SELECT == HUB_ENVIRENMENT)
     type_sys_time   format_time;
-    char            firstStartAt[15] = "";
 #endif
+    char            firstStartAt[15] = "";
     //默认
     strncpy(fun_name, "port", STORAGE_NAMESZ - 1);
     fun_name[14] = '\0';
@@ -4868,31 +4858,17 @@ char *ReplyGetPortSet(char *cmd, cloudcmd_t cloud)//Justin debug 未测试
                 cJSON_AddNumberToObject(json, "pauseTime", module->port[port].cycle.pauseTime);
                 cJSON_AddNumberToObject(json, "times", module->port[port].cycle.times);
 
-//                cJSON *weekdayList = cJSON_CreateArray();
-//                if(weekdayList)
-//                {
-//                    for(int day = 0; day < 7; day++)
-//                    {
-//                        if((module->port[port].weekDayEn >> day) & 0x01)
-//                        {
-//                            cJSON_AddItemToArray(weekdayList, cJSON_CreateNumber(day + 1));
-//                        }
-//                    }
-//
-//                    cJSON_AddItemToObject(json, "weekdayList", weekdayList);
-//                }
-                //Justin
                 rt_memset(firstStartAt, 0, sizeof(firstStartAt));
                 for(int day = 0; day < 7; day++)
                 {
-                    if((device->port[port].weekDayEn >> day) & 0x01)
+                    if((module->port[port].weekDayEn >> day) & 0x01)
                     {
-                        char num;
-                        itoa(day+1, &num, 10);
-                        strcat(firstStartAt, &num);
+                        char num[2];
+                        itoa(day+1, num, 10);
+                        strcat(firstStartAt, num);
                     }
                 }
-                cJSON_AddStringToObject(item, "weekdayList", firstStartAt);
+                cJSON_AddStringToObject(json, "weekdayList", firstStartAt);
             }
 
             for(u8 tank_no = 0; tank_no < GetSysTank()->tank_size; tank_no++)
@@ -5396,7 +5372,7 @@ char *ReplySetTankName(cloudcmd_t *cmd)
 }
 
 
-char *ReplyGetLightList(cloudcmd_t *cmd)//Justin 未测试
+char *ReplyGetLightList(cloudcmd_t *cmd)
 {
     cJSON       *json           = cJSON_CreateObject();
     char        *str            = RT_NULL;
@@ -5432,8 +5408,8 @@ char *ReplyGetLightList(cloudcmd_t *cmd)//Justin 未测试
                         format_time.year = time1->tm_year + 1900;
                         format_time.month = time1->tm_mon + 1;
                         format_time.day = time1->tm_mday;
-                        format_time.hour = device->port[port].cycle.start_at_timestamp / 60;
-                        format_time.minute = device->port[port].cycle.start_at_timestamp % 60;
+                        format_time.hour = time1->tm_hour;
+                        format_time.minute = time1->tm_min;
                         format_time.second = 0;
                         changeDataToChar(charTemp, &format_time);
                     }
@@ -5454,9 +5430,9 @@ char *ReplyGetLightList(cloudcmd_t *cmd)//Justin 未测试
                     {
                         if((device->port[port].weekDayEn >> day) & 0x01)
                         {
-                            char num;
-                            itoa(day+1, &num, 10);
-                            strcat(charTemp, &num);
+                            char num[2];
+                            itoa(day+1, num, 10);
+                            strcat(charTemp, num);
                         }
                     }
                     cJSON_AddStringToObject(item, "weekdayList", charTemp);
