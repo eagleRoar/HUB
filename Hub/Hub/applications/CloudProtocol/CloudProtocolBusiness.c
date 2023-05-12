@@ -904,7 +904,7 @@ void CmdGetRecipe(char *data, cloudcmd_t *cmd)
     }
 }
 
-void CmdSetRecipe(char *data, cloudcmd_t *cmd)//Justin 设置line_4 By schedule 有问题 只设置一组试一下
+void CmdSetRecipe(char *data, cloudcmd_t *cmd)
 {
     cJSON           *temp       = RT_NULL;
     cJSON           *line       = RT_NULL;
@@ -918,6 +918,8 @@ void CmdSetRecipe(char *data, cloudcmd_t *cmd)//Justin 设置line_4 By schedule 
 
         if(RT_NULL != recipe)
         {
+            rt_memset((u8 *)recipe, 0, sizeof(recipe_t));
+
             GetValueByU8(temp, "id", &recipe->id);
             GetValueByC16(temp, "name", recipe->name, RECIPE_NAMESZ);
             GetValueByU8(temp, "color", &recipe->color);
@@ -957,7 +959,6 @@ void CmdSetRecipe(char *data, cloudcmd_t *cmd)//Justin 设置line_4 By schedule 
                     {
                         u8 timeSize = cJSON_GetArraySize(timer_list);
                         timeSize = timeSize > LINE_4_TIMER_MAX ? LINE_4_TIMER_MAX : timeSize;
-                        LOG_I("timeSize = %d",timeSize);//Justin
                         for(int i = 0; i < timeSize; i++)
                         {
                             cJSON *timer = cJSON_GetArrayItem(timer_list, i);
@@ -974,7 +975,6 @@ void CmdSetRecipe(char *data, cloudcmd_t *cmd)//Justin 设置line_4 By schedule 
                     {
                         u8 cycleSize = cJSON_GetArraySize(cycle_list);
                         cycleSize = cycleSize > LINE_4_CYCLE_MAX ? LINE_4_CYCLE_MAX : cycleSize;
-                        LOG_I("cycleSize = %d",cycleSize);//Justin
                         for(int i = 0; i < cycleSize; i++)
                         {
                             cJSON *cycle = cJSON_GetArrayItem(cycle_list, i);
@@ -984,9 +984,9 @@ void CmdSetRecipe(char *data, cloudcmd_t *cmd)//Justin 设置line_4 By schedule 
                         }
                     }
                     GetValueByU16(line, "pauseTime", &recipe->line_4.pauseTime);
-                    GetValueByU16(line, "tempStartDimming", &recipe->line_4.tempStartDimming);
-                    GetValueByU16(line, "tempOffDimming", &recipe->line_4.tempOffDimming);
-                    GetValueByU8(line, "sunriseSunSet", &recipe->line_4.sunriseSunSet);
+//                    GetValueByU16(line, "tempStartDimming", &recipe->line_4.tempStartDimming);
+//                    GetValueByU16(line, "tempOffDimming", &recipe->line_4.tempOffDimming);
+//                    GetValueByU8(line, "sunriseSunSet", &recipe->line_4.sunriseSunSet);
                 }
             }
 
@@ -4492,9 +4492,9 @@ char *ReplySetRecipe(char *cmd, cloudcmd_t cloud)
                                 cJSON_AddItemToObject(line, "cycleList", cycleList);
                             }
                             cJSON_AddNumberToObject(line, "pauseTime", recipe->line_4.pauseTime);
-                            cJSON_AddNumberToObject(line, "tempStartDimming", recipe->line_4.tempStartDimming);
-                            cJSON_AddNumberToObject(line, "tempOffDimming", recipe->line_4.tempOffDimming);
-                            cJSON_AddNumberToObject(line, "sunriseSunSet", recipe->line_4.sunriseSunSet);
+//                            cJSON_AddNumberToObject(line, "tempStartDimming", recipe->line_4.tempStartDimming);
+//                            cJSON_AddNumberToObject(line, "tempOffDimming", recipe->line_4.tempOffDimming);
+//                            cJSON_AddNumberToObject(line, "sunriseSunSet", recipe->line_4.sunriseSunSet);
                         }
 
                         if(0 == index)

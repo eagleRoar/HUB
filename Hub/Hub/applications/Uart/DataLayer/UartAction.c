@@ -1460,6 +1460,10 @@ void GetNowSysSet(proTempSet_t *tempSet, proCo2Set_t *co2Set, proHumiSet_t *humi
         if(RT_NULL != line_4Set)
         {
             rt_memcpy((u8 *)line_4Set, (u8 *)&recipe->recipe[item].line_4, sizeof(proLine_4_t));
+            line_4Set->tempStartDimming = set->line1_4Set.tempStartDimming;
+            line_4Set->tempOffDimming = set->line1_4Set.tempOffDimming;
+            line_4Set->sunriseSunSet = set->line1_4Set.sunriseSunSet;
+            strncpy(line_4Set->firstStartAt, firstStartAt, 15);
         }
 
         if(RT_NULL != info)
@@ -1823,14 +1827,13 @@ void dimmingLineCtrl(u8 *stage, u16 ppfd)
 //返回一个周期需要的时间 单位s
 static void GetLine_4CyclePeriodTime(proLine_4_t *set, time_t *time)
 {
+    LOG_W("GetLine_4CyclePeriodTime");
     *time = 0;
     for(int i = 0; i < LINE_4_CYCLE_MAX; i++)
     {
         *time += set->cycleList[i].duration;
     }
     *time += set->pauseTime;
-
-    *time *= 60;
 }
 
 /**
@@ -1974,9 +1977,6 @@ void line_4Program(line_t *line, type_uart_class lineUart)
     getRealTimeForMat(&time);
     now_time = time.hour * 60 * 60 + time.minute * 60 + time.second;//精确到秒
 
-    LOG_E("line_4Program mode = %d, on = %d, off = %d",
-            line_4set.mode);//Justin
-
     if(LINE_BY_TIMER == line_4set.mode)
     {
         //3.1 选中定时器设置
@@ -2056,15 +2056,16 @@ void line_4Program(line_t *line, type_uart_class lineUart)
                 {
                     state = ON;
                     lineRecipeNo = line_4set.cycleList[i].no;
-                    time_t time1 = getTimeStamp();
+                    time_t time1 = getTimeStamp() - (timeStage % periodTime) + timeAdd;
                     struct tm *timeTemp = getTimeStampByDate(&time1);
                     startOnTime = systimeToTimestamp(timeTemp->tm_year + 1900, timeTemp->tm_mon + 1, timeTemp->tm_mday,
-                                    timeAdd / (60 * 60), (timeAdd % 60) / 60, 0);
+                                    timeTemp->tm_hour, timeTemp->tm_min, 0);
                     onContineTime = line_4set.cycleList[i].duration;
                     break;
                 }
                 timeAdd += line_4set.cycleList[i].duration;
             }
+
             //如果是不开启的状态
             if(i == LINE_4_CYCLE_MAX)
             {
