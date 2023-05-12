@@ -1198,7 +1198,7 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
 }
 
 //执行设备手动控制功能
-void menualHandProgram(type_monitor_t *monitor, type_uart_class deviceUart, type_uart_class lineUart)
+void menualHandProgram(type_monitor_t *monitor, type_uart_class *deviceUart, type_uart_class *lineUart)
 {
     int         i           = 0;
     int         port        = 0;
@@ -1213,7 +1213,7 @@ void menualHandProgram(type_monitor_t *monitor, type_uart_class deviceUart, type
         {
             if(MANUAL_HAND_OFF == device->port[port].manual.manual)
             {
-                 deviceUart.DeviceCtrlSingle(device, port, OFF);
+                 deviceUart->DeviceCtrlSingle(device, port, OFF);
             }
             else if(MANUAL_HAND_ON == device->port[port].manual.manual)
             {
@@ -1221,12 +1221,12 @@ void menualHandProgram(type_monitor_t *monitor, type_uart_class deviceUart, type
                 if((nowTime >= device->port[port].manual.manual_on_time_save) &&
                    (nowTime <= (device->port[port].manual.manual_on_time + device->port[port].manual.manual_on_time_save)))
                 {
-                    deviceUart.DeviceCtrlSingle(device, port, ON);
+                    deviceUart->DeviceCtrlSingle(device, port, ON);
                 }
                 else
                 {
                     device->port[port].manual.manual = MANUAL_NO_HAND;
-                    deviceUart.DeviceCtrlSingle(device, port, OFF);
+                    deviceUart->DeviceCtrlSingle(device, port, OFF);
                 }
             }
             else
@@ -1235,7 +1235,7 @@ void menualHandProgram(type_monitor_t *monitor, type_uart_class deviceUart, type
                 if((nowTime >= device->port[port].manual.manual_on_time_save) &&
                    (nowTime <= (device->port[port].manual.manual_on_time + device->port[port].manual.manual_on_time_save)))
                 {
-                    deviceUart.DeviceCtrlSingle(device, port, OFF);
+                    deviceUart->DeviceCtrlSingle(device, port, OFF);
                 }
             }
 
@@ -1243,6 +1243,7 @@ void menualHandProgram(type_monitor_t *monitor, type_uart_class deviceUart, type
         }
     }
 
+#if(HUB_SELECT == HUB_ENVIRENMENT)
     for(i = 0; i < monitor->line_size; i++)
     {
         line = &monitor->line[i];
@@ -1250,12 +1251,12 @@ void menualHandProgram(type_monitor_t *monitor, type_uart_class deviceUart, type
         {
             if(LINE_TYPE == line->type)
             {
-                lineUart.LineCtrl(line, 0, 0, 0);
+                lineUart->LineCtrl(line, 0, 0, 0);
             }
             else if(LINE_4_TYPE == line->type)
             {
                 u16 ctrlValue[LINE_PORT_MAX] = {0,0,0,0};
-                lineUart.Line4Ctrl(line, ctrlValue);
+                lineUart->Line4Ctrl(line, ctrlValue);
             }
         }
         else if(MANUAL_HAND_ON == line->port[0]._manual.manual)
@@ -1265,7 +1266,7 @@ void menualHandProgram(type_monitor_t *monitor, type_uart_class deviceUart, type
             {
                 if(LINE_TYPE == line->type)
                 {
-                    lineUart.LineCtrl(line, 0, ON, 100);
+                    lineUart->LineCtrl(line, 0, ON, 100);
                 }
                 else if(LINE_4_TYPE == line->type)
                 {
@@ -1276,17 +1277,18 @@ void menualHandProgram(type_monitor_t *monitor, type_uart_class deviceUart, type
                         GetRealLine4V(&GetSysSet()->dimmingCurve, port, 100, &res);
                         ctrlValue[port] = (100 << 8) | res;
                     }
-                    lineUart.Line4Ctrl(line, ctrlValue);
+                    lineUart->Line4Ctrl(line, ctrlValue);
                 }
             }
             else
             {
                 line->port[0]._manual.manual = MANUAL_NO_HAND;
                 u16 ctrlValue[LINE_PORT_MAX] = {0,0,0,0};
-                lineUart.Line4Ctrl(line, ctrlValue);
+                lineUart->Line4Ctrl(line, ctrlValue);
             }
         }
     }
+#endif
 }
 
 #if(HUB_ENVIRENMENT == HUB_SELECT)
@@ -1827,7 +1829,6 @@ void dimmingLineCtrl(u8 *stage, u16 ppfd)
 //返回一个周期需要的时间 单位s
 static void GetLine_4CyclePeriodTime(proLine_4_t *set, time_t *time)
 {
-    LOG_W("GetLine_4CyclePeriodTime");
     *time = 0;
     for(int i = 0; i < LINE_4_CYCLE_MAX; i++)
     {

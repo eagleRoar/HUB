@@ -227,7 +227,6 @@ static void RecvCmd(u8* data, u8 len)
         else if(REGISTER_CODE == data[0])
         {
             keyValue.key = REGISTER_CODE;
-
         }
 
         keyValue.dataSegment.len = len;
@@ -378,6 +377,17 @@ static void RecvListHandle(void)
             {
                 u8 rwType = tail->keyData.dataSegment.data[1];
                 u8 size = tail->keyData.dataSegment.data[2];
+
+//                //Justin 判断为什么会收到不存在的LAR数据，实际上没有接到总线
+                if(0x18 == sensor->addr)
+                {
+                    LOG_W("warnning ,recv data : ");
+                    for(int i = 0; i < tail->keyData.dataSegment.len; i++)
+                    {
+                        rt_kprintf(" %x",tail->keyData.dataSegment.data[i]);
+                    }
+                    rt_kprintf("\r\n");//Justin
+                }
 
                 SignSensorRecvFlag(sensor->addr);
 

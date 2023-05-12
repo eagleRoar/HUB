@@ -17,6 +17,7 @@
 #include "LightUartClass.h"
 #include "UartDataLayer.h"
 
+#if(HUB_SELECT == HUB_ENVIRENMENT)
 //设备类型
 type_uart_class lightObject;
 static uart_send_line sendMoni[LINE_MAX]; //优化设备发送
@@ -932,3 +933,4 @@ type_uart_class *GetLightObject(void)
     return &lightObject;
 }
 
+#endif

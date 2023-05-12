@@ -44,7 +44,6 @@ static void InitParameter(void)
     initSysRecipe();
     initSysTank();
     initSysSet();
-    GetSysSet()->ver = HUB_VER_NO;
     GetSnName(GetSysSet()->hub_info.name, 13);
 }
 
@@ -53,7 +52,9 @@ int main(void)
     rt_uint8_t      ethStatus           = LINKDOWN;
     u8              res                 = 0;
     type_uart_class *deviceObj          = GetDeviceObject();
+#if(HUB_SELECT == HUB_ENVIRENMENT)
     type_uart_class *lineObj            = GetLightObject();
+#endif
     u8              *buf                = RT_NULL;
     type_sys_time   time;
     u16             length              = 0;
@@ -130,6 +131,8 @@ int main(void)
         time1S = TimerTask(&time1S, 1000/MAIN_PERIOD, &Timer1sTouch);                     //1秒任务定时器
         time10S = TimerTask(&time10S, 10000/MAIN_PERIOD, &Timer10sTouch);                 //1秒任务定时器
         time60S = TimerTask(&time60S, 60000/MAIN_PERIOD, &Timer60sTouch);                //60秒任务定时
+
+        GetSysSet()->ver = HUB_VER_NO;
 
         /* 监视网络模块是否上线 */
         ethStatus = GetEthDriverLinkStatus();
@@ -276,8 +279,13 @@ int main(void)
             }
 #endif
 
+#if(HUB_SELECT == HUB_ENVIRENMENT)
             //执行手动功能
-            menualHandProgram(GetMonitor(), *deviceObj, *lineObj);
+            menualHandProgram(GetMonitor(), deviceObj, lineObj);
+#elif(HUB_SELECT == HUB_IRRIGSTION)
+            //执行手动功能
+            menualHandProgram(GetMonitor(), deviceObj, RT_NULL);
+#endif
             //报警功能
             warnProgram(GetMonitor(), GetSysSet());             //监听告警信息
         }

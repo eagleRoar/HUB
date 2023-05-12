@@ -356,7 +356,9 @@ void CmdFindLocation(char *data, cloudcmd_t *cmd)
     cJSON       *temp       = RT_NULL;
     u8          addr        = 0;
     device_t    *device;
+#if(HUB_SELECT == HUB_ENVIRENMENT)
     line_t      *line;
+#endif
 
     temp = cJSON_Parse(data);
     if(RT_NULL != temp)
@@ -379,11 +381,13 @@ void CmdFindLocation(char *data, cloudcmd_t *cmd)
             device = GetDeviceByAddr(GetMonitor(), addr);
             GetDeviceObject()->AskDevice(device, UART_FINDLOCATION_REG);
         }
+#if(HUB_SELECT == HUB_ENVIRENMENT)
         else if(GetLineByAddr(GetMonitor(), addr))
         {
             line = GetLineByAddr(GetMonitor(), addr);
             GetLightObject()->AskLine(line, UART_FINDLOCATION_REG);
         }
+#endif
 
         cJSON_Delete(temp);
     }
@@ -423,10 +427,10 @@ void CmdSetPortSet(char *data, cloudcmd_t *cmd)
     line_t          *line       = RT_NULL;
 #if (HUB_SELECT == HUB_ENVIRENMENT)
     type_sys_time   time;
-    char            firstStartAt[15];
 #elif (HUB_SELECT == HUB_IRRIGSTION)
     type_sys_time   time_for;
 #endif
+    char            firstStartAt[15];
 
     temp = cJSON_Parse(data);
     if(RT_NULL != temp)
@@ -508,6 +512,17 @@ void CmdSetPortSet(char *data, cloudcmd_t *cmd)
                     {
                         LOG_E("CmdSetPortSet apply memory for list fail");
                     }
+
+                    GetValueByC16(temp, "weekdayList", firstStartAt, 15);
+
+                    device->port[port].weekDayEn = 0x00;
+                    for(int i = 0; i < 7; i++)
+                    {
+                        if(strchr(firstStartAt, i + 1 + 0x30))//+0x30转化为ascii码
+                        {
+                            device->port[port].weekDayEn |= 1 << i;
+                        }
+                    }
                 }
                 else if(BY_RECYCLE == device->port[port].mode)
                 {
@@ -530,16 +545,6 @@ void CmdSetPortSet(char *data, cloudcmd_t *cmd)
                     GetValueByU16(temp, "times", &device->port[port].cycle.times);
                 }
 
-                GetValueByC16(temp, "weekdayList", firstStartAt, 15);
-
-                device->port[port].weekDayEn = 0x00;
-                for(int i = 0; i < 7; i++)
-                {
-                    if(strchr(firstStartAt, i + 1 + 0x30))//+0x30转化为ascii码
-                    {
-                        device->port[port].weekDayEn |= 1 << i;
-                    }
-                }
             }
         }
         else if(line != RT_NULL)
@@ -1886,7 +1891,7 @@ void CmdSetTankPV(char *data, cloudcmd_t *cmd)
     }
 }
 
-void CmdDelTankPV(char *data, cloudcmd_t *cmd)
+void CmdDelTankPV(char *data, cloudcmd_t *cmd)//Justin 该函数有问题
 {
     cJSON   *json       = RT_NULL;
     u8      addr        = 0;
@@ -1895,12 +1900,15 @@ void CmdDelTankPV(char *data, cloudcmd_t *cmd)
 
     json = cJSON_Parse(data);
 
+
     if(json)
     {
         GetValueByC16(json, "msgid", cmd->msgid, KEYVALUE_VALUE_SIZE);
         GetValueByU16(json, "id", &cmd->deleteSensorId);
         GetValueByU8(json, "tankNo", &cmd->delTankPvNo);
         GetValueByU16(json, "id", &cmd->delTankPvId);
+
+    LOG_I("CmdDelTankPV delete id = %d, pumpNO = %d",cmd->delTankPvId, cmd->delTankPvNo);//Justin
 
         if(cmd->delTankPvId < 0xFF)
         {
@@ -1926,7 +1934,9 @@ void CmdDelTankPV(char *data, cloudcmd_t *cmd)
                 {
                     for(int i = 0; i < VALVE_MAX; i++)
                     {
-                        if(cmd->delTankPvId == GetSysTank()->tank[cmd->delTankPvNo - 1].valve[i])
+                        LOG_I("CmdDelTankPV no %d, valve = %d, delete = %d",
+                                i,GetSysTank()->tank[cmd->delTankPvNo - 1].nopump_valve[i],cmd->delTankPvId);//Justin
+                        if(cmd->delTankPvId == GetSysTank()->tank[cmd->delTankPvNo - 1].nopump_valve[i])
                         {
                             GetSysTank()->tank[cmd->delTankPvNo - 1].nopump_valve[i] = 0;
                             break;
@@ -3233,48 +3243,50 @@ char *ReplyGetTank(char *cmd, cloudcmd_t cloud)
     json = cJSON_CreateArray();
     if(json)
     {
-       cJSON *pumpItem = cJSON_CreateObject();
-       if(pumpItem)
-       {
-           u8 pumpId = 0;
-           u8 pumpPort = 0;
-           if(tank->pumpId < 0xff)
-           {
-               pumpId = tank->pumpId;
-               pumpPort = 0;
-           }
-           else
-           {
-               pumpId = tank->pumpId >> 8;
-               pumpPort = tank->pumpId;
-           }
-           device = GetDeviceByAddr(GetMonitor(), pumpId);
-           cJSON_AddNumberToObject(pumpItem, "id", tank->pumpId);
-           if(device)
-           {
-               cJSON_AddStringToObject(pumpItem, "name", device->port[pumpPort].name);
-           }
-           else
-           {
-               cJSON_AddStringToObject(pumpItem, "name", "");
-           }
-           cJSON_AddNumberToObject(pumpItem, "color", tank->color);
-           cJSON *valveI = cJSON_CreateArray();
-           if(valveI)
-           {
-               for(int i = 0; i < VALVE_MAX; i++)
+        if(0 != tank->pumpId)
+        {
+            cJSON *pumpItem = cJSON_CreateObject();
+            if(pumpItem)
+            {
+               u8 pumpId = 0;
+               u8 pumpPort = 0;
+               if(tank->pumpId < 0xff)
                {
-                   if(0 != tank->valve[i])
-                   {
-                       cJSON_AddItemToArray(valveI, cJSON_CreateNumber(tank->valve[i]));
-                   }
+                   pumpId = tank->pumpId;
+                   pumpPort = 0;
                }
-               cJSON_AddItemToObject(pumpItem, "valve", valveI);
-           }
+               else
+               {
+                   pumpId = tank->pumpId >> 8;
+                   pumpPort = tank->pumpId;
+               }
+               device = GetDeviceByAddr(GetMonitor(), pumpId);
+               cJSON_AddNumberToObject(pumpItem, "id", tank->pumpId);
+               if(device)
+               {
+                   cJSON_AddStringToObject(pumpItem, "name", device->port[pumpPort].name);
+               }
+               else
+               {
+                   cJSON_AddStringToObject(pumpItem, "name", "");
+               }
+               cJSON_AddNumberToObject(pumpItem, "color", tank->color);
+               cJSON *valveI = cJSON_CreateArray();
+               if(valveI)
+               {
+                   for(int i = 0; i < VALVE_MAX; i++)
+                   {
+                       if(0 != tank->valve[i])
+                       {
+                           cJSON_AddItemToArray(valveI, cJSON_CreateNumber(tank->valve[i]));
+                       }
+                   }
+                   cJSON_AddItemToObject(pumpItem, "valve", valveI);
+               }
 
-           cJSON_AddItemToArray(json, pumpItem);
-       }
-
+               cJSON_AddItemToArray(json, pumpItem);
+            }
+        }
         str1 = cJSON_PrintUnformatted(json);
         cJSON_Delete(json);
     }

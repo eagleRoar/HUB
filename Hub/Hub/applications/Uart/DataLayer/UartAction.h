@@ -15,7 +15,7 @@
 #ifndef APPLICATIONS_UART_DATALAYER_UARTACTION_H_
 #define APPLICATIONS_UART_DATALAYER_UARTACTION_H_
 
-void menualHandProgram(type_monitor_t *, type_uart_class , type_uart_class);
+void menualHandProgram(type_monitor_t *, type_uart_class *, type_uart_class *);
 void warnProgram(type_monitor_t *monitor, sys_set_t *set);
 
 #if(HUB_ENVIRENMENT == HUB_SELECT)

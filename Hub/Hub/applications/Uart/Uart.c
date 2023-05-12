@@ -101,6 +101,7 @@ static rt_err_t Uart2_input(rt_device_t dev, rt_size_t size)
     }
 }
 
+#if(HUB_SELECT == HUB_ENVIRENMENT)
 static rt_err_t Uart3_input(rt_device_t dev, rt_size_t size)
 {
     u16 crc16 = 0x0000;
@@ -126,6 +127,7 @@ static rt_err_t Uart3_input(rt_device_t dev, rt_size_t size)
         return RT_ERROR;
     }
 }
+#endif
 
 //注册串口
 static void UartRegister(void)
@@ -138,10 +140,11 @@ static void UartRegister(void)
     uart2_serial = rt_device_find(DEVICE_UART2);
     rt_device_open(uart2_serial, RT_DEVICE_FLAG_DMA_RX);
     rt_device_set_rx_indicate(uart2_serial, Uart2_input);
-
+#if(HUB_SELECT == HUB_ENVIRENMENT)
     uart3_serial = rt_device_find(DEVICE_UART3);
     rt_device_open(uart3_serial, RT_DEVICE_FLAG_DMA_RX);
     rt_device_set_rx_indicate(uart3_serial, Uart3_input);
+#endif
 }
 
 static void GenerateBroadcast(type_uart_class *uart)
@@ -300,7 +303,9 @@ void SensorUart2TaskEntry(void* parameter)
     static      u8              deviceSize = NO;
     type_uart_class             *deviceObj          = GetDeviceObject();
     type_uart_class             *sensorObj          = GetSensorObject();
+#if(HUB_SELECT == HUB_ENVIRENMENT)
     type_uart_class             *lineObj            = GetLightObject();
+#endif
     device_t                    *device             = RT_NULL;
 //    static time_t now = 0;
 //    static u16 time = 0;
@@ -308,13 +313,16 @@ void SensorUart2TaskEntry(void* parameter)
     UartRegister();
     InitUart2Object();
     InitSensorObject();
+#if(HUB_SELECT == HUB_ENVIRENMENT)
     InitLightObject();
+#endif
 
     //需要指定device
     sensorObj->ConfigureUart(&uart1_serial);
     deviceObj->ConfigureUart(&uart2_serial);
+#if(HUB_SELECT == HUB_ENVIRENMENT)
     lineObj->ConfigureUart(&uart3_serial);
-
+#endif
     specialRegister(GetMonitor());
 
     while (1)
@@ -369,7 +377,7 @@ void SensorUart2TaskEntry(void* parameter)
                 //实际发送串口
                 deviceObj->SendCmd();
             }
-
+#if(HUB_SELECT == HUB_ENVIRENMENT)
             if(ON == uart3_msg.messageFlag)
             {
                 lineObj->RecvCmd(uart3_msg.data, uart3_msg.size);
@@ -380,6 +388,7 @@ void SensorUart2TaskEntry(void* parameter)
                 //实际发送串口
                 lineObj->SendCmd();
             }
+#endif
         }
 
         if(ON == Timer1sTouch)
@@ -392,18 +401,20 @@ void SensorUart2TaskEntry(void* parameter)
             //2.sensor数据处理
             sensorObj->RecvListHandle();
             sensorObj->Optimization(GetMonitor());
-
+#if(HUB_SELECT == HUB_ENVIRENMENT)
             //3.数据处理,包括设备注册以及设备开关状态接收
             lineObj->RecvListHandle();
             //数据发送优化 减少设备的一直发送
             lineObj->Optimization(GetMonitor());
-
+#endif
         }
 
         if(ON == Timer300msTouch)
         {
             deviceObj->KeepConnect(GetMonitor());
+#if(HUB_SELECT == HUB_ENVIRENMENT)
             lineObj->KeepConnect(GetMonitor());
+#endif
         }
         //循环发送询问命令
         sensorObj->KeepConnect(GetMonitor());
