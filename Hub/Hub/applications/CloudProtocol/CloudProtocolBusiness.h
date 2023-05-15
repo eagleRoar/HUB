@@ -530,8 +530,8 @@ struct tank{
     u8      tankNo;                         //桶编号 1-9
     char    name[TANK_NAMESZ];              //名称12字节
     u16     autoFillValveId;                //自动补水阀 ID ,0 为未指定
-    u8      autoFillHeight;                 //低水位补水高度,单位 cm
-    u8      autoFillFulfilHeight;           //补满高度,单位 cm
+    u16     autoFillHeight;                 //低水位补水高度,单位 cm
+    u16     autoFillFulfilHeight;           //补满高度,单位 cm
     u16     highEcProtection;               //EC 高停止值
     u16     lowPhProtection;                //PH 低停止值
     u16     highPhProtection;               //PH 高停止值

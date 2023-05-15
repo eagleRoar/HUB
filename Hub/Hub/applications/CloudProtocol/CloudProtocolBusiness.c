@@ -1046,8 +1046,8 @@ void CmdSetTank(char *data, cloudcmd_t *cmd)
 
             GetValueByC16(temp, "name", tank->name, TANK_NAMESZ);
             GetValueByU16(temp, "autoFillValveId", &tank->autoFillValveId);
-            GetValueByU8(temp, "autoFillHeight", &tank->autoFillHeight);
-            GetValueByU8(temp, "autoFillFulfilHeight", &tank->autoFillFulfilHeight);
+            GetValueByU16(temp, "autoFillHeight", &tank->autoFillHeight);
+            GetValueByU16(temp, "autoFillFulfilHeight", &tank->autoFillFulfilHeight);
             GetValueByU16(temp, "highEcProtection", &tank->highEcProtection);
             GetValueByU16(temp, "lowPhProtection", &tank->lowPhProtection);
             GetValueByU16(temp, "highPhProtection", &tank->highPhProtection);

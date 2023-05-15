@@ -366,29 +366,28 @@ void DataExport(void)
         CreateDirectory(DirName);
     }
 
-    copy(new_dev_file, backup_dev_file);
-    copy(new_sysset_file, backup_sysset_file);
+    SaveMonitorToFile(GetMonitor(), backup_dev_file);
+    SaveSysSetToFile(GetSysSet(), backup_sysset_file);
 #if(HUB_ENVIRENMENT == HUB_SELECT)
-    copy(new_recipe_file, backup_recipe_file);
+    SaveRecipeListToFile(GetSysRecipt(), backup_recipe_file);
 #elif(HUB_IRRIGSTION == HUB_SELECT)
-    copy(new_tank_file, backup_tank_file);
+    SaveSysTankToFile(GetSysTank(), backup_tank_file);
 #endif
 }
 
 //数据导入
 void DataImport(void)
 {
-    RemoveFileDirectory(new_dev_file);
-    copy(backup_dev_file, new_dev_file);
-
-    RemoveFileDirectory(new_sysset_file);
-    copy(backup_sysset_file, new_sysset_file);
+    GetMonitorFromFile(GetMonitor(), backup_dev_file);
+    SaveMonitorToFile(GetMonitor(), new_dev_file);
+    GetSysSetFromFile(GetSysSet(), backup_sysset_file);
+    SaveSysSetToFile(GetSysSet(), new_sysset_file);
 #if(HUB_ENVIRENMENT == HUB_SELECT)
-    RemoveFileDirectory(new_recipe_file);
-    copy(backup_recipe_file, new_recipe_file);
+    GetRecipeListFromFile(GetSysRecipt(), backup_recipe_file);
+    SaveRecipeListToFile(GetSysRecipt(), new_recipe_file);
 #elif(HUB_IRRIGSTION == HUB_SELECT)
-    RemoveFileDirectory(new_tank_file);
-    copy(backup_tank_file, new_tank_file);
+    GetSysTankFromFile(GetSysTank(), back_tank_file);
+    SaveSysTankToFile(GetSysTank(), new_tank_file);
 #endif
 }
 
@@ -526,6 +525,7 @@ void FileSystemInit(void)
         if(RT_EOK == CheckDirectory(old_info))
         {
             OldDataMigration();
+            LOG_W("OldDataMigration get old data to new module");//Justin
         }
     }
     else
