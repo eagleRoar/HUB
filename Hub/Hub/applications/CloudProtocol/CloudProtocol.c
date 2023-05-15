@@ -1270,35 +1270,6 @@ u16 getVpd(void)
     return res;
 }
 
-void autoValveClose(type_monitor_t *monitor, sys_tank_t *tank_list)
-{
-    static u16 autoValue[TANK_LIST_MAX];
-
-    for(int i = 0; i < tank_list->tank_size; i++)
-    {
-        if(autoValue[i] != tank_list->tank[i].autoFillValveId)
-        {
-            u8 addr = 0;
-            u8 port = 0;
-
-            if(autoValue[i] > 0xFF)
-            {
-                addr = autoValue[i] >> 8;
-                port = autoValue[i];
-            }
-            else
-            {
-                addr = autoValue[i];
-                port = 0;
-            }
-
-            GetDeviceByAddr(monitor, addr)->port[port].ctrl.d_state = OFF;
-
-            autoValue[i] = tank_list->tank[i].autoFillValveId;
-        }
-    }
-}
-
 void autoBindPumpTotank(type_monitor_t *monitor, sys_tank_t *tank_list)
 {
     device_t    *device     = RT_NULL;

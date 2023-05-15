@@ -249,9 +249,9 @@ int main(void)
                 co2Calibrate1(GetMonitor(), GetSysSet()->co2Cal, &GetSysSet()->startCalFlg, &GetSysSet()->saveFlag, co2CalibraterResPage);
             }
 #elif(HUB_SELECT == HUB_IRRIGSTION)
-            autoValveClose(GetMonitor(), GetSysTank());                 //如果是原来关联的自动阀取消关联之后需要关闭
-            pumpProgram(GetMonitor(), GetSysTank(), *deviceObj);        //水泵的工作
 
+            closeUnUseDevice(GetMonitor(), deviceObj);
+            pumpProgram(GetMonitor(), GetSysTank(), *deviceObj);        //水泵的工作
             //phec 校准
             for(u8 phec_i = 0; phec_i < getPhEcList(GetMonitor(), YES)->num; phec_i++)
             {

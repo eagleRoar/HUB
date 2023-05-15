@@ -3432,5 +3432,67 @@ ec_cal_t *getEcCalByuuid(u32 uuid)
 
     return RT_NULL;
 }
+
+u8 isBelongToTank(u16 id, sys_tank_t *list)
+{
+    int     i   = 0;
+    int     j   = 0;
+
+    for(i = 0; i < list->tank_size; i++)
+    {
+        if(id == list->tank[i].autoFillValveId)
+        {
+            return YES;
+        }
+        else if(id == list->tank[i].pumpId)
+        {
+            return YES;
+        }
+        else
+        {
+            for(j = 0; j < VALVE_MAX; j++)
+            {
+                if(id == list->tank[i].valve[j])
+                {
+                    return YES;
+                }
+                else if(id == list->tank[i].nopump_valve[j])
+                {
+                    return YES;
+                }
+            }
+        }
+    }
+
+    return NO;
+}
+
+//关闭无用的设备
+void closeUnUseDevice(type_monitor_t *monitor, type_uart_class *uart)
+{
+    int index = 0;
+
+    for(index = 0; index < monitor->device_size; index++)
+    {
+        if(1 == monitor->device[index].storage_size)
+        {
+            if(NO == isBelongToTank(monitor->device[index].addr, GetSysTank()))
+            {
+                uart->DeviceCtrlSingle(&monitor->device[index], 0, OFF);
+            }
+        }
+        else
+        {
+            for(int port = 0; port < monitor->device[index].storage_size; port++)
+            {
+                if(NO == isBelongToTank((monitor->device[index].addr << 8) | port, GetSysTank()))
+                {
+                    uart->DeviceCtrlSingle(&monitor->device[index], port, OFF);
+                }
+            }
+        }
+    }
+}
+
 #endif
 

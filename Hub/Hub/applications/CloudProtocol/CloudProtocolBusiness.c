@@ -1908,8 +1908,6 @@ void CmdDelTankPV(char *data, cloudcmd_t *cmd)//Justin 该函数有问题
         GetValueByU8(json, "tankNo", &cmd->delTankPvNo);
         GetValueByU16(json, "id", &cmd->delTankPvId);
 
-    LOG_I("CmdDelTankPV delete id = %d, pumpNO = %d",cmd->delTankPvId, cmd->delTankPvNo);//Justin
-
         if(cmd->delTankPvId < 0xFF)
         {
             addr = cmd->delTankPvId;
@@ -1928,7 +1926,12 @@ void CmdDelTankPV(char *data, cloudcmd_t *cmd)//Justin 该函数有问题
             {
                 if(PUMP_TYPE == device->port[port].type)
                 {
-                    GetSysTank()->tank[cmd->delTankPvNo - 1].pumpId = 0;
+                    if(cmd->delTankPvId == GetSysTank()->tank[cmd->delTankPvNo - 1].pumpId)
+                    {
+                        GetSysTank()->tank[cmd->delTankPvNo - 1].pumpId = 0;
+                        rt_memset(GetSysTank()->tank[cmd->delTankPvNo - 1].valve, 0,
+                                sizeof(GetSysTank()->tank[cmd->delTankPvNo - 1].valve));
+                    }
                 }
                 else if(VALVE_TYPE == device->port[port].type)
                 {
@@ -5035,8 +5038,11 @@ void GetTankSensorByAddr(sys_tank_t *list, u8 addr, u8 *tankNo, u8 *intank)
 
 char *ReplyGetSensorEList(char *cmd, char *msgid)
 {
-    cJSON   *json       = cJSON_CreateObject();
-    char    *str        = RT_NULL;
+    cJSON           *json       = cJSON_CreateObject();
+    char            *str        = RT_NULL;
+    char            *lastStr    = RT_NULL;
+    char            name[15]    = "";
+    static u16      length      = 0;
 
     if(json)
     {
@@ -5048,21 +5054,46 @@ char *ReplyGetSensorEList(char *cmd, char *msgid)
         {
             for(int i = 0; i < GetMonitor()->sensor_size; i++)
             {
+                sprintf(name,"%s%d", "sensorPort", i);
+                cJSON_AddItemToArray(senlist, cJSON_CreateString(name));
+            }
+
+            cJSON_AddItemToObject(json, "list", senlist);
+        }
+
+        cJSON_AddNumberToObject(json, "showType", GetSysSet()->sensorMainType);
+        cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
+
+        str = cJSON_PrintUnformatted(json);
+        cJSON_Delete(json);
+
+        lastStr = rt_malloc(strlen(str));
+        if(lastStr)
+        {
+            length = strlen(str);
+            rt_memset(lastStr, 0, length);
+            strncpy(lastStr, str, length);
+            rt_free(str);
+
+            for(int i = 0; i < GetMonitor()->sensor_size; i++)//Justin 仅仅测试
+            {
+                char *str1 = RT_NULL;
                 sensor_t *sensor = &GetMonitor()->sensor[i];
+
                 cJSON *item = cJSON_CreateObject();
                 if(item)
                 {
                     cJSON_AddNumberToObject(item, "id", sensor->addr);
                     cJSON_AddStringToObject(item, "name", sensor->name);
-#if(HUB_ENVIRENMENT == HUB_SELECT)
+    #if(HUB_ENVIRENMENT == HUB_SELECT)
                     cJSON_AddNumberToObject(item, "isMain", sensor->isMainSensor);
-#elif(HUB_IRRIGSTION == HUB_SELECT)
+    #elif(HUB_IRRIGSTION == HUB_SELECT)
                     u8 tankNo = 0;
                     u8 intank = 0;
                     GetTankSensorByAddr(GetSysTank(), sensor->addr, &tankNo, &intank);
                     cJSON_AddNumberToObject(item, "tankNo", tankNo);
                     cJSON_AddNumberToObject(item, "type", intank);
-#endif
+    #endif
                     cJSON_AddNumberToObject(item, "sensorType", sensor->type);
                     u8 online = 0;
                     if(CON_FAIL == sensor->conn_state)
@@ -5152,21 +5183,111 @@ char *ReplyGetSensorEList(char *cmd, char *msgid)
                         cJSON_AddItemToObject(item, "list", itemList);
                     }
 
-                    cJSON_AddItemToArray(senlist, item);
-                }
-            }
+                    str1 = cJSON_PrintUnformatted(item);
+                    cJSON_Delete(item);
 
-            cJSON_AddItemToObject(json, "list", senlist);
+                    length += strlen(str1);
+
+                    char *newStr = RT_NULL;
+                    newStr = rt_realloc(lastStr, length);
+
+                    if(newStr)
+                    {
+                        lastStr = newStr;
+                        if(0 == i)
+                        {
+                            str_replace1(lastStr, "\"sensorPort0\"", str1, length);
+                        }
+                        else if(1 == i)
+                        {
+                            str_replace1(lastStr, "\"sensorPort1\"", str1, length);
+                        }
+                        else if(2 == i)
+                        {
+                            str_replace1(lastStr, "\"sensorPort2\"", str1, length);
+                        }
+                        else if(3 == i)
+                        {
+                            str_replace1(lastStr, "\"sensorPort3\"", str1, length);
+                        }
+                        else if(4 == i)
+                        {
+                            str_replace1(lastStr, "\"sensorPort4\"", str1, length);
+                        }
+                        else if(5 == i)
+                        {
+                            str_replace1(lastStr, "\"sensorPort5\"", str1, length);
+                        }
+                        else if(6 == i)
+                        {
+                            str_replace1(lastStr, "\"sensorPort6\"", str1, length);
+                        }
+                        else if(7 == i)
+                        {
+                            str_replace1(lastStr, "\"sensorPort7\"", str1, length);
+                        }
+                        else if(8 == i)
+                        {
+                            str_replace1(lastStr, "\"sensorPort8\"", str1, length);
+                        }
+                        else if(9 == i)
+                        {
+                            str_replace1(lastStr, "\"sensorPort9\"", str1, length);
+                        }
+                        else if(10 == i)
+                        {
+                            str_replace1(lastStr, "\"sensorPort10\"", str1, length);
+                        }
+                        else if(11 == i)
+                        {
+                            str_replace1(lastStr, "\"sensorPort11\"", str1, length);
+                        }
+                        else if(12 == i)
+                        {
+                            str_replace1(lastStr, "\"sensorPort12\"", str1, length);
+                        }
+                        else if(13 == i)
+                        {
+                            str_replace1(lastStr, "\"sensorPort13\"", str1, length);
+                        }
+                        else if(14 == i)
+                        {
+                            str_replace1(lastStr, "\"sensorPort14\"", str1, length);
+                        }
+                        else if(15 == i)
+                        {
+                            str_replace1(lastStr, "\"sensorPort15\"", str1, length);
+                        }
+                        else if(16 == i)
+                        {
+                            str_replace1(lastStr, "\"sensorPort16\"", str1, length);
+                        }
+                        else if(17 == i)
+                        {
+                            str_replace1(lastStr, "\"sensorPort17\"", str1, length);
+                        }
+                        else if(18 == i)
+                        {
+                            str_replace1(lastStr, "\"sensorPort18\"", str1, length);
+                        }
+                        else if(19 == i)
+                        {
+                            str_replace1(lastStr, "\"sensorPort19\"", str1, length);
+                        }
+                    }
+                    rt_free(str1);
+                }
+
+            }
+        }
+        else
+        {
+            rt_free(str);
         }
 
-        cJSON_AddNumberToObject(json, "showType", GetSysSet()->sensorMainType);
-        cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
-
-        str = cJSON_PrintUnformatted(json);
-        cJSON_Delete(json);
     }
 
-    return str;
+    return lastStr;
 }
 
 char *ReplyDeleteSensor(char *cmd, u16 addr, char *msgid)
@@ -5492,6 +5613,10 @@ u8 getColorFromTankList(u16 address, sys_tank_t *list)
             for(u8 item = 0; item < VALVE_MAX; item++)
             {
                 if(address == list->tank[no].valve[item])
+                {
+                    color = list->tank[no].color;
+                }
+                else if(address == list->tank[no].nopump_valve[item])
                 {
                     color = list->tank[no].color;
                 }

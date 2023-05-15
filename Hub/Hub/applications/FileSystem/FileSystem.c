@@ -224,7 +224,6 @@ static void GetMonitorFromFile(type_monitor_t *monitor, char *fileName)
 {
     static u8       FileHeadSpace       = 5;
     u16             length              = 0;
-    //char            new_dev_file[]      = "/main/informations/module.bin";
 
     length = FileHeadSpace;
     if(RT_EOK == ReadFileData(fileName, (u8 *)monitor, length, sizeof(type_monitor_t)))
@@ -241,7 +240,6 @@ static void SaveMonitorToFile(type_monitor_t *monitor, char *fileName)
 {
     static u8       FileHeadSpace       = 5;
     u16             length              = 0;
-    //char            new_dev_file[]      = "/main/informations/module.bin";
 
     length = FileHeadSpace;
     RemoveFileDirectory(fileName);
@@ -259,7 +257,6 @@ static void GetSysSetFromFile(sys_set_t *set, char *fileName)
 {
     static u8       FileHeadSpace       = 5;
     u16             length              = 0;
-    //char            new_sysset_file[]   = "/main/informations/sys_set.bin";
 
     length = FileHeadSpace;
     if(RT_EOK == ReadFileData(fileName, (u8 *)set, length, sizeof(sys_set_t)))
@@ -276,7 +273,6 @@ static void SaveSysSetToFile(sys_set_t *set, char *fileName)
 {
     static u8       FileHeadSpace       = 5;
     u16             length              = 0;
-    //char            new_sysset_file[]   = "/main/informations/sys_set.bin";
 
     length = FileHeadSpace;
     RemoveFileDirectory(fileName);
@@ -295,7 +291,6 @@ static void GetRecipeListFromFile(sys_recipe_t *list, char *fileName)
 {
     static u8       FileHeadSpace       = 5;
     u16             length              = 0;
-    //char            new_recipe_file[]   = "/main/informations/recipe.bin";
 
     length = FileHeadSpace;
     if(RT_EOK == ReadFileData(fileName, (u8 *)list, length, sizeof(sys_recipe_t)))
@@ -312,7 +307,6 @@ static void SaveRecipeListToFile(sys_recipe_t *list, char *fileName)
 {
     static u8       FileHeadSpace       = 5;
     u16             length              = 0;
-    //char            new_recipe_file[]   = "/main/informations/recipe.bin";
 
     length = FileHeadSpace;
     RemoveFileDirectory(fileName);
@@ -332,7 +326,6 @@ static void GetSysTankFromFile(sys_tank_t *list, char *fileName)
 {
     static u8       FileHeadSpace       = 5;
     u16             length              = 0;
-    //char            new_tank_file[]     = "/main/informations/tank.bin";
 
     length = FileHeadSpace;
     if(RT_EOK == ReadFileData(fileName, (u8 *)list, length, sizeof(sys_tank_t)))
@@ -349,17 +342,16 @@ static void SaveSysTankToFile(sys_tank_t *list, char *fileName)
 {
     static u8       FileHeadSpace       = 5;
     u16             length              = 0;
-    //char            new_tank_file[]     = "/main/informations/tank.bin";
 
     length = FileHeadSpace;
     RemoveFileDirectory(fileName);
-    if(RT_EOK == ReadFileData(fileName, (u8 *)list, length, sizeof(sys_tank_t)))
+    if(RT_EOK == WriteFileData(fileName, (u8 *)list, length, sizeof(sys_tank_t)))
     {
-        LOG_I("Get tankList data OK");
+        LOG_I("save tankList data OK");
     }
     else
     {
-        LOG_I("Get tankList data Fail");
+        LOG_I("save tankList data Fail");
     }
 }
 
@@ -458,6 +450,7 @@ void FileSystemEntry(void* parameter)
             if(YES == GetSysTank()->saveFlag)
             {
                 SaveSysTankToFile(GetSysTank(), new_tank_file);
+                LOG_I("---------------------SaveSysTankToFile");//Justin
 
                 GetSysTank()->crc = usModbusRTU_CRC((u8 *)GetSysTank() + 2, sizeof(sys_tank_t) - 2);
                 GetSysTank()->saveFlag = NO;

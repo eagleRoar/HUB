@@ -1152,6 +1152,7 @@ rt_err_t SetDeviceDefault(type_monitor_t *monitor, u32 uuid, u8 type, u8 addr)
                             sprintf(name,"%s%d","port",index+1);
                             strncpy(device->port[index].name, name, STORAGE_NAMESZ);
                             device->port[index].manual.manual_on_time = MANUAL_TIME_DEFAULT;
+                            device->port[index].weekDayEn = 0x7F;
                         }
                         ret = RT_EOK;
                         break;
@@ -1198,6 +1199,7 @@ rt_err_t SetDeviceDefault(type_monitor_t *monitor, u32 uuid, u8 type, u8 addr)
                             sprintf(name,"%s%d","port",index+1);
                             strncpy(device->port[index].name, name, STORAGE_NAMESZ);
                             device->port[index].manual.manual_on_time = MANUAL_TIME_DEFAULT;
+                            device->port[index].weekDayEn = 0x7F;
                         }
                         ret = RT_EOK;
                         break;

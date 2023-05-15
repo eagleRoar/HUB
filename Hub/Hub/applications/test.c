@@ -304,4 +304,25 @@ void str_replace(char *original, char *pattern, char *replacement)
     }
 }
 
+void str_replace1(char *original, char *pattern, char *replacement, u16 size)//Justin debug
+{
+//    char buffer[2048];
+    char *buffer = RT_NULL;
+    buffer = rt_malloc(size);
+    if(buffer)
+    {
+        char *insert_point;
+        size_t pattern_len = strlen(pattern);
+
+        while ((insert_point = strstr(original, pattern))) {
+            *insert_point = '\0';
+            insert_point += pattern_len;
+            sprintf(buffer, "%s%s%s", original, replacement, insert_point);
+            strcpy(original, buffer);
+        }
+
+        rt_free(buffer);
+    }
+}
+
 #endif /* APPLICATIONS_TEST_C_ */

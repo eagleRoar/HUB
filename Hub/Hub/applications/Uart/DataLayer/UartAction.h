@@ -35,6 +35,7 @@ void setEcCalWithUUID(u32 uuid);
 ph_cal_t *getPhCalByuuid(u32 uuid);
 ec_cal_t *getEcCalByuuid(u32 uuid);
 void pumpProgram(type_monitor_t *monitor, sys_tank_t *tank_list, type_uart_class deviceUart);
+void closeUnUseDevice(type_monitor_t *monitor, type_uart_class *uart);
 #endif
 void GetRealLine4V(dimmingCurve_t* curve, u8 port, u8 value, u8 *real);
 #endif /* APPLICATIONS_UART_DATALAYER_UARTACTION_H_ */
