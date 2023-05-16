@@ -1813,7 +1813,7 @@ void dimmingLineCtrl(u8 *stage, u16 ppfd)
         {
             if(*stage <= 115 - STAGE_VALUE)
             {
-                *stage += STAGE_VALUE;
+                *stage = *stage + STAGE_VALUE;
             }
         }
         else if(par > ppfd + 50)
@@ -1967,7 +1967,7 @@ void line_4Program(line_t *line, type_uart_class lineUart)
     u8              lineRecipeNo                = 0;
     time_t          startOnTime                 = 0;    //开始开启的时间戳
     time_t          onContineTime               = 0;    //持续开启的时间
-    u8              stage[LINE_PORT_MAX]        = {0,0,0,0};
+    static u8       stage[LINE_PORT_MAX]        = {0,0,0,0};
     u16             ctrlValue[LINE_PORT_MAX]    = {0,0,0,0};
     sys_set_t       *sys_set                    = GetSysSet();
 
@@ -2087,10 +2087,10 @@ void line_4Program(line_t *line, type_uart_class lineUart)
         //如果是恒光模式
         if(LINE_MODE_AUTO_DIMMING == line_4set.brightMode)
         {
-            dimmingLineCtrl(&stage[0], sys_set->lineRecipeList[lineRecipeNo].output1);
-            dimmingLineCtrl(&stage[1], sys_set->lineRecipeList[lineRecipeNo].output2);
-            dimmingLineCtrl(&stage[2], sys_set->lineRecipeList[lineRecipeNo].output3);
-            dimmingLineCtrl(&stage[3], sys_set->lineRecipeList[lineRecipeNo].output4);
+            dimmingLineCtrl(&stage[0], sys_set->line1_4Set.byAutoDimming);
+            dimmingLineCtrl(&stage[1], sys_set->line1_4Set.byAutoDimming);
+            dimmingLineCtrl(&stage[2], sys_set->line1_4Set.byAutoDimming);
+            dimmingLineCtrl(&stage[3], sys_set->line1_4Set.byAutoDimming);
         }
         //如果是按照比例
         else if(LINE_MODE_BY_POWER == line_4set.brightMode)
@@ -2110,7 +2110,6 @@ void line_4Program(line_t *line, type_uart_class lineUart)
                               sys_set->dimmingCurve.onOutput3, sys_set->lineRecipeList[lineRecipeNo].output3, &stage[2]);
                 GetLine4Value(getTimeStamp(), startOnTime, onContineTime, line_4set.sunriseSunSet * 60,
                               sys_set->dimmingCurve.onOutput4, sys_set->lineRecipeList[lineRecipeNo].output4, &stage[3]);
-
             }
         }
 
@@ -2150,14 +2149,20 @@ void line_4Program(line_t *line, type_uart_class lineUart)
         }
     }
 
-    for(int i = 0; i < LINE_PORT_MAX; i++)
+    if(OFF == state)
     {
-        u8 res = 0;
-        GetRealLine4V(&GetSysSet()->dimmingCurve, i, stage[i], &res);
-        ctrlValue[i] = (stage[i] << 8) | res;
+        rt_memset(ctrlValue, 0, sizeof(ctrlValue));
+    }
+    else
+    {
+        for(int i = 0; i < LINE_PORT_MAX; i++)
+        {
+            u8 res = 0;
+            GetRealLine4V(&GetSysSet()->dimmingCurve, i, stage[i], &res);
+            ctrlValue[i] = (stage[i] << 8) | res;
+        }
     }
     lineUart.Line4Ctrl(line, ctrlValue);
-
 }
 
 void lineProgram(type_monitor_t *monitor, u8 line_no, type_uart_class lineUart, u16 mPeroid)

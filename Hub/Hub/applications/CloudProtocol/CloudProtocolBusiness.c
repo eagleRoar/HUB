@@ -2195,6 +2195,7 @@ void CmdSetLine(char *data, proLine_t *line, proLine_4_t *line_4, cloudcmd_t *cm
             cJSON *timer_list = cJSON_GetObjectItem(temp, "timerList");
             if(timer_list)
             {
+                rt_memset((u8 *)line_4->timerList, 0, sizeof(line_4->timerList));
                 u8 timeSize = cJSON_GetArraySize(timer_list);
                 timeSize = timeSize > LINE_4_TIMER_MAX ? LINE_4_TIMER_MAX : timeSize;
                 for(int i = 0; i < timeSize; i++)
@@ -2211,6 +2212,7 @@ void CmdSetLine(char *data, proLine_t *line, proLine_4_t *line_4, cloudcmd_t *cm
             cJSON *cycle_list = cJSON_GetObjectItem(temp, "cycleList");
             if(cycle_list)
             {
+                rt_memset((u8 *)line_4->cycleList, 0, sizeof(line_4->cycleList));
                 u8 cycleSize = cJSON_GetArraySize(cycle_list);
                 cycleSize = cycleSize > LINE_4_CYCLE_MAX ? LINE_4_CYCLE_MAX : cycleSize;
                 for(int i = 0; i < cycleSize; i++)
