@@ -449,7 +449,7 @@ void FileSystemEntry(void* parameter)
             if(YES == GetSysTank()->saveFlag)
             {
                 SaveSysTankToFile(GetSysTank(), new_tank_file);
-                LOG_I("---------------------SaveSysTankToFile");//Justin
+                LOG_I("---------------------SaveSysTankToFile");
 
                 GetSysTank()->crc = usModbusRTU_CRC((u8 *)GetSysTank() + 2, sizeof(sys_tank_t) - 2);
                 GetSysTank()->saveFlag = NO;
@@ -525,7 +525,15 @@ void FileSystemInit(void)
         if(RT_EOK == CheckDirectory(old_info))
         {
             OldDataMigration();
-            LOG_W("OldDataMigration get old data to new module");//Justin
+            SaveMonitorToFile(GetMonitor(), new_dev_file);
+            SaveSysSetToFile(GetSysSet(), new_sysset_file);
+#if(HUB_ENVIRENMENT == HUB_SELECT)
+            SaveRecipeListToFile(GetSysRecipt(), new_recipe_file);
+#elif(HUB_IRRIGSTION == HUB_SELECT)
+            SaveSysTankToFile(GetSysTank(), new_tank_file);
+#endif
+
+            LOG_W("OldDataMigration get old data to new module");
         }
     }
     else

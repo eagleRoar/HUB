@@ -2626,7 +2626,6 @@ void lineProgram(type_monitor_t *monitor, u8 line_no, type_uart_class lineUart, 
     }
 }
 
-//Justin 12 路灯干接点
 void Light12Program(type_monitor_t *monitor, type_uart_class deviceUart)
 {
     u8                  index               = 0;
@@ -2758,7 +2757,7 @@ void timmerProgram(type_monitor_t *monitor, type_uart_class deviceUart)
                         state = OFF;
                     }
 
-                    device->port[port].ctrl.d_state = state;//Justin
+                    device->port[port].ctrl.d_state = state;
                     deviceUart.DeviceCtrlSingle(device, port, state);
                 }
                 else if(BY_SCHEDULE == device->port[port].mode)//定时器模式
@@ -2795,7 +2794,7 @@ void timmerProgram(type_monitor_t *monitor, type_uart_class deviceUart)
 
                    if(item == TIMER_GROUP)
                    {
-                       device->port[port].ctrl.d_state = 0;//Justin
+                       device->port[port].ctrl.d_state = 0;
                        deviceUart.DeviceCtrlSingle(device, port, 0);
                    }
                    else
@@ -2817,12 +2816,12 @@ void timmerProgram(type_monitor_t *monitor, type_uart_class deviceUart)
 
                        if(day == 7)
                        {
-                           device->port[port].ctrl.d_state = 0;//Justin
+                           device->port[port].ctrl.d_state = 0;
                            deviceUart.DeviceCtrlSingle(device, port, 0);
                        }
                        else
                        {
-                           device->port[port].ctrl.d_state = state;//Justin
+                           device->port[port].ctrl.d_state = state;
                            deviceUart.DeviceCtrlSingle(device, port, state);
                        }
                    }

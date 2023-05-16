@@ -252,6 +252,7 @@ time_t changeDataToTimestamp(u16 year, u8 mon, u8 day, u8 hour, u8 min, u8 sec)
 
 void printRecipe(recipe_t *recipe)
 {
+    LOG_I("----------------------------------printRecipe");
     LOG_D("id                   %d",recipe->id);
     LOG_D("name                 %s", recipe->name);
     LOG_D("color                %d", recipe->color);

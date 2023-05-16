@@ -43,13 +43,14 @@ void OldDataMigration(void)
         newMonitor->sensor_size = size[0];
         newMonitor->device_size = size[1];
         newMonitor->line_size = size[2];
+        //LOG_I("sensor_size %d, device_size %d, line_size %d",newMonitor->sensor_size,newMonitor->device_size,newMonitor->line_size);
     }
     lenght += sizeof(size);
 
     temp = newMonitor->sensor_size < SENSOR_MAX ? newMonitor->sensor_size : SENSOR_MAX;
     for(int i = 0; i < temp; i++)
     {
-        if(RT_EOK == ReadFileData(old_dev_file, &sensor, lenght, sizeof(sensorOld_t)))
+        if(RT_EOK == ReadFileData(old_dev_file, &sensor, lenght + sizeof(sensorOld_t) * i, sizeof(sensorOld_t)))
         {
             newMonitor->sensor[i].crc = sensor.crc;
             newMonitor->sensor[i].uuid = sensor.uuid;
@@ -63,6 +64,8 @@ void OldDataMigration(void)
             newMonitor->sensor[i].storage_size = sensor.storage_size;
             newMonitor->sensor[i].isMainSensor = NO;
             rt_memcpy(newMonitor->sensor[i].__stora, sensor.__stora, sizeof(sen_storaOld_t) * 4);
+
+            //printSensor(newMonitor->sensor[i]);
         }
 
     }
@@ -71,7 +74,7 @@ void OldDataMigration(void)
     temp = newMonitor->device_size < DEVICE_MAX ? newMonitor->device_size : DEVICE_MAX;
     for(int i = 0; i < temp; i++)
     {
-        if(RT_EOK == ReadFileData(old_dev_file, &device, lenght, sizeof(deviceOld_t)))
+        if(RT_EOK == ReadFileData(old_dev_file, &device, lenght + sizeof(deviceOld_t) * i, sizeof(deviceOld_t)))
         {
 
             newMonitor->device[i].crc = device.crc;
@@ -103,6 +106,8 @@ void OldDataMigration(void)
             newMonitor->device[i]._hvac.manualOnMode = device._hvac.manualOnMode;
             newMonitor->device[i]._hvac.fanNormallyOpen = device._hvac.fanNormallyOpen;
             newMonitor->device[i]._hvac.hvacMode = device._hvac.hvacMode;
+
+            //printDevice(newMonitor->device[i]);
         }
 
     }
@@ -111,7 +116,7 @@ void OldDataMigration(void)
     temp = newMonitor->line_size < LINE_MAX ? newMonitor->line_size : LINE_MAX;
     for(int i = 0; i < temp; i++)
     {
-        if(RT_EOK == ReadFileData(old_dev_file, &line, lenght, sizeof(lineOld_t)))
+        if(RT_EOK == ReadFileData(old_dev_file, &line, lenght + sizeof(lineOld_t) * i, sizeof(lineOld_t)))
         {
             newMonitor->line[i].crc = line.crc;
             newMonitor->line[i].type = line.type;
@@ -136,13 +141,28 @@ void OldDataMigration(void)
     lenght = FileHeadSpace;
     if(RT_EOK == ReadFileData(old_sysset_file, &oldSet, lenght, sizeof(sys_setOld_t)))
     {
-        rt_memset(&newSet, 0, sizeof(sys_set_t));
+        rt_memset((u8 *)newSet, 0, sizeof(sys_set_t));
 
         newSet->crc = oldSet.crc;
+//        LOG_I("crc = %x %x", oldSet.crc,newSet->crc);
         rt_memcpy((u8 *)&newSet->tempSet, (u8 *)&oldSet.tempSet, sizeof(proTempSetOld_t));
+//        LOG_I("temp setting %d %d %d %d %d %d %d %d",
+//                oldSet.tempSet.dayCoolingTarget, newSet->tempSet.dayCoolingTarget,
+//                oldSet.tempSet.dayHeatingTarget,newSet->tempSet.dayHeatingTarget,
+//                oldSet.tempSet.nightCoolingTarget,newSet->tempSet.nightCoolingTarget,
+//                oldSet.tempSet.nightHeatingTarget,newSet->tempSet.nightHeatingTarget);
         rt_memcpy((u8 *)&newSet->co2Set, (u8 *)&oldSet.co2Set, sizeof(proCo2SetOld_t));
+//        LOG_I("co2 setting %d %d %d %d",
+//                oldSet.co2Set.dayCo2Target,newSet->co2Set.dayCo2Target,
+//                oldSet.co2Set.nightCo2Target,newSet->co2Set.nightCo2Target);
         rt_memcpy((u8 *)&newSet->humiSet, (u8 *)&oldSet.humiSet, sizeof(proHumiSetOld_t));
+//        LOG_I("humiSet setting %d %d %d %d %d %d %d %d",
+//                oldSet.humiSet.dayDehumiTarget,newSet->humiSet.dayDehumiTarget,
+//                oldSet.humiSet.dayHumiTarget,newSet->humiSet.dayHumiTarget,
+//                oldSet.humiSet.nightDehumiTarget,newSet->humiSet.nightDehumiTarget,
+//                oldSet.humiSet.nightHumiTarget,newSet->humiSet.nightHumiTarget);
         rt_memcpy((u8 *)&newSet->line1Set, (u8 *)&oldSet.line1Set, sizeof(proLineOld_t));
+
         newSet->line1_4Set.brightMode = LINE_MODE_BY_POWER;
         newSet->line1_4Set.byAutoDimming = AUTO_DIMMING;
         newSet->line1_4Set.mode = 1;
@@ -151,6 +171,12 @@ void OldDataMigration(void)
         newSet->line1_4Set.sunriseSunSet = 10;
         rt_memcpy((u8 *)&newSet->line2Set, (u8 *)&oldSet.line2Set, sizeof(proLineOld_t));
         rt_memcpy((u8 *)&newSet->stageSet, (u8 *)&oldSet.stageSet, sizeof(stageOld_t));
+//        LOG_I("---------- en = %d %d, stage start %s %s, duration_day = %d %d",
+//                oldSet.stageSet.en , newSet->stageSet.en,
+//                oldSet.stageSet.starts, newSet->stageSet.starts,
+//                oldSet.stageSet._list[0].duration_day, newSet->stageSet._list[0].duration_day);
+        rt_memcpy((u8 *)&newSet->sysPara, (u8 *)&oldSet.sysPara, sizeof(sys_paraOld_t));
+
         rt_memcpy(newSet->co2Cal, oldSet.co2Cal, 20);
         for(int port = 0; port < 20; port++)
         {
@@ -190,6 +216,8 @@ void OldDataMigration(void)
             newRecipeList->recipe[i].line_4.tempStartDimming = 350;
             newRecipeList->recipe[i].line_4.tempOffDimming = 400;
             newRecipeList->recipe[i].line_4.sunriseSunSet = 10;
+
+//            printRecipe(&newRecipeList->recipe[i]);
         }
 
         lenght += sizeof(recipeOld_t);
@@ -198,7 +226,7 @@ void OldDataMigration(void)
     ReadFileData(old_recipe_file, newRecipeList->allot_add, lenght, 10);
     lenght += 10;
 
-    ReadFileData(old_recipe_file, newRecipeList->saveFlag, lenght, 1);
+    ReadFileData(old_recipe_file, &newRecipeList->saveFlag, lenght, 1);
 
     //4.获取tank
     lenght = FileHeadSpace;

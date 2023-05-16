@@ -1891,7 +1891,7 @@ void CmdSetTankPV(char *data, cloudcmd_t *cmd)
     }
 }
 
-void CmdDelTankPV(char *data, cloudcmd_t *cmd)//Justin 该函数有问题
+void CmdDelTankPV(char *data, cloudcmd_t *cmd)
 {
     cJSON   *json       = RT_NULL;
     u8      addr        = 0;
@@ -1937,8 +1937,6 @@ void CmdDelTankPV(char *data, cloudcmd_t *cmd)//Justin 该函数有问题
                 {
                     for(int i = 0; i < VALVE_MAX; i++)
                     {
-                        LOG_I("CmdDelTankPV no %d, valve = %d, delete = %d",
-                                i,GetSysTank()->tank[cmd->delTankPvNo - 1].nopump_valve[i],cmd->delTankPvId);//Justin
                         if(cmd->delTankPvId == GetSysTank()->tank[cmd->delTankPvNo - 1].nopump_valve[i])
                         {
                             GetSysTank()->tank[cmd->delTankPvNo - 1].nopump_valve[i] = 0;
@@ -4769,7 +4767,7 @@ char *ReplyGetPortSet(char *cmd, cloudcmd_t cloud)
             cJSON_AddStringToObject(json, "sn", GetSnName(name, 12));
             cJSON_AddStringToObject(json, "model", GetModelByType(module->type, model, 14));
             model[14] = '\0';
-            cJSON_AddNumberToObject(json, "id", module->addr);
+            cJSON_AddNumberToObject(json, "id", cloud.get_port_id);
             if(0 == fatherFlg)//端口
             {
                 cJSON_AddStringToObject(json, "name", module->port[port].name);
@@ -4931,7 +4929,7 @@ char *ReplyGetPortSet(char *cmd, cloudcmd_t cloud)
 
             cJSON_AddStringToObject(json, "cmd", cmd);
             cJSON_AddStringToObject(json, "msgid", cloud.msgid);
-            cJSON_AddNumberToObject(json, "id", line->addr);
+            cJSON_AddNumberToObject(json, "id", cloud.get_port_id);
             cJSON_AddStringToObject(json, "name", line->name);
             cJSON_AddNumberToObject(json, "type", line->type);
 
@@ -5075,7 +5073,7 @@ char *ReplyGetSensorEList(char *cmd, char *msgid)
             strncpy(lastStr, str, length);
             rt_free(str);
 
-            for(int i = 0; i < GetMonitor()->sensor_size; i++)//Justin 仅仅测试
+            for(int i = 0; i < GetMonitor()->sensor_size; i++)
             {
                 char *str1 = RT_NULL;
                 sensor_t *sensor = &GetMonitor()->sensor[i];

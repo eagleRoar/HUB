@@ -633,7 +633,6 @@ void OledTaskEntry(void* parameter)
         time1S = TimerTask(&time1S, 20, &Timer1sTouch);
         time3S = TimerTask(&time3S, 60, &Timer3sTouch);
 
-//        Justin 以下功能全部要优化 暂时屏蔽
         //50ms
         nowPage = pageInfor & 0x000000FF;
 
