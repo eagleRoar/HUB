@@ -108,7 +108,7 @@ void HomePage(type_page_t *page, type_monitor_t *monitor)
     ST7567_Puts(name, &Font_6x12, 1);
 
     data = getSensorDataByFunc(monitor, F_S_TEMP);
-    if((VALUE_NULL == data) || (YES != sdCard.readInfo))
+    if((VALUE_NULL == data) || (YES != GetFileSystemState()))
     {
         ST7567_GotoXY(0, 32);
         ST7567_Puts("    ", &Font_8x16, 1);
@@ -138,7 +138,7 @@ void HomePage(type_page_t *page, type_monitor_t *monitor)
     ST7567_Puts(name, &Font_6x12, 1);
 
     data = getSensorDataByFunc(monitor, F_S_HUMI);
-    if((VALUE_NULL == data) || (YES != sdCard.readInfo))
+    if((VALUE_NULL == data) || (YES != GetFileSystemState()))
     {
         ST7567_GotoXY(8 + 8*5, 32);
         ST7567_Puts("    ", &Font_8x16, 1);
@@ -167,7 +167,7 @@ void HomePage(type_page_t *page, type_monitor_t *monitor)
     ST7567_Puts(name, &Font_6x12, 1);
 
     data = getSensorDataByFunc(monitor, F_S_CO2);
-    if((VALUE_NULL == data) || (YES != sdCard.readInfo))
+    if((VALUE_NULL == data) || (YES != GetFileSystemState()))
     {
         ST7567_GotoXY(8 + 8*9 + 4, 32);
         ST7567_Puts("      ", &Font_8x16, 1);
@@ -193,7 +193,7 @@ void HomePage(type_page_t *page, type_monitor_t *monitor)
     ST7567_GotoXY(0, 0);
     ST7567_Puts(time, &Font_6x12, 0);
 
-    if(YES == sdCard.readInfo)
+    if(YES == GetFileSystemState())
     {
         if(tankSizePre != GetSysTank()->tank_size)
         {
@@ -697,10 +697,10 @@ void SensorList(u64 *pageInfo, type_page_t *page,type_monitor_t *monitor)
     clear_screen();
 
     //2.显示状态
-    if(YES != sdCard.readInfo)
+    if(YES != GetFileSystemState())
     {
         ST7567_GotoXY(LINE_HIGHT, 0);
-        ST7567_Puts("SD is not init", &Font_8x16, 0);
+        ST7567_Puts("File system is not init", &Font_8x16, 0);
     }
     else
     {
@@ -1104,10 +1104,10 @@ void DeviceStatePage_new(type_monitor_t *monitor)
     clear_screen();
 
     //2.显示状态
-    if(YES != sdCard.readInfo)
+    if(YES != GetFileSystemState())
     {
         ST7567_GotoXY(LINE_HIGHT, 0);
-        ST7567_Puts("SD is not init", &Font_8x16, 0);
+        ST7567_Puts("File system is not init", &Font_8x16, 0);
     }
     else
     {
@@ -1196,10 +1196,10 @@ void LineStatePage_new(type_monitor_t *monitor)
     //1.清除界面
     clear_screen();
 
-    if(YES != sdCard.readInfo)
+    if(YES != GetFileSystemState())
     {
         ST7567_GotoXY(LINE_HIGHT, 0);
-        ST7567_Puts("SD is not init", &Font_8x16, 0);
+        ST7567_Puts("File system is not init", &Font_8x16, 0);
     }
     else
     {
@@ -1734,10 +1734,10 @@ void phecOnlinePage(u64 *pageInfo, type_page_t *page, type_monitor_t *monitor, u
     clear_screen();
 
     //2.显示状态
-    if(YES != sdCard.readInfo)
+    if(YES != GetFileSystemState())
     {
         ST7567_GotoXY(LINE_HIGHT, 0);
-        ST7567_Puts("SD is not init", &Font_8x16, 0);
+        ST7567_Puts("File system is not init", &Font_8x16, 0);
     }
     else
     {
@@ -2015,14 +2015,14 @@ void lineStatePage_fac(type_page_t *page, type_monitor_t *monitor, u8 canShow)
 //        else
         if(CON_SUCCESS == data)
         {
-//            if(OFF == GetMonitor()->line[index].d_state)//Justin debug 控制模式得修改
-//            {
-//                sprintf(temp,"%6s   OFF", name);
-//            }
-//            else
-//            {
-//                sprintf(temp,"%6s   %3d%%", name, GetMonitor()->line[index].d_value);
-//            }
+            if(OFF == GetMonitor()->line[index].port[0].ctrl.d_state)
+            {
+                sprintf(temp,"%6s   OFF", name);
+            }
+            else
+            {
+                sprintf(temp,"%6s   %3d%%", name, GetMonitor()->line[index].port[0].ctrl.d_value);
+            }
             temp[16] = '\0';
             ST7567_Puts(temp, &Font_8x16, 1);
         }
@@ -2288,7 +2288,8 @@ void lineStage_Fa(type_monitor_t *monitor)
     u8              index               = 0;
     line_t          *line               = RT_NULL;
     static u8       value[LINE_MAX]     = {0,0};
-    static u8       stage[3] = {0, 49, 100};
+    static u8       stage[3]            = {0, 49, 100};
+    u16             ctrl[4]             = {0, 0, 0, 0};
 
     for(index = 0; index < LINE_MAX; index++)
     {
@@ -2303,8 +2304,18 @@ void lineStage_Fa(type_monitor_t *monitor)
             value[index] = 0;
         }
 
-//        line->d_state = ON;//Justin debug 需要修改
-//        line->d_value = stage[value[index]];
+        if(LINE_4_TYPE == line->type)
+        {
+            for(int i = 0;  i < 4; i++)
+            {
+                ctrl[i] = (stage[value[index]] << 8) | stage[value[index]];
+            }
+            GetLightObject()->Line4Ctrl(line, ctrl);
+        }
+        else
+        {
+            GetLightObject()->LineCtrl(line, 0, ON, stage[value[index]]);
+        }
     }
 }
 
@@ -2312,13 +2323,20 @@ void lineStageClose_Fa(type_monitor_t *monitor)
 {
     u8              index               = 0;
     line_t          *line               = RT_NULL;
+    u16             ctrl[4]             = {0,0,0,0};
 
     for(index = 0; index < LINE_MAX; index++)
     {
         line = &monitor->line[index];
 
-//        line->d_state = OFF;//Justin debug 需要修改控制模式
-//        line->d_value = 0;
+        if(LINE_4_TYPE == line->type)
+        {
+            GetLightObject()->Line4Ctrl(line, ctrl);
+        }
+        else
+        {
+            GetLightObject()->LineCtrl(line, 0, OFF, 0);
+        }
     }
 }
 

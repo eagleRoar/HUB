@@ -194,6 +194,7 @@ void OldDataMigration(void)
         newSet->startCalFlg = oldSet.startCalFlg;
         rt_memcpy((u8 *)&newSet->hub_info, (u8 *)&oldSet.hub_info, sizeof(hubOld_t));
         newSet->ver = HUB_VER_NO;
+        LOG_I("hub name = %s , %s",oldSet.hub_info.name, newSet->hub_info.name);//Justin
     }
 
     //3.获取recipe

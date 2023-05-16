@@ -511,7 +511,10 @@ static void SignDeviceSendFlag(u8 addr)
     {
         if(addr == sendMoni[i].addr)
         {
-            sendMoni[i].SendCnt++;
+            if(sendMoni[i].SendCnt < 255)
+            {
+                sendMoni[i].SendCnt++;
+            }
             sendMoni[i].sendTime = getTimerRun();
             return;
         }

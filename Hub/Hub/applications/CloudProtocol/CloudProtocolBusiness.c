@@ -4189,6 +4189,7 @@ char *ReplySetHubName(char *cmd, cloudcmd_t cloud)
 
 char *ReplyGetHubState(char *cmd, cloudcmd_t cloud)
 {
+
     char            *str        = RT_NULL;
     char            model[15];
     char            name[12];
@@ -4202,7 +4203,7 @@ char *ReplyGetHubState(char *cmd, cloudcmd_t cloud)
     int             valueTemp[10]    = {VALUE_NULL,VALUE_NULL,VALUE_NULL,VALUE_NULL,VALUE_NULL,VALUE_NULL,VALUE_NULL,VALUE_NULL,VALUE_NULL,VALUE_NULL};
 #endif
     cJSON           *list       = RT_NULL;
-
+    sys_set_t       *set        = GetSysSet();
 
     if(RT_NULL != json)
     {
@@ -4240,6 +4241,74 @@ char *ReplyGetHubState(char *cmd, cloudcmd_t cloud)
         {
             cJSON_AddNumberToObject(json, "vpd", getVpd());
         }
+
+        if(ON == set->warn[WARN_CO2_HIGHT - 1])
+        {
+            cJSON_AddNumberToObject(json, "co2State", HightState);
+        }
+        else if(ON == set->warn[WARN_CO2_LOW - 1])
+        {
+            cJSON_AddNumberToObject(json, "co2State", LowState);
+        }
+        else if((OFF == set->warn[WARN_CO2_HIGHT - 1]) && (OFF == set->warn[WARN_CO2_LOW - 1]))
+        {
+            cJSON_AddNumberToObject(json, "co2State", NormalState);
+        }
+
+
+        if(ON == set->warn[WARN_TEMP_HIGHT - 1])
+        {
+            cJSON_AddNumberToObject(json, "tempState", HightState);
+        }
+        else if(ON == set->warn[WARN_TEMP_LOW - 1])
+        {
+            cJSON_AddNumberToObject(json, "tempState", LowState);
+        }
+        else if((OFF == set->warn[WARN_TEMP_HIGHT - 1]) && (OFF == set->warn[WARN_TEMP_LOW - 1]))
+        {
+            cJSON_AddNumberToObject(json, "tempState", NormalState);
+        }
+
+
+        if(ON == set->warn[WARN_HUMI_HIGHT - 1])
+        {
+            cJSON_AddNumberToObject(json, "humidState", HightState);
+        }
+        else if(ON == set->warn[WARN_HUMI_LOW - 1])
+        {
+            cJSON_AddNumberToObject(json, "humidState", LowState);
+        }
+        else if((OFF == set->warn[WARN_HUMI_HIGHT - 1]) && (OFF == set->warn[WARN_HUMI_LOW - 1]))
+        {
+            cJSON_AddNumberToObject(json, "humidState", NormalState);
+        }
+
+        if(ON == set->warn[WARN_PAR_HIGHT - 1])
+        {
+            cJSON_AddNumberToObject(json, "ppfdState", HightState);
+        }
+        else if(ON == set->warn[WARN_PAR_LOW - 1])
+        {
+            cJSON_AddNumberToObject(json, "ppfdState", LowState);
+        }
+        else if((OFF == set->warn[WARN_PAR_HIGHT - 1]) && (OFF == set->warn[WARN_PAR_LOW - 1]))
+        {
+            cJSON_AddNumberToObject(json, "ppfdState", NormalState);
+        }
+
+        if(ON == set->warn[WARN_VPD_HIGHT - 1])
+        {
+            cJSON_AddNumberToObject(json, "vpdState", HightState);
+        }
+        else if(ON == set->warn[WARN_VPD_LOW - 1])
+        {
+            cJSON_AddNumberToObject(json, "vpdState", LowState);
+        }
+        else if((OFF == set->warn[WARN_VPD_HIGHT - 1]) && (OFF == set->warn[WARN_VPD_LOW - 1]))
+        {
+            cJSON_AddNumberToObject(json, "vpdState", NormalState);
+        }
+#endif
         cJSON_AddNumberToObject(json, "dayNight", GetSysSet()->dayOrNight);
 
         list = cJSON_CreateObject();
@@ -4268,7 +4337,7 @@ char *ReplyGetHubState(char *cmd, cloudcmd_t cloud)
         }
 
         //灌溉
-#elif(HUB_SELECT == HUB_IRRIGSTION)
+#if(HUB_SELECT == HUB_IRRIGSTION)
         list = cJSON_CreateArray();
         if(RT_NULL != list)
         {
@@ -4374,6 +4443,7 @@ char *ReplyGetHubState(char *cmd, cloudcmd_t cloud)
     }
 
     return str;
+
 }
 
 
