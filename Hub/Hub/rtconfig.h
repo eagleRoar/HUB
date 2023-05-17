@@ -18,8 +18,6 @@
 #define RT_USING_TIMER_SOFT
 #define RT_TIMER_THREAD_PRIO 4
 #define RT_TIMER_THREAD_STACK_SIZE 512
-#define RT_DEBUG
-#define RT_DEBUG_COLOR
 
 /* Inter-Thread communication */
 

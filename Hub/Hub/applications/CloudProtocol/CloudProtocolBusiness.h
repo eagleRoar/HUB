@@ -285,6 +285,7 @@ struct sysPara
 
 typedef struct sysWarnOld
 {
+#if(HUB_SELECT == HUB_ENVIRENMENT)
     u16 dayTempMin;         //100, //温度最小值 只传摄氏度
     u16 dayTempMax;         //200,
     u8 dayTempEn;           // 0-off 1-on
@@ -314,21 +315,27 @@ typedef struct sysWarnOld
     u16 nightVpdMin;        //50,//单位 kPa 0~2.20 step 0.1
     u16 nightVpdMax;        //250, // 0.8-5 step 0.1
     u8 nightVpdEn;          //1, // 0-off 1-on
-    u8 phEn;                //1,// 0-off 1-on
-    u8 ecEn;                //1,// 0-off 1-on
-    u8 wtEn;                //1,// 0-off 1-on //水温
-    u8 wlEn;                //1, // 0-off 1-on //水位
-    u8 offlineEn;           //1 //离线警告 1-on 0-off
-    u8 lightEn;             //1, //灯光警告 1-on 2-off
-    u8 smokeEn;             //1, //烟雾报警 1-on 2-off
-    u8 waterEn;             //1,//漏水报警 1-on 2-off
-    u8 autoFillTimeout;     //1, //补水超时 1-on 2-off
     u8 co2TimeoutEn;        //1, //Co2 超时报警 1-on 2-off
     u16 co2Timeoutseconds;  // 600, // Co2 超时秒数
     u8 tempTimeoutEn;       //1, //temp 超时报警 1-on 2-off
     u16 tempTimeoutseconds; //600, // temp 超时秒数
     u8 humidTimeoutEn;      //1,   //humid 超时报警 1-on 2-off
     u16 humidTimeoutseconds;// 600, // humid 超时秒数
+    u8 lightEn;             //1, //灯光警告 1-on 2-off
+    u8 o2ProtectionEn;      //氧气低保护
+#elif(HUB_SELECT == HUB_IRRIGSTION)
+    u8 phEn;                //1,// 0-off 1-on
+    u8 ecEn;                //1,// 0-off 1-on
+    u8 wtEn;                //1,// 0-off 1-on //水温
+    u8 wlEn;                //1, // 0-off 1-on //水位
+    u8 mmEn;                // 0-off 1-on //基质湿度
+    u8 meEn;                // 0-off 1-on //基质 EC
+    u8 mtEn;                // 0-off 1-on //基质 Temp
+    u8 autoFillTimeout;     //1, //补水超时 1-on 2-off
+#endif
+    u8 smokeEn;             //1, //烟雾报警 1-on 2-off
+    u8 waterEn;             //1,//漏水报警 1-on 2-off
+    u8 offlineEn;           //1 //离线警告 1-on 0-off
 }sys_warnOld_t;
 
 struct sysWarn
@@ -583,7 +590,7 @@ typedef struct sysSetOld
     u8              dayOrNight;//白天黑夜 白天0 黑夜1
     u8              warn[34];
     u8              offline[16];
-    u16             warn_value[34];//该值主要为了显示使用 数据
+    u16             warn_value[34];//该值主要为了显示使用 数据//Justin 仅仅测试
     int             co2Cal[20];   //co2校准值
     struct phCalOld{
         float ph_a;
