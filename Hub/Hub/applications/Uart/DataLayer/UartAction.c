@@ -1525,7 +1525,7 @@ u8 GetDeviceStateByCo2Lock(type_monitor_t *monitor, u8 type)
 //mPeriod 周期 单位ms
 void co2Program(type_monitor_t *monitor, type_uart_class uart, u16 mPeriod)
 {
-    int             co2Now      = 0;
+    int             co2Now      = GetSensorMainValue(monitor, F_S_CO2);
     u16             co2Target   = 0;
     static u16      runTime     = 0;
     static u16      stopTime    = 0;
@@ -1533,29 +1533,6 @@ void co2Program(type_monitor_t *monitor, type_uart_class uart, u16 mPeriod)
     proCo2Set_t     co2Set;
 
     GetNowSysSet(RT_NULL, &co2Set, RT_NULL, RT_NULL, RT_NULL, RT_NULL, RT_NULL);
-
-    if(SENSOR_CTRL_AVE == GetSysSet()->sensorMainType)//平均模式
-    {
-        co2Now = getSensorDataByFunc(monitor, F_S_CO2);
-    }
-    else if(SENSOR_CTRL_MAIN == GetSysSet()->sensorMainType)
-    {
-        sensor_t *sensor = GetMainSensorByAddr(monitor, BHS_TYPE);
-        if(sensor)
-        {
-            for(int i = 0; i < sensor->storage_size; i++)
-            {
-                if(F_S_CO2 == sensor->__stora[i].func)
-                {
-                    co2Now = sensor->__stora[i].value;
-                }
-            }
-        }
-        else
-        {
-            co2Now = VALUE_NULL;
-        }
-    }
 
     if(VALUE_NULL != co2Now)
     {
@@ -1658,36 +1635,13 @@ void co2Program(type_monitor_t *monitor, type_uart_class uart, u16 mPeriod)
 
 void humiProgram(type_monitor_t *monitor, type_uart_class uart)
 {
-    int             humiNow             = 0;
+    int             humiNow             = GetSensorMainValue(monitor, F_S_HUMI);
     u16             humiTarget          = 0;
     u16             dehumiTarget        = 0;
     proHumiSet_t    humiSet;
     proTempSet_t    tempSet;
 
     GetNowSysSet(&tempSet, RT_NULL, &humiSet, RT_NULL, RT_NULL, RT_NULL, RT_NULL);
-
-    if(SENSOR_CTRL_AVE == GetSysSet()->sensorMainType)//平均模式
-    {
-        humiNow = getSensorDataByFunc(monitor, F_S_HUMI);
-    }
-    else if(SENSOR_CTRL_MAIN == GetSysSet()->sensorMainType)
-    {
-        sensor_t *sensor = GetMainSensorByAddr(monitor, BHS_TYPE);
-        if(sensor)
-        {
-            for(int i = 0; i < sensor->storage_size; i++)
-            {
-                if(F_S_HUMI == sensor->__stora[i].func)
-                {
-                    humiNow = sensor->__stora[i].value;
-                }
-            }
-        }
-        else
-        {
-            humiNow = VALUE_NULL;
-        }
-    }
 
     if(VALUE_NULL != humiNow)
     {
@@ -1736,35 +1690,12 @@ void humiProgram(type_monitor_t *monitor, type_uart_class uart)
 
 void tempProgram(type_monitor_t *monitor, type_uart_class uart)
 {
-    int             tempNow             = 0;
+    int             tempNow             = GetSensorMainValue(monitor, F_S_TEMP);//Justin debug 未测试
     u16             coolTarge           = 0;
     u16             HeatTarge           = 0;
     proTempSet_t    tempSet;
 
     GetNowSysSet(&tempSet, RT_NULL, RT_NULL, RT_NULL, RT_NULL, RT_NULL, RT_NULL);
-
-    if(SENSOR_CTRL_AVE == GetSysSet()->sensorMainType)//平均模式
-    {
-        tempNow = getSensorDataByFunc(monitor, F_S_TEMP);
-    }
-    else if(SENSOR_CTRL_MAIN == GetSysSet()->sensorMainType)
-    {
-        sensor_t *sensor = GetMainSensorByAddr(monitor, BHS_TYPE);
-        if(sensor)
-        {
-            for(int i = 0; i < sensor->storage_size; i++)
-            {
-                if(F_S_TEMP == sensor->__stora[i].func)
-                {
-                    tempNow = sensor->__stora[i].value;
-                }
-            }
-        }
-        else
-        {
-            tempNow = VALUE_NULL;
-        }
-    }
 
     if(VALUE_NULL != tempNow)
     {
@@ -1970,6 +1901,8 @@ void line_4Program(line_t *line, type_uart_class lineUart)
     static u8       stage[LINE_PORT_MAX]        = {0,0,0,0};
     u16             ctrlValue[LINE_PORT_MAX]    = {0,0,0,0};
     sys_set_t       *sys_set                    = GetSysSet();
+    int             temperature                 = GetSensorMainValue(GetMonitor(), F_S_TEMP);
+
 
     //1.获取灯光设置
     GetNowSysSet(RT_NULL, RT_NULL, RT_NULL, RT_NULL, &line_4set, RT_NULL, RT_NULL);
@@ -2113,18 +2046,6 @@ void line_4Program(line_t *line, type_uart_class lineUart)
             }
         }
 
-        //获取温度
-        s16 temperature = 0;
-        for(u8 index = 0; index < GetMonitor()->sensor_size; index++)
-        {
-            for(u8 item = 0; item < GetMonitor()->sensor[index].storage_size; item++)
-            {
-                if(F_S_TEMP == GetMonitor()->sensor[index].__stora[item].func)
-                {
-                    temperature = GetMonitor()->sensor[index].__stora[item].value;
-                }
-            }
-        }
 
         //过温保护
         if(temperature >= line_4set.tempOffDimming)
@@ -2178,19 +2099,17 @@ void lineProgram(type_monitor_t *monitor, line_t *line, u8 line_no, type_uart_cl
     time_t          temp_time       = 0;
     proLine_t       line_set;
     type_sys_time   time;
-    u16             temperature     = 0;
+    int             temperature     = GetSensorMainValue(GetMonitor(), F_S_TEMP);;
     static u8       stage[LINE_MAX] = {LINE_MIN_VALUE,LINE_MIN_VALUE};
     static u16      cnt[LINE_MAX]   = {0, 0};
 
     //1.获取灯光设置
     if(0 == line_no)
     {
-//        line = &monitor->line[0];
         GetNowSysSet(RT_NULL, RT_NULL, RT_NULL, &line_set, RT_NULL, RT_NULL, RT_NULL);
     }
     else if(1 == line_no)
     {
-//        line = &monitor->line[1];
         GetNowSysSet(RT_NULL, RT_NULL, RT_NULL, RT_NULL, RT_NULL, &line_set, RT_NULL);
     }
     else
@@ -2563,18 +2482,6 @@ void lineProgram(type_monitor_t *monitor, line_t *line, u8 line_no, type_uart_cl
                 }
 
                 value = stage[line_no];
-            }
-        }
-
-//Justin debug 因为添加了指定传感器和平均传感器的概率因此要改
-        for(u8 index = 0; index < monitor->sensor_size; index++)
-        {
-            for(u8 item = 0; item < monitor->sensor[index].storage_size; item++)
-            {
-                if(F_S_TEMP == monitor->sensor[index].__stora[item].func)
-                {
-                    temperature = monitor->sensor[index].__stora[item].value;
-                }
             }
         }
 

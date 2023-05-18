@@ -53,4 +53,5 @@ rt_err_t SetSensorDefault(type_monitor_t *, u32, u8, u8);
 rt_err_t SetLineDefault(type_monitor_t *, u32 , u8, u8);
 u8 GetLineType(type_monitor_t *monitor);
 sensor_t *GetMainSensorByAddr(type_monitor_t *monitor, u8 type);
+int GetSensorMainValue(type_monitor_t *monitor, u8 func);
 #endif /* APPLICATIONS_INFORMATIONMANAGE_MODULE_MODULE_H_ */

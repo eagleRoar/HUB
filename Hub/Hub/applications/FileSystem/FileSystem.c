@@ -26,11 +26,14 @@ char            new_dev_file[]          = "/main/informations/module.bin";
 char            new_sysset_file[]       = "/main/informations/sys_set.bin";
 char            new_recipe_file[]       = "/main/informations/recipe.bin";
 char            new_tank_file[]         = "/main/informations/tank.bin";
+char            new_struct_ver_file[]   = "/main/informations/ver.bin";
 
 char            backup_dev_file[]       = "/backup/informations/module.bin";
 char            backup_sysset_file[]    = "/backup/informations/sys_set.bin";
 char            backup_recipe_file[]    = "/backup/informations/recipe.bin";
 char            backup_tank_file[]      = "/backup/informations/tank.bin";
+
+sys_ver_t   sys_ver;
 
 u8 GetFileSystemState(void)
 {
@@ -217,6 +220,37 @@ rt_err_t CreateDirectory(char* name)
         return RT_ERROR;
     } else {
         return RT_EOK;
+    }
+}
+
+//static void GetStructVer(sys_ver_t *ver, char *fileName)
+//{
+//    if(RT_EOK == ReadFileData(fileName, (u8 *)ver, 0, sizeof(sys_ver_t)))
+//    {
+//        LOG_I("Get struct ver data OK");
+//    }
+//    else
+//    {
+//        LOG_E("Get struct ver data Fail");
+//    }
+//}
+
+static void SaveStructVer(char *fileName)
+{
+    strcpy(sys_ver.hub_ver, FIRMWAREVISION);
+    sys_ver.monitor_ver = MONITOR_VER;
+    sys_ver.sys_set_ver = SYS_SET_VER;
+    sys_ver.recipe_ver = SYS_RECIPE_VER;
+    sys_ver.tank_ver = SYS_TANK_VER;
+
+    RemoveFileDirectory(fileName);
+    if(RT_EOK == WriteFileData(fileName, (u8 *)&sys_ver, 0, sizeof(sys_ver_t)))
+    {
+        LOG_I("Save struct ver data OK");
+    }
+    else
+    {
+        LOG_E("Save struct ver data Fail");
     }
 }
 
@@ -473,7 +507,7 @@ void FileSystemInit(void)
     char        mainFile[]          = "main";
     char        backupFile[]        = "backup";
     char        main_information[]  = "/main/informations";
-    char        old_info[]          = "/backup/moduleInfo";
+//    char        old_info[]          = "/backup/moduleInfo";
 
     //1.首先将flash作为主存储区挂载到根文件夹 sd卡作为备份存储区挂载到根目录下的文件夹
     if (0 != dfs_mount(FLASH_MEMORY_NAME, "/", "elm", 0, 0))
@@ -523,19 +557,20 @@ void FileSystemInit(void)
         }
 
         //2.2判断是否是由于旧版本升级来的 此时存在旧结构体数据,迁移旧数据
-        if(RT_EOK == CheckDirectory(old_info))
-        {
-            OldDataMigration();
-            SaveMonitorToFile(GetMonitor(), new_dev_file);
-            SaveSysSetToFile(GetSysSet(), new_sysset_file);
-#if(HUB_ENVIRENMENT == HUB_SELECT)
-            SaveRecipeListToFile(GetSysRecipt(), new_recipe_file);
-#elif(HUB_IRRIGSTION == HUB_SELECT)
-            SaveSysTankToFile(GetSysTank(), new_tank_file);
-#endif
-
-            rt_kprintf("OldDataMigration get old data to new module\r\n");
-        }
+        //数据迁移由于之前版本太多不能做兼容
+//        if(RT_EOK == CheckDirectory(old_info))
+//        {
+//            OldDataMigration();
+//            SaveMonitorToFile(GetMonitor(), new_dev_file);
+//            SaveSysSetToFile(GetSysSet(), new_sysset_file);
+//#if(HUB_ENVIRENMENT == HUB_SELECT)
+//            SaveRecipeListToFile(GetSysRecipt(), new_recipe_file);
+//#elif(HUB_IRRIGSTION == HUB_SELECT)
+//            SaveSysTankToFile(GetSysTank(), new_tank_file);
+//#endif
+//
+//            rt_kprintf("OldDataMigration get old data to new module\r\n");
+//        }
     }
     else
     {
@@ -558,6 +593,8 @@ void FileSystemInit(void)
 
     //4.标记文件系统准备完成
     SetFileSystemState(YES);
+
+    SaveStructVer(new_struct_ver_file);
 
     //5.文件系统线程
     if(RT_EOK != rt_thread_init(&file_sys_thread,

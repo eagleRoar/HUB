@@ -102,6 +102,7 @@ void OldDataMigration(void)
                 rt_memset((u8 *)&newMonitor->device[i].port[port].cycle1, 0, sizeof(type_cycleOld_t));
                 rt_memcpy((u8 *)&newMonitor->device[i].port[port].manual, (u8 *)&device.port[port].manual, sizeof(type_manualOld_t));
                 rt_memcpy((u8 *)&newMonitor->device[i].port[port].ctrl, (u8 *)&device.port[port].ctrl, sizeof(type_ctrlOld_t));
+                newMonitor->device[i].port[port].weekDayEn = 0x7F;
             }
             newMonitor->device[i]._hvac.manualOnMode = device._hvac.manualOnMode;
             newMonitor->device[i]._hvac.fanNormallyOpen = device._hvac.fanNormallyOpen;
@@ -177,11 +178,77 @@ void OldDataMigration(void)
 //                oldSet.stageSet._list[0].duration_day, newSet->stageSet._list[0].duration_day);
         rt_memcpy((u8 *)&newSet->sysPara, (u8 *)&oldSet.sysPara, sizeof(sys_paraOld_t));
 
+#if(HUB_SELECT == HUB_ENVIRENMENT)
+        newSet->sysWarn.dayTempMin = oldSet.sysWarn.dayTempMin;
+        newSet->sysWarn.dayTempMax = oldSet.sysWarn.dayTempMax;
+        newSet->sysWarn.dayTempEn = oldSet.sysWarn.dayTempEn;
+        newSet->sysWarn.dayTempBuzz = ON;
+        newSet->sysWarn.dayhumidMin = oldSet.sysWarn.dayhumidMin;
+        newSet->sysWarn.dayhumidMax = oldSet.sysWarn.dayhumidMax;
+        newSet->sysWarn.dayhumidEn = oldSet.sysWarn.dayhumidEn;
+        newSet->sysWarn.dayhumidBuzz = ON;
+        newSet->sysWarn.dayCo2Min = oldSet.sysWarn.dayCo2Min;
+        newSet->sysWarn.dayCo2Max = oldSet.sysWarn.dayCo2Max;
+        newSet->sysWarn.dayCo2En = oldSet.sysWarn.dayCo2En;
+        newSet->sysWarn.dayCo2Buzz = ON;
+        newSet->sysWarn.dayVpdMin = oldSet.sysWarn.dayVpdMin;
+        newSet->sysWarn.dayVpdMax = oldSet.sysWarn.dayVpdMax;
+        newSet->sysWarn.dayVpdEn = oldSet.sysWarn.dayVpdEn;
+        newSet->sysWarn.dayParMin = oldSet.sysWarn.dayParMin;
+        newSet->sysWarn.dayParMax = oldSet.sysWarn.dayParMax;
+        newSet->sysWarn.dayParEn= oldSet.sysWarn.dayParEn;
+
+        newSet->sysWarn.nightTempMin = oldSet.sysWarn.nightTempMin;
+        newSet->sysWarn.nightTempMax = oldSet.sysWarn.nightTempMax;
+        newSet->sysWarn.nightTempEn = oldSet.sysWarn.nightTempEn;
+        newSet->sysWarn.nightTempBuzz = ON;
+        newSet->sysWarn.nighthumidMin = oldSet.sysWarn.nighthumidMin;
+        newSet->sysWarn.nighthumidMax = oldSet.sysWarn.nighthumidMax;
+        newSet->sysWarn.nighthumidEn = oldSet.sysWarn.nighthumidEn;
+        newSet->sysWarn.nighthumidBuzz = ON;
+        newSet->sysWarn.nightCo2Min = oldSet.sysWarn.nightCo2Min;
+        newSet->sysWarn.nightCo2Max = oldSet.sysWarn.nightCo2Max;
+        newSet->sysWarn.nightCo2En = oldSet.sysWarn.nightCo2En;
+        newSet->sysWarn.nightCo2Buzz = ON;
+        newSet->sysWarn.nightVpdMin = oldSet.sysWarn.nightVpdMin;
+        newSet->sysWarn.nightVpdMax = oldSet.sysWarn.nightVpdMax;
+        newSet->sysWarn.nightVpdEn = oldSet.sysWarn.nightVpdEn;
+
+        newSet->sysWarn.co2TimeoutEn = oldSet.sysWarn.co2TimeoutEn;
+        newSet->sysWarn.co2Timeoutseconds = oldSet.sysWarn.co2Timeoutseconds;
+        newSet->sysWarn.tempTimeoutEn = oldSet.sysWarn.tempTimeoutEn;
+        newSet->sysWarn.tempTimeoutseconds = oldSet.sysWarn.tempTimeoutseconds;
+        newSet->sysWarn.humidTimeoutEn = oldSet.sysWarn.humidTimeoutEn;
+        newSet->sysWarn.humidTimeoutseconds = oldSet.sysWarn.humidTimeoutseconds;
+        newSet->sysWarn.lightEn = oldSet.sysWarn.lightEn;
+        newSet->sysWarn.o2ProtectionEn = oldSet.sysWarn.o2ProtectionEn;
+#elif(HUB_SELECT == HUB_IRRIGSTION)
+        newSet->sysWarn.phEn = oldSet.sysWarn.phEn;
+        newSet->sysWarn.phBuzz = ON;
+        newSet->sysWarn.ecEn = oldSet.sysWarn.ecEn;
+        newSet->sysWarn.ecBuzz = ON;
+        newSet->sysWarn.wtEn = oldSet.sysWarn.wtEn;
+        newSet->sysWarn.wtBuzz = ON;
+        newSet->sysWarn.wlEn = oldSet.sysWarn.wlEn;
+        newSet->sysWarn.wlBuzz = ON;
+        newSet->sysWarn.mmEn = oldSet.sysWarn.mmEn;
+        newSet->sysWarn.mmBuzz = ON;
+        newSet->sysWarn.meEn = oldSet.sysWarn.meEn;
+        newSet->sysWarn.meBuzz = ON;
+        newSet->sysWarn.mtEn = oldSet.sysWarn.mtEn;
+        newSet->sysWarn.mtBuzz = ON;
+        newSet->sysWarn.autoFillTimeout = oldSet.sysWarn.autoFillTimeout;
+#endif
+        newSet->sysWarn.smokeEn = oldSet.sysWarn.smokeEn;
+        newSet->sysWarn.waterEn = oldSet.sysWarn.waterEn;
+        newSet->sysWarn.offlineEn = oldSet.sysWarn.offlineEn;
+
         rt_memcpy(newSet->co2Cal, oldSet.co2Cal, sizeof(oldSet.co2Cal));
 //        for(int port = 0; port < 20; port++)
 //        {
 //            printf("......co2 %d , value = %d\r\n",port,newSet->co2Cal[port]);
 //        }
+        newSet->sensorMainType = SENSOR_CTRL_AVE;
         for(int port = 0; port < 20; port++)
         {
             newSet->ph[port].ph_a = oldSet.ph[port].ph_a;

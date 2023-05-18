@@ -1511,4 +1511,36 @@ u8 GetLineType(type_monitor_t *monitor)
     }
 }
 
+int GetSensorMainValue(type_monitor_t *monitor, u8 func)
+{
+    int         value       = 0;
+    sys_set_t   *sys_set    = GetSysSet();
+
+    if(SENSOR_CTRL_AVE == sys_set->sensorMainType)
+    {
+        value = getSensorDataByFunc(monitor, func);
+    }
+    else if(SENSOR_CTRL_MAIN == sys_set->sensorMainType)
+    {
+        sensor_t *sensor = GetMainSensorByAddr(monitor, BHS_TYPE);
+        if(sensor)
+        {
+            for(int i = 0; i < sensor->storage_size; i++)
+            {
+                if(func == sensor->__stora[i].func)
+                {
+                    value = sensor->__stora[i].value;
+                    break;
+                }
+            }
+        }
+        else
+        {
+            value = VALUE_NULL;
+        }
+    }
+
+    return value;
+}
+
 #endif /* APPLICATIONS_INFORMATIONMANAGE_MODULE_MODULE_C_ */

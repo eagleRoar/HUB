@@ -44,6 +44,7 @@ static void InitParameter(void)
     initSysRecipe();
     initSysTank();
     initSysSet();
+    initCloudProtocol();
     GetSnName(GetSysSet()->hub_info.name, 13);
 }
 

@@ -66,7 +66,22 @@ typedef     struct eth_heart                eth_heart_t;
 #define     AUTO_DIMMING                    1200
 #define     MANUAL_TIME_DEFAULT             10
 
+#define     MONITOR_VER                     1
+#define     SYS_SET_VER                     1
+#define     SYS_RECIPE_VER                  1
+#define     SYS_TANK_VER                    1
+
 #pragma pack(1)
+
+//各个结构体版本
+typedef struct system_ver{
+    char hub_ver[20];
+    int monitor_ver;
+    int sys_set_ver;
+    int recipe_ver;
+    int tank_ver;
+}sys_ver_t;
+
 typedef struct hubOld{
     u16 crc;
     char name[HUB_NAMESZ];
@@ -144,7 +159,7 @@ typedef struct cycleOld
     u16     startAt;                                //开启时间点 8:00 8*60=480
     int     duration;                               //持续时间 秒
     int     pauseTime;                              //停止时间 秒
-    u16     times;
+    u16     times;//旧的结构体
 }type_cycleOld_t;
 
 struct cycle
