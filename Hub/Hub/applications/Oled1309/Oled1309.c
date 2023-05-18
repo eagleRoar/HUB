@@ -543,7 +543,7 @@ static void pageProgram(u8 page)
 
         case PH_CALIBRATE_PAGE:
 
-            PhCalibratePage(&pageSelect, getPhCalByuuid(now_phec_uuid));//Justin debug
+            PhCalibratePage(&pageSelect, getPhCalByuuid(now_phec_uuid));
             if(ON == pageSelect.select)
             {
                 pageSelect.select = OFF;
@@ -551,7 +551,7 @@ static void pageProgram(u8 page)
             break;
 
         case EC_CALIBRATE_PAGE:
-            EcCalibratePage(&pageSelect, getEcCalByuuid(now_phec_uuid));//Justin debug
+            EcCalibratePage(&pageSelect, getEcCalByuuid(now_phec_uuid));
             if(ON == pageSelect.select)
             {
                 pageSelect.select = OFF;
@@ -569,11 +569,11 @@ static void pageProgram(u8 page)
         case FA_DEVICE_PAGE:
             deviceStatePage_fac(&pageSelect, GetMonitor(), 3);
             break;
-
+#if(HUB_SELECT == HUB_ENVIRENMENT)
         case FA_LINE_PAGE:
             lineStatePage_fac(&pageSelect, GetMonitor(), 3);
             break;
-
+#endif
         case FA_SD_PAGE:
             SDState_Fac();
             if(ON == pageSelect.select)

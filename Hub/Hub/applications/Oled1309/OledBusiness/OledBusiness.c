@@ -1808,7 +1808,7 @@ void phecOnlinePage(u64 *pageInfo, type_page_t *page, type_monitor_t *monitor, u
             }
         }
 
-        //4.判断点击事件//Justin debug
+        //4.判断点击事件
         if(ON == page->select)
         {
             if(F_S_PH == func)
@@ -1955,6 +1955,7 @@ void SensorStatePage_fac(type_monitor_t *monitor, u8 canShow)
     }
 }
 
+#if(HUB_SELECT == HUB_ENVIRENMENT)
 void lineStatePage_fac(type_page_t *page, type_monitor_t *monitor, u8 canShow)
 {
 
@@ -2063,6 +2064,7 @@ void lineStatePage_fac(type_page_t *page, type_monitor_t *monitor, u8 canShow)
         }
     }
 }
+#endif
 
 void deviceStatePage_fac(type_page_t *page, type_monitor_t *monitor, u8 canShow)
 {
@@ -2283,6 +2285,7 @@ void closeDevices_Fa(type_monitor_t *monitor)
     }
 }
 
+#if(HUB_SELECT == HUB_ENVIRENMENT)
 void lineStage_Fa(type_monitor_t *monitor)
 {
     u8              index               = 0;
@@ -2339,6 +2342,17 @@ void lineStageClose_Fa(type_monitor_t *monitor)
         }
     }
 }
+
+#else
+void lineStage_Fa(type_monitor_t *monitor)
+{
+}
+
+void lineStageClose_Fa(type_monitor_t *monitor)
+{
+}
+
+#endif
 
 void openDryFac(type_monitor_t *monitor)
 {

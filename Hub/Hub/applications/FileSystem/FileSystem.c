@@ -386,7 +386,7 @@ void DataImport(void)
     GetRecipeListFromFile(GetSysRecipt(), backup_recipe_file);
     SaveRecipeListToFile(GetSysRecipt(), new_recipe_file);
 #elif(HUB_IRRIGSTION == HUB_SELECT)
-    GetSysTankFromFile(GetSysTank(), back_tank_file);
+    GetSysTankFromFile(GetSysTank(), backup_tank_file);
     SaveSysTankToFile(GetSysTank(), new_tank_file);
 #endif
 }
@@ -495,17 +495,18 @@ void FileSystemInit(void)
     {
         CreateDirectory(backupFile);
     }
+
+    //将sd挂载
+    if (0 != dfs_mount(SDCARD_MEMORY_NAME, "/backup", "elm", 0, 0))
+    {
+        //flash 格式化
+        if(0 == dfs_mkfs("elm", SDCARD_MEMORY_NAME))
+        {
+            dfs_mount(SDCARD_MEMORY_NAME, "/backup", "elm", 0, 0);
+        }
+    }
     else
     {
-        //将sd挂载
-        if (0 != dfs_mount(SDCARD_MEMORY_NAME, "/backup", "elm", 0, 0))
-        {
-            //flash 格式化
-            if(0 == dfs_mkfs("elm", SDCARD_MEMORY_NAME))
-            {
-                dfs_mount(SDCARD_MEMORY_NAME, "/backup", "elm", 0, 0);
-            }
-        }
     }
 
     //2.检查是否存在主存储区文件夹
@@ -533,7 +534,7 @@ void FileSystemInit(void)
             SaveSysTankToFile(GetSysTank(), new_tank_file);
 #endif
 
-            LOG_W("OldDataMigration get old data to new module");
+            rt_kprintf("OldDataMigration get old data to new module\r\n");
         }
     }
     else

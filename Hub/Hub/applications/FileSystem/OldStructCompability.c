@@ -178,16 +178,16 @@ void OldDataMigration(void)
         rt_memcpy((u8 *)&newSet->sysPara, (u8 *)&oldSet.sysPara, sizeof(sys_paraOld_t));
 
         rt_memcpy(newSet->co2Cal, oldSet.co2Cal, sizeof(oldSet.co2Cal));
-        for(int port = 0; port < 20; port++)
-        {
-            printf("......co2 %d , value = %d\r\n",port,newSet->co2Cal[port]);//Justin
-        }
+//        for(int port = 0; port < 20; port++)
+//        {
+//            printf("......co2 %d , value = %d\r\n",port,newSet->co2Cal[port]);
+//        }
         for(int port = 0; port < 20; port++)
         {
             newSet->ph[port].ph_a = oldSet.ph[port].ph_a;
             newSet->ph[port].ph_b = oldSet.ph[port].ph_b;
             newSet->ph[port].uuid = oldSet.ph[port].uuid;
-            printf("ph %d a = %f, b = %f, uuid = %d\r\n",port,newSet->ph[port].ph_a,newSet->ph[port].ph_b,newSet->ph[port].uuid);
+//            printf("ph %d a = %f, b = %f, uuid = %d\r\n",port,newSet->ph[port].ph_a,newSet->ph[port].ph_b,newSet->ph[port].uuid);
         }
 
         for(int port = 0; port < 20; port++)
@@ -195,12 +195,12 @@ void OldDataMigration(void)
             newSet->ec[port].ec_a = oldSet.ec[port].ec_a;
             newSet->ec[port].ec_b = oldSet.ec[port].ec_b;
             newSet->ec[port].uuid = oldSet.ec[port].uuid;
-            printf("--ec %d a = %f, b = %f, uuid = %d\r\n",port,newSet->ph[port].ph_a,newSet->ph[port].ph_b,newSet->ph[port].uuid);
+//            printf("--ec %d a = %f, b = %f, uuid = %d\r\n",port,newSet->ph[port].ph_a,newSet->ph[port].ph_b,newSet->ph[port].uuid);
         }
         newSet->startCalFlg = oldSet.startCalFlg;
         rt_memcpy((u8 *)&newSet->hub_info, (u8 *)&oldSet.hub_info, sizeof(hubOld_t));
         newSet->ver = HUB_VER_NO;
-        printf("hub name = %s , %s\r\n",oldSet.hub_info.name, newSet->hub_info.name);//Justin
+//        printf("hub name = %s , %s\r\n",oldSet.hub_info.name, newSet->hub_info.name);
     }
 
     //3.获取recipe

@@ -54,6 +54,7 @@ int main(void)
     type_uart_class *deviceObj          = GetDeviceObject();
 #if(HUB_SELECT == HUB_ENVIRENMENT)
     type_uart_class *lineObj            = GetLightObject();
+    line_t          *line               = RT_NULL;
 #endif
     u8              *buf                = RT_NULL;
     type_sys_time   time;
@@ -229,15 +230,27 @@ int main(void)
                     tempProgram(GetMonitor(), *deviceObj);
                     co2Program(GetMonitor(), *deviceObj, 1000);
                     humiProgram(GetMonitor(), *deviceObj);
-                    if(1 == GetLineType(GetMonitor()))
+
+                    for(int i = 0; i < GetMonitor()->line_size; i++)
                     {
-                        lineProgram(GetMonitor(), 0, *lineObj, 1000);
+                        line = &GetMonitor()->line[i];
+                        if(1 == line->lineNo)
+                        {
+                            if(LINE_4_TYPE == line->type)
+                            {
+                                line_4Program(line, *lineObj);
+                            }
+                            else
+                            {
+                                lineProgram(GetMonitor(), line, 0, *lineObj, 1000);
+                            }
+                        }
+                        else if(2 == line->lineNo)
+                        {
+                            lineProgram(GetMonitor(), line, 1, *lineObj, 1000);
+                        }
                     }
-                    else if(2 == GetLineType(GetMonitor()))
-                    {
-                        line_4Program(&GetMonitor()->line[0], *lineObj);
-                    }
-                    lineProgram(GetMonitor(), 1, *lineObj, 1000);
+
                     timmerProgram(GetMonitor(), *deviceObj);
                     Light12Program(GetMonitor(), *deviceObj);
                 }

@@ -1163,7 +1163,7 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
   *         you can add your own implementation.
   * @retval None
   */
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)//Justin debug
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)//屏蔽以下函数否则导致发送数据被分帧
 {
     struct stm32_uart *uart;
     RT_ASSERT(huart != NULL);
@@ -1178,7 +1178,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)//Justin debug
   *         and you can add your own implementation.
   * @retval None
   */
-void HAL_UART_RxHalfCpltCallback(UART_HandleTypeDef *huart)//Justin debug
+void HAL_UART_RxHalfCpltCallback(UART_HandleTypeDef *huart)//屏蔽以下函数否则导致发送数据被分帧
 {
     struct stm32_uart *uart;
     RT_ASSERT(huart != NULL);

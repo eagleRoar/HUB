@@ -590,7 +590,7 @@ typedef struct sysSetOld
     u8              dayOrNight;//白天黑夜 白天0 黑夜1
     u8              warn[34];
     u8              offline[16];
-    u16             warn_value[34];//该值主要为了显示使用 数据//Justin 仅仅测试
+    u16             warn_value[34];//该值主要为了显示使用 数据
     int             co2Cal[20];   //co2校准值
     struct phCalOld{
         float ph_a;

@@ -1415,6 +1415,14 @@ rt_err_t SetLineDefault(type_monitor_t *monitor, u32 uuid, u8 type, u8 addr)
                         }
                     }
                 }
+                else if(LINE1_TYPE == type)
+                {
+                    line.lineNo = 1;
+                }
+                else if(LINE2_TYPE == type)
+                {
+                    line.lineNo = 2;
+                }
             }
             else if(LINE_4_TYPE == type)
             {

@@ -2162,10 +2162,11 @@ void line_4Program(line_t *line, type_uart_class lineUart)
             ctrlValue[i] = (stage[i] << 8) | res;
         }
     }
+
     lineUart.Line4Ctrl(line, ctrlValue);
 }
 
-void lineProgram(type_monitor_t *monitor, u8 line_no, type_uart_class lineUart, u16 mPeroid)
+void lineProgram(type_monitor_t *monitor, line_t *line, u8 line_no, type_uart_class lineUart, u16 mPeroid)
 {
     u8              state           = 0;
     u8              value           = 0;
@@ -2175,7 +2176,6 @@ void lineProgram(type_monitor_t *monitor, u8 line_no, type_uart_class lineUart, 
     time_t          start_time      = 0;    //化开始循环时间为hour + minute +second 格式
     time_t          period_time     = 0;    //化一个循环时间为hour + minute +second 格式
     time_t          temp_time       = 0;
-    line_t          *line           = RT_NULL;
     proLine_t       line_set;
     type_sys_time   time;
     u16             temperature     = 0;
@@ -2185,12 +2185,12 @@ void lineProgram(type_monitor_t *monitor, u8 line_no, type_uart_class lineUart, 
     //1.获取灯光设置
     if(0 == line_no)
     {
-        line = &monitor->line[0];
+//        line = &monitor->line[0];
         GetNowSysSet(RT_NULL, RT_NULL, RT_NULL, &line_set, RT_NULL, RT_NULL, RT_NULL);
     }
     else if(1 == line_no)
     {
-        line = &monitor->line[1];
+//        line = &monitor->line[1];
         GetNowSysSet(RT_NULL, RT_NULL, RT_NULL, RT_NULL, RT_NULL, &line_set, RT_NULL);
     }
     else
@@ -2566,7 +2566,7 @@ void lineProgram(type_monitor_t *monitor, u8 line_no, type_uart_class lineUart, 
             }
         }
 
-
+//Justin debug 因为添加了指定传感器和平均传感器的概率因此要改
         for(u8 index = 0; index < monitor->sensor_size; index++)
         {
             for(u8 item = 0; item < monitor->sensor[index].storage_size; item++)
@@ -2616,14 +2616,14 @@ void lineProgram(type_monitor_t *monitor, u8 line_no, type_uart_class lineUart, 
     {
         if((0 == line_no) && (1 == GetLineType(GetMonitor())))
         {
-            if(LINE1_TYPE == GetMonitor()->line[i].type)
+            if((line_no + 1) == GetMonitor()->line[i].lineNo)
             {
                 lineUart.LineCtrl(&GetMonitor()->line[i], 0, state, value);
             }
         }
         else if(1 == line_no)
         {
-            if(LINE2_TYPE == GetMonitor()->line[i].type)
+            if((line_no + 1) == GetMonitor()->line[i].lineNo)
             {
                 lineUart.LineCtrl(&GetMonitor()->line[i], 0, state, value);
             }
@@ -2713,6 +2713,26 @@ void Light12Program(type_monitor_t *monitor, type_uart_class deviceUart)
                             state = OFF;
                         }
                     }
+                }
+
+                //判断是否允许今日使能
+                time_t nowTime = getTimeStamp();
+                u8 today = getTimeStampByDate(&nowTime)->tm_wday;
+                int day = 0;
+                for(day = 0; day < 7; day++)
+                {
+                   if(today == (day + 1))
+                   {
+                       if((device->port[port].weekDayEn >> day) & 0x01)
+                       {
+                           break;
+                       }
+                   }
+                }
+
+                if(7 == day)
+                {
+                    state = OFF;
                 }
             }
             device->port[port].ctrl.d_state = state;

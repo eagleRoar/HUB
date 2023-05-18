@@ -402,7 +402,7 @@ void HAL_ETH_ErrorCallback(ETH_HandleTypeDef *heth)
 enum {
     PHY_LINK        = (1 << 0),
     PHY_100M        = (1 << 1),
-    PHY_FULL_DUPLEX_1 = (1 << 2),//Justin 因为重复命名提示错误，故修改名字
+    PHY_FULL_DUPLEX_1 = (1 << 2),
 };
 
 static void phy_linkchange()
