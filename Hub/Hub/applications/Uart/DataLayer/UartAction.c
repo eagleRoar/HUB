@@ -1690,7 +1690,7 @@ void humiProgram(type_monitor_t *monitor, type_uart_class uart)
 
 void tempProgram(type_monitor_t *monitor, type_uart_class uart)
 {
-    int             tempNow             = GetSensorMainValue(monitor, F_S_TEMP);//Justin debug 未测试
+    int             tempNow             = GetSensorMainValue(monitor, F_S_TEMP);
     u16             coolTarge           = 0;
     u16             HeatTarge           = 0;
     proTempSet_t    tempSet;

@@ -34,7 +34,7 @@ time_t          backlightTime;
 u8              factory_mode        = NO;
 u8      next_flag   = NO;
 
-__attribute__((section(".ccmbss"))) u8 oled_task[1024*3];
+__attribute__((section(".ccmbss"))) u8 oled_task[1024 * 3];
 __attribute__((section(".ccmbss"))) struct rt_thread oled_thread;
 
 extern void PhCalibratePage(type_page_t *, ph_cal_t *);

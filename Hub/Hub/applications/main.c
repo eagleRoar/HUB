@@ -25,6 +25,7 @@
 #include "FileSystem.h"
 #include "UartAction.h"
 #include "CloudProtocol.h"
+#include "qrcode.h"
 
 #define DBG_TAG "main"
 #define DBG_LVL DBG_LOG

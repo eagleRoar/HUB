@@ -937,7 +937,7 @@ static void KeepConnect(type_monitor_t *monitor)
                 rt_free(keyValue.dataSegment.data);
             }
         }
-//            else if(CON_FAIL == monitor->device[i].conn_state)//要考虑刚开始的时候全部都是失联的情况 Justin
+//            else if(CON_FAIL == monitor->device[i].conn_state)//要考虑刚开始的时候全部都是失联的情况
 //            {
 //
 //            }

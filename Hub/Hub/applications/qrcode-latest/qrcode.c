@@ -762,7 +762,7 @@ int8_t qrcode_initBytes(QRCode *qrcode, uint8_t *modules, uint8_t version, uint8
     struct BitBucket codewords;
     uint8_t *codewordBytes = (uint8_t *)rt_calloc(1, bb_getBufferSizeBytes(moduleCount));
     if (!codewordBytes) {
-        LOG_W("No Memory");
+        rt_kprintf("qrcode_initBytes No Memory\r\n");
         return -RT_ENOMEM;
     }
     bb_initBuffer(&codewords, codewordBytes, (int32_t)bb_getBufferSizeBytes(moduleCount));
@@ -791,7 +791,7 @@ int8_t qrcode_initBytes(QRCode *qrcode, uint8_t *modules, uint8_t version, uint8
     BitBucket isFunctionGrid;
     uint8_t *isFunctionGridBytes = (uint8_t *)rt_calloc(1, bb_getGridSizeBytes(size));
     if (!isFunctionGridBytes) {
-        LOG_W("No Memory");
+        rt_kprintf("qrcode_initBytes No Memory 1\r\n");
         return -RT_ENOMEM;
     }
     bb_initGrid(&isFunctionGrid, isFunctionGridBytes, size);
