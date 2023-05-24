@@ -189,6 +189,12 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
                 set->warn[WARN_TEMP_TIMEOUT - 1] = OFF;
             }
         }
+        else
+        {
+            set->warn[WARN_TEMP_LOW - 1] = OFF;
+            set->warn[WARN_TEMP_HIGHT - 1] = OFF;
+            set->warn[WARN_TEMP_TIMEOUT - 1] = OFF;
+        }
 
         //2.湿度
         data = getSensorDataByFunc(monitor, F_S_HUMI);
@@ -279,6 +285,12 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
                 set->warn[WARN_HUMI_TIMEOUT - 1] = OFF;
             }
         }
+        else
+        {
+            set->warn[WARN_HUMI_LOW - 1] = OFF;
+            set->warn[WARN_HUMI_HIGHT - 1] = OFF;
+            set->warn[WARN_HUMI_TIMEOUT - 1] = OFF;
+        }
 
         //3.CO2
         data = getSensorDataByFunc(monitor, F_S_CO2);
@@ -364,6 +376,12 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
                 set->warn[WARN_CO2_TIMEOUT - 1] = OFF;
             }
         }
+        else
+        {
+            set->warn[WARN_CO2_LOW - 1] = OFF;
+            set->warn[WARN_CO2_HIGHT - 1] = OFF;
+            set->warn[WARN_CO2_TIMEOUT - 1] = OFF;
+        }
 
         //4.vpd
         if(ON == set->sysWarn.dayVpdEn)
@@ -437,6 +455,11 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
                 set->warn[WARN_PAR_LOW - 1] = OFF;
                 set->warn[WARN_PAR_HIGHT - 1] = OFF;
             }
+        }
+        else
+        {
+            set->warn[WARN_PAR_LOW - 1] = OFF;
+            set->warn[WARN_PAR_HIGHT - 1] = OFF;
         }
     }
     else if(NIGHT_TIME == set->dayOrNight)
@@ -526,6 +549,12 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
                 set->warn[WARN_TEMP_TIMEOUT - 1] = OFF;
             }
         }
+        else
+        {
+            set->warn[WARN_TEMP_LOW - 1] = OFF;
+            set->warn[WARN_TEMP_HIGHT - 1] = OFF;
+            set->warn[WARN_TEMP_TIMEOUT - 1] = OFF;
+        }
 
         //2.湿度
         data = getSensorDataByFunc(monitor, F_S_HUMI);
@@ -609,6 +638,12 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
             {
                 set->warn[WARN_HUMI_TIMEOUT - 1] = OFF;
             }
+        }
+        else
+        {
+            set->warn[WARN_HUMI_LOW - 1] = OFF;
+            set->warn[WARN_HUMI_HIGHT - 1] = OFF;
+            set->warn[WARN_HUMI_TIMEOUT - 1] = OFF;
         }
 
         //3.CO2
@@ -694,6 +729,12 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
             {
                 set->warn[WARN_CO2_TIMEOUT - 1] = OFF;
             }
+        }
+        else
+        {
+            set->warn[WARN_CO2_LOW - 1] = OFF;
+            set->warn[WARN_CO2_HIGHT - 1] = OFF;
+            set->warn[WARN_CO2_TIMEOUT - 1] = OFF;
         }
 
         //4.vpd

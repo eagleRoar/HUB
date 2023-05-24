@@ -317,7 +317,6 @@ int main(void)
                     buf = rt_malloc(1024 * 2);
                     if(RT_NULL != buf)
                     {
-                        //rt_memset(package.data, ' ', SEND_ETH_BUFFSZ);
                         rt_memcpy(buf, HEAD_CODE, 4);
                         if(RT_EOK == SendDataToCloud(RT_NULL, CMD_HUB_REPORT, 0 , 0, buf + sizeof(eth_page_head), &length, NO, 0))
                         {
