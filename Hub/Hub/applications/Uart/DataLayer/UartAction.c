@@ -1776,7 +1776,7 @@ void dimmingLineCtrl(u8 *stage, u16 ppfd)
 {
     //stage 范围在10 - 115之间，一档为5 %
     int         par         = 0;
-    static u8   STAGE_VALUE = 5;
+    static u8   STAGE_VALUE = 1;
 
     par = getSensorDataByFunc(GetMonitor(), F_S_PAR);
     if(VALUE_NULL != par)

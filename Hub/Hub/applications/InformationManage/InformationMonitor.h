@@ -71,6 +71,8 @@ typedef     struct eth_heart                eth_heart_t;
 #define     SYS_RECIPE_VER                  1
 #define     SYS_TANK_VER                    1
 
+
+//如果修改了结构体要修改相应的结构体的版本号
 #pragma pack(1)
 
 //各个结构体版本
