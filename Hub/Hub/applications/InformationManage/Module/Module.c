@@ -1442,7 +1442,7 @@ rt_err_t SetLineDefault(type_monitor_t *monitor, u32 uuid, u8 type, u8 addr)
 
                 for(i = 0; i < monitor->line_size; i++)
                 {
-                    if(1 == monitor->line[i].lineNo)
+                    if((1 == monitor->line[i].lineNo) && (LINE_TYPE == monitor->line[i].type))
                     {
                         break;
                     }

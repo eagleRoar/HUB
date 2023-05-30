@@ -663,6 +663,14 @@ enum
     CAL_FAIL
 };
 
+//使用的服务器网址
+enum
+{
+    USE_AMAZON = 0x01,
+    USE_ALIYUN,
+    USE_IP,
+};
+
 /******************************************* 类型定义 END*****************************/
 
 #endif /* APPLICATIONS_INFORMATIONMANAGE_INFORMATIONMONITOR_H_ */

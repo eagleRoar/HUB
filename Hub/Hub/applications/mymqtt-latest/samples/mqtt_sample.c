@@ -14,6 +14,23 @@
 #include "Gpio.h"
 #include "cJSON.h"
 
+__attribute__((section(".ccmbss"))) u8 mqtt_url_use;
+
+void InitMqttUrlUse(void)
+{
+    mqtt_url_use = USE_AMAZON;
+}
+
+u8 GetMqttUse(void)
+{
+    return mqtt_url_use;
+}
+
+void setMqttUse(u8 use)
+{
+    mqtt_url_use = use;
+}
+
 /**
  * MQTT URI farmat:
  * domain mode
@@ -138,7 +155,7 @@ int mqtt_start(void)
         client.condata.will.message.cstring = MQTT_WILLMSG;
 
         /* malloc buffer. */
-        client.buf_size = client.readbuf_size = /*1024*/1024*3;
+        client.buf_size = client.readbuf_size = /*1024*/1024 * 3;
         client.buf = rt_calloc(1, client.buf_size);
         client.readbuf = rt_calloc(1, client.readbuf_size);
         if (!(client.buf && client.readbuf))
@@ -189,89 +206,4 @@ int mqtt_start(void)
     return 0;
 }
 
-//static int mqtt_stop(int argc, char **argv)
-//{
-//    if (argc != 1)
-//    {
-//        rt_kprintf("mqtt_stop    --stop mqtt worker thread and free mqtt client object.\n");
-//    }
-//
-//    is_started = 0;
-//
-//    return paho_mqtt_stop(&client);
-//}
-
-//static int mqtt_publish(int argc, char **argv)
-//{
-//    char name[20];
-//
-//    if (is_started == 0)
-//    {
-//        LOG_E("mqtt client is not connected.");
-//        return -1;
-//    }
-//
-//    if (argc == 2)
-//    {
-//        rt_memset(name, ' ', 20);
-//        GetSnName(name, 12);
-//        strcpy(name + 11, "/reply");
-//        paho_mqtt_publish(&client, QOS1, /*MQTT_PUBTOPIC*/name, argv[1], strlen(argv[1]));
-//    }
-//    else if (argc == 3)
-//    {
-//        paho_mqtt_publish(&client, QOS1, argv[1], argv[2],strlen(argv[2]));
-//    }
-//    else
-//    {
-//        rt_kprintf("mqtt_publish <topic> [message]  --mqtt publish message to specified topic.\n");
-//        return -1;
-//    }
-//
-//    return 0;
-//}
-
-//static void mqtt_new_sub_callback(mqtt_client *client, message_data *msg_data)
-//{
-//    *((char *)msg_data->message->payload + msg_data->message->payloadlen) = '\0';
-//    LOG_D("mqtt new subscribe callback: %.*s %.*s",
-//               msg_data->topic_name->lenstring.len,
-//               msg_data->topic_name->lenstring.data,
-//               msg_data->message->payloadlen,
-//               (char *)msg_data->message->payload);
-//}
-
-//static int mqtt_subscribe(int argc, char **argv)
-//{
-//    if (argc != 2)
-//    {
-//        rt_kprintf("mqtt_subscribe [topic]  --send an mqtt subscribe packet and wait for suback before returning.\n");
-//        return -1;
-//    }
-//
-//	if (is_started == 0)
-//    {
-//        LOG_E("mqtt client is not connected.");
-//        return -1;
-//    }
-//
-//    return paho_mqtt_subscribe(&client, QOS1, argv[1], mqtt_new_sub_callback);
-//}
-
-//static int mqtt_unsubscribe(int argc, char **argv)
-//{
-//    if (argc != 2)
-//    {
-//        rt_kprintf("mqtt_unsubscribe [topic]  --send an mqtt unsubscribe packet and wait for suback before returning.\n");
-//        return -1;
-//    }
-//
-//	if (is_started == 0)
-//    {
-//        LOG_E("mqtt client is not connected.");
-//        return -1;
-//    }
-//
-//    return paho_mqtt_unsubscribe(&client, argv[1]);
-//}
 

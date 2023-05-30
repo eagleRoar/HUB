@@ -30,7 +30,7 @@
 #include "FileSystem.h"
 
 __attribute__((section(".ccmbss"))) type_monitor_t monitor;
-__attribute__((section(".ccmbss"))) u8 uart_task[1024 * 6];
+__attribute__((section(".ccmbss"))) u8 uart_task[1024 * /*6*/4];
 __attribute__((section(".ccmbss"))) struct rt_thread uart_thread;
 
 struct rx_msg uart1_msg;                      //接收串口数据以及相关消息
@@ -220,6 +220,7 @@ static void specialRegister(type_monitor_t *monitor)
                     getRegisterData(data, 13, 0x00000000, PAR_TYPE);
                     SetSensorDefault(monitor, 0x00000000, PAR_TYPE, 0x18);
                 }
+
 #elif (HUB_SELECT == HUB_IRRIGSTION)
                 if(RT_ERROR == CheckSensorCorrect(monitor, 0x00000001, 0xE0, PHEC_TYPE))
                 {
@@ -330,7 +331,7 @@ void SensorUart2TaskEntry(void* parameter)
         time1S = TimerTask(&time1S, 1000/UART_PERIOD, &Timer1sTouch);                       //1s定时任务
         time300mS = TimerTask(&time300mS, 300/UART_PERIOD, &Timer300msTouch);               //300ms定时任务
         time10S = TimerTask(&time10S, 10000/UART_PERIOD, &Timer10sTouch);                   //10s定时任务
-        time10M = TimerTask(&time10M, 600000/UART_PERIOD, &Timer10mTouch);                   //10m定时任务
+        time10M = TimerTask(&time10M, 600000/UART_PERIOD, &Timer10mTouch);                  //10m定时任务
 
         //1.文件系统如果没有准备好
         if(YES != GetFileSystemState())

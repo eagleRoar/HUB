@@ -60,6 +60,8 @@ EC_ONLINE_PAGE,
 EC_CALIBRATE_PAGE,
 DATA_EXPORT,            //数据导出
 DATA_IMPORT,            //数据导入
+SERVER_URL,             //选择服务器网址
+USE_SERVER_IP,
 //工厂版本
 FA_SENSOR_PAGE,
 FA_DEVICE_PAGE,

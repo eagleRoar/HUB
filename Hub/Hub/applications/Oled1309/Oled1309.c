@@ -212,7 +212,8 @@ void pageSelectSet(u8 show,u8 home, u8 max)
 
 static void pageSetting(u8 page)
 {
-    phec_sensor_t *phec;
+    phec_sensor_t   *phec;
+    u8              temp = 0;
 
     switch (page)
     {
@@ -221,7 +222,7 @@ static void pageSetting(u8 page)
             break;
         case SETTING_PAGE:
 #if(HUB_SELECT == HUB_ENVIRENMENT)
-            pageSelectSet(YES, 1, 8);
+            pageSelectSet(YES, 1, 9);
 #elif(HUB_SELECT == HUB_IRRIGSTION)
             pageSelectSet(YES, 1, 7);
 #endif
@@ -299,6 +300,25 @@ static void pageSetting(u8 page)
             pageSelectSet(NO, 1, 5);
             break;
 
+        case SERVER_URL:
+
+            switch(GetMqttUse())
+            {
+                case USE_AMAZON:
+                    temp = 1;
+                    break;
+                case USE_ALIYUN:
+                    temp = 2;
+                    break;
+                case USE_IP:
+                    temp = 3;
+                    break;
+                default :
+                    temp = 1;
+                    break;
+            }
+            pageSelectSet(NO, temp, 8);
+            break;
         default:
             break;
     }
@@ -377,6 +397,11 @@ static void pageProgram(u8 page)
                 {
                     pageInfor <<= 8;
                     pageInfor |= DATA_IMPORT;
+                }
+                else if(9 == pageSelect.cusor)
+                {
+                    pageInfor <<= 8;
+                    pageInfor |= SERVER_URL;
                 }
 #elif (HUB_SELECT == HUB_IRRIGSTION)
 
@@ -606,7 +631,13 @@ static void pageProgram(u8 page)
                 pageSelect.select = OFF;
             }
             break;
-
+        case SERVER_URL:
+            ServerUrlPage(&pageSelect, &pageInfor);
+            if(ON == pageSelect.select)
+            {
+                pageSelect.select = OFF;
+            }
+            break;
         default:
             break;
     }

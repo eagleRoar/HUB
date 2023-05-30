@@ -47,6 +47,7 @@ static void InitParameter(void)
     initSysSet();
     initCloudProtocol();
     GetSnName(GetSysSet()->hub_info.name, 13);
+    InitMqttUrlUse();
 }
 
 int main(void)

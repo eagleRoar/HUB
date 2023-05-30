@@ -1238,6 +1238,62 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
     rt_memcpy(sys_warn, set->warn, WARN_MAX);
 }
 
+//获取真正的地址
+void GetRealLine4V(dimmingCurve_t* curve, u8 port, u8 value, u8 *real)
+{
+    int x1 = 0;
+    int x2 = 0;
+    int y1 = 0;
+    int y2 = 0;
+    float a = 0.0;
+    float b = 0.0;
+
+    switch(port)
+    {
+        case 0:
+            x1 = curve->onOutput1;
+            y1 = curve->onVoltage1;
+            x2 = 100;
+            y2 = curve->fullVoltage1;
+            break;
+        case 1:
+            x1 = curve->onOutput2;
+            y1 = curve->onVoltage2;
+            x2 = 100;
+            y2 = curve->fullVoltage2;
+            break;
+        case 2:
+            x1 = curve->onOutput3;
+            y1 = curve->onVoltage3;
+            x2 = 100;
+            y2 = curve->fullVoltage3;
+            break;
+        case 3:
+            x1 = curve->onOutput4;
+            y1 = curve->onVoltage4;
+            x2 = 100;
+            y2 = curve->fullVoltage4;
+            break;
+        default : break;
+    }
+
+    if(x2 > x1)
+    {
+        a = (float)(y2 - y1)/(x2 - x1);
+        b = (float)(x2*y1 - x1*y2)/(x2 - x1);
+    }
+
+    int res = a * value + b;
+    if(res > 0)
+    {
+        *real = res;
+    }
+    else {
+        *real = 0;
+    }
+}
+
+
 //执行设备手动控制功能
 void menualHandProgram(type_monitor_t *monitor, type_uart_class *deviceUart, type_uart_class *lineUart)
 {
@@ -1871,61 +1927,6 @@ static void GetLine4Value(time_t nowT, time_t startT, time_t continueT, u16 sunr
     else
     {
         *retV = lowV;
-    }
-}
-
-//获取真正的地址
-void GetRealLine4V(dimmingCurve_t* curve, u8 port, u8 value, u8 *real)
-{
-    int x1 = 0;
-    int x2 = 0;
-    int y1 = 0;
-    int y2 = 0;
-    float a = 0.0;
-    float b = 0.0;
-
-    switch(port)
-    {
-        case 0:
-            x1 = curve->onOutput1;
-            y1 = curve->onVoltage1;
-            x2 = 100;
-            y2 = curve->fullVoltage1;
-            break;
-        case 1:
-            x1 = curve->onOutput2;
-            y1 = curve->onVoltage2;
-            x2 = 100;
-            y2 = curve->fullVoltage2;
-            break;
-        case 2:
-            x1 = curve->onOutput3;
-            y1 = curve->onVoltage3;
-            x2 = 100;
-            y2 = curve->fullVoltage3;
-            break;
-        case 3:
-            x1 = curve->onOutput4;
-            y1 = curve->onVoltage4;
-            x2 = 100;
-            y2 = curve->fullVoltage4;
-            break;
-        default : break;
-    }
-
-    if(x2 > x1)
-    {
-        a = (float)(y2 - y1)/(x2 - x1);
-        b = (float)(x2*y1 - x1*y2)/(x2 - x1);
-    }
-
-    int res = a * value + b;
-    if(res > 0)
-    {
-        *real = res;
-    }
-    else {
-        *real = 0;
     }
 }
 

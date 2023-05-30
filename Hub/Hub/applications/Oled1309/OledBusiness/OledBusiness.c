@@ -570,8 +570,8 @@ void SettingPage(type_page_t page, u8 canShow)
     char                temp1[4];
     type_sys_time       time_for;
 #if(HUB_SELECT == HUB_ENVIRENMENT)
-    char                show[8][16] = {"Sensor List", "Device List", "Light List", "QR Code", "Update Firmware", "CO2 Calibration",
-                                       "Data Export", "Data Import"};
+    char                show[9][16] = {"Sensor List", "Device List", "Light List", "QR Code", "Update Firmware", "CO2 Calibration",
+                                       "Data Export", "Data Import", "Server Url"};
 #elif (HUB_SELECT == HUB_IRRIGSTION)
     char                show[7][16] = {"Sensor List", "Device List", "QR Code", "Update Firmware", "Sensor Calibrate",
                                        "Data Export", "Data Import"};
@@ -2502,6 +2502,105 @@ void dataImportPage(type_page_t *page, u64 *info)
 
         //返回上一页
         *info >>= 8;
+    }
+
+    //5.刷新界面
+    ST7567_UpdateScreen();
+}
+
+//Justin debug 未完待续
+void ServerUrlPage(type_page_t *page, u64 *info)
+{
+    u8              line        = LINE_HIGHT;
+    u8              column      = 0;
+    static          use         = 0;
+    char            name[22]    = " ";
+
+    if(YES == page->select)
+    {
+        //1.如果是选择阿里云或者亚马逊直接跳到确定是否
+        if(1 == page->cusor)
+        {
+            page->cusor = 7;
+            use = USE_AMAZON;
+        }
+        else if(2 == page->cusor)
+        {
+            page->cusor = 7;
+            use = USE_ALIYUN;
+        }
+        else if(3 == page->cusor)
+        {
+            page->cusor = 7;
+            use = USE_IP;
+        }
+
+        page->select = NO;
+    }
+
+    //1.显示选择的网址
+    strcpy(name, "use : ");
+    ST7567_GotoXY(LINE_HIGHT, 0);
+    ST7567_Puts(name, &Font_8x16, 1);
+
+    if(0 == use)
+    {
+        if(1 == page->cusor)
+        {
+            strcpy(name, "Amazon      ");
+        }
+        else if(2 == page->cusor)
+        {
+            strcpy(name, "Aliyun      ");
+        }
+        else if(3 == page->cusor)
+        {
+            strcpy(name, "Specified ip");
+        }
+        ST7567_GotoXY(LINE_HIGHT + 48, 4);
+        ST7567_Puts(name, &Font_6x12, 0);
+    }
+    else
+    {
+        if(use == USE_AMAZON)
+        {
+            strcpy(name, "Amazon      ");
+        }
+        else if(use == USE_ALIYUN)
+        {
+            strcpy(name, "Aliyun      ");
+        }
+        else if(use == USE_IP)
+        {
+            strcpy(name, "Specified ip");
+        }
+        ST7567_GotoXY(LINE_HIGHT + 48, 4);
+        ST7567_Puts(name, &Font_6x12, 1);
+    }
+
+    //3.确定是否升级
+    line = 28;
+    column = 32;
+    ST7567_GotoXY(line, column);
+    if(7 == page->cusor)
+    {
+        ST7567_Puts("NO", &Font_12x24, 0);
+    }
+    else
+    {
+        ST7567_Puts("NO", &Font_12x24, 1);
+    }
+
+    line = 64;
+    column = 32;
+    ST7567_GotoXY(line, column);
+    if(8 == page->cusor)
+    {
+        ST7567_Puts("YES", &Font_12x24, 0);
+    }
+    else
+    {
+        ST7567_Puts("YES", &Font_12x24, 1);
     }
 
     //5.刷新界面
