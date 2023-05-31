@@ -25,6 +25,12 @@ struct pageSelect
     u8  select;
 };
 
+typedef struct btn_monitor{
+    u8 btn_down;
+    u8 btn_up;
+    u8 btn_enter;
+}type_btn_event;
+
 #define     LINE_HIGHT              8
 #define     COLUMN_HIGHT            13          //实际是13为了留间距
 //

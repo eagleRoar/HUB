@@ -14,21 +14,37 @@
 #include "Gpio.h"
 #include "cJSON.h"
 
-__attribute__((section(".ccmbss"))) u8 mqtt_url_use;
+__attribute__((section(".ccmbss"))) type_mqtt_ip mqtt_use;
 
 void InitMqttUrlUse(void)
 {
-    mqtt_url_use = USE_AMAZON;
+    mqtt_use.mqtt_url_use = USE_AMAZON;
+    strcpy(mqtt_use.use_ip, "0.0.0.0");
+}
+
+type_mqtt_ip *getMqttUrlUse(void)
+{
+    return &mqtt_use;
 }
 
 u8 GetMqttUse(void)
 {
-    return mqtt_url_use;
+    return mqtt_use.mqtt_url_use;
 }
 
 void setMqttUse(u8 use)
 {
-    mqtt_url_use = use;
+    mqtt_use.mqtt_url_use = use;
+}
+
+void setMqttUseIp(char *ip)
+{
+    strcpy(mqtt_use.use_ip, ip);
+}
+
+char *getMqttUseIp(void)
+{
+    return mqtt_use.use_ip;
 }
 
 /**
@@ -121,7 +137,7 @@ int mqtt_start(void)
     MQTTPacket_connectData condata = MQTTPacket_connectData_initializer;
     static char cid[20] = { 0 };
     static char name[20];
-
+    char   url[50]  = " ";
 
     if (is_started)
     {
@@ -131,7 +147,26 @@ int mqtt_start(void)
     /* config MQTT context param */
     {
         client.isconnected = 0;
-        client.uri = MQTT_URI;
+
+        //按照选择判断
+        while(YES != GetFileSystemState());
+
+        if(USE_ALIYUN == GetMqttUse())
+        {
+            strcpy(url, "tcp://mqtt.pro-leaf.cn:1883");
+        }
+        else if(USE_IP == GetMqttUse())
+        {
+            sprintf(url, "%s%s%s", "tcp://", getMqttUrlUse()->use_ip, ":1883");
+        }
+        else
+        {
+            //亚马逊
+            strcpy(url, "tcp://mqtt.pro-leaf.com:1883");
+        }
+//        rt_kprintf("mqtt_start url = %s",url);//Justin
+        client.uri = MQTT_URI;//Justin 为什么把url赋值给它就有问题
+        rt_kprintf("mqtt_start url = %s\r\n",client.uri);//Justin
 
         /* generate the random client ID */
 //        rt_snprintf(cid, sizeof(cid), "rtthread%d", rt_tick_get());

@@ -507,6 +507,12 @@ typedef struct monitor
     line_t              line[LINE_MAX];
     u16                 crc;
 }type_monitor_t;
+
+typedef struct mqtt_ip{
+    u8 mqtt_url_use;
+    char use_ip[16];
+}type_mqtt_ip;
+
 #pragma pack()
 
 typedef     void (*FAC_FUNC)(type_monitor_t *);

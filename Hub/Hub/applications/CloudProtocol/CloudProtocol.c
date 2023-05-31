@@ -765,6 +765,8 @@ rt_err_t ReplyDataToCloud(mqtt_client *client, int *sock, u8 sendCloudFlg)
                     rt_memcpy(page + 4, (u8 *)&len, 2);
                     rt_memcpy(page + sizeof(eth_page_head), str, len);
 
+                    rt_kprintf("send : %.*s\r\n",len,str);//Justin
+
                     //发送
                     ret = TcpSendMsg(sock, page, len + sizeof(eth_page_head));
                     rt_free(page);
@@ -850,9 +852,10 @@ void analyzeCloudData(char *data, u8 cloudFlg)
     if(NULL != json)
     {
         cJSON * cmd = cJSON_GetObjectItem(json, CMD_NAME);
+
         if(NULL != cmd)
         {
-            //LOG_W("recv cmd = %s",cmd->valuestring);
+            rt_kprintf("analyzeCloudData recv cmd = %s\r\n",cmd->valuestring);
             if(0 == rt_memcmp(CMD_SET_TEMP, cmd->valuestring, strlen(CMD_SET_TEMP)))
             {
                 CmdSetTempValue(data, &cloudCmd);
@@ -899,6 +902,7 @@ void analyzeCloudData(char *data, u8 cloudFlg)
             }
             else if(0 == rt_memcmp(CMD_SET_LIGHT_RECIPE, cmd->valuestring, strlen(CMD_SET_LIGHT_RECIPE)))
             {
+                rt_kprintf("cmd = setLightRecipe\r\n");//Justin
                 CmdSetLightRecipe(data, sys_set.lineRecipeList, &cloudCmd);
                 GetSysSet()->saveFlag = YES;
                 setCloudCmd(cmd->valuestring, ON, cloudFlg);

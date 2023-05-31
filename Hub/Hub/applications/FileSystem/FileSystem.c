@@ -27,13 +27,20 @@ char            new_sysset_file[]       = "/main/informations/sys_set.bin";
 char            new_recipe_file[]       = "/main/informations/recipe.bin";
 char            new_tank_file[]         = "/main/informations/tank.bin";
 char            new_struct_ver_file[]   = "/main/informations/ver.bin";
+char            new_mqtt_url_file[]     = "/main/informations/mqtt_url.bin";
 
 char            backup_dev_file[]       = "/backup/informations/module.bin";
 char            backup_sysset_file[]    = "/backup/informations/sys_set.bin";
 char            backup_recipe_file[]    = "/backup/informations/recipe.bin";
 char            backup_tank_file[]      = "/backup/informations/tank.bin";
+u8              saveMqttUrlFile         = NO;
 
 sys_ver_t   sys_ver;
+
+void setMqttUrlFileFlag(u8 flag)
+{
+    saveMqttUrlFile = flag;
+}
 
 u8 GetFileSystemState(void)
 {
@@ -262,11 +269,11 @@ static void GetMonitorFromFile(type_monitor_t *monitor, char *fileName)
     length = FileHeadSpace;
     if(RT_EOK == ReadFileData(fileName, (u8 *)monitor, length, sizeof(type_monitor_t)))
     {
-        LOG_I("Get monitor data OK");
+        rt_kprintf("-----------Get monitor data OK\r\n");
     }
     else
     {
-        LOG_E("Get monitor data Fail");
+        rt_kprintf("-----------Get monitor data Fail\r\n");
     }
 }
 
@@ -287,6 +294,47 @@ static void SaveMonitorToFile(type_monitor_t *monitor, char *fileName)
     }
 }
 
+static void SaveMqttUrl(type_mqtt_ip *mqtt, char *fileName)
+{
+    static u8       FileHeadSpace       = 5;
+    u16             length              = 0;
+
+    length = FileHeadSpace;
+    RemoveFileDirectory(fileName);
+    if(RT_EOK == WriteFileData(fileName, (u8 *)mqtt, length, sizeof(type_mqtt_ip)))
+    {
+        LOG_I("-----------------save MqttUrl data OK");
+    }
+    else
+    {
+        LOG_I("-----------------save MqttUrl data Fail");
+    }
+}
+
+static void GetMqttUrlFile(type_mqtt_ip *mqtt, char *fileName)
+{
+    static u8       FileHeadSpace       = 5;
+    u16             length              = 0;
+
+    length = FileHeadSpace;
+    if(GetFileLength(fileName) > 0)
+    {
+        if(RT_EOK == ReadFileData(fileName, (u8 *)mqtt, length, sizeof(type_mqtt_ip)))
+        {
+            rt_kprintf("-----------------get MqttUrl data OK\r\n");
+            rt_kprintf("-------------use = %d, use_ip = %s\r\n",getMqttUrlUse()->mqtt_url_use, getMqttUrlUse()->use_ip);//Justin
+        }
+        else
+        {
+            rt_kprintf("-----------------get MqttUrl data Fail\r\n");
+        }
+    }
+    else
+    {
+        rt_kprintf("-----------------mqtt file no exist\r\n");
+    }
+}
+
 static void GetSysSetFromFile(sys_set_t *set, char *fileName)
 {
     static u8       FileHeadSpace       = 5;
@@ -295,11 +343,11 @@ static void GetSysSetFromFile(sys_set_t *set, char *fileName)
     length = FileHeadSpace;
     if(RT_EOK == ReadFileData(fileName, (u8 *)set, length, sizeof(sys_set_t)))
     {
-        LOG_I("Get sysSet data OK");
+        rt_kprintf("-----------------Get sysSet data OK\r\n");
     }
     else
     {
-        LOG_E("Get sysSet data Fail");
+        rt_kprintf("-----------------Get sysSet data Fail\r\n");
     }
 }
 
@@ -458,6 +506,15 @@ void FileSystemEntry(void* parameter)
                 lineSize = GetMonitor()->line_size;
                 saveModuleFlag = NO;
             }
+
+            if(YES == saveMqttUrlFile)
+            {
+                SaveMqttUrl(getMqttUrlUse(), new_mqtt_url_file);
+
+                //重启
+                rt_hw_cpu_reset();
+                saveMqttUrlFile = NO;
+            }
         }
 
         //10s 任务
@@ -589,6 +646,7 @@ void FileSystemInit(void)
 #elif(HUB_IRRIGSTION == HUB_SELECT)
         GetSysTankFromFile(GetSysTank(), new_tank_file);
 #endif
+        GetMqttUrlFile(getMqttUrlUse(), new_mqtt_url_file);
     }
 
     //4.标记文件系统准备完成

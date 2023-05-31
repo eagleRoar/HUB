@@ -2509,100 +2509,274 @@ void dataImportPage(type_page_t *page, u64 *info)
 }
 
 //Justin debug 未完待续
-void ServerUrlPage(type_page_t *page, u64 *info)
+void ServerUrlPage(type_btn_event *event, u64 *info)
 {
     u8              line        = LINE_HIGHT;
     u8              column      = 0;
     static          use         = 0;
+    static          position    = 0;
     char            name[22]    = " ";
+    char            temp[5]     = " ";
+    static u8       ip_num[4]   = {0,0,0,0};
+    char            *p          = RT_NULL;
+    static u8       flag = 0;
 
-    if(YES == page->select)
+    if(YES != GetFileSystemState())
     {
-        //1.如果是选择阿里云或者亚马逊直接跳到确定是否
-        if(1 == page->cusor)
-        {
-            page->cusor = 7;
-            use = USE_AMAZON;
-        }
-        else if(2 == page->cusor)
-        {
-            page->cusor = 7;
-            use = USE_ALIYUN;
-        }
-        else if(3 == page->cusor)
-        {
-            page->cusor = 7;
-            use = USE_IP;
-        }
-
-        page->select = NO;
-    }
-
-    //1.显示选择的网址
-    strcpy(name, "use : ");
-    ST7567_GotoXY(LINE_HIGHT, 0);
-    ST7567_Puts(name, &Font_8x16, 1);
-
-    if(0 == use)
-    {
-        if(1 == page->cusor)
-        {
-            strcpy(name, "Amazon      ");
-        }
-        else if(2 == page->cusor)
-        {
-            strcpy(name, "Aliyun      ");
-        }
-        else if(3 == page->cusor)
-        {
-            strcpy(name, "Specified ip");
-        }
-        ST7567_GotoXY(LINE_HIGHT + 48, 4);
-        ST7567_Puts(name, &Font_6x12, 0);
+        ST7567_GotoXY(LINE_HIGHT, 0);
+        ST7567_Puts("File system is not init", &Font_8x16, 0);
     }
     else
     {
-        if(use == USE_AMAZON)
-        {
-            strcpy(name, "Amazon      ");
-        }
-        else if(use == USE_ALIYUN)
-        {
-            strcpy(name, "Aliyun      ");
-        }
-        else if(use == USE_IP)
-        {
-            strcpy(name, "Specified ip");
-        }
-        ST7567_GotoXY(LINE_HIGHT + 48, 4);
-        ST7567_Puts(name, &Font_6x12, 1);
-    }
+        clear_screen();
 
-    //3.确定是否升级
-    line = 28;
-    column = 32;
-    ST7567_GotoXY(line, column);
-    if(7 == page->cusor)
-    {
-        ST7567_Puts("NO", &Font_12x24, 0);
-    }
-    else
-    {
-        ST7567_Puts("NO", &Font_12x24, 1);
-    }
+        if(0 == flag)
+        {
+            strcpy(name, getMqttUrlUse()->use_ip);
+            p = strtok(name, ".");
+            ip_num[0] = atoi(p);
+            p = strtok(NULL, ".");
+            ip_num[1] = atoi(p);
+            p = strtok(NULL, ".");
+            ip_num[2] = atoi(p);
+            p = strtok(NULL, ".");
+            ip_num[3] = atoi(p);
 
-    line = 64;
-    column = 32;
-    ST7567_GotoXY(line, column);
-    if(8 == page->cusor)
-    {
-        ST7567_Puts("YES", &Font_12x24, 0);
-    }
-    else
-    {
-        ST7567_Puts("YES", &Font_12x24, 1);
-    }
+            position = 0;
+            if(USE_AMAZON == GetMqttUse())
+            {
+                use = 0;
+            }
+            else if(USE_ALIYUN == GetMqttUse())
+            {
+                use = 1;
+            }
+            else if(USE_IP == GetMqttUse())
+            {
+                use = 2;
+            }
 
-    //5.刷新界面
+            rt_kprintf("ServerUrlPage use = %d, GetMqttUse = %d\r\n",use,GetMqttUse());//Justin
+
+            flag = 1;
+        }
+
+        //1.显示使用的类型
+        ST7567_GotoXY(LINE_HIGHT, 0);
+        strcpy(name, "use : ");
+        ST7567_Puts(name, &Font_8x16, 1);
+
+        //2.判断确认事件
+        if(YES == event->btn_enter)
+        {
+            if(0 == position)
+            {
+                if(0 == use || 1 == use)
+                {
+                    position = 5;
+                }
+                else if(2 == use)
+                {
+                    position = 1;
+                }
+            }
+            else
+            {
+                if(position < 5)
+                {
+                    position++;
+                }
+                else if(5 == position)
+                {
+                    //返回上一页
+                    *info >>= 8;
+                    flag = 0;
+                }
+                else if(6 == position)
+                {
+                    u8 mqtt_use = USE_AMAZON;
+                    if(0 == use)
+                    {
+                        mqtt_use = USE_AMAZON;
+                    }
+                    else if(1 == use)
+                    {
+                        mqtt_use = USE_ALIYUN;
+                    }
+                    else if(2 == use)
+                    {
+                        mqtt_use = USE_IP;
+                    }
+                    setMqttUse(mqtt_use);
+                    itoa(ip_num[0], temp, 10);
+                    strcpy(name, temp);
+                    strcat(name, ".");
+                    itoa(ip_num[1], temp, 10);
+                    strcat(name, temp);
+                    strcat(name, ".");
+                    itoa(ip_num[2], temp, 10);
+                    strcat(name, temp);
+                    strcat(name, ".");
+                    itoa(ip_num[3], temp, 10);
+                    strcat(name, temp);
+
+                    setMqttUseIp(name);
+
+                    setMqttUrlFileFlag(YES);
+                }
+            }
+
+            event->btn_enter = NO;
+        }
+        else if(YES == event->btn_down)
+        {
+            if(0 == position)
+            {
+                if(use < 2)
+                {
+                    use++;
+                }
+                else
+                {
+                    use = 0;
+                }
+            }
+            else if(1 == position)
+            {
+                ip_num[0] ++;
+            }
+            else if(2 == position)
+            {
+                ip_num[1] ++;
+            }
+            else if(3 == position)
+            {
+                ip_num[2] ++;
+            }
+            else if(4 == position)
+            {
+                ip_num[3] ++;
+            }
+            else if(5 == position)
+            {
+                position = 6;
+            }
+            else if(6 == position)
+            {
+                position = 0;
+            }
+
+            event->btn_down = NO;
+        }
+        else if(YES == event->btn_up)
+        {
+            if(0 == position)
+            {
+                if(use > 0)
+                {
+                    use--;
+                }
+                else
+                {
+                    use = 2;
+                }
+            }
+            else if(1 == position)
+            {
+                ip_num[0] --;
+            }
+            else if(2 == position)
+            {
+                ip_num[1] --;
+            }
+            else if(3 == position)
+            {
+                ip_num[2] --;
+            }
+            else if(4 == position)
+            {
+                ip_num[3] --;
+            }
+            else if(5 == position)
+            {
+                position = 0;
+            }
+            else if(6 == position)
+            {
+                position = 5;
+            }
+            event->btn_up = NO;
+        }
+
+        //3.显示可选择的类型
+        if(0 == use)
+        {
+            strcpy(name, "Amazon");
+        }
+        else if(1 == use)
+        {
+            strcpy(name, "Aliyun");
+        }
+        else if(2 == use)
+        {
+            strcpy(name, "Specify IP");
+        }
+        ST7567_GotoXY(LINE_HIGHT + 6 * LINE_HIGHT, 4);
+        ST7567_Puts(name, &Font_6x12, 0 == position ? 0 : 1);
+
+        //4.如果是选择ip的话显示
+        if(2 == use)
+        {
+            strcpy(name, "ip : ");
+            ST7567_GotoXY(0, 20);
+            ST7567_Puts(name, &Font_6x12, 1);
+
+            itoa(ip_num[0], temp, 10);
+            ST7567_GotoXY(5 * 6, 20);
+            sprintf(name, "%3s%s", temp, ".");
+            ST7567_Puts(name, &Font_6x12, 1 == position ? 0 : 1);
+
+            itoa(ip_num[1], temp, 10);
+            ST7567_GotoXY(5 * 6 + 4 * 6, 20);
+            sprintf(name, "%3s%s", temp, ".");
+            ST7567_Puts(name, &Font_6x12, 2 == position ? 0 : 1);
+
+            itoa(ip_num[2], temp, 10);
+            ST7567_GotoXY(5 * 6 + 8 * 6, 20);
+            sprintf(name, "%3s%s", temp, ".");
+            ST7567_Puts(name, &Font_6x12, 3 == position ? 0 : 1);
+
+            itoa(ip_num[3], temp, 10);
+            ST7567_GotoXY(5 * 6 + 12 * 6, 20);
+            sprintf(name, "%3s", temp);
+            ST7567_Puts(name, &Font_6x12, 4 == position ? 0 : 1);
+        }
+
+        //5.显示确认/否
+        line = 28;
+        column = 32;
+        ST7567_GotoXY(line, column);
+        if(5 == position)
+        {
+            ST7567_Puts("NO", &Font_12x24, 0);
+        }
+        else
+        {
+            ST7567_Puts("NO", &Font_12x24, 1);
+        }
+
+        line = 64;
+        column = 32;
+        ST7567_GotoXY(line, column);
+        if(6 == position)
+        {
+            ST7567_Puts("YES", &Font_12x24, 0);
+        }
+        else
+        {
+            ST7567_Puts("YES", &Font_12x24, 1);
+        }
+    }
+    //6.刷新界面
     ST7567_UpdateScreen();
 }

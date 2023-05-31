@@ -32,7 +32,8 @@ type_page_t     pageSelect;
 u64             pageInfor           = 0x00000000;   //只支持最多四级目录
 time_t          backlightTime;
 u8              factory_mode        = NO;
-u8      next_flag   = NO;
+u8              next_flag           = NO;
+type_btn_event  btn_event;
 
 __attribute__((section(".ccmbss"))) u8 oled_task[1024 * 3];
 __attribute__((section(".ccmbss"))) struct rt_thread oled_thread;
@@ -111,6 +112,8 @@ void monitorBackLight(time_t time)
 void EnterBtnCallBack(u8 type)
 {
     u8      info    = 0;
+
+    info = pageInfor;
     if(SHORT_PRESS == type)
     {
         //唤醒屏幕
@@ -118,12 +121,16 @@ void EnterBtnCallBack(u8 type)
         pageSelect.select = ON;
         //提示界面刷新
         reflash_flag = ON;
+
+        if(SERVER_URL == info)
+        {
+            btn_event.btn_enter = YES;
+        }
     }
     else if(LONG_PRESS == type)
     {
 
         clear_screen();
-        info = pageInfor;
 
         //如果是工厂模式退出去的话就直接关闭工厂模式
         if(FACTORY_PAGE == info)
@@ -173,13 +180,20 @@ void UpBtnCallBack(u8 type)
 #endif
         //提示界面刷新
         reflash_flag = ON;
+        if(SERVER_URL == nowPage)
+        {
+            btn_event.btn_up = YES;
+        }
     }
 }
 void DowmBtnCallBack(u8 type)
 {
+    u8 nowPage      = 0;
+
     if(SHORT_PRESS == type)
     {
         //LOG_I("DowmBtnCallBack 1");
+        nowPage = pageInfor & 0x000000FF;
         //唤醒屏幕
         wakeUpOledBackLight(&backlightTime);
         if(pageSelect.cusor_max > 0)
@@ -199,6 +213,10 @@ void DowmBtnCallBack(u8 type)
         reflash_flag = ON;
 
         next_flag = YES;//仅仅是灌溉版首页需要使用
+        if(SERVER_URL == nowPage)
+        {
+            btn_event.btn_down = YES;
+        }
     }
 }
 
@@ -632,7 +650,7 @@ static void pageProgram(u8 page)
             }
             break;
         case SERVER_URL:
-            ServerUrlPage(&pageSelect, &pageInfor);
+            ServerUrlPage(&btn_event, &pageInfor);
             if(ON == pageSelect.select)
             {
                 pageSelect.select = OFF;
@@ -659,6 +677,7 @@ void OledTaskEntry(void* parameter)
     pageInfor <<= 8;
     pageInfor |= HOME_PAGE;
     wakeUpOledBackLight(&backlightTime);
+    rt_memset(&btn_event, 0, sizeof(btn_event));
     while(1)
     {
         time1S = TimerTask(&time1S, 20, &Timer1sTouch);
@@ -725,7 +744,8 @@ void OledTaskEntry(void* parameter)
                (FA_SD_PAGE == nowPage) ||
                (FA_TEST_PAGE == nowPage) ||
                (PH_CALIBRATE_PAGE == nowPage) ||
-               (EC_CALIBRATE_PAGE == nowPage))
+               (EC_CALIBRATE_PAGE == nowPage) ||
+               (SERVER_URL == nowPage))
             {
                 //需要刷新
                 reflash_flag = ON;

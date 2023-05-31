@@ -140,7 +140,7 @@ void analyzeTcpData(char *data, u16 size)
         {
             if(index != 0)
             {
-                //LOG_I("%.*s",index - start,data + start);
+                //rt_kprintf("recv : %.*s\r\n",index - start,data + start);
                 splitJointData(data + start, index - start);
             }
             start = index;
@@ -270,7 +270,7 @@ void splitJointData(char *data, u16 size)
                             page_size = 0;
                             now_size = 0;
                             //2.调用上层解析
-//                            LOG_I("len = %d ,recv buf = %.*s",page.head.length,page.head.length,page.data);
+                            rt_kprintf("----------------------len = %d ,recv buf = %.*s\r\n",page.head.length,page.head.length,page.data);
                             analyzeCloudData(page.data, NO);
                             //3.注意解析完数据后要释放空间
                             if(RT_NULL != page.data)

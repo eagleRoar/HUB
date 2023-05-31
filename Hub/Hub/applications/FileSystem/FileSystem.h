@@ -22,4 +22,5 @@ u8 ReadFileData(char* name, void* text, u32 offset, u32 l);
 void OldDataMigration(void);
 void DataExport(void);
 void DataImport(void);
+void setMqttUrlFileFlag(u8 flag);
 #endif /* APPLICATIONS_FILESYSTEM_FILESYSTEM_H_ */

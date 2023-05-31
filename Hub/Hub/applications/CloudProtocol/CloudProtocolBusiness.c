@@ -2762,8 +2762,8 @@ char *ReplyGetLine(u8 lineNo, char *cmd, char *msgid, proLine_t line, proLine_4_
             }
 
             cJSON_AddNumberToObject(json, "mode", line_4.mode);
-            if(LINE_BY_TIMER == line_4.mode)
-            {
+//            if(LINE_BY_TIMER == line_4.mode)
+//            {
                 cJSON *timeList = cJSON_CreateArray();
                 if(timeList)
                 {
@@ -2789,9 +2789,9 @@ char *ReplyGetLine(u8 lineNo, char *cmd, char *msgid, proLine_t line, proLine_4_
 
                     cJSON_AddItemToObject(json, "timerList", timeList);
                 }
-            }
-            else if(LINE_BY_CYCLE == line_4.mode)
-            {
+//            }
+//            else if(LINE_BY_CYCLE == line_4.mode)
+//            {
                 cJSON_AddStringToObject(json, "firstStartAt", line_4.firstStartAt);
                 cJSON *cycleList = cJSON_CreateArray();
                 if(cycleList)
@@ -2814,7 +2814,7 @@ char *ReplyGetLine(u8 lineNo, char *cmd, char *msgid, proLine_t line, proLine_4_
                     cJSON_AddItemToObject(json, "cycleList", cycleList);
                 }
                 cJSON_AddNumberToObject(json, "pauseTime", line_4.pauseTime);
-            }
+//            }
             cJSON_AddNumberToObject(json, "tempStartDimming", line_4.tempStartDimming);
             cJSON_AddNumberToObject(json, "tempOffDimming", line_4.tempOffDimming);
             cJSON_AddNumberToObject(json, "sunriseSunSet", line_4.sunriseSunSet);
