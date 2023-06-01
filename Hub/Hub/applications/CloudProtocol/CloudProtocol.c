@@ -765,7 +765,7 @@ rt_err_t ReplyDataToCloud(mqtt_client *client, int *sock, u8 sendCloudFlg)
                     rt_memcpy(page + 4, (u8 *)&len, 2);
                     rt_memcpy(page + sizeof(eth_page_head), str, len);
 
-                    rt_kprintf("send : %.*s\r\n",len,str);//Justin
+//                    rt_kprintf("send : %.*s\r\n",len,str);
 
                     //发送
                     ret = TcpSendMsg(sock, page, len + sizeof(eth_page_head));
@@ -902,7 +902,6 @@ void analyzeCloudData(char *data, u8 cloudFlg)
             }
             else if(0 == rt_memcmp(CMD_SET_LIGHT_RECIPE, cmd->valuestring, strlen(CMD_SET_LIGHT_RECIPE)))
             {
-                rt_kprintf("cmd = setLightRecipe\r\n");//Justin
                 CmdSetLightRecipe(data, sys_set.lineRecipeList, &cloudCmd);
                 GetSysSet()->saveFlag = YES;
                 setCloudCmd(cmd->valuestring, ON, cloudFlg);
@@ -1131,6 +1130,7 @@ void analyzeCloudData(char *data, u8 cloudFlg)
             {
                 CmdSetMainSensor(data, &cloudCmd);
                 setCloudCmd(cmd->valuestring, ON, cloudFlg);
+                saveModuleFlag = YES;
             }
             else if(0 == rt_memcmp(CMD_SET_SENSOR_SHOW_TYPE, cmd->valuestring, strlen(CMD_SET_SENSOR_SHOW_TYPE)))
             {

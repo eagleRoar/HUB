@@ -2508,7 +2508,6 @@ void dataImportPage(type_page_t *page, u64 *info)
     ST7567_UpdateScreen();
 }
 
-//Justin debug 未完待续
 void ServerUrlPage(type_btn_event *event, u64 *info)
 {
     u8              line        = LINE_HIGHT;
@@ -2555,8 +2554,6 @@ void ServerUrlPage(type_btn_event *event, u64 *info)
             {
                 use = 2;
             }
-
-            rt_kprintf("ServerUrlPage use = %d, GetMqttUse = %d\r\n",use,GetMqttUse());//Justin
 
             flag = 1;
         }

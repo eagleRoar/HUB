@@ -1944,7 +1944,8 @@ void line_4Program(line_t *line, type_uart_class lineUart)
     u16             ctrlValue[LINE_PORT_MAX]    = {0,0,0,0};
     sys_set_t       *sys_set                    = GetSysSet();
     int             temperature                 = GetSensorMainValue(GetMonitor(), F_S_TEMP);
-
+    static u8       lineDimmingFlag             = NO;
+    static u8       lineOffDimmingFlag          = NO;
 
     //1.获取灯光设置
     GetNowSysSet(RT_NULL, RT_NULL, RT_NULL, RT_NULL, &line_4set, RT_NULL, RT_NULL);
@@ -2092,12 +2093,33 @@ void line_4Program(line_t *line, type_uart_class lineUart)
         //过温保护
         if(temperature >= line_4set.tempOffDimming)
         {
-            LOG_D("------in dimin off");
-            state = OFF;
+            rt_kprintf("------in dimin off\r\n");
+            lineOffDimmingFlag = YES;
         }
         else if(temperature >= line_4set.tempStartDimming)
         {
-            LOG_D("------in dimin");
+            rt_kprintf("------in dimin\r\n");
+            lineDimmingFlag = YES;
+        }
+
+        //过温要有一度的回差
+        if(temperature + 10 < line_4set.tempStartDimming)
+        {
+            lineDimmingFlag = NO;
+            lineOffDimmingFlag = NO;
+        }
+
+        if(temperature + 10 < line_4set.tempOffDimming)
+        {
+            lineOffDimmingFlag = NO;
+        }
+
+        if(YES == lineOffDimmingFlag)
+        {
+            state = OFF;
+        }
+        else if(YES == lineDimmingFlag)
+        {
             for(int port = 0; port < LINE_PORT_MAX; port++)
             {
                 stage[port] /= 2;
@@ -2143,6 +2165,8 @@ void lineProgram(type_monitor_t *monitor, line_t *line, u8 line_no, type_uart_cl
     type_sys_time   time;
     int             temperature     = GetSensorMainValue(GetMonitor(), F_S_TEMP);;
     static u8       stage[LINE_MAX] = {LINE_MIN_VALUE,LINE_MIN_VALUE};
+    static u8       lineDimmingFlag[LINE_MAX] = {NO, NO};
+    static u8       lineOffDimmingFlag[LINE_MAX] = {NO, NO};
     static u16      cnt[LINE_MAX]   = {0, 0};
 
     //1.获取灯光设置
@@ -2530,27 +2554,43 @@ void lineProgram(type_monitor_t *monitor, line_t *line, u8 line_no, type_uart_cl
         //过温保护
         if(temperature >= line_set.tempOffDimming)
         {
-            LOG_D("------in dimin off");
-            state = OFF;
+            rt_kprintf("------in dimin off\r\n");
+            lineOffDimmingFlag[line_no] = YES;
         }
         else if(temperature >= line_set.tempStartDimming)
         {
-            LOG_D("------in dimin");
-            stage[line_no] = LINE_DIMMING;
-            value = stage[line_no];
+            rt_kprintf("------in dimin\r\n");
+            lineDimmingFlag[line_no] = YES;
+        }
+        //过温要有一度的回差
+
+        if(temperature + 10 < line_set.tempStartDimming)
+        {
+            lineDimmingFlag[line_no] = NO;
+            lineOffDimmingFlag[line_no] = NO;
+        }
+
+        if(temperature + 10 < line_set.tempOffDimming)
+        {
+            lineOffDimmingFlag[line_no] = NO;
+        }
+
+        if(YES == lineOffDimmingFlag[line_no])
+        {
+            state = OFF;
+        }
+        else if(YES == lineDimmingFlag[line_no])
+        {
+            value /= 2;
         }
     }
     else
     {
-        stage[line_no] = LINE_MIN_VALUE;
+        stage[line_no] = 0;
         value = stage[line_no];
     }
 
-    if(value <= LINE_MIN_VALUE)
-    {
-        value = LINE_MIN_VALUE;
-    }
-    else if(value >= 115)
+    if(value >= 115)
     {
         value = 115;
     }

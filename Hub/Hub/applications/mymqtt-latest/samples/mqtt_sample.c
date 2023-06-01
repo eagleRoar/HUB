@@ -131,13 +131,13 @@ static void mqtt_offline_callback(mqtt_client *c)
     LOG_D("inter mqtt_offline_callback!");
 }
 
+char   url[50]  = " ";
 int mqtt_start(void)
 {
     /* init condata param by using MQTTPacket_connectData_initializer */
     MQTTPacket_connectData condata = MQTTPacket_connectData_initializer;
     static char cid[20] = { 0 };
     static char name[20];
-    char   url[50]  = " ";
 
     if (is_started)
     {
@@ -164,9 +164,7 @@ int mqtt_start(void)
             //亚马逊
             strcpy(url, "tcp://mqtt.pro-leaf.com:1883");
         }
-//        rt_kprintf("mqtt_start url = %s",url);//Justin
-        client.uri = MQTT_URI;//Justin 为什么把url赋值给它就有问题
-        rt_kprintf("mqtt_start url = %s\r\n",client.uri);//Justin
+        client.uri = url;
 
         /* generate the random client ID */
 //        rt_snprintf(cid, sizeof(cid), "rtthread%d", rt_tick_get());

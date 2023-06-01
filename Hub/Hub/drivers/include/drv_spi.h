@@ -57,7 +57,7 @@ struct stm32_spi
     } dma;
     
     rt_uint8_t spi_dma_flag;
-    struct rt_spi_bus spi_bus;//Justin debug 暂时屏蔽
+    struct rt_spi_bus spi_bus;
 };
 
 #endif /*__DRV_SPI_H_ */

@@ -322,7 +322,6 @@ static void GetMqttUrlFile(type_mqtt_ip *mqtt, char *fileName)
         if(RT_EOK == ReadFileData(fileName, (u8 *)mqtt, length, sizeof(type_mqtt_ip)))
         {
             rt_kprintf("-----------------get MqttUrl data OK\r\n");
-            rt_kprintf("-------------use = %d, use_ip = %s\r\n",getMqttUrlUse()->mqtt_url_use, getMqttUrlUse()->use_ip);//Justin
         }
         else
         {
@@ -360,11 +359,11 @@ static void SaveSysSetToFile(sys_set_t *set, char *fileName)
     RemoveFileDirectory(fileName);
     if(RT_EOK == WriteFileData(fileName, (u8 *)set, length, sizeof(sys_set_t)))
     {
-        LOG_I("save sysSet data OK");
+        rt_kprintf("save sysSet data OK\r\n");
     }
     else
     {
-        LOG_E("save sysSet data Fail");
+        rt_kprintf("save sysSet data Fail\r\n");
     }
 }
 
