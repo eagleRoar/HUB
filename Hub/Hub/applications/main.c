@@ -304,6 +304,7 @@ int main(void)
 #endif
             //报警功能
             warnProgram(GetMonitor(), GetSysSet());             //监听告警信息
+
         }
 
         //10s

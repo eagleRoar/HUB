@@ -242,7 +242,7 @@ static void pageSetting(u8 page)
 #if(HUB_SELECT == HUB_ENVIRENMENT)
             pageSelectSet(YES, 1, 9);
 #elif(HUB_SELECT == HUB_IRRIGSTION)
-            pageSelectSet(YES, 1, 7);
+            pageSelectSet(YES, 1, 8);
 #endif
             break;
         case FACTORY_PAGE:
@@ -457,6 +457,11 @@ static void pageProgram(u8 page)
                 {
                     pageInfor <<= 8;
                     pageInfor |= DATA_IMPORT;
+                }
+                else if(8 == pageSelect.cusor)
+                {
+                    pageInfor <<= 8;
+                    pageInfor |= SERVER_URL;
                 }
 #endif
                 pageSelect.select = OFF;

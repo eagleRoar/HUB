@@ -573,8 +573,8 @@ void SettingPage(type_page_t page, u8 canShow)
     char                show[9][16] = {"Sensor List", "Device List", "Light List", "QR Code", "Update Firmware", "CO2 Calibration",
                                        "Data Export", "Data Import", "Server Url"};
 #elif (HUB_SELECT == HUB_IRRIGSTION)
-    char                show[7][16] = {"Sensor List", "Device List", "QR Code", "Update Firmware", "Sensor Calibrate",
-                                       "Data Export", "Data Import"};
+    char                show[8][16] = {"Sensor List", "Device List", "QR Code", "Update Firmware", "Sensor Calibrate",
+                                       "Data Export", "Data Import", "Server Url"};
 #endif
     type_sys_time       sys_time;
     u8                  line        = LINE_HIGHT;

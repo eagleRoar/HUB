@@ -45,4 +45,5 @@ void SensorList(u64 *, type_page_t *,type_monitor_t *);
 void co2CalibraterResPage(u8 flag);
 void dataExportPage(type_page_t *page, u64 *info);
 void dataImportPage(type_page_t *page, u64 *info);
+void ServerUrlPage(type_btn_event *event, u64 *info);
 #endif /* APPLICATIONS_OLED1309_OLEDBUSINESS_OLEDBUSINESS_H_ */
