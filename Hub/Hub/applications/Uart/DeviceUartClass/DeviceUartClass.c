@@ -1136,24 +1136,45 @@ static void RecvListHandle(void)
                     DeleteModule(monitor, uuid);
                     //4.通过type 设置对应的默认值
                     addr = getAllocateAddress(GetMonitor());
-                    SetDeviceDefault(monitor, uuid, tail->keyData.dataSegment.data[8], addr);
+                    rt_err_t ret = SetDeviceDefault(monitor, uuid, tail->keyData.dataSegment.data[8], addr);
                     //5.发送重新分配的地址给模块
-                    SendReplyRegister(uuid, addr);
-                    LOG_I("-----------RecvListHandle, register again");
+                    if(RT_EOK == ret)
+                    {
+                        SendReplyRegister(uuid, addr);
+                        rt_kprintf("-----------RecvListHandle, uuid %x %x %x %x register again\r\n",
+                                tail->keyData.dataSegment.data[9],tail->keyData.dataSegment.data[10],
+                                tail->keyData.dataSegment.data[11],tail->keyData.dataSegment.data[12]);//Justin
+                    }
+                    else if(RT_ERROR == ret)
+                    {
+                        monitor->allocateStr.address[addr] = 0;
+                    }
                 }
                 else
                 {
-                    LOG_I("----------RecvListHandle, addr %x has exist",tail->keyData.dataSegment.data[7]);
+                    rt_kprintf("----------RecvListHandle, uuid %x %x %x %x has exist\r\n",
+                            tail->keyData.dataSegment.data[9],tail->keyData.dataSegment.data[10],
+                            tail->keyData.dataSegment.data[11],tail->keyData.dataSegment.data[12]);//Justin
                 }
             }
             else
             {
                 //6.之前没有注册过的直接注册
                 addr = getAllocateAddress(GetMonitor());
-                SetDeviceDefault(monitor, uuid, tail->keyData.dataSegment.data[8], addr);
-                //7.发送重新分配的地址
-                SendReplyRegister(uuid, addr);
-                LOG_I("----------RecvListHandle, register , new add = %x",addr);
+                rt_err_t ret = SetDeviceDefault(monitor, uuid, tail->keyData.dataSegment.data[8], addr);
+                if(RT_EOK == ret)
+                {
+                    //7.发送重新分配的地址
+                    SendReplyRegister(uuid, addr);
+                    rt_kprintf("----------RecvListHandle, register addr = %d, uuid %x %x %x %x\r\n",
+                            addr,
+                            tail->keyData.dataSegment.data[9],tail->keyData.dataSegment.data[10],
+                            tail->keyData.dataSegment.data[11],tail->keyData.dataSegment.data[12]);
+                }
+                else if(RT_ERROR == ret)
+                {
+                    monitor->allocateStr.address[addr] = 0;
+                }
             }
         }
         else
@@ -1254,6 +1275,15 @@ static void RecvListHandle(void)
     }
 
     //6.判断失联情况
+
+    //Justin debug 仅仅测试
+//    rt_kprintf("-----------------------------------------------, size = %d\r\n",monitor->device_size);
+//    for(u8 i= 0; i < monitor->device_size; i++)
+//    {
+////        rt_kprintf("addr = %d, sendCnt = %d\r\n",sendMoni[i].addr, sendMoni[i].SendCnt);
+//        rt_kprintf("addr = %d, uuid = %x\r\n",GetMonitor()->device[i].addr, GetMonitor()->device[i].uuid);
+//    }
+
     for(u8 i = 0; i < monitor->device_size; i++)
     {
         //1.已经发送数据了 但是数据接收超时判断为失联

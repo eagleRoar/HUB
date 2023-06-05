@@ -449,6 +449,7 @@ rt_err_t ReplyDeviceListDataToCloud(mqtt_client *client, int *sock, u8 sendCloud
                         rt_memcpy(page + sizeof(eth_page_head), str, len);
 
                         //发送
+                        //printf("---------------send data:%.*s\r\n",len,str);//Justin
                         ret = TcpSendMsg(sock, page, len + sizeof(eth_page_head));
                         rt_free(page);
                     }
@@ -462,7 +463,7 @@ rt_err_t ReplyDeviceListDataToCloud(mqtt_client *client, int *sock, u8 sendCloud
             }
             else
             {
-                LOG_E("str == RT_NULL, ReplyDeviceListDataToCloud");
+                rt_kprintf("str == RT_NULL, ReplyDeviceListDataToCloud\r\n");
             }
         }
 
@@ -765,7 +766,7 @@ rt_err_t ReplyDataToCloud(mqtt_client *client, int *sock, u8 sendCloudFlg)
                     rt_memcpy(page + 4, (u8 *)&len, 2);
                     rt_memcpy(page + sizeof(eth_page_head), str, len);
 
-//                    rt_kprintf("send : %.*s\r\n",len,str);
+                    rt_kprintf("send : %.*s\r\n",len,str);//Justin
 
                     //发送
                     ret = TcpSendMsg(sock, page, len + sizeof(eth_page_head));
@@ -855,7 +856,7 @@ void analyzeCloudData(char *data, u8 cloudFlg)
 
         if(NULL != cmd)
         {
-            rt_kprintf("analyzeCloudData recv cmd = %s\r\n",cmd->valuestring);
+//            rt_kprintf("analyzeCloudData recv cmd = %s\r\n",cmd->valuestring);
             if(0 == rt_memcmp(CMD_SET_TEMP, cmd->valuestring, strlen(CMD_SET_TEMP)))
             {
                 CmdSetTempValue(data, &cloudCmd);

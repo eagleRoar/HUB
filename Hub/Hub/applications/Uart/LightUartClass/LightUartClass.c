@@ -802,10 +802,17 @@ static void RecvListHandle(void)
                     DeleteModule(monitor, uuid);
                     //4.通过type 设置对应的默认值
                     addr = getAllocateAddress(GetMonitor());
-                    SetLineDefault(monitor, uuid, tail->keyData.dataSegment.data[8], addr);
-                    //5.发送重新分配的地址给模块
-                    SendReplyRegister(uuid, addr);
-                    LOG_I("-----------RecvListHandle, register again");
+                    rt_err_t ret = SetLineDefault(monitor, uuid, tail->keyData.dataSegment.data[8], addr);
+                    if(RT_EOK == ret)
+                    {
+                        //5.发送重新分配的地址给模块
+                        SendReplyRegister(uuid, addr);
+                        LOG_I("-----------RecvListHandle, register again");
+                    }
+                    else if(RT_ERROR == ret)
+                    {
+                        monitor->allocateStr.address[addr] = 0;
+                    }
                 }
                 else
                 {
@@ -819,10 +826,17 @@ static void RecvListHandle(void)
                 {
                     //7.之前没有注册过的直接注册
                     addr = getAllocateAddress(GetMonitor());
-                    SetLineDefault(monitor, uuid, tail->keyData.dataSegment.data[8], addr);
-                    //8.发送重新分配的地址
-                    SendReplyRegister(uuid, addr);
-                    LOG_I("----------RecvListHandle, register ");
+                    rt_err_t ret = SetLineDefault(monitor, uuid, tail->keyData.dataSegment.data[8], addr);
+                    if(RT_EOK == ret)
+                    {
+                        //8.发送重新分配的地址
+                        SendReplyRegister(uuid, addr);
+                        LOG_I("----------RecvListHandle, register ");
+                    }
+                    else if(RT_ERROR == ret)
+                    {
+                        monitor->allocateStr.address[addr] = 0;
+                    }
                 }
             }
         }

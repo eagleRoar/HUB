@@ -338,11 +338,16 @@ static void GetSysSetFromFile(sys_set_t *set, char *fileName)
 {
     static u8       FileHeadSpace       = 5;
     u16             length              = 0;
+    char name[HUB_NAMESZ];
 
     length = FileHeadSpace;
     if(RT_EOK == ReadFileData(fileName, (u8 *)set, length, sizeof(sys_set_t)))
     {
         rt_kprintf("-----------------Get sysSet data OK\r\n");
+        if(0 == strcmp(set->hub_info.name, ""))
+        {
+            strcpy(set->hub_info.name, GetSnName(name, 12));
+        }
     }
     else
     {

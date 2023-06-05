@@ -131,10 +131,10 @@ int main(void)
 
     while(1)
     {
-        time100mS = TimerTask(&time100mS, 100/MAIN_PERIOD, &Timer100msTouch);             //100毫秒任务定时器
-        time1S = TimerTask(&time1S, 1000/MAIN_PERIOD, &Timer1sTouch);                     //1秒任务定时器
-        time10S = TimerTask(&time10S, 10000/MAIN_PERIOD, &Timer10sTouch);                 //1秒任务定时器
-        time60S = TimerTask(&time60S, 60000/MAIN_PERIOD, &Timer60sTouch);                //60秒任务定时
+        time100mS = TimerTask(&time100mS, 100/MAIN_PERIOD, &Timer100msTouch);               //100毫秒任务定时器
+        time1S = TimerTask(&time1S, 1000/MAIN_PERIOD, &Timer1sTouch);                       //1秒任务定时器
+        time10S = TimerTask(&time10S, 10000/MAIN_PERIOD, &Timer10sTouch);                   //1秒任务定时器
+        time60S = TimerTask(&time60S, 60000/MAIN_PERIOD, &Timer60sTouch);                   //60秒任务定时
 
         GetSysSet()->ver = HUB_VER_NO;
 
@@ -346,6 +346,14 @@ int main(void)
             }
 
             startProgram = YES;
+
+            //Justin debug
+//            rt_kprintf("--------------------------print addr");
+//            for(int k = 0; k < 256; k++)
+//            {
+//                rt_kprintf("%d ",GetMonitor()->allocateStr.address[k]);
+//            }
+//            rt_kprintf("\r\n");
         }
 
         //60s 主动发送给云服务

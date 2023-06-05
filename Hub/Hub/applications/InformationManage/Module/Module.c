@@ -1000,9 +1000,10 @@ void DeleteModule(type_monitor_t *monitor, u32 uuid)
     }
 }
 
-static void InsertDevice(type_monitor_t *monitor, device_t *device)
+static rt_err_t InsertDevice(type_monitor_t *monitor, device_t *device)//Justin debug 未完待续
 {
     u8 i = 0;
+    rt_err_t ret = RT_ERROR;
 
     if(monitor->device_size < DEVICE_MAX)
     {
@@ -1014,9 +1015,10 @@ static void InsertDevice(type_monitor_t *monitor, device_t *device)
                 rt_memcpy(&monitor->device[i], device, sizeof(device_t));
                 monitor->device_size += 1;
 
-                LOG_I("InsertDevice, monitor->device_size = %d",monitor->device_size);
+                rt_kprintf("InsertDevice, monitor->device_size = %d\r\n",monitor->device_size);
 
-                break;
+                ret = RT_EOK;
+                return ret;
             }
         }
     }
@@ -1024,11 +1026,14 @@ static void InsertDevice(type_monitor_t *monitor, device_t *device)
     {
         LOG_E("the device num is full");
     }
+
+    return ret;
 }
 
-static void InsertSensor(type_monitor_t *monitor, sensor_t sensor)
+static rt_err_t InsertSensor(type_monitor_t *monitor, sensor_t sensor)
 {
     u8 i = 0;
+    rt_err_t ret = RT_ERROR;
 
     if(monitor->sensor_size < SENSOR_MAX)
     {
@@ -1040,9 +1045,10 @@ static void InsertSensor(type_monitor_t *monitor, sensor_t sensor)
                 rt_memcpy(&monitor->sensor[i], &sensor, sizeof(sensor_t));
                 monitor->sensor_size += 1;
 
-                LOG_I("InsertSensor, monitor->sensor_size = %d",monitor->sensor_size);
+                rt_kprintf("InsertSensor, monitor->sensor_size = %d\r\n",monitor->sensor_size);
 
-                break;
+                ret = RT_EOK;
+                return ret;
             }
         }
     }
@@ -1050,11 +1056,14 @@ static void InsertSensor(type_monitor_t *monitor, sensor_t sensor)
     {
         LOG_E("the device num is full");
     }
+
+    return ret;
 }
 
-static void InsertLine(type_monitor_t *monitor, line_t line)
+static rt_err_t InsertLine(type_monitor_t *monitor, line_t line)
 {
     u8 i = 0;
+    rt_err_t ret = RT_ERROR;
 
     if(monitor->line_size < LINE_MAX)
     {
@@ -1068,7 +1077,8 @@ static void InsertLine(type_monitor_t *monitor, line_t line)
 
                 LOG_I("InsertLine, monitor->line_size = %d",monitor->line_size);
 
-                break;
+                ret = RT_EOK;
+                return ret;
             }
         }
     }
@@ -1076,6 +1086,8 @@ static void InsertLine(type_monitor_t *monitor, line_t line)
     {
         LOG_E("the device num is full");
     }
+
+    return ret;
 }
 
 //通过type 分配默认值
@@ -1216,7 +1228,7 @@ rt_err_t SetDeviceDefault(type_monitor_t *monitor, u32 uuid, u8 type, u8 addr)
                 if(RT_EOK == ret)
                 {
                     //插入到设备列表中
-                    InsertDevice(monitor, device);
+                    ret = InsertDevice(monitor, device);
                     printDevice(*device);
                 }
 
@@ -1227,7 +1239,7 @@ rt_err_t SetDeviceDefault(type_monitor_t *monitor, u32 uuid, u8 type, u8 addr)
         }
     }
     else{
-        LOG_E("device num is full");
+        rt_kprintf("SetDeviceDefault device num is full\r\n");
     }
 
     return ret;
@@ -1343,7 +1355,7 @@ rt_err_t SetSensorDefault(type_monitor_t *monitor, u32 uuid, u8 type, u8 addr)
             if(RT_EOK == ret)
             {
                 //插入到设备列表中
-                InsertSensor(monitor, sensor);
+                ret = InsertSensor(monitor, sensor);
                 printSensor(sensor);
             }
 
@@ -1458,11 +1470,14 @@ rt_err_t SetLineDefault(type_monitor_t *monitor, u32 uuid, u8 type, u8 addr)
                 }
             }
 
-            //插入到设备列表中
-            InsertLine(monitor, line);
-            printLine(line);
-
             ret = RT_EOK;
+            if(RT_EOK == ret)
+            {
+                //插入到设备列表中
+                ret = InsertLine(monitor, line);
+                printLine(line);
+            }
+
         }
     }
 
