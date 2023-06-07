@@ -567,7 +567,7 @@ static u8 IsNeedSendCtrToConnect(u8 addr, u16 *ctrl)
     u8 ret = NO;
 
     //2.如果控制内容发送变化
-    for(u8 i = 0; i < DEVICE_MAX; i++)
+    for(u8 i = 0; i < GetMonitor()->device_size; i++)
     {
         if(addr == sendMoni[i].addr)
         {
@@ -927,6 +927,7 @@ static void KeepConnect(type_monitor_t *monitor)
 
 //            if((CON_SUCCESS == monitor->device[i].conn_state) ||
 //               (CON_NULL == monitor->device[i].conn_state))
+
         {
             GenerateSendData(monitor->device[i], lastCtrl, data);
             if(RT_EOK == GenerateKVData(&keyValue, monitor->device[i], data, 8))
@@ -1143,7 +1144,7 @@ static void RecvListHandle(void)
                         SendReplyRegister(uuid, addr);
                         rt_kprintf("-----------RecvListHandle, uuid %x %x %x %x register again\r\n",
                                 tail->keyData.dataSegment.data[9],tail->keyData.dataSegment.data[10],
-                                tail->keyData.dataSegment.data[11],tail->keyData.dataSegment.data[12]);//Justin
+                                tail->keyData.dataSegment.data[11],tail->keyData.dataSegment.data[12]);
                     }
                     else if(RT_ERROR == ret)
                     {
@@ -1154,7 +1155,7 @@ static void RecvListHandle(void)
                 {
                     rt_kprintf("----------RecvListHandle, uuid %x %x %x %x has exist\r\n",
                             tail->keyData.dataSegment.data[9],tail->keyData.dataSegment.data[10],
-                            tail->keyData.dataSegment.data[11],tail->keyData.dataSegment.data[12]);//Justin
+                            tail->keyData.dataSegment.data[11],tail->keyData.dataSegment.data[12]);
                 }
             }
             else
@@ -1275,15 +1276,6 @@ static void RecvListHandle(void)
     }
 
     //6.判断失联情况
-
-    //Justin debug 仅仅测试
-//    rt_kprintf("-----------------------------------------------, size = %d\r\n",monitor->device_size);
-//    for(u8 i= 0; i < monitor->device_size; i++)
-//    {
-////        rt_kprintf("addr = %d, sendCnt = %d\r\n",sendMoni[i].addr, sendMoni[i].SendCnt);
-//        rt_kprintf("addr = %d, uuid = %x\r\n",GetMonitor()->device[i].addr, GetMonitor()->device[i].uuid);
-//    }
-
     for(u8 i = 0; i < monitor->device_size; i++)
     {
         //1.已经发送数据了 但是数据接收超时判断为失联

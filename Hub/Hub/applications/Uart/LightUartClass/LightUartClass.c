@@ -264,7 +264,7 @@ static u8 IsNeedSendCtrToConnect(u8 addr, u8 port, u16 *ctrl)
     u8 ret = NO;
 
     //2.如果控制内容发送变化
-    for(u8 i = 0; i < LINE_MAX; i++)
+    for(u8 i = 0; i < GetMonitor()->line_size; i++)
     {
         if(addr == sendMoni[i].addr)
         {

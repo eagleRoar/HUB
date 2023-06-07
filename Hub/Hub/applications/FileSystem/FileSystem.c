@@ -656,6 +656,8 @@ void FileSystemInit(void)
     //4.标记文件系统准备完成
     SetFileSystemState(YES);
 
+    RemoveFileDirectory(new_tank_file);//Justin debug
+
     SaveStructVer(new_struct_ver_file);
 
     //5.文件系统线程

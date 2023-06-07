@@ -1421,6 +1421,7 @@ void CmdSetTankSensor(char *data, cloudcmd_t *cmd)
                     if(0 == GetSysTank()->tank[cmd->pump_no - 1].sensorId[0][item])
                     {
                         GetSysTank()->tank[cmd->pump_no - 1].sensorId[0][item] = cmd->pump_sensor_id;
+                        LOG_I("CmdSetTankSensor ok");//Justin debug
                         break;
                     }
                 }
@@ -3120,7 +3121,7 @@ char *ReplySetTank(char *cmd, cloudcmd_t cloud)
     return str;
 }
 
-char *ReplyGetTank(char *cmd, cloudcmd_t cloud)
+char *ReplyGetTank(char *cmd, cloudcmd_t cloud)//Justin debug 仅仅测试 该函数有bug
 {
     char            *str        = RT_NULL;
     char            *str1       = RT_NULL;
@@ -3136,7 +3137,6 @@ char *ReplyGetTank(char *cmd, cloudcmd_t cloud)
         cJSON_AddStringToObject(json, "cmd", cmd);
         cJSON_AddStringToObject(json, "msgid", cloud.msgid);
 
-//        LOG_D("-----------------------------cloud.tank_no = %d",cloud.tank_no);
         if((cloud.tank_no > 0) && (cloud.tank_no <= TANK_LIST_MAX))
         {
             tank = &GetSysTank()->tank[cloud.tank_no - 1];
@@ -3147,7 +3147,6 @@ char *ReplyGetTank(char *cmd, cloudcmd_t cloud)
             cJSON_AddNumberToObject(json, "tankNo", tank->tankNo);
             cJSON_AddStringToObject(json, "name", tank->name);
             cJSON_AddNumberToObject(json, "autoFillValveId", tank->autoFillValveId);
-            LOG_D("------------ReplyGetTank autoFillValveId = %x",tank->autoFillValveId);
             cJSON_AddNumberToObject(json, "autoFillHeight", tank->autoFillHeight);
             cJSON_AddNumberToObject(json, "autoFillFulfilHeight", tank->autoFillFulfilHeight);
             cJSON_AddNumberToObject(json, "highEcProtection", tank->highEcProtection);
@@ -3299,16 +3298,17 @@ char *ReplyGetTank(char *cmd, cloudcmd_t cloud)
     if(LastStr)
     {
         rt_memset(LastStr, 0, 2047);
-        LastStr[2047] = '\n';
-        LastStr[strlen(LastStr) - 1] = '\n';
+        LastStr[2047] = '\0';
+        LastStr[strlen(LastStr) - 1] = '\0';
         strncpy(LastStr, str, strlen(str));
     }
     cJSON_free(str);
+
     if(LastStr)
     {
         str_replace(LastStr, "\"pumpList_replace\"", str1);
-        cJSON_free(str1);
     }
+    cJSON_free(str1);
 
    json = cJSON_CreateArray();
    if(json)
@@ -3350,8 +3350,10 @@ char *ReplyGetTank(char *cmd, cloudcmd_t cloud)
    if(LastStr)
    {
        str_replace(LastStr, "\"valveList_replace\"", str1);
-       cJSON_free(str1);
    }
+   cJSON_free(str1);
+
+   LOG_W("LastStr length = %d",strlen(LastStr));//Justin debug
 
     return LastStr;
 }
@@ -3730,6 +3732,8 @@ char *ReplyGetPumpSensorList(char *cmd, cloudcmd_t cloud)
     cJSON           *list       = RT_NULL;
     sensor_t        sensor;
 
+    LOG_D("----------------------------------- ReplyGetPumpSensorList --------- 1");//Justin debug
+
     if(RT_NULL != json)
     {
         cJSON_AddStringToObject(json, "cmd", cmd);
@@ -3814,7 +3818,7 @@ char *ReplyGetPumpSensorList(char *cmd, cloudcmd_t cloud)
     {
         LOG_E("ReplyGetPumpSensorList err");
     }
-
+    LOG_D("----------------------------------- ReplyGetPumpSensorList --------- 2");//Justin debug
     return str;
 }
 
@@ -5695,6 +5699,29 @@ void GetTankNoById(sys_tank_t *list, u16 id, u8 *tankNo)
 }
 
 //顺序先发送device再发送line
+char *replyGetDeviceList_NULL(char *cmd, char *msgid)
+{
+    char            *str        = RT_NULL;
+    char            name[12];
+    cJSON           *json       = cJSON_CreateObject();
+
+    if(RT_NULL != json)
+    {
+        cJSON_AddStringToObject(json, "cmd", cmd);
+        cJSON_AddStringToObject(json, "msgid", msgid);
+        cJSON_AddStringToObject(json, "sn", GetSnName(name, 12));
+        cJSON_AddNumberToObject(json, "unpackId", 0);
+        cJSON_AddNumberToObject(json, "unpackAll", 0);
+        cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
+        str = cJSON_PrintUnformatted(json);
+
+        cJSON_Delete(json);
+        json = RT_NULL;
+    }
+
+    return str;
+}
+
 char *ReplyGetDeviceList_new(char *cmd, char *msgid, u8 deviceType, u8 no)
 {
     u8              storage     = 0;

@@ -1000,7 +1000,7 @@ void DeleteModule(type_monitor_t *monitor, u32 uuid)
     }
 }
 
-static rt_err_t InsertDevice(type_monitor_t *monitor, device_t *device)//Justin debug 未完待续
+static rt_err_t InsertDevice(type_monitor_t *monitor, device_t *device)
 {
     u8 i = 0;
     rt_err_t ret = RT_ERROR;

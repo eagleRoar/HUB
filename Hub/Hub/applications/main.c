@@ -346,14 +346,6 @@ int main(void)
             }
 
             startProgram = YES;
-
-            //Justin debug
-//            rt_kprintf("--------------------------print addr");
-//            for(int k = 0; k < 256; k++)
-//            {
-//                rt_kprintf("%d ",GetMonitor()->allocateStr.address[k]);
-//            }
-//            rt_kprintf("\r\n");
         }
 
         //60s 主动发送给云服务
