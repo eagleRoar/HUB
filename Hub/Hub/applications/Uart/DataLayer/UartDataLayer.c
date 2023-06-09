@@ -222,6 +222,7 @@ void GetReadRegAddrByType(u8 type, u16 *reg)
     switch (type)
     {
         case IO_4_TYPE:
+        case AC_4_TYPE:
 
             *reg = 0x0440;
             break;

@@ -1131,8 +1131,8 @@ void CmdSetWarn(char *data, cloudcmd_t *cmd, sys_set_t *set)
     temp = cJSON_Parse(data);
     if(RT_NULL != temp)
     {
-#if(HUB_SELECT == HUB_ENVIRENMENT)
         GetValueByC16(temp, "msgid", cmd->msgid, KEYVALUE_VALUE_SIZE);
+#if(HUB_SELECT == HUB_ENVIRENMENT)
         GetValueByU16(temp, "dayTempMin", &set->sysWarn.dayTempMin);
         GetValueByU16(temp, "dayTempMax", &set->sysWarn.dayTempMax);
         GetValueByU8(temp, "dayTempEn", &set->sysWarn.dayTempEn);
@@ -1179,6 +1179,12 @@ void CmdSetWarn(char *data, cloudcmd_t *cmd, sys_set_t *set)
         GetValueByU8(temp, "meEn", &set->sysWarn.meEn);
         GetValueByU8(temp, "mtEn", &set->sysWarn.mtEn);
         GetValueByU8(temp, "autoFillTimeout", &set->sysWarn.autoFillTimeout);
+        GetValueByU8(temp, "phBuzz", &set->sysWarn.phBuzz);
+        GetValueByU8(temp, "ecBuzz", &set->sysWarn.ecBuzz);
+        GetValueByU8(temp, "wtBuzz", &set->sysWarn.wtBuzz);
+        GetValueByU8(temp, "wlBuzz", &set->sysWarn.wlBuzz);
+        GetValueByU8(temp, "mmBuzz", &set->sysWarn.mmBuzz);
+        GetValueByU8(temp, "mtBuzz", &set->sysWarn.mtBuzz);
 
         pool = cJSON_GetObjectItem(temp, "poolTimeout");
 
@@ -1421,7 +1427,6 @@ void CmdSetTankSensor(char *data, cloudcmd_t *cmd)
                     if(0 == GetSysTank()->tank[cmd->pump_no - 1].sensorId[0][item])
                     {
                         GetSysTank()->tank[cmd->pump_no - 1].sensorId[0][item] = cmd->pump_sensor_id;
-                        LOG_I("CmdSetTankSensor ok");//Justin debug
                         break;
                     }
                 }
@@ -1846,6 +1851,8 @@ void CmdSetTankPV(char *data, cloudcmd_t *cmd)
     u8      port        = 0;
     device_t *device    = RT_NULL;
 
+    LOG_D("CmdSetTankPV : str = %s",data);//Justin
+
     json = cJSON_Parse(data);
 
     if(json)
@@ -1877,9 +1884,16 @@ void CmdSetTankPV(char *data, cloudcmd_t *cmd)
                 }
                 else if(VALVE_TYPE == device->port[port].type)
                 {
+                    //Justin debug
+                    LOG_I("print valve-----------------------");
                     for(int i = 0; i < VALVE_MAX; i++)
                     {
-                        if(0 == GetSysTank()->tank[cmd->setTankPvNo - 1].valve[i])
+                        LOG_D("no %d, addr = %d",i,GetSysTank()->tank[cmd->setTankPvNo - 1].nopump_valve[i]);
+                    }
+
+                    for(int i = 0; i < VALVE_MAX; i++)
+                    {
+                        if(0 == GetSysTank()->tank[cmd->setTankPvNo - 1].nopump_valve[i])
                         {
                             GetSysTank()->tank[cmd->setTankPvNo - 1].nopump_valve[i] = cmd->setTankPvId;
                             break;
@@ -3121,7 +3135,7 @@ char *ReplySetTank(char *cmd, cloudcmd_t cloud)
     return str;
 }
 
-char *ReplyGetTank(char *cmd, cloudcmd_t cloud)//Justin debug 仅仅测试 该函数有bug
+char *ReplyGetTank(char *cmd, cloudcmd_t cloud)
 {
     char            *str        = RT_NULL;
     char            *str1       = RT_NULL;
@@ -3353,7 +3367,6 @@ char *ReplyGetTank(char *cmd, cloudcmd_t cloud)//Justin debug 仅仅测试 该�
    }
    cJSON_free(str1);
 
-   LOG_W("LastStr length = %d",strlen(LastStr));//Justin debug
 
     return LastStr;
 }
@@ -3732,7 +3745,6 @@ char *ReplyGetPumpSensorList(char *cmd, cloudcmd_t cloud)
     cJSON           *list       = RT_NULL;
     sensor_t        sensor;
 
-    LOG_D("----------------------------------- ReplyGetPumpSensorList --------- 1");//Justin debug
 
     if(RT_NULL != json)
     {
@@ -3818,7 +3830,7 @@ char *ReplyGetPumpSensorList(char *cmd, cloudcmd_t cloud)
     {
         LOG_E("ReplyGetPumpSensorList err");
     }
-    LOG_D("----------------------------------- ReplyGetPumpSensorList --------- 2");//Justin debug
+
     return str;
 }
 

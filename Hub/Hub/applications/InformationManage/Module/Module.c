@@ -1173,6 +1173,11 @@ rt_err_t SetDeviceDefault(type_monitor_t *monitor, u32 uuid, u8 type, u8 addr)
                         setDeviceDefaultStora(device, 0 , "Pump", F_PUMP, device->type, addr , MANUAL_NO_HAND, 0);
                         ret = RT_EOK;
                         break;
+                    case VALVE_TYPE:
+                        setDeviceDefaultPara(device, "BIS-V", 0x0040, S_VALVE, device->type, 1);
+                        setDeviceDefaultStora(device, 0 , "Valve", F_VALVE, device->type, addr , MANUAL_NO_HAND, 0);
+                        ret = RT_EOK;
+                        break;
                     case IO_12_TYPE:
                         setDeviceDefaultPara(device, "BCB-12", 0x0401, S_IO_12, device->type, 12);
                         for(u8 index = 0; index < device->storage_size; index++)

@@ -343,7 +343,7 @@ void HomePage(type_page_t *page, type_monitor_t *monitor)
                 {
                     if(CON_FAIL != sensor->conn_state)
                     {
-                        if (PHEC_TYPE == sensor->type)
+                        if ((PHEC_TYPE == sensor->type) || (PHEC_NEW_TYPE ==  sensor->type))
                         {
                             data[0] = getSensorDataByAddr(GetMonitor(), addr, 1);
                             data[1] = getSensorDataByAddr(GetMonitor(), addr, 0);
