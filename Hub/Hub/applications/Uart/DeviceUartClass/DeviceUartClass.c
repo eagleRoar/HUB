@@ -128,6 +128,15 @@ static void GenerateIrAirCtrlData(u8 state, u16 *res)
 
     if(ON == state)
     {
+        if(DAY_TIME == GetSysSet()->dayOrNight)
+        {
+            temp = tempSet.dayCoolingTarget;
+        }
+        else if(NIGHT_TIME == GetSysSet()->dayOrNight)
+        {
+            temp = tempSet.nightCoolingTarget;
+        }
+
         if(temp > tempSet.tempDeadband)
         {
             temp -= tempSet.tempDeadband;
