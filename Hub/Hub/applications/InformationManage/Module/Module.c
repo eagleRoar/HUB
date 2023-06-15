@@ -428,32 +428,8 @@ void CtrlAllDeviceByFunc(type_monitor_t *monitor, u8 func, u8 en, u8 value)
         {
             if(func == device->port[0].func)
             {
-                if((IR_AIR_TYPE == device->port[0].type))
-                {
-                    if(ON == en)
-                    {
-                        //LOG_E("set temp = %d",temp);
-                        if(temp > tempSet.tempDeadband)
-                        {
-                            temp -= tempSet.tempDeadband;
-                        }
-                        changeIrAirCode(temp, &res);
-
-                        device->port[0].ctrl.d_state = res >> 8;
-                        device->port[0].ctrl.d_value = res;
-                        //LOG_D("ir %x %x",device->port[0].ctrl.d_state,device->port[0].ctrl.d_value);
-                    }
-                    else
-                    {
-                        device->port[0].ctrl.d_state = 0x60;
-                        device->port[0].ctrl.d_value = 0x00;
-                    }
-                }
-                else
-                {
-                    device->port[0].ctrl.d_state = en;
-                    device->port[0].ctrl.d_value = value;
-                }
+                device->port[0].ctrl.d_state = en;
+                device->port[0].ctrl.d_value = value;
             }
         }
         else
@@ -929,6 +905,68 @@ rt_err_t CheckLineCorrect(type_monitor_t *monitor, u32 uuid, u8 addr, u8 type)
     return ret;
 }
 
+#if (HUB_IRRIGSTION == HUB_SELECT)
+
+void deletePumpValveGroup(type_monitor_t *monitor, u8 addr, u8 port)
+{
+    u8              tankNo      = 0;
+    u16             id          = 0;
+    device_t        *device     = RT_NULL;
+
+    for(int index = 0; index < monitor->device_size; index++)
+    {
+        device = &monitor->device[index];
+        if(addr == device->addr)
+        {
+            if(1 == device->storage_size)
+            {
+                id = addr;
+            }
+            else
+            {
+                id = (addr << 8) | port;
+            }
+
+            GetTankNoById(GetSysTank(), id, &tankNo);
+
+            if(tankNo > 0 && tankNo <= TANK_LIST_MAX)
+            {
+                //1.如果是泵的话删除
+                if(id == GetSysTank()->tank[tankNo - 1].pumpId)
+                {
+                    GetSysTank()->tank[tankNo - 1].pumpId = 0;
+
+                    //同时删除泵下面的所有阀
+                    rt_memset(GetSysTank()->tank[tankNo - 1].valve, 0, sizeof(GetSysTank()->tank[tankNo - 1].valve));
+                    return;
+                }
+                else
+                {
+                    for(int item = 0; item < VALVE_MAX; item++)
+                    {
+                        if(id == GetSysTank()->tank[tankNo - 1].valve[item])
+                        {
+                            GetSysTank()->tank[tankNo - 1].valve[item] = 0;
+                            return;
+                        }
+                    }
+
+                    for(int item = 0; item < VALVE_MAX; item++)
+                    {
+                        if(id == GetSysTank()->tank[tankNo - 1].nopump_valve[item])
+                        {
+                            GetSysTank()->tank[tankNo - 1].nopump_valve[item] = 0;
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+#endif
+
 //删除
 void DeleteModule(type_monitor_t *monitor, u32 uuid)
 {
@@ -959,6 +997,13 @@ void DeleteModule(type_monitor_t *monitor, u32 uuid)
     {
         if(uuid == monitor->device[i].uuid)
         {
+#if (HUB_IRRIGSTION == HUB_SELECT)
+            for(int j = 0; j < monitor->device[i].storage_size; j++)
+            {
+                deletePumpValveGroup(monitor, monitor->device[i].addr, j);
+            }
+#endif
+
             monitor->allocateStr.address[monitor->device[i].addr] = 0;
             rt_memset((u8 *)&monitor->device[i], 0, sizeof(device_t));
 

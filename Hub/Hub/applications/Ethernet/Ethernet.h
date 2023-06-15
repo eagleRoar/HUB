@@ -13,6 +13,7 @@
 #include "Gpio.h"
 #include "Gpio.h"
 #include "EthernetBusiness.h"
+#include "netdev_ipaddr.h"
 
 #define TC_TCPCLIENT_CLOSE (1 << 0)
 #define TC_EXIT_THREAD (1 << 1)

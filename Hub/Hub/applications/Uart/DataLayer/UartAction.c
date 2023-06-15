@@ -12,6 +12,7 @@
 #include "DeviceUartClass.h"
 #include "Module.h"
 #include "Recipe.h"
+#include "UartAction.h"
 
 u8 sys_warn[WARN_MAX];
 #if(HUB_IRRIGSTION == HUB_SELECT)
@@ -1310,7 +1311,7 @@ void menualHandProgram(type_monitor_t *monitor, type_uart_class *deviceUart, typ
         {
             if(MANUAL_HAND_OFF == device->port[port].manual.manual)
             {
-                 deviceUart->DeviceCtrlSingle(device, port, OFF);
+                 device->port[port].ctrl.d_state = OFF;//Justin
             }
             else if(MANUAL_HAND_ON == device->port[port].manual.manual)
             {
@@ -1318,12 +1319,12 @@ void menualHandProgram(type_monitor_t *monitor, type_uart_class *deviceUart, typ
                 if((nowTime >= device->port[port].manual.manual_on_time_save) &&
                    (nowTime <= (device->port[port].manual.manual_on_time + device->port[port].manual.manual_on_time_save)))
                 {
-                    deviceUart->DeviceCtrlSingle(device, port, ON);
+                    device->port[port].ctrl.d_state = ON;//Justin
                 }
                 else
                 {
                     device->port[port].manual.manual = MANUAL_NO_HAND;
-                    deviceUart->DeviceCtrlSingle(device, port, OFF);
+                    device->port[port].ctrl.d_state = OFF;//Justin
                 }
             }
             else
@@ -1332,11 +1333,9 @@ void menualHandProgram(type_monitor_t *monitor, type_uart_class *deviceUart, typ
                 if((nowTime >= device->port[port].manual.manual_on_time_save) &&
                    (nowTime <= (device->port[port].manual.manual_on_time + device->port[port].manual.manual_on_time_save)))
                 {
-                    deviceUart->DeviceCtrlSingle(device, port, OFF);
+                    device->port[port].ctrl.d_state = OFF;//Justin
                 }
             }
-
-
         }
     }
 
@@ -1622,11 +1621,13 @@ u8 GetDeviceStateByCo2Lock(type_monitor_t *monitor, u8 type)
 //mPeriod 周期 单位ms
 void co2Program(type_monitor_t *monitor, type_uart_class uart, u16 mPeriod)
 {
-    int             co2Now      = GetSensorMainValue(monitor, F_S_CO2);
-    u16             co2Target   = 0;
-    static u16      runTime     = 0;
-    static u16      stopTime    = 0;
-    u8              switchFlg   = 0;
+    int             co2Now              = GetSensorMainValue(monitor, F_S_CO2);
+    u16             co2Target           = 0;
+    static u16      runTime             = 0;
+    static u16      stopTime            = 0;
+    u8              switchFlg           = 0;
+    u8              co2UpState          = OFF;
+    u8              co2DownState        = OFF;
     proCo2Set_t     co2Set;
 
     GetNowSysSet(RT_NULL, &co2Set, RT_NULL, RT_NULL, RT_NULL, RT_NULL, RT_NULL);
@@ -1675,17 +1676,17 @@ void co2Program(type_monitor_t *monitor, type_uart_class uart, u16 mPeriod)
                         if((VALUE_NULL == getSensorDataByFunc(monitor, F_S_O2)) ||
                            (getSensorDataByFunc(monitor, F_S_O2) >= 180))
                         {
-                            uart.DeviceCtrl(monitor, F_Co2_UP, ON);
+                            co2UpState = ON;//Justin
                         }
                     }
                     else
                     {
-                        uart.DeviceCtrl(monitor, F_Co2_UP, OFF);
+                        co2UpState = OFF;//Justin
                     }
                 }
                 else
                 {
-                    uart.DeviceCtrl(monitor, F_Co2_UP, OFF);
+                    co2UpState = OFF;//Justin
                 }
             }
             else
@@ -1700,33 +1701,37 @@ void co2Program(type_monitor_t *monitor, type_uart_class uart, u16 mPeriod)
                         if((VALUE_NULL == getSensorDataByFunc(monitor, F_S_O2)) ||
                            (getSensorDataByFunc(monitor, F_S_O2) >= 180))
                         {
-                            uart.DeviceCtrl(monitor, F_Co2_UP, ON);
+                            co2UpState = ON;//Justin
                         }
                     }
                     else
                     {
-                        uart.DeviceCtrl(monitor, F_Co2_UP, OFF);
+                        co2UpState = OFF;//Justin
                     }
                 }
                 else if(co2Now >= co2Target + co2Set.co2Deadband)
                 {
-                    uart.DeviceCtrl(monitor, F_Co2_UP, OFF);
+                    co2UpState = OFF;//Justin
                 }
             }
-            uart.DeviceCtrl(monitor, F_Co2_DOWN, OFF);
+
+            co2DownState = OFF;//Justin
         }
         else if(NIGHT_TIME == GetSysSet()->dayOrNight)
         {
             if(co2Now > co2Target)
             {
-                uart.DeviceCtrl(monitor, F_Co2_DOWN, ON);
+                co2DownState = ON;//Justin
             }
             else if(co2Now + co2Set.co2Deadband <= co2Target)
             {
-                uart.DeviceCtrl(monitor, F_Co2_DOWN, OFF);
+                co2DownState = OFF;//Justin
             }
-            uart.DeviceCtrl(monitor, F_Co2_UP, OFF);
+            co2UpState = OFF;//Justin
         }
+
+        CtrlAllDeviceByFunc(monitor, F_Co2_UP, co2UpState, 0);
+        CtrlAllDeviceByFunc(monitor, F_Co2_DOWN, co2DownState, 0);
     }
 }
 
@@ -1756,20 +1761,20 @@ void humiProgram(type_monitor_t *monitor, type_uart_class uart)
         //达到湿度目标
         if(humiNow >= dehumiTarget)
         {
-            uart.DeviceCtrl(monitor, F_DEHUMI, ON);
+            CtrlAllDeviceByFunc(monitor, F_DEHUMI, ON, 0);
         }
         else if(humiNow <= dehumiTarget - humiSet.humidDeadband)
         {
-            uart.DeviceCtrl(monitor, F_DEHUMI, OFF);
+            CtrlAllDeviceByFunc(monitor, F_DEHUMI, OFF, 0);
         }
 
         if(humiNow <= humiTarget)
         {
-            uart.DeviceCtrl(monitor, F_HUMI, ON);
+            CtrlAllDeviceByFunc(monitor, F_HUMI, ON, 0);
         }
         else if(humiNow >= humiTarget + humiSet.humidDeadband)
         {
-            uart.DeviceCtrl(monitor, F_HUMI, OFF);
+            CtrlAllDeviceByFunc(monitor, F_HUMI, OFF, 0);
         }
 
         //当前有一个逻辑是降温和除湿联动选择
@@ -1778,7 +1783,7 @@ void humiProgram(type_monitor_t *monitor, type_uart_class uart)
             //如果除湿是开的话，AC_cool 不能关，因为可能AC_cool 上插着风扇
             if(ON == GetDeviceStateByFunc(monitor, F_DEHUMI))
             {
-                uart.DeviceCtrl(monitor, F_COOL, ON);
+                CtrlAllDeviceByType(monitor, COOL_TYPE, ON, 0);
             }
         }
     }
@@ -1810,20 +1815,20 @@ void tempProgram(type_monitor_t *monitor, type_uart_class uart)
         if(tempNow >= coolTarge)
         {
             //打开所以制冷功能设备
-            uart.DeviceCtrl(monitor, F_COOL, ON);
+            CtrlAllDeviceByFunc(monitor, F_COOL, ON, 0);
         }
         else if(tempNow <= (coolTarge - tempSet.tempDeadband))
         {
-            uart.DeviceCtrl(monitor, F_COOL, OFF);
+            CtrlAllDeviceByFunc(monitor, F_COOL, OFF, 0);
         }
 
         if(tempNow <= HeatTarge)
         {
-            uart.DeviceCtrl(monitor, F_HEAT, ON);
+            CtrlAllDeviceByFunc(monitor, F_HEAT, ON, 0);
         }
         else if(tempNow >= HeatTarge + tempSet.tempDeadband)
         {
-            uart.DeviceCtrl(monitor, F_HEAT, OFF);
+            CtrlAllDeviceByFunc(monitor, F_HEAT, OFF, 0);
         }
     }
 }
@@ -2726,7 +2731,8 @@ void Light12Program(type_monitor_t *monitor, type_uart_class deviceUart)
             }
             device->port[port].ctrl.d_state = state;
         }
-        deviceUart.DeviceCtrlSingle(device, 0, device->port[0].ctrl.d_state );
+        //Justin debug
+
     }
 }
 
@@ -2772,7 +2778,6 @@ void timmerProgram(type_monitor_t *monitor, type_uart_class deviceUart)
                     }
 
                     device->port[port].ctrl.d_state = state;
-                    deviceUart.DeviceCtrlSingle(device, port, state);
                 }
                 else if(BY_SCHEDULE == device->port[port].mode)//定时器模式
                 {
@@ -2809,7 +2814,6 @@ void timmerProgram(type_monitor_t *monitor, type_uart_class deviceUart)
                    if(item == TIMER_GROUP)
                    {
                        device->port[port].ctrl.d_state = 0;
-                       deviceUart.DeviceCtrlSingle(device, port, 0);
                    }
                    else
                    {
@@ -2831,12 +2835,10 @@ void timmerProgram(type_monitor_t *monitor, type_uart_class deviceUart)
                        if(day == 7)
                        {
                            device->port[port].ctrl.d_state = 0;
-                           deviceUart.DeviceCtrlSingle(device, port, 0);
                        }
                        else
                        {
                            device->port[port].ctrl.d_state = state;
-                           deviceUart.DeviceCtrlSingle(device, port, state);
                        }
                    }
                 }
@@ -3208,14 +3210,17 @@ void pumpProgram(type_monitor_t *monitor, sys_tank_t *tank_list, type_uart_class
             port = 0;
         }
 
-        if(ADD_WATER == waterState[tank])
+        device = GetDeviceByAddr(monitor, addr);
+        if(device)
         {
-            deviceUart.DeviceCtrlSingle(GetDeviceByAddr(monitor, addr), port, ON);
-
-        }
-        else if(NO_ADD_WATER == waterState[tank])
-        {
-            deviceUart.DeviceCtrlSingle(GetDeviceByAddr(monitor, addr), port, OFF);
+            if(ADD_WATER == waterState[tank])
+            {
+                device->port[port].ctrl.d_state = ON;//Justin debug
+            }
+            else if(NO_ADD_WATER == waterState[tank])
+            {
+                device->port[port].ctrl.d_state = OFF;//Justin debug
+            }
         }
 
         //2.阀门开的条件为: 定时器满足 ph ec 水位满足
@@ -3245,7 +3250,7 @@ void pumpProgram(type_monitor_t *monitor, sys_tank_t *tank_list, type_uart_class
                     state = OFF;
                 }
 
-                deviceUart.DeviceCtrlSingle(GetDeviceByAddr(monitor, addr), port, state);
+                GetDeviceByAddr(monitor, addr)->port[port].ctrl.d_state = state;//Justin debug
             }
         }
 
@@ -3283,7 +3288,7 @@ void pumpProgram(type_monitor_t *monitor, sys_tank_t *tank_list, type_uart_class
                 state = OFF;
             }
 
-            deviceUart.DeviceCtrlSingle(GetDeviceByAddr(monitor, addr), port, state);
+            GetDeviceByAddr(monitor, addr)->port[port].ctrl.d_state = state;//Justin debug
         }
         else
         {
@@ -3322,15 +3327,19 @@ void pumpProgram(type_monitor_t *monitor, sys_tank_t *tank_list, type_uart_class
                 port = 0;
             }
 
-            if(VALVE_MAX == valve_index1)
+            device = GetDeviceByAddr(monitor, addr);
+            if(device)
             {
-                //所关联的阀门状态为全关,则关闭水泵
-                deviceUart.DeviceCtrlSingle(GetDeviceByAddr(monitor, addr), port, OFF);
-            }
-            else
-            {
-                //所关联的阀门状态有开着的，打开水泵
-                deviceUart.DeviceCtrlSingle(GetDeviceByAddr(monitor, addr), port, ON);
+                if(VALVE_MAX == valve_index1)
+                {
+                    //所关联的阀门状态为全关,则关闭水泵
+                    device->port[port].ctrl.d_state = OFF;//Justin
+                }
+                else
+                {
+                    //所关联的阀门状态有开着的，打开水泵
+                    device->port[port].ctrl.d_state = ON;//Justin
+                }
             }
         }
 
@@ -3361,7 +3370,7 @@ void pumpProgram(type_monitor_t *monitor, sys_tank_t *tank_list, type_uart_class
                     state = OFF;
                 }
 
-                deviceUart.DeviceCtrlSingle(GetDeviceByAddr(monitor, addr), port, state);
+                GetDeviceByAddr(monitor, addr)->port[port].ctrl.d_state = state;//Justin debug
             }
         }
     }
@@ -3491,7 +3500,7 @@ void closeUnUseDevice(type_monitor_t *monitor, type_uart_class *uart)
         {
             if(NO == isBelongToTank(monitor->device[index].addr, GetSysTank()))
             {
-                uart->DeviceCtrlSingle(&monitor->device[index], 0, OFF);
+                monitor->device[index].port[0].ctrl.d_state = OFF;//Justin
             }
         }
         else
@@ -3500,7 +3509,7 @@ void closeUnUseDevice(type_monitor_t *monitor, type_uart_class *uart)
             {
                 if(NO == isBelongToTank((monitor->device[index].addr << 8) | port, GetSysTank()))
                 {
-                    uart->DeviceCtrlSingle(&monitor->device[index], port, OFF);
+                    monitor->device[index].port[port].ctrl.d_state = OFF;//Justin
                 }
             }
         }
@@ -3509,3 +3518,19 @@ void closeUnUseDevice(type_monitor_t *monitor, type_uart_class *uart)
 
 #endif
 
+//发送实际的命令给list发送
+void sendReadDeviceCtrlToList(type_monitor_t *monitor, type_uart_class *deviceObj)
+{
+    int         index       = 0;
+    int         port        = 0;
+    device_t    *device     = RT_NULL;
+
+    for(index = 0; index < monitor->device_size; index++)
+    {
+        device = &monitor->device[index];
+        for(port = 0; port < device->storage_size; port++)
+        {
+            deviceObj->DeviceCtrlSingle(device, port, device->port[port].ctrl.d_state);
+        }
+    }
+}

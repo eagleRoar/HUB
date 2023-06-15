@@ -174,7 +174,7 @@ int mqtt_start(void)
         client.condata.clientID.cstring = cid;
         client.condata.username.cstring = MQTT_USERNAME;
         client.condata.password.cstring = MQTT_PASSWORD;
-        client.condata.keepAliveInterval = 60;//30;
+        client.condata.keepAliveInterval = 60;
         client.condata.cleansession = 1;
 
         /* config MQTT will param. */

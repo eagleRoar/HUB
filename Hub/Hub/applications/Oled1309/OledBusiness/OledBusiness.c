@@ -44,7 +44,7 @@ void HomePage(type_page_t *page, type_monitor_t *monitor)
     char                time[22]    = "";
 #if (HUB_SELECT == HUB_ENVIRENMENT)
     char                name[5]     = "";
-    int                 data;
+    int                 data        = 0;
     char                day_night[6] = "";
 #elif (HUB_SELECT == HUB_IRRIGSTION)
     u8                  sensor_i    = 0;

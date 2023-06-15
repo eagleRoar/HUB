@@ -48,8 +48,8 @@ typedef struct uartClass{
 
     //函数接口
     void(*ConfigureUart)(rt_device_t*);                         //注册实际的串口
-    void(*DeviceCtrl)(type_monitor_t *, u8, u8);                //发送串口数据
-    void(*DeviceCtrlSingle)(device_t *, u8 , u8 );
+    void(*DeviceCtrl)(type_monitor_t *monitor, u8 func, u8 state);                //发送串口数据
+    void(*DeviceCtrlSingle)(device_t *device, u8 port, u8 state);
     void(*DeviceChgType)(type_monitor_t *, u16 id, u8 type);       //发送设置端口type
     void (*LineCtrl)(line_t *line, u8 port, u8 state, u8 value);
     void (*Line4Ctrl)(line_t *line, u16 *value);

@@ -305,6 +305,8 @@ int main(void)
             //报警功能
             warnProgram(GetMonitor(), GetSysSet());             //监听告警信息
 
+            //发送实际发送的数据
+            sendReadDeviceCtrlToList(GetMonitor(), deviceObj);
         }
 
         //10s
@@ -346,6 +348,8 @@ int main(void)
             }
 
             startProgram = YES;
+
+            //GetIPAddress();//Justin
         }
 
         //60s 主动发送给云服务

@@ -349,6 +349,10 @@ void initCloudProtocol(void)
     sys_set.line1_4Set.tempOffDimming = 400;
     sys_set.line1_4Set.sunriseSunSet = 10;
     rt_memset(&sys_set.lineRecipeList, 0, sizeof(line_4_recipe_t) * LINE_4_RECIPE_MAX);
+    for(u8 index = 0; index < LINE_4_RECIPE_MAX; index++)
+    {
+        sys_set.lineRecipeList[index].no = index + 1;
+    }
     rt_memset(&sys_set.dimmingCurve, 0, sizeof(dimmingCurve_t));
 
     sys_set.sensorMainType = SENSOR_CTRL_AVE;

@@ -54,4 +54,7 @@ rt_err_t SetLineDefault(type_monitor_t *, u32 , u8, u8);
 u8 GetLineType(type_monitor_t *monitor);
 sensor_t *GetMainSensorByAddr(type_monitor_t *monitor, u8 type);
 int GetSensorMainValue(type_monitor_t *monitor, u8 func);
+#if (HUB_IRRIGSTION == HUB_SELECT)
+void deletePumpValveGroup(type_monitor_t *monitor, u8 addr, u8 port);
+#endif
 #endif /* APPLICATIONS_INFORMATIONMANAGE_MODULE_MODULE_H_ */
