@@ -10,8 +10,9 @@
 #ifndef GLOBALCONFIG_H_
 #define GLOBALCONFIG_H_
 
-#define HUB_ENVIRENMENT                 1
-#define HUB_IRRIGSTION                  2
+#define HUB_ENVIRENMENT                 1   //环控
+#define HUB_IRRIGSTION                  2   //灌溉
+#define HUB_FERTILIZATION               3   //灌溉 + 培肥
 
 #define DEBUG_MODE                      0//1                    //1.如果是debug mode 的话不需要偏移位置，否则偏移位置SD卡升级 2.修改link.lds
 #define HUB_SELECT                      HUB_IRRIGSTION          //HUB_ENVIRENMENT         //
