@@ -217,71 +217,58 @@ static void specialRegister(type_monitor_t *monitor)
                 //特殊设备处理
                 if(RT_ERROR == CheckSensorCorrect(monitor, 0x00000000, 0x18, PAR_TYPE))
                 {
-                    getRegisterData(data, 13, 0x00000000, PAR_TYPE);
                     SetSensorDefault(monitor, 0x00000000, PAR_TYPE, 0x18);
                 }
 
 #elif (HUB_SELECT == HUB_IRRIGSTION)
                 if(RT_ERROR == CheckSensorCorrect(monitor, 0x00000001, 0xE0, PHEC_TYPE))
                 {
-                    getRegisterData(data, 13, 0x00000001,PHEC_TYPE);
                     SetSensorDefault(monitor, 0x00000001, PHEC_TYPE, 0xE0);
                 }
                 if(RT_ERROR == CheckSensorCorrect(monitor, 0x00000002, 0xE1, PHEC_TYPE))
                 {
-                    getRegisterData(data, 13, 0x00000002,PHEC_TYPE);
                     SetSensorDefault(monitor, 0x00000002, PHEC_TYPE, 0xE1);
                 }
                 if(RT_ERROR == CheckSensorCorrect(monitor, 0x00000003, 0xE2, PHEC_TYPE))
                 {
-                    getRegisterData(data, 13, 0x00000003,PHEC_TYPE);
                     SetSensorDefault(monitor, 0x00000003, PHEC_TYPE, 0xE2);
                 }
                 if(RT_ERROR == CheckSensorCorrect(monitor, 0x00000004, 0xE3, PHEC_TYPE))
                 {
-                    getRegisterData(data, 13, 0x00000004,PHEC_TYPE);
                     SetSensorDefault(monitor, 0x00000004, PHEC_TYPE, 0xE3);
                 }
 
                 if(RT_ERROR == CheckSensorCorrect(monitor, 0x00000005, 0xE4, WATERlEVEL_TYPE))
                 {
-                    getRegisterData(data, 13, 0x00000005,WATERlEVEL_TYPE);
                     SetSensorDefault(monitor, 0x00000005, WATERlEVEL_TYPE, 0xE4);
                 }
                 if(RT_ERROR == CheckSensorCorrect(monitor, 0x00000006, 0xE5, WATERlEVEL_TYPE))
                 {
-                    getRegisterData(data, 13, 0x00000006,WATERlEVEL_TYPE);
                     SetSensorDefault(monitor, 0x00000006, WATERlEVEL_TYPE, 0xE5);
                 }
                 if(RT_ERROR == CheckSensorCorrect(monitor, 0x00000007, 0xE6, WATERlEVEL_TYPE))
                 {
-                    getRegisterData(data, 13, 0x00000007,WATERlEVEL_TYPE);
                     SetSensorDefault(monitor, 0x00000007, WATERlEVEL_TYPE, 0xE6);
                 }
                 if(RT_ERROR == CheckSensorCorrect(monitor, 0x00000008, 0xE7, WATERlEVEL_TYPE))
                 {
-                    getRegisterData(data, 13, 0x00000008,WATERlEVEL_TYPE);
                     SetSensorDefault(monitor, 0x00000008, WATERlEVEL_TYPE, 0xE7);
                 }
 
                 if(RT_ERROR == CheckSensorCorrect(monitor, 0x00000009, 0xE8, SOIL_T_H_TYPE))
                 {
-                    getRegisterData(data, 13, 0x00000009, SOIL_T_H_TYPE);
                     SetSensorDefault(monitor, 0x00000009, SOIL_T_H_TYPE, 0xE8);
                 }
                 if(RT_ERROR == CheckSensorCorrect(monitor, 0x0000000a, 0xE9, SOIL_T_H_TYPE))
                 {
-                    getRegisterData(data, 13, 0x0000000a, SOIL_T_H_TYPE);
                     SetSensorDefault(monitor, 0x0000000a, SOIL_T_H_TYPE, 0xE9);
                 }
                 if(RT_ERROR == CheckSensorCorrect(monitor, 0x0000000b, 0xEA, SOIL_T_H_TYPE))
                 {
-                    getRegisterData(data, 13, 0x0000000b, SOIL_T_H_TYPE);
                     SetSensorDefault(monitor, 0x0000000b, SOIL_T_H_TYPE, 0xEA);
                 }
                 if(RT_ERROR == CheckSensorCorrect(monitor, 0x0000000c, 0xEB, SOIL_T_H_TYPE))
                 {
-                    getRegisterData(data, 13, 0x0000000c, SOIL_T_H_TYPE);
                     SetSensorDefault(monitor, 0x0000000c, SOIL_T_H_TYPE, 0xEB);
                 }
 #endif

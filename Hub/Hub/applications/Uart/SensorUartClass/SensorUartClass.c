@@ -376,7 +376,7 @@ static void RecvListHandle(void)
                             break;
                         }
                     }
-                    LOG_I("----------RecvListHandle sensor, addr %x has exist",tail->keyData.dataSegment.data[7]);
+                    //LOG_I("----------RecvListHandle sensor, addr %x has exist",tail->keyData.dataSegment.data[7]);
                 }
             }
             else
