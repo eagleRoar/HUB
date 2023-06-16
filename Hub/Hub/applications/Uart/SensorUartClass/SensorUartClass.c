@@ -367,6 +367,15 @@ static void RecvListHandle(void)
                 }
                 else
                 {
+                    for(int i = 0; i < monitor->sensor_size; i++)
+                    {
+                        if(uuid == monitor->sensor[i].uuid)
+                        {
+                            SendReplyRegister(uuid, monitor->sensor[i].addr);
+                            rt_kprintf("----------sensor has exist, send addr = %d\r\n",monitor->sensor[i].addr);
+                            break;
+                        }
+                    }
                     LOG_I("----------RecvListHandle sensor, addr %x has exist",tail->keyData.dataSegment.data[7]);
                 }
             }

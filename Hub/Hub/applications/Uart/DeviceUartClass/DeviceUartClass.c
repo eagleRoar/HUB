@@ -1162,9 +1162,15 @@ static void RecvListHandle(void)
                 }
                 else
                 {
-                    rt_kprintf("----------RecvListHandle, uuid %x %x %x %x has exist\r\n",
-                            tail->keyData.dataSegment.data[9],tail->keyData.dataSegment.data[10],
-                            tail->keyData.dataSegment.data[11],tail->keyData.dataSegment.data[12]);
+                    for(int i = 0; i < monitor->device_size; i++)
+                    {
+                        if(uuid == monitor->device[i].uuid)
+                        {
+                            SendReplyRegister(uuid, monitor->device[i].addr);
+                            rt_kprintf("device has exist, send addr = %d\r\n",monitor->device[i].addr);
+                            break;
+                        }
+                    }
                 }
             }
             else

@@ -816,7 +816,16 @@ static void RecvListHandle(void)
                 }
                 else
                 {
-                    LOG_I("----------RecvListHandle, addr %x has exist",tail->keyData.dataSegment.data[7]);
+                    for(int i = 0; i < monitor->line_size; i++)
+                    {
+                        if(uuid == monitor->line[i].uuid)
+                        {
+                            SendReplyRegister(uuid, monitor->line[i].addr);//Justin
+                            rt_kprintf("----------line has exist, send addr = %d\r\n",monitor->line[i].addr);
+                            break;
+                        }
+                    }
+                    //LOG_I("----------RecvListHandle, addr %x has exist",tail->keyData.dataSegment.data[7]);
                 }
             }
             else
