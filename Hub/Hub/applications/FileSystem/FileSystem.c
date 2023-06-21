@@ -275,6 +275,7 @@ static void GetMonitorFromFile(type_monitor_t *monitor, char *fileName)
     {
         rt_kprintf("-----------Get monitor data Fail\r\n");
     }
+
 }
 
 static void SaveMonitorToFile(type_monitor_t *monitor, char *fileName)
@@ -422,6 +423,12 @@ static void GetSysTankFromFile(sys_tank_t *list, char *fileName)
     {
         LOG_E("Get tankList data Fail");
     }
+
+    list->tank_size = TANK_LIST_MAX;
+    for(int i = 0; i < TANK_LIST_MAX; i++)
+    {
+        list->tank[i].tankNo = i + 1;
+    }
 }
 
 static void SaveSysTankToFile(sys_tank_t *list, char *fileName)
@@ -524,7 +531,6 @@ void FileSystemEntry(void* parameter)
         //10s 任务
         if(ON == Timer30sTouch)
         {
-
             if(YES == GetSysSet()->saveFlag)
             {
                 SaveSysSetToFile(GetSysSet(), new_sysset_file);
@@ -550,6 +556,7 @@ void FileSystemEntry(void* parameter)
                 GetSysTank()->saveFlag = NO;
             }
 #endif
+
         }
         rt_thread_mdelay(FILE_SYS_PERIOD);
     }

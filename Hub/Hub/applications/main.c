@@ -31,10 +31,6 @@
 #define DBG_LVL DBG_LOG
 #include <rtdbg.h>
 
-extern struct ethDeviceStruct *eth;
-extern int tcp_sock;
-extern const u8    HEAD_CODE[4];
-
 extern rt_uint8_t GetEthDriverLinkStatus(void);            //获取网口连接状态
 extern cloudcmd_t      cloudCmd;
 
@@ -59,9 +55,7 @@ int main(void)
     type_uart_class *lineObj            = GetLightObject();
     line_t          *line               = RT_NULL;
 #endif
-    u8              *buf                = RT_NULL;
-    type_sys_time   time;
-    u16             length              = 0;
+
     static u8       cnt                 = 0;
     static u8       start_warn_flg      = NO;
     static u8       Timer100msTouch     = OFF;
@@ -123,12 +117,6 @@ int main(void)
     //MQTT线程
     mqtt_start();
 
-    GetSysTank()->tank_size = TANK_LIST_MAX;
-    for(int i = 0; i < TANK_LIST_MAX; i++)
-    {
-        GetSysTank()->tank[i].tankNo = i + 1;
-    }
-
     while(1)
     {
         time100mS = TimerTask(&time100mS, 100/MAIN_PERIOD, &Timer100msTouch);               //100毫秒任务定时器
@@ -173,56 +161,14 @@ int main(void)
             if(YES == start_warn_flg)
             {
                 sendOfflinewarnning(GetMonitor());      //发送离线报警
-                sendwarnningInfo();
+//                sendwarnningInfo();     //该报警函数写的很乱，需要优化 Justin debug
             }
         }
 
         if(Timer1sTouch)
         {
             //分辨白天黑夜
-            if(DAY_BY_TIME == GetSysSet()->sysPara.dayNightMode)//按时间分辨
-            {
-                getRealTimeForMat(&time);
-
-                if(GetSysSet()->sysPara.dayTime < GetSysSet()->sysPara.nightTime)
-                {
-                    if(((time.hour * 60 + time.minute) >= GetSysSet()->sysPara.dayTime) &&
-                       ((time.hour * 60 + time.minute) < GetSysSet()->sysPara.nightTime))
-                    {
-                        GetSysSet()->dayOrNight = DAY_TIME;
-                    }
-                    else
-                    {
-                        GetSysSet()->dayOrNight = NIGHT_TIME;
-                    }
-                }
-                else
-                {
-                    if(((time.hour * 60 + time.minute) >= GetSysSet()->sysPara.nightTime) &&
-                       ((time.hour * 60 + time.minute) < GetSysSet()->sysPara.dayTime))
-                    {
-                        GetSysSet()->dayOrNight = NIGHT_TIME;
-                    }
-                    else
-                    {
-                        GetSysSet()->dayOrNight = DAY_TIME;
-                    }
-                }
-            }
-            else if(DAY_BY_PHOTOCELL == GetSysSet()->sysPara.dayNightMode)//按灯光分辨
-            {
-                if(VALUE_NULL != getSensorDataByFunc(GetMonitor(), F_S_LIGHT))
-                {
-                    if(getSensorDataByFunc(GetMonitor(), F_S_LIGHT) > GetSysSet()->sysPara.photocellSensitivity)
-                    {
-                        GetSysSet()->dayOrNight = DAY_TIME;
-                    }
-                    else
-                    {
-                        GetSysSet()->dayOrNight = NIGHT_TIME;
-                    }
-                }
-            }
+            monitorDayAndNight();
 
             //环控版功能
 #if(HUB_SELECT == HUB_ENVIRENMENT)
@@ -314,42 +260,10 @@ int main(void)
         {
             if(LINKUP == ethStatus)
             {
-                if((OFF == eth->tcp.GetConnectTry()) &&
-                   (ON == eth->tcp.GetConnectStatus()))
-                {
-                    //申请内存
-                    buf = rt_malloc(1024 * 2);
-                    if(RT_NULL != buf)
-                    {
-                        rt_memcpy(buf, HEAD_CODE, 4);
-                        if(RT_EOK == SendDataToCloud(RT_NULL, CMD_HUB_REPORT, 0 , 0, buf + sizeof(eth_page_head), &length, NO, 0))
-                        {
-                            if(length > 0)
-                            {
-                                rt_memcpy(buf + 4, &length, 2);
-                                if (RT_EOK != TcpSendMsg(&tcp_sock, buf, length + sizeof(eth_page_head)))
-                                {
-                                    LOG_E("send tcp err 3");
-                                    eth->tcp.SetConnectStatus(OFF);
-                                    eth->tcp.SetConnectTry(ON);
-                                }
-                            }
-                        }
-                    }
-
-                    //释放内存
-                    if(RT_NULL != buf)
-                    {
-                        rt_free(buf);
-                        buf = RT_NULL;
-                    }
-
-                }
+                sendReportToApp();
             }
 
             startProgram = YES;
-
-            //GetIPAddress();//Justin
         }
 
         //60s 主动发送给云服务

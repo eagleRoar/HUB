@@ -1055,13 +1055,13 @@ static void SendCmd(void)
         }
     }
 
-    rt_kprintf("sendCmd : ");
-    for(int i = 0; i < first->keyData.dataSegment.len; i++)
-    {
-        rt_kprintf(" %x",first->keyData.dataSegment.data[i]);
-
-    }
-    rt_kprintf("\r\n");
+//    rt_kprintf("sendCmd : ");
+//    for(int i = 0; i < first->keyData.dataSegment.len; i++)
+//    {
+//        rt_kprintf(" %x",first->keyData.dataSegment.data[i]);
+//
+//    }
+//    rt_kprintf("\r\n");
 
     //5.将这个任务从任务列表中移出去
     uart2Object.taskList.DeleteToList(first->keyData);

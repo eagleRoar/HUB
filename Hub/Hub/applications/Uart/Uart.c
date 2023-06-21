@@ -349,6 +349,14 @@ void SensorUart2TaskEntry(void* parameter)
             {
                 sensorObj->RecvCmd(uart1_msg.data, uart1_msg.size);
                 uart1_msg.messageFlag = OFF;
+
+//                //Justin debug 打印
+//                rt_kprintf("print sensor data : ");
+//                for(int i = 0; i < uart1_msg.size; i++)
+//                {
+//                    rt_kprintf(" %x", uart1_msg.data[i]);
+//                }
+//                rt_kprintf("\r\n");
             }
             else
             {

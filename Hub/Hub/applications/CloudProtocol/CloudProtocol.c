@@ -100,7 +100,16 @@ void insertPumpToTank(type_monitor_t *monitor, sys_tank_t *tank_list, u16 id)
 
 void initSysTank(void)
 {
+    char name[20] = " ";
     rt_memset((u8 *)GetSysTank(), 0, sizeof(sys_tank_t));
+
+    for(int i = 0; i < TANK_LIST_MAX; i++)
+    {
+        sprintf(name, "%s%d", "tank", i + 1);
+        strncpy(GetSysTank()->tank[i].name, name, TANK_NAMESZ);
+        GetSysTank()->tank[i].name[TANK_NAMESZ - 1] = '\0';
+    }
+
     GetSysTank()->crc = usModbusRTU_CRC((u8 *)GetSysTank() + 2, sizeof(sys_tank_t) - 2);
     GetSysTank()->saveFlag = YES;
 }
@@ -901,7 +910,6 @@ void analyzeCloudData(char *data, u8 cloudFlg)
 
         if(NULL != cmd)
         {
-//            rt_kprintf("analyzeCloudData recv cmd = %s\r\n",cmd->valuestring);
             if(0 == rt_memcmp(CMD_SET_TEMP, cmd->valuestring, strlen(CMD_SET_TEMP)))
             {
                 CmdSetTempValue(data, &cloudCmd);
@@ -1082,6 +1090,7 @@ void analyzeCloudData(char *data, u8 cloudFlg)
                 CmdSetWarn(data, &cloudCmd, &sys_set);
                 setCloudCmd(cmd->valuestring, ON, cloudFlg);
                 GetSysSet()->saveFlag = YES;
+                GetSysTank()->saveFlag = YES;
             }
             else if(0 == rt_memcmp(CMD_GET_ALARM_SET, cmd->valuestring, strlen(CMD_GET_ALARM_SET)))
             {
@@ -1143,6 +1152,7 @@ void analyzeCloudData(char *data, u8 cloudFlg)
             {
                 CmdSetPoolAlarm(data, &cloudCmd);
                 setCloudCmd(cmd->valuestring, ON, cloudFlg);
+                GetSysSet()->saveFlag = YES;
             }
             else if(0 == rt_memcmp(CMD_GET_POOL_ALARM, cmd->valuestring, strlen(CMD_GET_POOL_ALARM)))
             {

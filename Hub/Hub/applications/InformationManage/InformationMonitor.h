@@ -136,7 +136,7 @@ typedef struct sensorOld
     u8              reg_state;                              //注册状态
     u8              save_state;                             //是否已经存储
     u8              storage_size;                           //寄存器数量
-    sen_stora_t     __stora[4];
+    sen_storaOld_t     __stora[4];
 }sensorOld_t;//占35字节
 
 struct sensor
@@ -152,7 +152,7 @@ struct sensor
     u8              save_state;                             //是否已经存储
     u8              storage_size;                           //寄存器数量
     u8              isMainSensor;                           //是否是主传感器（目前只有四合一才设置主传感器）
-    sen_storaOld_t     __stora[SENSOR_VALUE_MAX];
+    sen_stora_t     __stora[SENSOR_VALUE_MAX];
 };//占35字节
 
 typedef struct cycleOld
@@ -512,6 +512,11 @@ typedef struct mqtt_ip{
     u8 mqtt_url_use;
     char use_ip[16];
 }type_mqtt_ip;
+
+typedef struct tankSensorData{
+    u16 min;
+    u16 max;
+}tankSensorData_t;
 
 #pragma pack()
 

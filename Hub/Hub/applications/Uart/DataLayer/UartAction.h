@@ -39,4 +39,7 @@ void closeUnUseDevice(type_monitor_t *monitor, type_uart_class *uart);
 #endif
 void GetRealLine4V(dimmingCurve_t* curve, u8 port, u8 value, u8 *real);
 void sendReadDeviceCtrlToList(type_monitor_t *monitor, type_uart_class *deviceObj);
+void monitorDayAndNight(void);
+void sendReportToApp(void);
+u8 GetReportType(u8 warn);
 #endif /* APPLICATIONS_UART_DATALAYER_UARTACTION_H_ */

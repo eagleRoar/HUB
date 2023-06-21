@@ -21,9 +21,11 @@ extern  type_sys_time   sys_time;
 extern  u8 sys_warn[WARN_MAX];
 extern  rt_device_t     uart2_serial;
 
-extern void getAppVersion(char *);
-extern void getRealTimeForMat(type_sys_time *);
+extern  void getAppVersion(char *);
+extern  void getRealTimeForMat(type_sys_time *);
 extern  cloudcmd_t              cloudCmd;
+extern  int                 tcp_sock;
+extern  const u8    HEAD_CODE[4];
 
 rt_err_t GetValueU8(cJSON *temp, type_kv_u8 *data)
 {
@@ -1192,6 +1194,8 @@ void CmdSetWarn(char *data, cloudcmd_t *cmd, sys_set_t *set)
         {
             poolNum = cJSON_GetArraySize(pool);
 
+            LOG_I("------------------------CmdSetWarn poolNum = %d", poolNum);//Justin
+
             for(u8 index = 0; index < poolNum; index++)
             {
                 item = cJSON_GetArrayItem(pool, index);
@@ -2265,82 +2269,7 @@ char *SendHubReportWarn(char *cmd, sys_set_t *set, u8 warn_no, u16 value, u8 off
         cJSON_AddStringToObject(json, "cmd", cmd);
         cJSON_AddStringToObject(json, "sn", GetSnName(name, 12));
 
-        // 1- device 离线和超时都在这里 2-温度 3-湿度 4-co2 5-vpd 6-par 7-
-        //漏水 8-烟雾 9-灯光设备 10-ph 11-ec 12-水温 13-水位
-
-        if((warn == WARN_CO2_TIMEOUT) ||
-           (warn == WARN_TEMP_TIMEOUT) ||
-           (warn == WARN_HUMI_TIMEOUT) ||
-           (warn == WARN_AUTOFILL_TIMEOUT) ||
-           (warn == WARN_OFFLINE))
-        {
-            type = 1;
-        }
-        else if((warn == WARN_TEMP_HIGHT) ||
-                (warn == WARN_TEMP_LOW))
-        {
-            type = 2;
-        }
-        else if((warn == WARN_HUMI_HIGHT) ||
-                (warn == WARN_HUMI_LOW))
-        {
-            type = 3;
-        }
-        else if((warn == WARN_CO2_HIGHT) ||
-                (warn == WARN_CO2_LOW))
-        {
-            type = 4;
-        }
-        else if((warn == WARN_VPD_HIGHT) ||
-                (warn == WARN_VPD_LOW))
-        {
-            type = 5;
-        }
-        else if((warn == WARN_PAR_HIGHT) ||
-                (warn == WARN_PAR_LOW))
-        {
-            type = 6;
-        }
-        else if((warn == WARN_WATER) )
-        {
-            type = 7;
-        }
-        else if((warn == WARN_SMOKE) )
-        {
-            type = 8;
-        }
-        else if((warn == WARN_LINE_STATE) || (warn == WARN_LINE_AUTO_T) ||(warn == WARN_LINE_AUTO_OFF))
-        {
-            type = 9;
-        }
-        else if((warn == WARN_PH_HIGHT) || (warn == WARN_PH_LOW))
-        {
-            type = 10;
-        }
-        else if((warn == WARN_EC_HIGHT) || (warn == WARN_EC_LOW))
-        {
-            type = 11;
-        }
-        else if((warn == WARN_WT_HIGHT) || (warn == WARN_WT_LOW))
-        {
-            type = 12;
-        }
-        else if((warn == WARN_WL_HIGHT) || (warn == WARN_WL_LOW))
-        {
-            type = 13;
-        }
-        else if((warn == WARN_SOIL_W_HIGHT) || (warn == WARN_SOIL_W_LOW))
-        {
-            type = 14;
-        }
-        else if((warn == WARN_SOIL_EC_HIGHT) || (warn == WARN_SOIL_EC_LOW))
-        {
-            type = 15;
-        }
-        else if((warn == WARN_SOIL_T_HIGHT) || (warn == WARN_SOIL_T_LOW))
-        {
-            type = 16;
-        }
+        type = GetReportType(warn);
 
         cJSON_AddNumberToObject(json, "type", type);
         cJSON_AddNumberToObject(json, "warning", warn);
@@ -2364,6 +2293,67 @@ char *SendHubReportWarn(char *cmd, sys_set_t *set, u8 warn_no, u16 value, u8 off
     }
 
     return str;
+}
+
+//Justin debug 还要增加发送给app的函数
+void SendWarnToCloudAndApp(mqtt_client *client, char *cmd, u8 warn_no, u16 value, char *info)
+{
+    char            name[100];
+    char            *str        = RT_NULL;
+    u8              warn        = warn_no + 1;
+    u8              type        = 0;
+    cJSON           *json       = cJSON_CreateObject();
+    u8              *page       = RT_NULL;
+    u16             len;
+
+    if(RT_NULL != json)
+    {
+        cJSON_AddStringToObject(json, "cmd", cmd);
+        cJSON_AddStringToObject(json, "sn", GetSnName(name, 12));
+
+        type = GetReportType(warn);
+
+        cJSON_AddNumberToObject(json, "type", type);
+        cJSON_AddNumberToObject(json, "warning", warn);
+        if(RT_NULL != info)
+        {
+            cJSON_AddStringToObject(json, "name", info);
+        }
+        cJSON_AddNumberToObject(json, "value", value);
+        cJSON_AddStringToObject(json, "ntpzone", GetSysSet()->sysPara.ntpzone);
+        cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
+
+        str = cJSON_PrintUnformatted(json);
+        cJSON_Delete(json);
+    }
+    //发送完之后需要释放str
+    if(str)
+    {
+        //1.发送给cloud
+        rt_memset(name, ' ', 20);
+        GetSnName(name, 12);
+        strcpy(name + 11, "/reply");
+        name[19] = '\0';
+
+        paho_mqtt_publish(client, QOS1, name, str, strlen(str));
+
+        //2.发送给app
+        len = strlen(str);
+        page = rt_malloc(sizeof(eth_page_head) + len);
+        if(RT_NULL != page)
+        {
+            rt_memcpy(page, HEAD_CODE, 4);
+            rt_memcpy(page + 4, (u8 *)&len, 2);
+            rt_memcpy(page + sizeof(eth_page_head), str, len);
+
+            TcpSendMsg(&tcp_sock, page, len + sizeof(eth_page_head));
+            rt_free(page);
+        }
+
+        //3.释放
+        cJSON_free(str);
+        str = RT_NULL;
+    }
 }
 
 #define NormalState     0
@@ -3281,7 +3271,16 @@ char *ReplyGetTank(char *cmd, cloudcmd_t cloud)
                cJSON_AddNumberToObject(pumpItem, "id", tank->pumpId);
                if(device)
                {
-                   cJSON_AddStringToObject(pumpItem, "name", device->port[pumpPort].name);
+                   char allName[30] = "";
+                   if(1 == device->storage_size)
+                   {
+                       sprintf(allName, "%s", device->name);
+                   }
+                   else
+                   {
+                       sprintf(allName, "%s_%s", device->name, device->port[pumpPort].name);
+                   }
+                   cJSON_AddStringToObject(pumpItem, "name", allName);
                }
                else
                {
@@ -3350,7 +3349,16 @@ char *ReplyGetTank(char *cmd, cloudcmd_t cloud)
                if(valveItem)
                {
                    cJSON_AddNumberToObject(valveItem, "id", tank->nopump_valve[i]);
-                   cJSON_AddStringToObject(valveItem, "name", device->port[port].name);
+                   char allName[30] = "";
+                   if(1 == device->storage_size)
+                   {
+                       sprintf(allName, "%s", device->name);
+                   }
+                   else
+                   {
+                       sprintf(allName, "%s_%s", device->name, device->port[port].name);
+                   }
+                   cJSON_AddStringToObject(valveItem, "name", allName);
 
                    cJSON_AddItemToArray(json, valveItem);
                }

@@ -30,6 +30,9 @@ eccal_data_t ecdataTemp[SENSOR_MAX];
 #define LINE_MIN_VALUE  30
 #define LINE_DIMMING    40
 #endif
+extern struct ethDeviceStruct *eth;
+extern const u8    HEAD_CODE[4];
+extern int tcp_sock;
 
 static u8 GetDeviceStateByFunc(type_monitor_t *monitor, u8 func)
 {
@@ -58,6 +61,301 @@ static u8 GetDeviceStateByFunc(type_monitor_t *monitor, u8 func)
     else
     {
         return OFF;
+    }
+}
+
+int GetSingleSensorDataByFunc(type_monitor_t *monitor, u8 id, u8 func)
+{
+    sensor_t    *sensor     = RT_NULL;
+
+    sensor = GetSensorByAddr(monitor, id);
+
+    if(sensor)
+    {
+        u8 size = sensor->storage_size <= SENSOR_VALUE_MAX ? sensor->storage_size : SENSOR_VALUE_MAX ;
+        for(int sto = 0; sto < size; sto++)
+        {
+            if(func == sensor->__stora[sto].func)
+            {
+                return sensor->__stora[sto].value;
+            }
+        }
+    }
+
+    return VALUE_NULL;
+}
+
+u8 GetTankMinWarn(u16 value, u16 targrt)
+{
+    u8 ret = NO;
+
+    if(value < targrt)
+    {
+        ret = YES;
+    }
+
+    return ret;
+}
+
+u8 GetTankMaxWarn(u16 value, u16 targrt)
+{
+    u8 ret = NO;
+
+    if(value > targrt)
+    {
+        ret = YES;
+    }
+
+    return ret;
+}
+
+void *GetTankWarnData(sys_set_t *set, u8 index, u8 func, tankSensorData_t *data)
+{
+    rt_memset((u8 *)data, 0, sizeof(tankSensorData_t));
+
+    if(index >= TANK_LIST_MAX)
+    {
+        return RT_NULL;
+    }
+    else
+    {
+        for(int i = 0; i < TANK_WARN_ITEM_MAX; i++)
+        {
+            if(func == set->tankWarnSet[index][i].func)
+            {
+                data->min = set->tankWarnSet[index][i].min;
+                data->max = set->tankWarnSet[index][i].max;
+
+            }
+        }
+    }
+}
+
+//监控桶传感器报警
+void monitorTankSensorWarn(sys_tank_t *list, sys_set_t *set)
+{
+    tank_t              *tank       = RT_NULL;
+    tankSensorData_t    warnSet;
+    char                info[50]    = " ";
+    u8                  state       = 0;
+    sensor_t            *sensor     = RT_NULL;
+    u8                  en          = NO;
+    u8                  warnLow     = 0;
+    u8                  warnHigh    = 0;
+    u8                  *preStateP  = RT_NULL;
+    static u8           preState[TANK_SINGLE_GROUD][TANK_WARN_ITEM_MAX];
+
+    for(int index = 0; index < list->tank_size; index++)
+    {
+        tank = &list->tank[index];
+
+        //遍历单个桶下的所有sensor
+        for(int i = 0; i < TANK_SINGLE_GROUD; i++)//
+        {
+            for(int j = 0; j < TANK_SENSOR_MAX; j++)
+            {
+                if(0 != tank->sensorId[i][j])
+                {
+                    sensor = GetSensorByAddr(GetMonitor(), tank->sensorId[i][j]);
+
+                    if(sensor)
+                    {
+                        //1.遍历该sensor 的端口
+                        for(int port = 0; port < sensor->storage_size; port++)
+                        {
+                            GetTankWarnData(set, index, sensor->__stora[port].func, &warnSet);
+
+                            switch (sensor->__stora[port].func) {
+                                case F_S_EC:
+                                    en = set->sysWarn.ecEn;
+                                    warnLow = WARN_EC_LOW - 1;
+                                    warnHigh = WARN_EC_HIGHT - 1;
+                                    preStateP = &preState[i][0];
+                                    break;
+                                case F_S_PH:
+                                    en = set->sysWarn.phEn;
+                                    warnLow = WARN_PH_LOW - 1;
+                                    warnHigh = WARN_PH_HIGHT - 1;
+                                    preStateP = &preState[i][1];
+                                    break;
+                                case F_S_WT:
+                                    en = set->sysWarn.wtEn;
+                                    warnLow = WARN_WT_LOW - 1;
+                                    warnHigh = WARN_WT_HIGHT - 1;
+                                    preStateP = &preState[i][2];
+                                    break;
+                                case F_S_WL:
+                                    en = set->sysWarn.wlEn;
+                                    warnLow = WARN_WL_LOW - 1;
+                                    warnHigh = WARN_WL_HIGHT - 1;
+                                    preStateP = &preState[i][3];
+                                    break;
+                                case F_S_SW:
+                                    en = set->sysWarn.mmEn;
+                                    warnLow = WARN_SOIL_W_LOW - 1;
+                                    warnHigh = WARN_SOIL_W_HIGHT - 1;
+                                    preStateP = &preState[i][4];
+                                    break;
+                                case F_S_SEC:
+                                    en = set->sysWarn.meEn;
+                                    warnLow = WARN_SOIL_EC_LOW - 1;
+                                    warnHigh = WARN_SOIL_EC_HIGHT - 1;
+                                    preStateP = &preState[i][5];
+                                    break;
+                                case F_S_ST:
+                                    en = set->sysWarn.mtEn;
+                                    warnLow = WARN_SOIL_T_LOW - 1;
+                                    warnHigh = WARN_SOIL_T_HIGHT - 1;
+                                    preStateP = &preState[i][6];
+                                    break;
+                                default:
+                                    break;
+                            }
+
+                            int sensorData = 0;
+
+                            if(ON == en)
+                            {
+                                sensorData = GetSingleSensorDataByFunc(GetMonitor(), tank->sensorId[i][j], sensor->__stora[port].func);
+                                if(VALUE_NULL != sensorData)
+                                {
+                                    if(YES == GetTankMinWarn(sensorData, warnSet.min))
+                                    {
+                                        state = 1;
+                                    }
+                                    else if(YES == GetTankMaxWarn(sensorData, warnSet.max))
+                                    {
+                                        state = 2;
+                                    }
+                                    else
+                                    {
+                                        state = 0;
+                                    }
+
+                                    if(*preStateP != state)
+                                    {
+                                        *preStateP = state;
+
+                                        if(0 == i)
+                                        {
+                                            sprintf(info, "%s %s",GetSysTank()->tank[index].name, "tank");
+                                        }
+                                        else if(1 == i)
+                                        {
+                                            sprintf(info, "%s %s",GetSysTank()->tank[index].name, "inline");
+                                        }
+
+                                        if(1 == state)
+                                        {
+                                            SendWarnToCloudAndApp(GetMqttClient(), CMD_HUB_REPORT_WARN, warnLow, sensorData, info);
+                                        }
+                                        else if(2 == state)
+                                        {
+                                            SendWarnToCloudAndApp(GetMqttClient(), CMD_HUB_REPORT_WARN, warnHigh, sensorData, info);
+                                        }
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                if(RT_NULL != preStateP)
+                                {
+                                    *preStateP = 0;
+                                }
+                            }
+                        }
+                    }
+
+                }
+            }
+        }
+    }
+}
+
+//监听
+void monitorTankTimeOutWarn(sys_tank_t *list, sys_set_t *set)
+{
+    int             index                       = 0;
+    static int      time[TANK_LIST_MAX]         = {0,0,0,0};
+    static int      filterTime[TANK_LIST_MAX]   = {0,0,0,0};
+    tank_t          *tank                       = RT_NULL;
+    sensor_t        *sensor                     = RT_NULL;
+    int             sensorData                  = VALUE_NULL;
+    u8              state[TANK_LIST_MAX]        = {0,0,0,0};
+    static u8       preState[TANK_LIST_MAX]     = {0,0,0,0};
+    u8              warnLow                     = WARN_AUTOFILL_TIMEOUT - 1;
+
+    for(index = 0; index < list->tank_size; index++)
+    {
+        tank = &list->tank[index];
+
+        //1.获取水位信息
+        for(int i = 0; i < TANK_SINGLE_GROUD; i++)
+        {
+            for(int j = 0; j < TANK_SENSOR_MAX; j++)
+            {
+                if(0 != tank->sensorId[i][j])
+                {
+                    sensor = GetSensorByAddr(GetMonitor(), tank->sensorId[i][j]);
+
+                    if(sensor)
+                    {
+                        if(CON_SUCCESS == sensor->conn_state)
+                        {
+                            //1.遍历该sensor 的端口
+                            for(int port = 0; port < sensor->storage_size; port++)
+                            {
+                                if(F_S_WL == sensor->__stora[port].func)
+                                {
+                                    sensorData = sensor->__stora[port].value;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        sensorData = 1;//Justin debug 仅仅测试
+
+        //2.
+        if(VALUE_NULL != sensorData)
+        {
+            if(sensorData < tank->autoFillHeight)
+            {
+                if(time[index] < tank->poolTimeout)
+                {
+                    time[index]++;
+                }
+                else
+                {
+                    state[index] = 1;
+                }
+
+                filterTime[index] = 0;
+            }
+            else
+            {
+                //滤波10s
+                if(filterTime[index] < 10)
+                {
+                    filterTime[index]++;
+                }
+                else
+                {
+                    //确认是水位高于低水位
+                    state[index] = 0;
+                }
+            }
+
+            if(preState[index] != state[index])
+            {
+                preState[index] = state[index];
+
+                //发送补水超时
+                SendWarnToCloudAndApp(GetMqttClient(), CMD_HUB_REPORT_WARN, warnLow, 0, tank->name);
+            }
+        }
     }
 }
 
@@ -898,290 +1196,293 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
     }
 #elif(HUB_SELECT == HUB_IRRIGSTION)
 
-    //ph ec
-    for(u8 tank = 0; tank < GetSysTank()->tank_size; tank++)
-    {
-//        for(u8 item1 = 0; item1 < 2;item1++)
-        {
-            for(u8 item2 = 0; item2 < TANK_SENSOR_MAX; item2++)
-            {
-                if(GetSysTank()->tank[tank].sensorId[0][item2] != 0)
-                {
-                    sensor = GetSensorByAddr(monitor, GetSysTank()->tank[tank].sensorId[0][item2]);
+//    //ph ec
+//    for(u8 tank = 0; tank < GetSysTank()->tank_size; tank++)
+//    {
+////        for(u8 item1 = 0; item1 < 2;item1++)
+//        {
+//            for(u8 item2 = 0; item2 < TANK_SENSOR_MAX; item2++)
+//            {
+//                if(GetSysTank()->tank[tank].sensorId[0][item2] != 0)
+//                {
+//                    sensor = GetSensorByAddr(monitor, GetSysTank()->tank[tank].sensorId[0][item2]);
+//
+//                    for(u8 sto = 0; sto < sensor->storage_size; sto++)
+//                    {
+//                        if(F_S_PH == sensor->__stora[sto].func)
+//                        {
+//                            ph = getSensorDataByAddr(monitor, sensor->addr, sto);
+//                        }
+//                        else if(F_S_EC == sensor->__stora[sto].func)
+//                        {
+//                            ec = getSensorDataByAddr(monitor, sensor->addr, sto);
+//                        }
+//                        else if(F_S_WT == sensor->__stora[sto].func)
+//                        {
+//                            wt = getSensorDataByAddr(monitor, sensor->addr, sto);
+//                        }
+//                        else if(F_S_WL == sensor->__stora[sto].func)
+//                        {
+//                            wl = getSensorDataByAddr(monitor, sensor->addr, sto);
+//                        }
+//                        else if(F_S_SW == sensor->__stora[sto].func)
+//                        {
+//                            sw = getSensorDataByAddr(monitor, sensor->addr, sto);
+//                        }
+//                        else if(F_S_SEC == sensor->__stora[sto].func)
+//                        {
+//                            sec = getSensorDataByAddr(monitor, sensor->addr, sto);
+//                        }
+//                        else if(F_S_ST == sensor->__stora[sto].func)
+//                        {
+//                            st = getSensorDataByAddr(monitor, sensor->addr, sto);
+//                        }
+//                    }
+//                }
+//            }
+//        }
+//
+//        //
+//        for(u8 item1 = 0; item1 < TANK_WARN_ITEM_MAX; item1++)
+//        {
+//            if(F_S_PH == set->tankWarnSet[tank][item1].func)
+//            {
+//                if(ON == set->sysWarn.phEn)
+//                {
+//                    if(ph < set->tankWarnSet[tank][item1].min)
+//                    {
+//                        set->warn[WARN_PH_LOW - 1] = ON;
+//                        set->warn_value[WARN_PH_LOW - 1] = ph;
+//                    }
+//                    else if(ph > set->tankWarnSet[tank][item1].max)
+//                    {
+//                        set->warn[WARN_PH_HIGHT - 1] = ON;
+//                        set->warn_value[WARN_PH_HIGHT - 1] = ph;
+//                    }
+//                    else
+//                    {
+//                        set->warn[WARN_PH_LOW - 1] = OFF;
+//                        set->warn[WARN_PH_HIGHT - 1] = OFF;
+//                    }
+//                }
+//                else
+//                {
+//                    set->warn[WARN_PH_LOW - 1] = OFF;
+//                    set->warn[WARN_PH_HIGHT - 1] = OFF;
+//                }
+//            }
+//            else if(F_S_EC == set->tankWarnSet[tank][item1].func)
+//            {
+//                if(ON == set->sysWarn.ecEn)
+//                {
+//                    if(ec < set->tankWarnSet[tank][item1].min)
+//                    {
+//                        set->warn[WARN_EC_LOW - 1] = ON;
+//                        set->warn_value[WARN_EC_LOW - 1] = ec;
+//                    }
+//                    else if(ec > set->tankWarnSet[tank][item1].max)
+//                    {
+//                        set->warn[WARN_EC_HIGHT - 1] = ON;
+//                        set->warn_value[WARN_EC_HIGHT - 1] = ec;
+//                    }
+//                    else
+//                    {
+//                        set->warn[WARN_EC_LOW - 1] = OFF;
+//                        set->warn[WARN_EC_HIGHT - 1] = OFF;
+//                    }
+//                }
+//                else
+//                {
+//                    set->warn[WARN_EC_LOW - 1] = OFF;
+//                    set->warn[WARN_EC_HIGHT - 1] = OFF;
+//                }
+//            }
+//            else if(F_S_WT == set->tankWarnSet[tank][item1].func)
+//            {
+//                if(ON == set->sysWarn.wtEn)
+//                {
+//                    if(wt < set->tankWarnSet[tank][item1].min)
+//                    {
+//                        set->warn[WARN_WT_LOW - 1] = ON;
+//                        set->warn_value[WARN_WT_LOW - 1] = wt;
+//                    }
+//                    else if(wt > set->tankWarnSet[tank][item1].max)
+//                    {
+//                        set->warn[WARN_WT_HIGHT - 1] = ON;
+//                        set->warn_value[WARN_WT_HIGHT - 1] = wt;
+//                    }
+//                    else
+//                    {
+//                        set->warn[WARN_WT_LOW - 1] = OFF;
+//                        set->warn[WARN_WT_HIGHT - 1] = OFF;
+//                    }
+//                }
+//                else
+//                {
+//                    set->warn[WARN_WT_LOW - 1] = OFF;
+//                    set->warn[WARN_WT_HIGHT - 1] = OFF;
+//                }
+//            }
+//            else if(F_S_WL == set->tankWarnSet[tank][item1].func)
+//            {
+//                if(ON == set->sysWarn.wlEn)
+//                {
+//                    if(wl < set->tankWarnSet[tank][item1].min)
+//                    {
+//                        set->warn[WARN_WL_LOW - 1] = ON;
+//                        set->warn_value[WARN_WL_LOW - 1] = wl;
+//                    }
+//                    else if(wl > set->tankWarnSet[tank][item1].max)
+//                    {
+//                        set->warn[WARN_WL_HIGHT - 1] = ON;
+//                        set->warn_value[WARN_WL_HIGHT - 1] = wl;
+//                    }
+//                    else
+//                    {
+//                        set->warn[WARN_WL_LOW - 1] = OFF;
+//                        set->warn[WARN_WL_HIGHT - 1] = OFF;
+//                    }
+//                }
+//                else
+//                {
+//                    set->warn[WARN_WL_LOW - 1] = OFF;
+//                    set->warn[WARN_WL_HIGHT - 1] = OFF;
+//                }
+//            }
+//            else if(F_S_SW == set->tankWarnSet[tank][item1].func)
+//            {
+//                if(ON == set->sysWarn.mmEn)
+//                {
+//                    if(sw < set->tankWarnSet[tank][item1].min)
+//                    {
+//                        set->warn[WARN_SOIL_W_LOW - 1] = ON;
+//                        set->warn_value[WARN_SOIL_W_LOW - 1] = sw;
+//                    }
+//                    else if(sw > set->tankWarnSet[tank][item1].max)
+//                    {
+//                        set->warn[WARN_SOIL_W_HIGHT - 1] = ON;
+//                        set->warn_value[WARN_SOIL_W_HIGHT - 1] = sw;
+//                    }
+//                    else
+//                    {
+//                        set->warn[WARN_SOIL_W_LOW - 1] = OFF;
+//                        set->warn[WARN_SOIL_W_HIGHT - 1] = OFF;
+//                    }
+//                }
+//                else
+//                {
+//                    set->warn[WARN_SOIL_W_LOW - 1] = OFF;
+//                    set->warn[WARN_SOIL_W_HIGHT - 1] = OFF;
+//                }
+//            }
+//            else if(F_S_SEC == set->tankWarnSet[tank][item1].func)
+//            {
+//                if(ON == set->sysWarn.meEn)
+//                {
+//                    if(sec < set->tankWarnSet[tank][item1].min)
+//                    {
+//                        set->warn[WARN_SOIL_EC_LOW - 1] = ON;
+//                        set->warn_value[WARN_SOIL_EC_LOW - 1] = sec;
+//                    }
+//                    else if(sec > set->tankWarnSet[tank][item1].max)
+//                    {
+//                        set->warn[WARN_SOIL_EC_HIGHT - 1] = ON;
+//                        set->warn_value[WARN_SOIL_EC_HIGHT - 1] = sec;
+//                    }
+//                    else
+//                    {
+//                        set->warn[WARN_SOIL_EC_LOW - 1] = OFF;
+//                        set->warn[WARN_SOIL_EC_HIGHT - 1] = OFF;
+//                    }
+//                }
+//                else
+//                {
+//                    set->warn[WARN_SOIL_EC_LOW - 1] = OFF;
+//                    set->warn[WARN_SOIL_EC_HIGHT - 1] = OFF;
+//                }
+//            }
+//            else if(F_S_ST == set->tankWarnSet[tank][item1].func)
+//            {
+//                if(ON == set->sysWarn.mtEn)
+//                {
+//                    if(st < set->tankWarnSet[tank][item1].min)
+//                    {
+//                        set->warn[WARN_SOIL_T_LOW - 1] = ON;
+//                        set->warn_value[WARN_SOIL_T_LOW - 1] = st;
+//                    }
+//                    else if(st > set->tankWarnSet[tank][item1].max)
+//                    {
+//                        set->warn[WARN_SOIL_T_HIGHT - 1] = ON;
+//                        set->warn_value[WARN_SOIL_T_HIGHT - 1] = st;
+//                    }
+//                    else
+//                    {
+//                        set->warn[WARN_SOIL_T_LOW - 1] = OFF;
+//                        set->warn[WARN_SOIL_T_HIGHT - 1] = OFF;
+//                    }
+//                }
+//                else
+//                {
+//                    set->warn[WARN_SOIL_T_LOW - 1] = OFF;
+//                    set->warn[WARN_SOIL_T_HIGHT - 1] = OFF;
+//                }
+//            }
+//        }
+//
+//        //自动补水超时报警
+//        if(VALUE_NULL == wl)
+//        {
+//            tankState[tank] = OFF;
+//        }
+//        else
+//        {
+//            if(wl < GetSysTank()->tank[tank].autoFillHeight)
+//            {
+//                tankState[tank] = ON;
+//            }
+//            else
+//            {
+//                tankState[tank] = OFF;
+//            }
+//        }
+//
+//        if(tankState_pre[tank] != tankState[tank])
+//        {
+//            tankState_pre[tank] = tankState[tank];
+//            if(tankState[tank] == ON)
+//            {
+//                tankAutoValve[tank] = getTimeStamp();
+//            }
+//        }
+//
+//        if(ON == tankState[tank])
+//        {
+//            if(ON == set->sysWarn.autoFillTimeout)
+//            {
+//                if(getTimeStamp() > GetSysTank()->tank[tank].poolTimeout + tankAutoValve[tank])
+//                {
+//                    set->warn[WARN_AUTOFILL_TIMEOUT - 1] = ON;
+//                    set->warn_value[WARN_AUTOFILL_TIMEOUT - 1] = wl;
+//                    break;
+//                }
+//                else
+//                {
+//                    set->warn[WARN_AUTOFILL_TIMEOUT - 1] = OFF;
+//                }
+//            }
+//            else
+//            {
+//                set->warn[WARN_AUTOFILL_TIMEOUT - 1] = OFF;
+//            }
+//        }
+//        else
+//        {
+//            set->warn[WARN_AUTOFILL_TIMEOUT - 1] = OFF;
+//        }
+//    }
 
-                    for(u8 sto = 0; sto < sensor->storage_size; sto++)
-                    {
-                        if(F_S_PH == sensor->__stora[sto].func)
-                        {
-                            ph = getSensorDataByAddr(monitor, sensor->addr, sto);
-                        }
-                        else if(F_S_EC == sensor->__stora[sto].func)
-                        {
-                            ec = getSensorDataByAddr(monitor, sensor->addr, sto);
-                        }
-                        else if(F_S_WT == sensor->__stora[sto].func)
-                        {
-                            wt = getSensorDataByAddr(monitor, sensor->addr, sto);
-                        }
-                        else if(F_S_WL == sensor->__stora[sto].func)
-                        {
-                            wl = getSensorDataByAddr(monitor, sensor->addr, sto);
-                        }
-                        else if(F_S_SW == sensor->__stora[sto].func)
-                        {
-                            sw = getSensorDataByAddr(monitor, sensor->addr, sto);
-                        }
-                        else if(F_S_SEC == sensor->__stora[sto].func)
-                        {
-                            sec = getSensorDataByAddr(monitor, sensor->addr, sto);
-                        }
-                        else if(F_S_ST == sensor->__stora[sto].func)
-                        {
-                            st = getSensorDataByAddr(monitor, sensor->addr, sto);
-                        }
-                    }
-                }
-            }
-        }
-
-        //
-        for(u8 item1 = 0; item1 < TANK_WARN_ITEM_MAX; item1++)
-        {
-            if(F_S_PH == set->tankWarnSet[tank][item1].func)
-            {
-                if(ON == set->sysWarn.phEn)
-                {
-                    if(ph < set->tankWarnSet[tank][item1].min)
-                    {
-                        set->warn[WARN_PH_LOW - 1] = ON;
-                        set->warn_value[WARN_PH_LOW - 1] = ph;
-                    }
-                    else if(ph > set->tankWarnSet[tank][item1].max)
-                    {
-                        set->warn[WARN_PH_HIGHT - 1] = ON;
-                        set->warn_value[WARN_PH_HIGHT - 1] = ph;
-                    }
-                    else
-                    {
-                        set->warn[WARN_PH_LOW - 1] = OFF;
-                        set->warn[WARN_PH_HIGHT - 1] = OFF;
-                    }
-                }
-                else
-                {
-                    set->warn[WARN_PH_LOW - 1] = OFF;
-                    set->warn[WARN_PH_HIGHT - 1] = OFF;
-                }
-            }
-            else if(F_S_EC == set->tankWarnSet[tank][item1].func)
-            {
-                if(ON == set->sysWarn.ecEn)
-                {
-                    if(ec < set->tankWarnSet[tank][item1].min)
-                    {
-                        set->warn[WARN_EC_LOW - 1] = ON;
-                        set->warn_value[WARN_EC_LOW - 1] = ec;
-                    }
-                    else if(ec > set->tankWarnSet[tank][item1].max)
-                    {
-                        set->warn[WARN_EC_HIGHT - 1] = ON;
-                        set->warn_value[WARN_EC_HIGHT - 1] = ec;
-                    }
-                    else
-                    {
-                        set->warn[WARN_EC_LOW - 1] = OFF;
-                        set->warn[WARN_EC_HIGHT - 1] = OFF;
-                    }
-                }
-                else
-                {
-                    set->warn[WARN_EC_LOW - 1] = OFF;
-                    set->warn[WARN_EC_HIGHT - 1] = OFF;
-                }
-            }
-            else if(F_S_WT == set->tankWarnSet[tank][item1].func)
-            {
-                if(ON == set->sysWarn.wtEn)
-                {
-                    if(wt < set->tankWarnSet[tank][item1].min)
-                    {
-                        set->warn[WARN_WT_LOW - 1] = ON;
-                        set->warn_value[WARN_WT_LOW - 1] = wt;
-                    }
-                    else if(wt > set->tankWarnSet[tank][item1].max)
-                    {
-                        set->warn[WARN_WT_HIGHT - 1] = ON;
-                        set->warn_value[WARN_WT_HIGHT - 1] = wt;
-                    }
-                    else
-                    {
-                        set->warn[WARN_WT_LOW - 1] = OFF;
-                        set->warn[WARN_WT_HIGHT - 1] = OFF;
-                    }
-                }
-                else
-                {
-                    set->warn[WARN_WT_LOW - 1] = OFF;
-                    set->warn[WARN_WT_HIGHT - 1] = OFF;
-                }
-            }
-            else if(F_S_WL == set->tankWarnSet[tank][item1].func)
-            {
-                if(ON == set->sysWarn.wlEn)
-                {
-                    if(wl < set->tankWarnSet[tank][item1].min)
-                    {
-                        set->warn[WARN_WL_LOW - 1] = ON;
-                        set->warn_value[WARN_WL_LOW - 1] = wl;
-                    }
-                    else if(wl > set->tankWarnSet[tank][item1].max)
-                    {
-                        set->warn[WARN_WL_HIGHT - 1] = ON;
-                        set->warn_value[WARN_WL_HIGHT - 1] = wl;
-                    }
-                    else
-                    {
-                        set->warn[WARN_WL_LOW - 1] = OFF;
-                        set->warn[WARN_WL_HIGHT - 1] = OFF;
-                    }
-                }
-                else
-                {
-                    set->warn[WARN_WL_LOW - 1] = OFF;
-                    set->warn[WARN_WL_HIGHT - 1] = OFF;
-                }
-            }
-            else if(F_S_SW == set->tankWarnSet[tank][item1].func)
-            {
-                if(ON == set->sysWarn.mmEn)
-                {
-                    if(sw < set->tankWarnSet[tank][item1].min)
-                    {
-                        set->warn[WARN_SOIL_W_LOW - 1] = ON;
-                        set->warn_value[WARN_SOIL_W_LOW - 1] = sw;
-                    }
-                    else if(sw > set->tankWarnSet[tank][item1].max)
-                    {
-                        set->warn[WARN_SOIL_W_HIGHT - 1] = ON;
-                        set->warn_value[WARN_SOIL_W_HIGHT - 1] = sw;
-                    }
-                    else
-                    {
-                        set->warn[WARN_SOIL_W_LOW - 1] = OFF;
-                        set->warn[WARN_SOIL_W_HIGHT - 1] = OFF;
-                    }
-                }
-                else
-                {
-                    set->warn[WARN_SOIL_W_LOW - 1] = OFF;
-                    set->warn[WARN_SOIL_W_HIGHT - 1] = OFF;
-                }
-            }
-            else if(F_S_SEC == set->tankWarnSet[tank][item1].func)
-            {
-                if(ON == set->sysWarn.meEn)
-                {
-                    if(sec < set->tankWarnSet[tank][item1].min)
-                    {
-                        set->warn[WARN_SOIL_EC_LOW - 1] = ON;
-                        set->warn_value[WARN_SOIL_EC_LOW - 1] = sec;
-                    }
-                    else if(sec > set->tankWarnSet[tank][item1].max)
-                    {
-                        set->warn[WARN_SOIL_EC_HIGHT - 1] = ON;
-                        set->warn_value[WARN_SOIL_EC_HIGHT - 1] = sec;
-                    }
-                    else
-                    {
-                        set->warn[WARN_SOIL_EC_LOW - 1] = OFF;
-                        set->warn[WARN_SOIL_EC_HIGHT - 1] = OFF;
-                    }
-                }
-                else
-                {
-                    set->warn[WARN_SOIL_EC_LOW - 1] = OFF;
-                    set->warn[WARN_SOIL_EC_HIGHT - 1] = OFF;
-                }
-            }
-            else if(F_S_ST == set->tankWarnSet[tank][item1].func)
-            {
-                if(ON == set->sysWarn.mtEn)
-                {
-                    if(st < set->tankWarnSet[tank][item1].min)
-                    {
-                        set->warn[WARN_SOIL_T_LOW - 1] = ON;
-                        set->warn_value[WARN_SOIL_T_LOW - 1] = st;
-                    }
-                    else if(st > set->tankWarnSet[tank][item1].max)
-                    {
-                        set->warn[WARN_SOIL_T_HIGHT - 1] = ON;
-                        set->warn_value[WARN_SOIL_T_HIGHT - 1] = st;
-                    }
-                    else
-                    {
-                        set->warn[WARN_SOIL_T_LOW - 1] = OFF;
-                        set->warn[WARN_SOIL_T_HIGHT - 1] = OFF;
-                    }
-                }
-                else
-                {
-                    set->warn[WARN_SOIL_T_LOW - 1] = OFF;
-                    set->warn[WARN_SOIL_T_HIGHT - 1] = OFF;
-                }
-            }
-        }
-
-        //自动补水超时报警
-        if(VALUE_NULL == wl)
-        {
-            tankState[tank] = OFF;
-        }
-        else
-        {
-            if(wl < GetSysTank()->tank[tank].autoFillHeight)
-            {
-                tankState[tank] = ON;
-            }
-            else
-            {
-                tankState[tank] = OFF;
-            }
-        }
-
-        if(tankState_pre[tank] != tankState[tank])
-        {
-            tankState_pre[tank] = tankState[tank];
-            if(tankState[tank] == ON)
-            {
-                tankAutoValve[tank] = getTimeStamp();
-            }
-        }
-
-        if(ON == tankState[tank])
-        {
-            if(ON == set->sysWarn.autoFillTimeout)
-            {
-                if(getTimeStamp() > GetSysTank()->tank[tank].poolTimeout + tankAutoValve[tank])
-                {
-                    set->warn[WARN_AUTOFILL_TIMEOUT - 1] = ON;
-                    set->warn_value[WARN_AUTOFILL_TIMEOUT - 1] = wl;
-                    break;
-                }
-                else
-                {
-                    set->warn[WARN_AUTOFILL_TIMEOUT - 1] = OFF;
-                }
-            }
-            else
-            {
-                set->warn[WARN_AUTOFILL_TIMEOUT - 1] = OFF;
-            }
-        }
-        else
-        {
-            set->warn[WARN_AUTOFILL_TIMEOUT - 1] = OFF;
-        }
-    }
+    monitorTankSensorWarn(GetSysTank(), GetSysSet());
+    monitorTankTimeOutWarn(GetSysTank(), GetSysSet());
 #endif
 
     //烟感
@@ -2953,15 +3254,22 @@ void co2Calibrate1(type_monitor_t *monitor, int *data, u8 *do_cal_flg, u8 *saveF
 
 #elif(HUB_IRRIGSTION == HUB_SELECT)
 
-u8 pumpDoing(u8 addr, u8 port)
+u8 pumpDoing(u8 addr, u8 port)//Justin 该函数的bu recycle 的逻辑有问题
 {
     u8                  state           = OFF;
     u8                  item            = 0;
     type_sys_time       sys_time;
     device_t            *device         = GetDeviceByAddr(GetMonitor(), addr);
     time_t              time            = getTimeStamp();
+    int                 nowTime         = 0;//显示当前的时间
+    int                 setTime         = 0;//显示当前的时间
+    int                 tempTime         = 0;
 
     getRealTimeForMat(&sys_time);
+
+    nowTime = sys_time.hour * 60 * 60 + sys_time.minute * 60 + sys_time.second;
+
+//    LOG_W("now time = %d %d",sys_time.hour,sys_time.minute);
 
     if(RT_NULL != device)
     {
@@ -2974,10 +3282,22 @@ u8 pumpDoing(u8 addr, u8 port)
                 //1.判断当前时间是否是满足进入循环周期的条件,即大于开始时间
                 if(time > device->port[port].cycle.start_at_timestamp)
                 {
-                    if((time - device->port[port].cycle.start_at_timestamp) <=
+                    setTime = device->port[port].cycle.startAt * 60;
+
+                    if(nowTime > setTime)
+                    {
+                        tempTime = nowTime;
+                    }
+                    //跨天情况
+                    else
+                    {
+                        tempTime = nowTime + 24 * 60 * 60;
+                    }
+
+                    if((tempTime - setTime) <=
                        (device->port[port].cycle.duration + device->port[port].cycle.pauseTime) * device->port[port].cycle.times)
                     {
-                        if(((time - device->port[port].cycle.start_at_timestamp) %
+                        if(((tempTime - setTime) %
                             (device->port[port].cycle.duration + device->port[port].cycle.pauseTime)) <=
                             device->port[port].cycle.duration)
                         {
@@ -2991,10 +3311,22 @@ u8 pumpDoing(u8 addr, u8 port)
                 }
                 else if(time > device->port[port].cycle1.start_at_timestamp)
                 {
-                    if((time - device->port[port].cycle1.start_at_timestamp) <=
+                    setTime = device->port[port].cycle1.startAt * 60;
+
+                    if(nowTime > setTime)
+                    {
+                        tempTime = nowTime;
+                    }
+                    //跨天情况
+                    else
+                    {
+                        tempTime = nowTime + 24 * 60 * 60;
+                    }
+
+                    if((tempTime - setTime) <=
                        (device->port[port].cycle1.duration + device->port[port].cycle1.pauseTime) * device->port[port].cycle1.times)
                     {
-                        if(((time - device->port[port].cycle1.start_at_timestamp) %
+                        if(((tempTime - setTime) %
                             (device->port[port].cycle1.duration + device->port[port].cycle1.pauseTime)) <=
                             device->port[port].cycle1.duration)
                         {
@@ -3528,9 +3860,189 @@ void sendReadDeviceCtrlToList(type_monitor_t *monitor, type_uart_class *deviceOb
     for(index = 0; index < monitor->device_size; index++)
     {
         device = &monitor->device[index];
+
+        //1.如果type不支持则删除
+        if(0 == TypeSupported(device->type))//Justin debug 新增加待测试
+        {
+            DeleteModule(monitor, device->uuid);
+        }
+
         for(port = 0; port < device->storage_size; port++)
         {
             deviceObj->DeviceCtrlSingle(device, port, device->port[port].ctrl.d_state);
         }
     }
 }
+
+//分辨白天黑夜
+void monitorDayAndNight(void)
+{
+    type_sys_time   time;
+
+    if(DAY_BY_TIME == GetSysSet()->sysPara.dayNightMode)//按时间分辨
+    {
+        getRealTimeForMat(&time);
+
+        if(GetSysSet()->sysPara.dayTime < GetSysSet()->sysPara.nightTime)
+        {
+            if(((time.hour * 60 + time.minute) >= GetSysSet()->sysPara.dayTime) &&
+               ((time.hour * 60 + time.minute) < GetSysSet()->sysPara.nightTime))
+            {
+                GetSysSet()->dayOrNight = DAY_TIME;
+            }
+            else
+            {
+                GetSysSet()->dayOrNight = NIGHT_TIME;
+            }
+        }
+        else
+        {
+            if(((time.hour * 60 + time.minute) >= GetSysSet()->sysPara.nightTime) &&
+               ((time.hour * 60 + time.minute) < GetSysSet()->sysPara.dayTime))
+            {
+                GetSysSet()->dayOrNight = NIGHT_TIME;
+            }
+            else
+            {
+                GetSysSet()->dayOrNight = DAY_TIME;
+            }
+        }
+    }
+    else if(DAY_BY_PHOTOCELL == GetSysSet()->sysPara.dayNightMode)//按灯光分辨
+    {
+        if(VALUE_NULL != getSensorDataByFunc(GetMonitor(), F_S_LIGHT))
+        {
+            if(getSensorDataByFunc(GetMonitor(), F_S_LIGHT) > GetSysSet()->sysPara.photocellSensitivity)
+            {
+                GetSysSet()->dayOrNight = DAY_TIME;
+            }
+            else
+            {
+                GetSysSet()->dayOrNight = NIGHT_TIME;
+            }
+        }
+    }
+}
+
+//发送report
+void sendReportToApp(void)
+{
+    u8              *buf                = RT_NULL;
+    u16             length              = 0;
+
+    if((OFF == eth->tcp.GetConnectTry()) &&
+       (ON == eth->tcp.GetConnectStatus()))
+    {
+        //申请内存
+        buf = rt_malloc(1024 * 2);
+        if(RT_NULL != buf)
+        {
+            rt_memcpy(buf, HEAD_CODE, 4);
+            if(RT_EOK == SendDataToCloud(RT_NULL, CMD_HUB_REPORT, 0 , 0, buf + sizeof(eth_page_head), &length, NO, 0))
+            {
+                if(length > 0)
+                {
+                    rt_memcpy(buf + 4, &length, 2);
+                    if (RT_EOK != TcpSendMsg(&tcp_sock, buf, length + sizeof(eth_page_head)))
+                    {
+                        LOG_E("send tcp err 3");
+                        eth->tcp.SetConnectStatus(OFF);
+                        eth->tcp.SetConnectTry(ON);
+                    }
+                }
+            }
+        }
+
+        //释放内存
+        if(RT_NULL != buf)
+        {
+            rt_free(buf);
+            buf = RT_NULL;
+        }
+
+    }
+}
+
+u8 GetReportType(u8 warn)
+{
+    u8 type = 0;
+
+    // 1- device 离线和超时都在这里 2-温度 3-湿度 4-co2 5-vpd 6-par 7-
+    //漏水 8-烟雾 9-灯光设备 10-ph 11-ec 12-水温 13-水位
+    if((warn == WARN_CO2_TIMEOUT) ||
+       (warn == WARN_TEMP_TIMEOUT) ||
+       (warn == WARN_HUMI_TIMEOUT) ||
+       (warn == WARN_AUTOFILL_TIMEOUT) ||
+       (warn == WARN_OFFLINE))
+    {
+        type = 1;
+    }
+    else if((warn == WARN_TEMP_HIGHT) ||
+            (warn == WARN_TEMP_LOW))
+    {
+        type = 2;
+    }
+    else if((warn == WARN_HUMI_HIGHT) ||
+            (warn == WARN_HUMI_LOW))
+    {
+        type = 3;
+    }
+    else if((warn == WARN_CO2_HIGHT) ||
+            (warn == WARN_CO2_LOW))
+    {
+        type = 4;
+    }
+    else if((warn == WARN_VPD_HIGHT) ||
+            (warn == WARN_VPD_LOW))
+    {
+        type = 5;
+    }
+    else if((warn == WARN_PAR_HIGHT) ||
+            (warn == WARN_PAR_LOW))
+    {
+        type = 6;
+    }
+    else if((warn == WARN_WATER) )
+    {
+        type = 7;
+    }
+    else if((warn == WARN_SMOKE) )
+    {
+        type = 8;
+    }
+    else if((warn == WARN_LINE_STATE) || (warn == WARN_LINE_AUTO_T) ||(warn == WARN_LINE_AUTO_OFF))
+    {
+        type = 9;
+    }
+    else if((warn == WARN_PH_HIGHT) || (warn == WARN_PH_LOW))
+    {
+        type = 10;
+    }
+    else if((warn == WARN_EC_HIGHT) || (warn == WARN_EC_LOW))
+    {
+        type = 11;
+    }
+    else if((warn == WARN_WT_HIGHT) || (warn == WARN_WT_LOW))
+    {
+        type = 12;
+    }
+    else if((warn == WARN_WL_HIGHT) || (warn == WARN_WL_LOW))
+    {
+        type = 13;
+    }
+    else if((warn == WARN_SOIL_W_HIGHT) || (warn == WARN_SOIL_W_LOW))
+    {
+        type = 14;
+    }
+    else if((warn == WARN_SOIL_EC_HIGHT) || (warn == WARN_SOIL_EC_LOW))
+    {
+        type = 15;
+    }
+    else if((warn == WARN_SOIL_T_HIGHT) || (warn == WARN_SOIL_T_LOW))
+    {
+        type = 16;
+    }
+
+    return type;
+}
+
