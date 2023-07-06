@@ -1976,7 +1976,8 @@ void humiProgram(type_monitor_t *monitor)
         if(ON == tempSet.coolingDehumidifyLock)
         {
             //如果除湿是开的话，AC_cool 不能关，因为可能AC_cool 上插着风扇
-            if(ON == GetDeviceByType(monitor, DEHUMI_TYPE)->port[0].ctrl.d_state)
+            if(ON == GetDeviceByType(monitor, DEHUMI_TYPE)->port[0].ctrl.d_state ||
+               ON == GetDeviceByType(monitor, PRO_DEHUMI_TYPE)->port[0].ctrl.d_state)
             {
                 CtrlAllDeviceByType(monitor, COOL_TYPE, ON, 0);
             }
@@ -2036,7 +2037,8 @@ void co2Program(type_monitor_t *monitor, u16 mPeriod)
 
                 if(1 == switchFlg)
                 {
-                    if(!((ON == co2Set.dehumidifyLock && ON == GetDeviceByType(monitor, DEHUMI_TYPE)->port[0].ctrl.d_state) ||
+                    if(!((ON == co2Set.dehumidifyLock &&
+                         (ON == GetDeviceByType(monitor, DEHUMI_TYPE)->port[0].ctrl.d_state || ON == (GetDeviceByType(monitor, PRO_DEHUMI_TYPE)->port[0].ctrl.d_state & 0x80))) ||
                          (ON == co2Set.coolingLock && (ON == GetDeviceByType(monitor, COOL_TYPE)->port[0].ctrl.d_state
                           || GetDeviceByType(monitor, HVAC_6_TYPE)->port[0].ctrl.d_value & 0x08))))
                     {
@@ -2062,7 +2064,8 @@ void co2Program(type_monitor_t *monitor, u16 mPeriod)
                 {
                     //如果和制冷联动 则制冷的时候不增加co2
                     //如果和除湿联动 则除湿的时候不增加co2
-                    if(!((ON == co2Set.dehumidifyLock && ON == GetDeviceByType(monitor, DEHUMI_TYPE)->port[0].ctrl.d_state) ||
+                    if(!((ON == co2Set.dehumidifyLock &&
+                            (ON == GetDeviceByType(monitor, DEHUMI_TYPE)->port[0].ctrl.d_state || ON == (GetDeviceByType(monitor, PRO_DEHUMI_TYPE)->port[0].ctrl.d_state & 0x80))) ||
                          (ON == co2Set.coolingLock && (ON == GetDeviceByType(monitor, COOL_TYPE)->port[0].ctrl.d_state
                           || GetDeviceByType(monitor, HVAC_6_TYPE)->port[0].ctrl.d_value & 0x08))))
                     {

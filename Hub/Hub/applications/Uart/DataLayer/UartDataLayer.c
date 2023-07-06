@@ -116,6 +116,9 @@ char *GetModelByType(u8 type, char *name, u8 len)
         case DEHUMI_TYPE:
             strncpy(name, "BHS-D", len);
             break;
+        case PRO_DEHUMI_TYPE:
+            strncpy(name, "BRC-DH", len);
+            break;
         case COOL_TYPE:
             strncpy(name, "BTS-C", len);
             break;
@@ -183,6 +186,7 @@ u8 GetFuncByType(u8 type)
             ret = F_HUMI;
             break;
         case DEHUMI_TYPE:
+        case PRO_DEHUMI_TYPE:
             ret = F_DEHUMI;
             break;
         case COOL_TYPE:
@@ -302,6 +306,7 @@ char *GetFunNameByType(u8 type, char *name, u8 len)
             strncpy(name, "Humi", len);
             break;
         case DEHUMI_TYPE:
+        case PRO_DEHUMI_TYPE:
             strncpy(name, "DeHumi", len);
             break;
         case COOL_TYPE:
@@ -439,6 +444,11 @@ rt_err_t setDeviceDefault(device_t *module)
             break;
         case DEHUMI_TYPE:
             setDeviceDefaultPara(module, "BHS-D", 0x0040, S_HUMI, module->type, 1);
+            addr = module->addr;
+            setDeviceDefaultStora(module, 0 , "Dehumi", F_DEHUMI, module->type, addr , MANUAL_NO_HAND, 0);
+            break;
+        case PRO_DEHUMI_TYPE:
+            setDeviceDefaultPara(module, "BRC-DH", 0x0100, S_HUMI, module->type, 1);
             addr = module->addr;
             setDeviceDefaultStora(module, 0 , "Dehumi", F_DEHUMI, module->type, addr , MANUAL_NO_HAND, 0);
             break;
@@ -639,6 +649,7 @@ u8 getSOrD(u8 type)
         case HEAT_TYPE:
         case HUMI_TYPE:
         case DEHUMI_TYPE:
+        case PRO_DEHUMI_TYPE:
         case COOL_TYPE:
         case HVAC_6_TYPE:
         case TIMER_TYPE:

@@ -408,19 +408,23 @@ void CtrlAllDeviceByFunc(type_monitor_t *monitor, u8 func, u8 en, u8 value)
     u8          index       = 0;
     u8          port        = 0;
     u16         temp        = 0;
+    u16         deHumi      = 0;
     u16         res         = 0;
     device_t    *device     = RT_NULL;
     proTempSet_t    tempSet;
+    proHumiSet_t    humiSet;
 
-    GetNowSysSet(&tempSet, RT_NULL, RT_NULL, RT_NULL, RT_NULL, RT_NULL);
+    GetNowSysSet(&tempSet, RT_NULL, &humiSet, RT_NULL, RT_NULL, RT_NULL);
 
     if(DAY_TIME == GetSysSet()->dayOrNight)
     {
         temp = tempSet.dayCoolingTarget;
+        deHumi = humiSet.dayDehumiTarget;
     }
     else
     {
         temp = tempSet.nightCoolingTarget;
+        deHumi = humiSet.nightDehumiTarget;
     }
 
     for(index = 0;index < monitor->device_size; index++)
@@ -449,6 +453,29 @@ void CtrlAllDeviceByFunc(type_monitor_t *monitor, u8 func, u8 en, u8 value)
                     {
                         device->port[0].ctrl.d_state = 0x60;
                         device->port[0].ctrl.d_value = 0x00;
+                    }
+                }
+                else if(PRO_DEHUMI_TYPE == device->port[0].type)
+                {
+                    deHumi = deHumi / 10;
+                    if(ON == en)
+                    {
+                        u8 state = 0;
+
+                        state |= 0x80;//开启
+                        LOG_I("deHumi = %x",deHumi);//Justin
+                        state |= deHumi;
+                        device->port[0].ctrl.d_state = state;
+                        device->port[0].ctrl.d_value = 0x00;//自动
+                    }
+                    else
+                    {
+                        u8 state = 0;
+
+                        state &= 0x7F;//开启
+                        state |= deHumi;
+                        device->port[0].ctrl.d_state = state;
+                        device->port[0].ctrl.d_value = 0x00;//自动
                     }
                 }
                 else

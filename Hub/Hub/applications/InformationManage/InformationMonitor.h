@@ -384,6 +384,7 @@ typedef     void (*FAC_FUNC)(type_monitor_t *);
 #define     IO_12_TYPE      0x80
 #define     IO_4_TYPE       0x81
 #define     IR_AIR_TYPE     0xB4        //红外空调
+#define     PRO_DEHUMI_TYPE 0xB8        //协议转换模块-除湿
 
 /**************************************从机 End*******************************************/
 

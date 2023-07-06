@@ -752,13 +752,16 @@ void SensorList(u64 *pageInfo, type_page_t *page,type_monitor_t *monitor)
         //3.获取当前的PhEC
         for(u8 index = show_home; index <= show_end; index++)
         {
-            sensor = &monitor->sensor[index];
-            if(index <= page->cusor_max)
+            if(index > 0)
             {
-                ST7567_GotoXY(8, 16 * (index - show_home));
-                sprintf(show, "%8s   #%d",sensor->name, sensor->addr);
+                sensor = &monitor->sensor[index - 1];
+                if(index <= page->cusor_max)
+                {
+                    ST7567_GotoXY(8, 16 * (index - show_home));
+                    sprintf(show, "%8s   #%d",sensor->name, sensor->addr);
 
-                ST7567_Puts(show, &Font_7x10, index == page->cusor ? 0 : 1);
+                    ST7567_Puts(show, &Font_7x10, index == page->cusor ? 0 : 1);
+                }
             }
         }
 
@@ -1391,7 +1394,7 @@ void UpdateAppProgram(type_page_t *page, u64 *info)
                 ST7567_GotoXY(LINE_HIGHT, 0);
                 ST7567_Puts("Download OK", &Font_8x16, 1);
                 ST7567_UpdateScreen();
-                rt_hw_cpu_reset();//Justin debug 仅仅测试
+                rt_hw_cpu_reset();
             }
             else if(DOWNLOAD_NONEED == downloadRes)
             {

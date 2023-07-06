@@ -271,8 +271,12 @@ u8 askDeviceHeart_new(type_monitor_t *monitor, rt_device_t serial, u8 event)
             }
             else if(IR_AIR_TYPE == device->port[port].type)
             {
-
                 control[ask_device][0].d_state = 0xe0;
+                control[ask_device][0].d_value = 0x00;
+            }
+            else if(PRO_DEHUMI_TYPE == device->port[port].type)
+            {
+                control[ask_device][0].d_state = 0x9E;//发送开 30%
                 control[ask_device][0].d_value = 0x00;
             }
             else
@@ -299,6 +303,11 @@ u8 askDeviceHeart_new(type_monitor_t *monitor, rt_device_t serial, u8 event)
                     control[ask_device][0].d_state = 0x60;
                     control[ask_device][0].d_value = 0x00;
                 }
+                else if(PRO_DEHUMI_TYPE == device->port[port].type)
+                {
+                    control[ask_device][0].d_state = 0x1E;
+                    control[ask_device][0].d_value = 0x00;
+                }
                 else
                 {
 
@@ -315,6 +324,11 @@ u8 askDeviceHeart_new(type_monitor_t *monitor, rt_device_t serial, u8 event)
                 value = GetValueAboutHACV(device, OFF, OFF);
 
                 control[ask_device][0].d_state = 0x60;
+                control[ask_device][0].d_value = 0x00;
+            }
+            else if(IR_AIR_TYPE == device->port[port].type)
+            {
+                control[ask_device][0].d_state = 0x1E;
                 control[ask_device][0].d_value = 0x00;
             }
             else

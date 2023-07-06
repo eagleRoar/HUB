@@ -399,7 +399,8 @@ void CmdSetPortSet(char *data, cloudcmd_t *cmd)
             GetValueByU16(temp, "manualOnTime", &device->port[port].manual.manual_on_time);
             if((COOL_TYPE == device->port[port].type) ||
                (HEAT_TYPE == device->port[port].type) ||
-               (DEHUMI_TYPE == device->port[port].type))
+               (DEHUMI_TYPE == device->port[port].type) ||
+               (PRO_DEHUMI_TYPE == device->port[port].type))
             {
                 GetValueByU8(temp, "hotStartDelay", &device->port[port].hotStartDelay);
             }
@@ -2616,45 +2617,6 @@ char *ReplyGetTank(char *cmd, cloudcmd_t cloud)
 
                                 cJSON_AddItemToArray(list, sen_item);
                             }
-//                            else if(F_S_PH == GetSensorByAddr(GetMonitor(), tank->sensorId[0][item])->__stora[stora].func)
-//                            {
-//                                sen_item = cJSON_CreateObject();
-//
-//                                cJSON_AddNumberToObject(sen_item, "id", tank->sensorId[0][item]);
-//                                cJSON_AddNumberToObject(sen_item, "mid", tank->sensorId[0][item]);
-//                                cJSON_AddStringToObject(sen_item, "name","pH");
-//                                cJSON_AddNumberToObject(sen_item, "value",
-//                                        getSensorDataByAddr(GetMonitor(), tank->sensorId[0][item], stora));
-//                                cJSON_AddStringToObject(sen_item, "sensorType",GetTankSensorSByType(F_S_PH));
-//
-//                                cJSON_AddItemToArray(list, sen_item);
-//                            }
-//                            else if(F_S_WT == GetSensorByAddr(GetMonitor(), tank->sensorId[0][item])->__stora[stora].func)
-//                            {
-//                                sen_item = cJSON_CreateObject();
-//
-//                                cJSON_AddNumberToObject(sen_item, "id", tank->sensorId[0][item]);
-//                                cJSON_AddNumberToObject(sen_item, "mid", tank->sensorId[0][item]);
-//                                cJSON_AddStringToObject(sen_item, "name","Temp");
-//                                cJSON_AddNumberToObject(sen_item, "value",
-//                                        getSensorDataByAddr(GetMonitor(), tank->sensorId[0][item], stora));
-//                                cJSON_AddStringToObject(sen_item, "sensorType",GetTankSensorSByType(F_S_WT));
-//
-//                                cJSON_AddItemToArray(list, sen_item);
-//                            }
-//                            else if(F_S_WL == GetSensorByAddr(GetMonitor(), tank->sensorId[0][item])->__stora[stora].func)
-//                            {
-//                                sen_item = cJSON_CreateObject();
-//
-//                                cJSON_AddNumberToObject(sen_item, "id", tank->sensorId[0][item]);
-//                                cJSON_AddNumberToObject(sen_item, "mid", tank->sensorId[0][item]);
-//                                cJSON_AddStringToObject(sen_item, "name","WaterLv");
-//                                cJSON_AddNumberToObject(sen_item, "value",
-//                                        getSensorDataByAddr(GetMonitor(), tank->sensorId[0][item], stora));
-//                                cJSON_AddStringToObject(sen_item, "sensorType",GetTankSensorSByType(F_S_WL));
-//
-//                                cJSON_AddItemToArray(list, sen_item);
-//                            }
                         }
                     }
                 }
@@ -2692,42 +2654,6 @@ char *ReplyGetTank(char *cmd, cloudcmd_t cloud)
 
                                 cJSON_AddItemToArray(list, sen_item);
                             }
-//                            else if(F_S_PH == GetSensorByAddr(GetMonitor(), tank->sensorId[1][item])->__stora[stora].func)
-//                            {
-//                                sen_item = cJSON_CreateObject();
-//
-//                                cJSON_AddNumberToObject(sen_item, "id", tank->sensorId[1][item]);
-//                                cJSON_AddNumberToObject(sen_item, "mid", tank->sensorId[1][item]);
-//                                cJSON_AddStringToObject(sen_item, "name","pH");
-//                                cJSON_AddNumberToObject(sen_item, "value",
-//                                        getSensorDataByAddr(GetMonitor(), tank->sensorId[1][item], stora));
-//
-//                                cJSON_AddItemToArray(list, sen_item);
-//                            }
-//                            else if(F_S_WT == GetSensorByAddr(GetMonitor(), tank->sensorId[1][item])->__stora[stora].func)
-//                            {
-//                                sen_item = cJSON_CreateObject();
-//
-//                                cJSON_AddNumberToObject(sen_item, "id", tank->sensorId[1][item]);
-//                                cJSON_AddNumberToObject(sen_item, "mid", tank->sensorId[1][item]);
-//                                cJSON_AddStringToObject(sen_item, "name","Temp");
-//                                cJSON_AddNumberToObject(sen_item, "value",
-//                                        getSensorDataByAddr(GetMonitor(), tank->sensorId[1][item], stora));
-//
-//                                cJSON_AddItemToArray(list, sen_item);
-//                            }
-//                            else if(F_S_WL == GetSensorByAddr(GetMonitor(), tank->sensorId[1][item])->__stora[stora].func)
-//                            {
-//                                sen_item = cJSON_CreateObject();
-//
-//                                cJSON_AddNumberToObject(sen_item, "id", tank->sensorId[1][item]);
-//                                cJSON_AddNumberToObject(sen_item, "mid", tank->sensorId[1][item]);
-//                                cJSON_AddStringToObject(sen_item, "name","WaterLv");
-//                                cJSON_AddNumberToObject(sen_item, "value",
-//                                        getSensorDataByAddr(GetMonitor(), tank->sensorId[1][item], stora));
-//
-//                                cJSON_AddItemToArray(list, sen_item);
-//                            }
                         }
                     }
                 }
@@ -4195,7 +4121,8 @@ char *ReplyGetPortSet(char *cmd, cloudcmd_t cloud)
 
             if((COOL_TYPE == module->port[port].type) ||
                (HEAT_TYPE == module->port[port].type) ||
-               (DEHUMI_TYPE == module->port[port].type))
+               (DEHUMI_TYPE == module->port[port].type) ||
+               (PRO_DEHUMI_TYPE == module->port[port].type))
             {
                 cJSON_AddNumberToObject(json, "hotStartDelay", module->port[port].hotStartDelay);
             }
@@ -4749,6 +4676,17 @@ char *ReplyGetDeviceList_new(char *cmd, char *msgid, u8 deviceType, u8 no)
                             else
                             {
                                 work_state = ON;
+                            }
+                        }
+                        else if(PRO_DEHUMI_TYPE == module->type)
+                        {
+                            if((getCtrlPre(no, 0).d_state & 0x80) > 0)
+                            {
+                                work_state = ON;
+                            }
+                            else
+                            {
+                                work_state = OFF;
                             }
                         }
                         else
