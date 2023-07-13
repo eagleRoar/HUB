@@ -276,7 +276,7 @@ __exit:
 
 void getAppVersion(char *version)
 {
-    fw_info_t dest;
+//    fw_info_t dest;
 
 //    readData(DOWNLOAD_FILE, &dest,0,sizeof(fw_info_t));   //获取当前SD卡的app信息
 //    sprintf(version,"%d.%d.%d",dest.fw_ver[1]-48,dest.fw_ver[3]-48,dest.fw_ver[5]-48);

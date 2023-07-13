@@ -43,4 +43,19 @@ void sendwarnningInfo(void);
 void sendOfflinewarnning(type_monitor_t *);
 void resetSysSetPhCal(u32);
 void resetSysSetEcCal(u32);
+#if(HUB_SELECT  == HUB_IRRIGSTION)
+aqua_set* GetAquaSetList(void);
+aqua_info_t* GetAquaInfoList(void);
+void initAquaSetAndInfo(void);
+void addToAquaInfoList(aqua_info_t *info, u8 recipe_no);
+void addNewAquaSetAndInfo(u32 uuid);
+void addToAquaSetList(aqua_set *set);
+void SetAquaWarn(aqua_state_t *aqua_state);
+aqua_state_t *GetAquaWarnById(u8 id);
+aqua_state_t *GetAquaWarn(void);
+aqua_recipe* GetAquaRecipe(u32 uuid, u8 no);
+aqua_set* GetAquaSetByUUID(u32 uuid);
+aqua_info_t *GetAquaInfoByUUID(u32 uuid);
+void initTankWarnState(void);
+#endif
 #endif /* APPLICATIONS_CLOUDPROTOCOL_CLOUDPROTOCOL_H_ */

@@ -25,6 +25,7 @@
 #define     MODULE_NAMESZ                   9
 #define     STORAGE_NAMESZ                  9
 #define     RECIPE_NAMESZ                   9
+#define     AQUA_RECIPE_NAMESZ              10
 #define     STORAGE_MAX                     12
 
 typedef     struct packageEth               type_package_t;
@@ -54,7 +55,12 @@ typedef     struct eth_heart                eth_heart_t;
 #define     TANK_SENSOR_MAX                 4
 #define     SENSOR_VALUE_MAX                4
 #define     TIMER_GROUP                     12
-#define     WARN_MAX                        34
+#define     WARN_MAX                        35
+#define     TANK_LIST_MAX                   4
+#define     TANK_WARN_ITEM_MAX              8
+#define     AQUA_RECIPE_MX                  9
+#define     AQUA_RECIPE_PUMP_MX             8
+#define     AQUA_SCHEDULE_MX                8
 
 //默认值
 #define     COOLING_TARGET                  320
@@ -308,15 +314,36 @@ struct device{
         type_manual_t manual;
         type_ctrl_t ctrl;
         u8  weekDayEn;//星期1-7使能
+//        u16 startDelay;//对于cool heat dehumi humi 的设备做阶梯控制//Justin
     }port[DEVICE_PORT_MAX];
     //特殊处理
-    struct hvac
-    {
-        u8      manualOnMode;        //1-cooling 2-heating //手动开关的时候 该选项才有意义
-        u8      fanNormallyOpen;     //风扇常开 1-常开 0-自动
-        u8      hvacMode;            //1-conventional 模式 2-HEAT PUM 模式 O 模式 3-HEAT PUM 模式 B 模式
-    }_hvac;
+    union special{
+        struct hvac
+        {
+            u8      manualOnMode;        //1-cooling 2-heating //手动开关的时候 该选项才有意义
+            u8      fanNormallyOpen;     //风扇常开 1-常开 0-自动
+            u8      hvacMode;            //1-conventional 模式 2-HEAT PUM 模式 O 模式 3-HEAT PUM 模式 B 模式
+        }_hvac;
+        u16 mix_fertilizing;              //是否跟随aqua的配肥状态 /bit0~bit12表示对应的port口
+    }special_data;
+
 };
+
+typedef struct aqua{
+    u16             crc;
+    u8              type;                                   //产品类型号
+    u32             uuid;
+    char            name[MODULE_NAMESZ];                    //产品名称
+    u8              addr;                                   //hub管控的地址
+    u16             ctrl_addr;                              //终端控制的寄存器地址
+    u8              main_type;                              //主类型 如co2 温度 湿度 line timer
+    type_ctrl_t     ctrl;
+    type_manual_t   manual;
+    u8              storage_size;
+    u8              save_state;                             //是否已经存储
+    u8              conn_state;
+    u8              pumpSize;                               //泵数量有 4 6 8的选择
+}aqua_t;
 
 typedef struct phec_sensor{
     u8 addr[SENSOR_MAX];
@@ -348,7 +375,8 @@ enum{
 enum{
     DEVICE_TYPE = 0x01,
     SENSOR_TYPE = 0x02,
-    LINE1OR2_TYPE
+    LINE1OR2_TYPE = 0x03,
+    AQUA_TYPE
 };
 
 enum
@@ -504,7 +532,12 @@ typedef struct monitor
     u8                  line_size;
     sensor_t            sensor[SENSOR_MAX];
     device_t            device[DEVICE_MAX];
+#if(HUB_SELECT == HUB_ENVIRENMENT)
     line_t              line[LINE_MAX];
+#elif(HUB_SELECT == HUB_IRRIGSTION)
+    u8                  aqua_size;
+    aqua_t              aqua[TANK_LIST_MAX];
+#endif
     u16                 crc;
 }type_monitor_t;
 
@@ -517,6 +550,84 @@ typedef struct tankSensorData{
     u16 min;
     u16 max;
 }tankSensorData_t;
+
+#if(HUB_SELECT == HUB_IRRIGSTION)
+
+typedef struct aquaSetSchedule{
+    u8 state;   //选中状态，0:关; 1:开;
+    u8 days;    //运行天数
+    u8 form;    //运行配方
+}aqua_set_schedule;
+
+//aqua 设置
+typedef struct aquaSet{
+    u32 uuid;
+    u8 monitor;                 //0:自动配肥; 1:监控不配肥;
+    u8 ecDailySupFerState;      //EC 每日配肥计划启用状态，0:不启用; 1:启用;
+    u16 ecDailySupFerStart;     //EC 每日配肥计划起始时间 18:00 18*60=1080
+    u16 ecDailySupFerEnd;       //EC 每日配肥计划截止时间 18:30 18*60+30=1110
+    u8 phDailySupFerState;      //PH 每日配肥计划启用状态，0:不启用; 1:启用;
+    u16 phDailySupFerStart;     //PH 每日配肥计划起始时间 18:00 18*60=1080
+    u16 phDailySupFerEnd;       //PH 每日配肥计划截止时间 18:30 18*60+30=1110
+    u8 currRunMode;             //配肥当前运行模式 0:单种配方运行; 1:周期运行;
+    u8 singleRunFormula;        //单个计划运行配方编号 1-9，如果是 0 表示无配方运
+    u16 scheduleStart[3];      //周期运行起始时间
+    u16 scheduleEnd[3];        //周期运行结束时间
+    u8 scheduleRunFormula;      //周期运行时当前运行配方编号
+    aqua_set_schedule scheduleList[AQUA_SCHEDULE_MX];
+    time_t runModeTime;
+}aqua_set;
+
+//aqua 配方
+typedef struct aquaRecipePump
+{
+    u8 state;   //蠕动泵启用状态，0:未启用，1:启用
+    u8 type;    //蠕动泵工作类型，0:None; 1:EC; 2:PH+, 3:PH-
+    u8 ratio;   //蠕动泵工作时间百分比，单位%
+}aqua_recipe_pump;
+
+//Aqua 配方
+typedef struct aquaRecipe{
+    u8 formulaNumber;                       //配方编号 1-9
+    char formName[AQUA_RECIPE_NAMESZ];      //配方名称
+    u16 ecTarget;                           //EC 目标值，单位:0.01
+    u16 ecDeadband;                         //EC 校准值，单位:0.01
+    u16 ecHigh;                             //EC 高报警值，单位 0.01
+    u16 ecLow;                              //EC 低报警值，单位 0.01
+    u16 ecDosingTime;                       //EC 单次加肥时间，单位秒
+    u16 ecMixingTime;                       //EC 单次加肥间隔时间，单位秒
+    u16 ecMaxDosingCycles;                   //EC 最大加肥循环次数
+    u16 phTarget;                           //PH 目标值，单位:0.01
+    u16 phDeadband;                         //PH 校准值，单位:0.01
+    u16 phHigh;                             //PH 高报警值，单位 0.01
+    u16 phLow;                              //PH 低报警值，单位 0.01
+    u16 phDosingTime;                       //PH 单次加肥时间，单位秒
+    u16 phMixingTime;                       //PH 单次加肥间隔时间，单位秒
+    u16 phMaxDosingCycles;                  //PH 最大加肥循环次数
+    u16 pumpFlowRate;                       //蠕动泵流量，单位 mL/min
+    aqua_recipe_pump pumpList[AQUA_RECIPE_PUMP_MX];
+}aqua_recipe;
+
+typedef struct aquaInfo{
+    u32 uuid;
+    aqua_recipe list[AQUA_RECIPE_MX];
+}aqua_info_t;
+
+typedef struct aquaWarn{
+    u8 id;
+    u8 pumpSize;
+    u16 ec;
+    u16 ph;
+    u16 wt;
+    u16 pumpState;
+    u16 warn;
+    u16 work;
+    u8 isAquaRunning;   //是否处于配肥
+    u16 aqua_firm_ver;  //软件版本号
+    u16 aqua_hmi_ver;   //屏幕软件号
+}aqua_state_t;
+
+#endif
 
 #pragma pack()
 
@@ -567,7 +678,8 @@ typedef     void (*FAC_FUNC)(type_monitor_t *);
 #define     LIGHT_12_TYPE       0x82        //12路灯光干接点
 #define     IO_4_TYPE           0x81
 #define     IR_AIR_TYPE         0xB4        //红外空调
-
+#define     AQUE_SLAVE_TYPE     0XC1        //aqua 从机模式
+#define     MIX_TYPE            0x4C
 /**************************************从机 End*******************************************/
 
 /************************************** 功能码定义 **************************************/
@@ -595,8 +707,11 @@ enum{
     S_IO_12,
     S_IO_4,
     S_LIGHT_12,
+    S_AQUA,
+    S_MIX
 };
 
+//后续加入要加在后面
 enum{
     /*****************************device 类型功能*/
     F_NULL = 0,
@@ -627,6 +742,8 @@ enum{
     F_S_SM,     //烟雾传感器
     F_S_LK,     //漏水传感器
     F_S_O2,     //氧气传感器
+    /*****************************device 类型功能*/
+    F_MIX,
 };
 
 /*设备工作状态 0-Off 1-On 2-PPM UP 3-FUZZY LOGIC

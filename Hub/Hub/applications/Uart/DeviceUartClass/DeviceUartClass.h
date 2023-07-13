@@ -61,6 +61,12 @@ typedef struct uartClass{
     void(*RecvCmd)(u8*, u8);                                    //接收串口数据
     void(*SendCmd)(void);                                       //实际发送数据
     void(*RecvListHandle)(void);
+#if(HUB_SELECT == HUB_IRRIGSTION)
+    /*aqua部分的*/
+    void(*AquaCtrl)(aqua_t *aqua, u8 monitor, u8 state, u8 recipe_i);
+    void(*aquaSendInfo)(aqua_t *aqua, aqua_info_t *info, u8 recipe_no);
+    void(*AskAquaState)(aqua_t *aqua, int index);
+#endif
 } type_uart_class;
 
 typedef struct uartSendMonitor{
@@ -76,6 +82,35 @@ typedef struct uartSendLine{
     time_t sendTime;
     u8 SendCnt;
 }uart_send_line;
+
+typedef struct uartSendAqua{
+    u8 addr;
+    u8 monitor;
+    u16 ctrl;
+    u8 recipe_i;    //使用的recipe 号
+    time_t sendTime;
+    u8 SendCnt;
+}uart_send_aqua;
+
+typedef struct monitorAskData{
+    u8 length;
+    u8 askType;
+    u8 flag;
+}monitor_ask;
+
+enum{
+    ASK_STATE = 0X00,
+    ASK_VER,
+    ASK_RECIPE_0,
+    ASK_RECIPE_1,
+    ASK_RECIPE_2,
+    ASK_RECIPE_3,
+    ASK_RECIPE_4,
+    ASK_RECIPE_5,
+    ASK_RECIPE_6,
+    ASK_RECIPE_7,
+    ASK_RECIPE_8,
+};
 
 void InitUart2Object(void);
 time_t getTimerRun(void);

@@ -13,6 +13,7 @@
 #include "mqtt_client.h"
 #include "Gpio.h"
 #include "cJSON.h"
+#include "FileSystem.h"
 
 __attribute__((section(".ccmbss"))) type_mqtt_ip mqtt_use;
 

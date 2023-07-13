@@ -14,13 +14,14 @@
 #include "Module.h"
 #include "CloudProtocolBusiness.h"
 #include "UartDataLayer.h"
-
+#include "AquaUartClass.h"
+#include "Gpio.h"
 phec_sensor_t phec_sensor;
 
 extern rt_mutex_t dynamic_mutex;
 extern void printLine(line_t);
-//extern void GetNowSysSet(proTempSet_t *, proCo2Set_t *, proHumiSet_t *, proLine_t *, proLine_t *, struct recipeInfor *);
-
+extern void GetNowSysSet(proTempSet_t *, proCo2Set_t *, proHumiSet_t *, proLine_t *, proLine_t *, struct recipeInfor *);
+extern void setSensorDefuleStora(sensor_t *module, sen_stora_t , sen_stora_t , sen_stora_t , sen_stora_t);
 //获取phec sensor
 //注意:如果有多线程使用该函数的时候需要使用锁
 phec_sensor_t* getPhEcList(type_monitor_t *monitor, u8 isOnline)
@@ -65,96 +66,6 @@ phec_sensor_t* getPhEcList(type_monitor_t *monitor, u8 isOnline)
     rt_mutex_release(dynamic_mutex);//互斥锁解锁
 
     return &phec_sensor;
-}
-
-//删除设备
-void deleteModule(type_monitor_t *monitor, u8 addr)
-{
-    u8      index       = 0;
-    u8      item        = 0;
-    u8      id          = 0;
-
-    for(index = 0; index < monitor->device_size; index++)
-    {
-        if(addr == monitor->device[index].addr)
-        {
-            monitor->allocateStr.address[addr] = 0x00;
-            //如果是pump 或者 valve 的话需要删除桶设置相关联的id
-            for(item = 0; item < GetSysTank()->tank_size; item++)
-            {
-                if(addr == GetSysTank()->tank[item].pumpId)
-                {
-                    GetSysTank()->tank[item].pumpId = 0;
-                    GetSysTank()->saveFlag = YES;
-                }
-                else
-                {
-                    for(id = 0; id < VALVE_MAX; id++)
-                    {
-                        if(addr == (GetSysTank()->tank[item].valve[id] >> 8))
-                        {
-                            GetSysTank()->tank[item].valve[id] = 0;
-                            GetSysTank()->saveFlag = YES;
-                        }
-                    }
-                }
-            }
-            break;
-        }
-    }
-
-    if(index != monitor->device_size)
-    {
-        if(index < (monitor->device_size - 1))
-        {
-            for(; index < monitor->device_size - 1; index++)
-            {
-                rt_memcpy((u8 *)&monitor->device[index], (u8 *)&monitor->device[index + 1], sizeof(device_t));
-            }
-        }
-        //最后
-        //rt_memset((u8 *)&monitor->device[monitor->device_size - 1], 0, sizeof(device_t));
-        monitor->device_size -= 1;
-    }
-
-    for(index = 0; index < monitor->line_size; index++)
-    {
-        if(0 != addr)
-        {
-            if(addr == monitor->line[index].addr)
-            {
-                monitor->allocateStr.address[addr] = 0x00;
-                rt_memset((u8 *)&monitor->line[index], 0, sizeof(line_t));
-                monitor->line_size -= 1;
-                break;
-            }
-        }
-    }
-
-    //删除sensor
-    for(index = 0; index < monitor->sensor_size; index++)
-    {
-        if(addr == monitor->sensor[index].addr)
-        {
-            monitor->allocateStr.address[addr] = 0x00;
-
-            break;
-        }
-    }
-
-    if(index != monitor->sensor_size)
-    {
-        if(index < (monitor->sensor_size - 1))
-        {
-            for(; index < monitor->sensor_size - 1; index++)
-            {
-                rt_memcpy((u8 *)&monitor->sensor[index], (u8 *)&monitor->sensor[index + 1], sizeof(sensor_t));
-            }
-        }
-        //最后
-//        rt_memset((u8 *)&monitor->sensor[monitor->sensor_size - 1], 0, sizeof(sensor_t));
-        monitor->sensor_size -= 1;
-    }
 }
 
 void changeDeviceType(type_monitor_t *monitor, u8 addr, u8 port, u8 type)
@@ -205,7 +116,7 @@ void InsertDeviceToTable(type_monitor_t *monitor, device_t module, u8 no)
         rt_memcpy((u8 *)&monitor->device[no], (u8 *)&module, sizeof(device_t));
     }
 }
-
+#if(HUB_SELECT == HUB_ENVIRENMENT)
 void InsertLineToTable(type_monitor_t *monitor, line_t module, u8 no)
 {
     if(no < LINE_MAX)
@@ -218,7 +129,7 @@ void InsertLineToTable(type_monitor_t *monitor, line_t module, u8 no)
         printLine(module);
     }
 }
-
+#endif
 u8 FindSensor(type_monitor_t *monitor, sensor_t module, u8 *no)
 {
     u8          index       = 0;
@@ -254,7 +165,7 @@ u8 FindDevice(type_monitor_t *monitor, device_t module, u8 *no)
     }
     return ret;
 }
-
+#if(HUB_SELECT == HUB_ENVIRENMENT)
 u8 FindLine(type_monitor_t *monitor, line_t module, u8 *no)
 {
     u8          index       = 0;
@@ -287,7 +198,7 @@ u8 FindLine(type_monitor_t *monitor, line_t module, u8 *no)
 
     return ret;
 }
-
+#endif
 u8 FindModuleByAddr(type_monitor_t *monitor, u8 addr)
 {
     int i = 0;
@@ -307,7 +218,7 @@ u8 FindModuleByAddr(type_monitor_t *monitor, u8 addr)
             return YES;
         }
     }
-
+#if(HUB_SELECT == HUB_ENVIRENMENT)
     for(i = 0; i < monitor->line_size; i++)
     {
         if(addr == monitor->line[i].addr)
@@ -315,7 +226,7 @@ u8 FindModuleByAddr(type_monitor_t *monitor, u8 addr)
             return YES;
         }
     }
-
+#endif
     return NO;
 }
 
@@ -332,11 +243,12 @@ void initModuleConState(type_monitor_t *monitor)
     {
         monitor->sensor[index].conn_state = CON_FAIL;
     }
-
+#if(HUB_SELECT == HUB_ENVIRENMENT)
     for(index = 0; index < monitor->line_size; index++)
     {
         monitor->line[index].conn_state = CON_FAIL;
     }
+#endif
 }
 
 sensor_t *GetSensorByType(type_monitor_t *monitor, u8 type)
@@ -405,21 +317,21 @@ void CtrlAllDeviceByFunc(type_monitor_t *monitor, u8 func, u8 en, u8 value)
 {
     u8          index       = 0;
     u8          port        = 0;
-    u16         temp        = 0;
-    u16         res         = 0;
+//    u16         temp        = 0;
+//    u16         res         = 0;
     device_t    *device     = RT_NULL;
-    proTempSet_t    tempSet;
+//    proTempSet_t    tempSet;
 
-    GetNowSysSet(&tempSet, RT_NULL, RT_NULL, RT_NULL, RT_NULL, RT_NULL, RT_NULL);
+//    GetNowSysSet(&tempSet, RT_NULL, RT_NULL, RT_NULL, RT_NULL, RT_NULL, RT_NULL);
 
-    if(DAY_TIME == GetSysSet()->dayOrNight)
-    {
-        temp = tempSet.dayCoolingTarget;
-    }
-    else
-    {
-        temp = tempSet.nightCoolingTarget;
-    }
+//    if(DAY_TIME == GetSysSet()->dayOrNight)
+//    {
+//        temp = tempSet.dayCoolingTarget;
+//    }
+//    else
+//    {
+//        temp = tempSet.nightCoolingTarget;
+//    }
 
     for(index = 0;index < monitor->device_size; index++)
     {
@@ -511,6 +423,24 @@ device_t *GetDeviceByAddr(type_monitor_t *monitor, u8 addr)
     return RT_NULL;
 }
 
+#if(HUB_SELECT == HUB_IRRIGSTION)
+aqua_t *GetAquaByAddr(type_monitor_t *monitor, u8 addr)
+{
+    u8      index       = 0;
+
+    for(index = 0; index < monitor->aqua_size; index++)
+    {
+        if(addr == monitor->aqua[index].addr)
+        {
+            return &(monitor->aqua[index]);
+        }
+    }
+
+    return RT_NULL;
+}
+#endif
+
+#if(HUB_SELECT == HUB_ENVIRENMENT)
 line_t *GetLineByAddr(type_monitor_t *monitor, u8 addr)
 {
     u8      index       = 0;
@@ -529,6 +459,7 @@ line_t *GetLineByAddr(type_monitor_t *monitor, u8 addr)
 
     return RT_NULL;
 }
+#endif
 
 void InsertTankToTable(sys_tank_t *sys_tank, tank_t tank)
 {
@@ -574,30 +505,30 @@ u16 GetValueAboutHACV(device_t *device, u8 cool, u8 heat)
     {
         if(ON == heat)
         {
-            if(HVAC_CONVENTIONAL == device->_hvac.hvacMode)
+            if(HVAC_CONVENTIONAL == device->special_data._hvac.hvacMode)
             {
                 value = 0x14;
             }
-            else if(HVAC_PUM_O == device->_hvac.hvacMode)
+            else if(HVAC_PUM_O == device->special_data._hvac.hvacMode)
             {
                 value = 0x1C;
             }
-            else if(HVAC_PUM_B == device->_hvac.hvacMode)
+            else if(HVAC_PUM_B == device->special_data._hvac.hvacMode)
             {
                 value = 0x0C;
             }
         }
         else if(ON == cool)
         {
-            if(HVAC_CONVENTIONAL == device->_hvac.hvacMode)
+            if(HVAC_CONVENTIONAL == device->special_data._hvac.hvacMode)
             {
                 value = 0x0C;
             }
-            else if(HVAC_PUM_O == device->_hvac.hvacMode)
+            else if(HVAC_PUM_O == device->special_data._hvac.hvacMode)
             {
                 value = 0x0C;
             }
-            else if(HVAC_PUM_B == device->_hvac.hvacMode)
+            else if(HVAC_PUM_B == device->special_data._hvac.hvacMode)
             {
                 value = 0x1C;
             }
@@ -811,6 +742,7 @@ rt_err_t CheckSensorExist(type_monitor_t *monitor, u32 uuid)
     return ret;
 }
 
+#if(HUB_SELECT == HUB_ENVIRENMENT)
 //检查模块是否存在
 rt_err_t CheckLineExist(type_monitor_t *monitor, u32 uuid)
 {
@@ -828,7 +760,24 @@ rt_err_t CheckLineExist(type_monitor_t *monitor, u32 uuid)
 
     return ret;
 }
+#elif(HUB_SELECT == HUB_IRRIGSTION)
+rt_err_t CheckAquaExist(type_monitor_t *monitor, u32 uuid)
+{
+    rt_err_t ret = RT_ERROR;
 
+    //2.检查是否存在line
+    for(int i = 0; i < monitor->aqua_size; i++)
+    {
+        if(uuid == monitor->aqua[i].uuid)
+        {
+            ret = RT_EOK;
+            return ret;
+        }
+    }
+
+    return ret;
+}
+#endif
 /*
  * 判断现在存在的模块信息是否是正确的，如果存在uuid但是type和addr又不对那么返回error
  */
@@ -879,6 +828,7 @@ rt_err_t CheckSensorCorrect(type_monitor_t *monitor, u32 uuid, u8 addr, u8 type)
     return ret;
 }
 
+#if(HUB_SELECT == HUB_ENVIRENMENT)
 rt_err_t CheckLineCorrect(type_monitor_t *monitor, u32 uuid, u8 addr, u8 type)
 {
     rt_err_t ret = RT_ERROR;
@@ -904,6 +854,31 @@ rt_err_t CheckLineCorrect(type_monitor_t *monitor, u32 uuid, u8 addr, u8 type)
 
     return ret;
 }
+#elif(HUB_SELECT == HUB_IRRIGSTION)
+rt_err_t CheckAquaCorrect(type_monitor_t *monitor, u32 uuid, u8 addr)
+{
+    rt_err_t ret = RT_ERROR;
+
+    //1.检查是否存在sensor
+    for(int i = 0; i < monitor->aqua_size; i++)
+    {
+        if(uuid == monitor->aqua[i].uuid)
+        {
+            if(addr == monitor->aqua[i].addr)
+            {
+                ret = RT_EOK;
+                return ret;
+            }
+            else
+            {
+                ret = RT_ERROR;
+            }
+        }
+    }
+
+    return ret;
+}
+#endif
 
 #if (HUB_IRRIGSTION == HUB_SELECT)
 
@@ -1021,7 +996,7 @@ void DeleteModule(type_monitor_t *monitor, u32 uuid)
             }
         }
     }
-
+#if(HUB_SELECT == HUB_ENVIRENMENT)
     for(int i = 0; i < monitor->line_size; i++)
     {
         if(uuid == monitor->line[i].uuid)
@@ -1043,6 +1018,29 @@ void DeleteModule(type_monitor_t *monitor, u32 uuid)
             }
         }
     }
+#elif(HUB_SELECT == HUB_IRRIGSTION)
+    for(int i = 0; i < monitor->aqua_size; i++)
+    {
+        if(uuid == monitor->aqua[i].uuid)
+        {
+            monitor->allocateStr.address[monitor->aqua[i].addr] = 0;
+            rt_memset((u8 *)&monitor->aqua[i], 0, sizeof(aqua_t));
+
+            //后面的数据往前移
+            for(int j = i; j + 1 < monitor->aqua_size; j++)
+            {
+                rt_memcpy((u8 *)&monitor->aqua[j], (u8 *)&monitor->aqua[j + 1], sizeof(aqua_t));
+            }
+
+            rt_memset((u8 *)&monitor->aqua[monitor->aqua_size - 1], 0, sizeof(aqua_t));
+
+            if(monitor->aqua_size)
+            {
+                monitor->aqua_size -= 1;
+            }
+        }
+    }
+#endif
 }
 
 static rt_err_t InsertDevice(type_monitor_t *monitor, device_t *device)
@@ -1105,6 +1103,7 @@ static rt_err_t InsertSensor(type_monitor_t *monitor, sensor_t sensor)
     return ret;
 }
 
+#if(HUB_SELECT == HUB_ENVIRENMENT)
 static rt_err_t InsertLine(type_monitor_t *monitor, line_t line)
 {
     u8 i = 0;
@@ -1134,7 +1133,34 @@ static rt_err_t InsertLine(type_monitor_t *monitor, line_t line)
 
     return ret;
 }
+#elif(HUB_SELECT == HUB_IRRIGSTION)
+static rt_err_t InsertAqua(type_monitor_t *monitor, aqua_t aqua)
+{
+    u8 i = 0;
+    rt_err_t ret = RT_ERROR;
 
+    if(monitor->aqua_size < TANK_LIST_MAX)
+    {
+        //LOG_I("InsertAqua 1");
+        for(i = 0; i < TANK_LIST_MAX; i++)
+        {
+            //1.遍历列表如果addr==0，说明该位置为空
+            if(0 == monitor->aqua[i].addr)
+            {
+                rt_memcpy(&monitor->aqua[i], &aqua, sizeof(aqua_t));
+                monitor->aqua_size += 1;
+
+                LOG_I("InsertAqua, monitor->aqua_size = %d",monitor->aqua_size);
+
+                ret = RT_EOK;
+                return ret;
+            }
+        }
+    }
+
+    return ret;
+}
+#endif
 //通过type 分配默认值
 rt_err_t SetDeviceDefault(type_monitor_t *monitor, u32 uuid, u8 type, u8 addr)
 {
@@ -1191,6 +1217,11 @@ rt_err_t SetDeviceDefault(type_monitor_t *monitor, u32 uuid, u8 type, u8 addr)
                         setDeviceDefaultStora(device, 0 , "Cool", F_COOL, device->type, addr , MANUAL_NO_HAND, 0);
                         ret = RT_EOK;
                         break;
+                    case MIX_TYPE:
+                        setDeviceDefaultPara(device, "BDS-MIX", 0x0040, S_MIX, device->type, 1);
+                        setDeviceDefaultStora(device, 0 , "Mix", F_MIX, device->type, addr , MANUAL_NO_HAND, 0);
+                        ret = RT_EOK;
+                        break;
                     case HVAC_6_TYPE:
                         setDeviceDefaultPara(device, "BTS-1", 0x0401, S_TEMP, device->type, 1);
                         setDeviceDefaultStora(device, 0 , "Hvac", F_COOL, device->type, addr, MANUAL_NO_HAND, 0);
@@ -1199,6 +1230,7 @@ rt_err_t SetDeviceDefault(type_monitor_t *monitor, u32 uuid, u8 type, u8 addr)
                     case TIMER_TYPE:
                         setDeviceDefaultPara(device, "BPS", 0x0040, S_TIMER, device->type, 1);
                         setDeviceDefaultStora(device, 0 , "Timer", F_TIMER, device->type, addr , MANUAL_NO_HAND, 0);
+                        device->port[0].mode = BY_SCHEDULE;
                         ret = RT_EOK;
                         break;
                     case AC_4_TYPE:
@@ -1209,6 +1241,7 @@ rt_err_t SetDeviceDefault(type_monitor_t *monitor, u32 uuid, u8 type, u8 addr)
                             sprintf(name,"%s%d","port",index+1);
                             strncpy(device->port[index].name, name, STORAGE_NAMESZ);
                             device->port[index].manual.manual_on_time = MANUAL_TIME_DEFAULT;
+                            device->port[index].mode = BY_SCHEDULE;
                             device->port[index].weekDayEn = 0x7F;
                         }
                         ret = RT_EOK;
@@ -1216,11 +1249,13 @@ rt_err_t SetDeviceDefault(type_monitor_t *monitor, u32 uuid, u8 type, u8 addr)
                     case PUMP_TYPE:
                         setDeviceDefaultPara(device, "BIS-P", 0x0040, S_PUMP, device->type, 1);
                         setDeviceDefaultStora(device, 0 , "Pump", F_PUMP, device->type, addr , MANUAL_NO_HAND, 0);
+                        device->port[0].mode = BY_SCHEDULE;
                         ret = RT_EOK;
                         break;
                     case VALVE_TYPE:
                         setDeviceDefaultPara(device, "BIS-V", 0x0040, S_VALVE, device->type, 1);
                         setDeviceDefaultStora(device, 0 , "Valve", F_VALVE, device->type, addr , MANUAL_NO_HAND, 0);
+                        device->port[0].mode = BY_SCHEDULE;
                         ret = RT_EOK;
                         break;
                     case IO_12_TYPE:
@@ -1234,6 +1269,7 @@ rt_err_t SetDeviceDefault(type_monitor_t *monitor, u32 uuid, u8 type, u8 addr)
                             strncpy(device->port[index].name, name, STORAGE_NAMESZ);
                             device->port[index].manual.manual_on_time = MANUAL_TIME_DEFAULT;
                             device->port[index].weekDayEn = 0x7F;
+                            device->port[index].mode = BY_SCHEDULE;
                         }
                         ret = RT_EOK;
                         break;
@@ -1248,6 +1284,7 @@ rt_err_t SetDeviceDefault(type_monitor_t *monitor, u32 uuid, u8 type, u8 addr)
                             strncpy(device->port[index].name, name, STORAGE_NAMESZ);
                             device->port[index].manual.manual_on_time = MANUAL_TIME_DEFAULT;
                             device->port[index].weekDayEn = 0x7F;
+                            device->port[index].mode = BY_SCHEDULE;
                         }
                         ret = RT_EOK;
                         break;
@@ -1262,6 +1299,7 @@ rt_err_t SetDeviceDefault(type_monitor_t *monitor, u32 uuid, u8 type, u8 addr)
                             strncpy(device->port[index].name, name, STORAGE_NAMESZ);
                             device->port[index].manual.manual_on_time = MANUAL_TIME_DEFAULT;
                             device->port[index].weekDayEn = 0x7F;
+                            device->port[index].mode = BY_SCHEDULE;
                         }
                         ret = RT_EOK;
                         break;
@@ -1416,6 +1454,7 @@ rt_err_t SetSensorDefault(type_monitor_t *monitor, u32 uuid, u8 type, u8 addr)
     return ret;
 }
 
+#if(HUB_SELECT == HUB_ENVIRENMENT)
 rt_err_t SetLineDefault(type_monitor_t *monitor, u32 uuid, u8 type, u8 addr)
 {
     rt_err_t ret = RT_ERROR;
@@ -1533,6 +1572,42 @@ rt_err_t SetLineDefault(type_monitor_t *monitor, u32 uuid, u8 type, u8 addr)
 
     return ret;
 }
+#elif(HUB_SELECT == HUB_IRRIGSTION)
+rt_err_t SetAquaDefault(type_monitor_t *monitor, u32 uuid, u8 type, u8 addr)
+{
+    rt_err_t ret = RT_ERROR;
+    aqua_t aqua;
+
+    //1.判断aqua的注册数量是否已经满了
+    if(monitor->aqua_size < TANK_LIST_MAX)
+    {
+        if(AQUA_TYPE == TypeSupported(type))
+        {
+            rt_memset((u8 *)&aqua, 0, sizeof(aqua_t));
+
+            aqua.uuid = uuid;
+            aqua.type = type;
+            aqua.addr = addr;
+            strncpy(aqua.name, "aqua", MODULE_NAMESZ);
+            aqua.ctrl_addr = AQUA_WORK_ADDR;
+            aqua.main_type = S_AQUA;
+            aqua.storage_size = 1;
+
+            ret = RT_EOK;
+            if(RT_EOK == ret)
+            {
+                //插入到设备列表中
+                ret = InsertAqua(monitor, aqua);
+                printAqua(aqua);
+                //LOG_W("------------------- aqua size = %d",monitor->aqua_size);
+            }
+
+        }
+    }
+
+    return ret;
+}
+#endif
 
 u8 IsExistFunc(type_monitor_t *monitor, u8 addr,u8 func)
 {
@@ -1554,6 +1629,7 @@ u8 IsExistFunc(type_monitor_t *monitor, u8 addr,u8 func)
     return NO;
 }
 
+#if(HUB_SELECT == HUB_ENVIRENMENT)
 u8 GetLineType(type_monitor_t *monitor)
 {
     int i = 0;
@@ -1575,6 +1651,7 @@ u8 GetLineType(type_monitor_t *monitor)
         return 2;
     }
 }
+#endif
 
 int GetSensorMainValue(type_monitor_t *monitor, u8 func)
 {
@@ -1607,5 +1684,6 @@ int GetSensorMainValue(type_monitor_t *monitor, u8 func)
 
     return value;
 }
+
 
 #endif /* APPLICATIONS_INFORMATIONMANAGE_MODULE_MODULE_C_ */

@@ -12,7 +12,6 @@
 
 #include "Gpio.h"
 
-void deleteModule(type_monitor_t *, u8);
 void changeDeviceType(type_monitor_t *, u8 ,u8 ,u8);
 void InsertSensorToTable(type_monitor_t *, sensor_t , u8);
 void InsertDeviceToTable(type_monitor_t *, device_t , u8);
@@ -45,6 +44,7 @@ rt_err_t CheckDeviceCorrect(type_monitor_t *, u32, u8, u8);
 rt_err_t CheckSensorExist(type_monitor_t *, u32);
 rt_err_t CheckSensorCorrect(type_monitor_t *, u32, u8, u8);
 rt_err_t CheckLineExist(type_monitor_t *, u32);
+rt_err_t CheckAquaExist(type_monitor_t *monitor, u32 uuid);
 rt_err_t CheckLineCorrect(type_monitor_t *, u32, u8, u8);
 rt_err_t SetDeviceDefault(type_monitor_t *, u32, u8, u8);
 void DeleteModule(type_monitor_t *, u32);
@@ -57,4 +57,7 @@ int GetSensorMainValue(type_monitor_t *monitor, u8 func);
 #if (HUB_IRRIGSTION == HUB_SELECT)
 void deletePumpValveGroup(type_monitor_t *monitor, u8 addr, u8 port);
 #endif
+aqua_t *GetAquaByAddr(type_monitor_t *monitor, u8 addr);
+rt_err_t CheckAquaCorrect(type_monitor_t *monitor, u32 uuid, u8 addr);
+rt_err_t SetAquaDefault(type_monitor_t *monitor, u32 uuid, u8 addr, u8 type);
 #endif /* APPLICATIONS_INFORMATIONMANAGE_MODULE_MODULE_H_ */

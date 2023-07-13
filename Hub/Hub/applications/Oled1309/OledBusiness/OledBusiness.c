@@ -49,7 +49,7 @@ void HomePage(type_page_t *page, type_monitor_t *monitor)
 #elif (HUB_SELECT == HUB_IRRIGSTION)
     u8                  sensor_i    = 0;
     u8                  addr        = 0;
-    u8                  port        = 0;
+//    u8                  port        = 0;
     tank_t              *tank       = RT_NULL;
     sensor_t            *sensor     = RT_NULL;
     int                 data[6]     = {VALUE_NULL,VALUE_NULL,VALUE_NULL,VALUE_NULL,VALUE_NULL,VALUE_NULL};
@@ -240,14 +240,14 @@ void HomePage(type_page_t *page, type_monitor_t *monitor)
             if(tank->pumpId > 0xFF)
             {
                 addr = tank->pumpId >> 8;
-                port = tank->pumpId;
+//                port = tank->pumpId;
             }
             else
             {
                 addr = tank->pumpId;
-                port = 0;
+//                port = 0;
             }
-            sprintf(time," %02d:%02d:%02d %12s",time_for.hour,time_for.minute,time_for.second,
+            sprintf(time," %02d:%02d:%02d%12s",time_for.hour,time_for.minute,time_for.second,
                     tank->name);
             time[21] = '\0';
             ST7567_GotoXY(0, 0);
@@ -688,7 +688,7 @@ void SensorList(u64 *pageInfo, type_page_t *page,type_monitor_t *monitor)
 {
     u8                      canshow     = 4;
     char                    show[17]    = "";
-    u8                      port        = 0;
+//    u8                      port        = 0;
     sensor_t                *sensor     = RT_NULL;
     static u8               show_home   = 1;
     static u8               show_end    = 4;
@@ -754,13 +754,16 @@ void SensorList(u64 *pageInfo, type_page_t *page,type_monitor_t *monitor)
         //3.获取当前的PhEC
         for(u8 index = show_home; index <= show_end; index++)
         {
-            sensor = &monitor->sensor[index];
-            if(index <= page->cusor_max)
+            if(index > 0)
             {
-                ST7567_GotoXY(8, 16 * (index - show_home));
-                sprintf(show, "%8s   #%d",sensor->name, sensor->addr);
+                sensor = &monitor->sensor[index - 1];
+                if(index <= page->cusor_max)
+                {
+                    ST7567_GotoXY(8, 16 * (index - show_home));
+                    sprintf(show, "%8s   #%d",sensor->name, sensor->addr);
 
-                ST7567_Puts(show, &Font_7x10, index == page->cusor ? 0 : 1);
+                    ST7567_Puts(show, &Font_7x10, index == page->cusor ? 0 : 1);
+                }
             }
         }
 
@@ -1181,6 +1184,7 @@ void DeviceStatePage_new(type_monitor_t *monitor)
     ST7567_UpdateScreen();
 }
 
+#if(HUB_SELECT == HUB_ENVIRENMENT)
 void LineStatePage_new(type_monitor_t *monitor)
 {
 #define     CAN_SHOW        4
@@ -1272,7 +1276,7 @@ void LineStatePage_new(type_monitor_t *monitor)
     //4.刷新界面
     ST7567_UpdateScreen();
 }
-
+#endif
 
 void UpdateAppProgram(type_page_t *page, u64 *info)
 {
@@ -1862,7 +1866,7 @@ void SensorStatePage_fac(type_monitor_t *monitor, u8 canShow)
             //如果是上次状态是在线这次掉线，则删除
             if(CON_FAIL == monitor->sensor[index].conn_state)
             {
-                deleteModule(monitor, monitor->sensor[index].addr);
+                DeleteModule(monitor, monitor->sensor[index].uuid);
             }
 
             connect[index] = monitor->sensor[index].conn_state;
@@ -1931,7 +1935,7 @@ void lineStatePage_fac(type_page_t *page, type_monitor_t *monitor, u8 canShow)
             //如果是上次状态是在线这次掉线，则删除
             if(/*(CON_SUCCESS == connect[index]) && */(CON_FAIL == monitor->line[index].conn_state))
             {
-                deleteModule(monitor, monitor->line[index].addr);
+                DeleteModule(monitor, monitor->line[index].uuid);
             }
 
             connect[index] = monitor->line[index].conn_state;
@@ -2040,7 +2044,7 @@ void deviceStatePage_fac(type_page_t *page, type_monitor_t *monitor, u8 canShow)
             //如果是上次状态是在线这次掉线，则删除
             if(/*(CON_SUCCESS == connect[index]) && */(CON_FAIL == monitor->device[index].conn_state))
             {
-                deleteModule(monitor, monitor->device[index].addr);
+                DeleteModule(monitor, monitor->device[index].uuid);
             }
 
             connect[index] = monitor->device[index].conn_state;
@@ -2512,8 +2516,8 @@ void ServerUrlPage(type_btn_event *event, u64 *info)
 {
     u8              line        = LINE_HIGHT;
     u8              column      = 0;
-    static          use         = 0;
-    static          position    = 0;
+    static int      use         = 0;
+    static int      position    = 0;
     char            name[22]    = " ";
     char            temp[5]     = " ";
     static u8       ip_num[4]   = {0,0,0,0};

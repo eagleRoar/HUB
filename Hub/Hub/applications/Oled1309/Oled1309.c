@@ -23,6 +23,7 @@ extern "C" {
 #include "ST7567.h"
 #include "qrcode.h"
 #include "Module.h"
+#include "UartAction.h"
 
 #define  GO_RIGHT  1
 #define  GO_LEFT   2
@@ -522,7 +523,7 @@ static void pageProgram(u8 page)
                 pageSelect.select = OFF;
             }
             break;
-
+#if(HUB_SELECT == HUB_ENVIRENMENT)
         case LINE_STATE_PAGE:
             LineStatePage_new(GetMonitor());
             if(ON == pageSelect.select)
@@ -530,7 +531,7 @@ static void pageProgram(u8 page)
                 pageSelect.select = OFF;
             }
             break;
-
+#endif
         case QRCODE_PAGE:
             qrcode();
             ST7567_UpdateScreen();

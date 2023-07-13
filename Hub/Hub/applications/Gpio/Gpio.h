@@ -110,4 +110,6 @@ time_t systimeToTimestamp(u16, u8, u8, u8, u8, u8);
 time_t changeDataToTimestamp(u16 , u8 , u8 , u8 , u8 , u8);
 u8 getAlarmFlag(void);
 void str_replace(char *original, char *pattern, char *replacement);
+void str_replace1(char *original, char *pattern, char *replacement, u16 size);
+void printAqua(aqua_t aqua);
 #endif /* APPLICATIONS_GPIO_H_ */

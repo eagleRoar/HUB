@@ -150,6 +150,7 @@ static void GenerateIrAirCtrlData(u8 state, u16 *res)
 }
 #endif
 
+#if(HUB_ENVIRENMENT == HUB_SELECT)
 static void GenarateHvacCtrData(u8 HvacMode, u8 cool, u8 heat, u16 *value)
 {
     //只允许AC的不允许端口中为hvac型的
@@ -192,7 +193,7 @@ static void GenarateHvacCtrData(u8 HvacMode, u8 cool, u8 heat, u16 *value)
         *value = 0x00;
     }
 }
-
+#endif
 static void GenerateVuleBySingleCtrl(device_t device, u8 port, u8 state, u16 *value)
 {
 
@@ -204,7 +205,7 @@ static void GenerateVuleBySingleCtrl(device_t device, u8 port, u8 state, u16 *va
 #if(HUB_ENVIRENMENT == HUB_SELECT)
             if(HVAC_6_TYPE == device.type)
             {
-                GenarateHvacCtrData(device._hvac.hvacMode, ON, ON, value);
+                GenarateHvacCtrData(device.special_data._hvac.hvacMode, ON, ON, value);
             }
             else if(IR_AIR_TYPE == device.type)
             {
@@ -221,7 +222,7 @@ static void GenerateVuleBySingleCtrl(device_t device, u8 port, u8 state, u16 *va
 #if(HUB_ENVIRENMENT == HUB_SELECT)
             if(HVAC_6_TYPE == device.type)
             {
-                GenarateHvacCtrData(device._hvac.hvacMode, OFF, OFF, value);
+                GenarateHvacCtrData(device.special_data._hvac.hvacMode, OFF, OFF, value);
             }
             else if(IR_AIR_TYPE == device.type)
             {
@@ -244,7 +245,7 @@ static void GenerateVuleBySingleCtrl(device_t device, u8 port, u8 state, u16 *va
                 }
                 else if(HVAC_6_TYPE == device.type)
                 {
-                    GenarateHvacCtrData(device._hvac.hvacMode, ON, ON, value);
+                    GenarateHvacCtrData(device.special_data._hvac.hvacMode, ON, ON, value);
                 }
                 else
 #endif
@@ -257,7 +258,7 @@ static void GenerateVuleBySingleCtrl(device_t device, u8 port, u8 state, u16 *va
 #if(HUB_ENVIRENMENT == HUB_SELECT)
                 if(HVAC_6_TYPE == device.type)
                 {
-                    GenarateHvacCtrData(device._hvac.hvacMode, OFF, OFF, value);
+                    GenarateHvacCtrData(device.special_data._hvac.hvacMode, OFF, OFF, value);
                 }
                 else if(IR_AIR_TYPE == device.type)
                 {
@@ -320,7 +321,7 @@ static void GenerateVuleByCtrl(device_t device, u8 func, u8 state, u16 *value)
 #if(HUB_ENVIRENMENT == HUB_SELECT)
                 if(HVAC_6_TYPE == device.type)
                 {
-                    GenarateHvacCtrData(device._hvac.hvacMode, ON, ON, value);
+                    GenarateHvacCtrData(device.special_data._hvac.hvacMode, ON, ON, value);
                 }
                 else if(IR_AIR_TYPE == device.type)
                 {
@@ -337,7 +338,7 @@ static void GenerateVuleByCtrl(device_t device, u8 func, u8 state, u16 *value)
 #if(HUB_ENVIRENMENT == HUB_SELECT)
                 if(HVAC_6_TYPE == device.type)
                 {
-                    GenarateHvacCtrData(device._hvac.hvacMode, OFF, OFF, value);
+                    GenarateHvacCtrData(device.special_data._hvac.hvacMode, OFF, OFF, value);
                 }
                 else if(IR_AIR_TYPE == device.type)
                 {
@@ -362,11 +363,11 @@ static void GenerateVuleByCtrl(device_t device, u8 func, u8 state, u16 *value)
                     {
                         if(F_COOL == func)
                         {
-                            GenarateHvacCtrData(device._hvac.hvacMode, ON, OFF, value);
+                            GenarateHvacCtrData(device.special_data._hvac.hvacMode, ON, OFF, value);
                         }
                         else if(F_HEAT)
                         {
-                            GenarateHvacCtrData(device._hvac.hvacMode, OFF, ON, value);
+                            GenarateHvacCtrData(device.special_data._hvac.hvacMode, OFF, ON, value);
                         }
                     }
                     else
@@ -384,7 +385,7 @@ static void GenerateVuleByCtrl(device_t device, u8 func, u8 state, u16 *value)
                     }
                     else if(HVAC_6_TYPE == device.type)
                     {
-                        GenarateHvacCtrData(device._hvac.hvacMode, ON, ON, value);
+                        GenarateHvacCtrData(device.special_data._hvac.hvacMode, ON, ON, value);
                     }
                     else
 #endif
@@ -901,23 +902,26 @@ static void DeviceChgType(type_monitor_t *monitor, u16 id, u8 type)
     //2 生成数据
     GenerateChangeType(device, port, type, data);
     //2.
-    GetReadRegAddrByType(device->type, &reg);
-    seq_key.addr = device->addr;
-    seq_key.regH = reg >> 8;
-    seq_key.regL = reg;
-    seq_key.regSize = port;
-    keyValue.key = SeqKeyToLong(seq_key);
-    keyValue.dataSegment.len = 8;
-    keyValue.dataSegment.data = rt_malloc(keyValue.dataSegment.len);
-    if(keyValue.dataSegment.data)
+    if(RT_EOK == GetReadRegAddrByType(device->type, &reg))
     {
-        //3.复制实际数据
-        rt_memcpy(keyValue.dataSegment.data, data, keyValue.dataSegment.len);
+        PumPAndValveChangeType(id, device->type, type);
+        seq_key.addr = device->addr;
+        seq_key.regH = reg >> 8;
+        seq_key.regL = reg;
+        seq_key.regSize = port;
+        keyValue.key = SeqKeyToLong(seq_key);
+        keyValue.dataSegment.len = 8;
+        keyValue.dataSegment.data = rt_malloc(keyValue.dataSegment.len);
+        if(keyValue.dataSegment.data)
+        {
+            //3.复制实际数据
+            rt_memcpy(keyValue.dataSegment.data, data, keyValue.dataSegment.len);
 
-        uart2Object.taskList.AddToList(keyValue, NO);
+            uart2Object.taskList.AddToList(keyValue, NO);
 
-        //4.回收空间
-        rt_free(keyValue.dataSegment.data);
+            //4.回收空间
+            rt_free(keyValue.dataSegment.data);
+        }
     }
 }
 
@@ -1055,7 +1059,7 @@ static void SendCmd(void)
         }
     }
 
-//    rt_kprintf("sendCmd : ");
+//    rt_kprintf("==========================device sendCmd : ");
 //    for(int i = 0; i < first->keyData.dataSegment.len; i++)
 //    {
 //        rt_kprintf(" %x",first->keyData.dataSegment.data[i]);

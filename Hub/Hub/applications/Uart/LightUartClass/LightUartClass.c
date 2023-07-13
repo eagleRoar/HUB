@@ -820,7 +820,7 @@ static void RecvListHandle(void)
                     {
                         if(uuid == monitor->line[i].uuid)
                         {
-                            SendReplyRegister(uuid, monitor->line[i].addr);//Justin
+                            SendReplyRegister(uuid, monitor->line[i].addr);
                             rt_kprintf("----------line has exist, send addr = %d\r\n",monitor->line[i].addr);
                             break;
                         }

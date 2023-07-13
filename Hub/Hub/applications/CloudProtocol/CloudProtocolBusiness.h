@@ -31,8 +31,7 @@
 #define     STAGE_LIST_MAX                  5//10//最多10个阶段
 #define     RECIPE_LIST_MAX                 10//最多10个配方
 #define     REC_ALLOT_ADDR                  RECIPE_LIST_MAX//100
-#define     TANK_LIST_MAX                   4
-#define     TANK_WARN_ITEM_MAX              8
+
 
 typedef     struct proTempSet               proTempSet_t;
 typedef     struct proCo2Set                proCo2Set_t;
@@ -109,6 +108,13 @@ struct cloudCmd{
     u8              setTankNameNo;
     char            setTankName[TANK_NAMESZ];
     u8              getLightListId;
+    u8              getAquaStateId;
+    u8              getAquaRecipeNameId;
+    u8              getAquaRecipeId;
+    u8              getAquaRecipeNo;
+    u8              getAquaSetId;
+    u8              set_tankcolor_no;
+    u8              set_tankcolor_color;
 };
 
 //cmd : getTempSetting
@@ -545,12 +551,16 @@ struct tank{
     u8      phMonitorOnly;                  //1-On 0-off 默认监视
     u8      ecMonitorOnly;                  //1-On 0-off 默认监视
     u8      wlMonitorOnly;                  //水位监视 1-On 0-off 默认监视
+    u8      mmMonitorOnly;                  //土壤湿度监视 1-On 0-off 默认监视 含当前字段时才显 示
+    u16     highMmProtection;               //土壤湿度高停止值 含当前字段时界面才显示
     u16     pumpId;                         //水泵Id
     u16     valve[VALVE_MAX];               //关联的阀的ID
     u16     nopump_valve[VALVE_MAX];        //未指定的阀ID
     u8      sensorId[TANK_SINGLE_GROUD][TANK_SENSOR_MAX];   //桶内存在两个sensor 一个是测试桶内的 一个测试管道的
     u8      color;                          //颜色
     u16     poolTimeout;
+    u16     aquaId;
+    u16     mixId;
 };
 
 //桶
@@ -606,6 +616,19 @@ typedef struct sysSetOld
     hubOld_t           hub_info;
     u8              saveFlag;
 }sys_setOld_t;
+
+typedef struct tankWarnState{
+    u8 tank_ec;
+    u8 tank_ph;
+    u8 tank_wt;
+    u8 inline_ec;
+    u8 inline_ph;
+    u8 inline_wt;
+    u8 wl;
+    u8 sw;
+    u8 sec;
+    u8 st;
+}tankWarnState_t;
 
 struct sysSet{
     u16 crc;
@@ -693,6 +716,7 @@ enum{
 #define         CMD_GET_TANK_INFO       "getTankInfo"           //获取桶设置
 #define         CMD_SET_TANK_INFO       "setTankInfo"           //设置桶设置
 #define         CMD_GET_SENSOR_LIST     "getSensorList"         //获取 Sensor 列表
+#define         CMD_SET_TANK_COLOR      "setTankColor"          //设置桶颜色
 #define         CMD_SET_TANK_SENSOR     "setTankSensor"         //设置桶sensor
 #define         CMD_DEL_TANK_SENSOR     "delTankSensor"         //删除桶sensor
 #define         CMD_SET_PUMP_COLOR      "setPumpColor"          //设置泵颜色
@@ -711,6 +735,12 @@ enum{
 #define         CMD_SET_TANK_NAME       "setTankName"
 #define         CMD_GET_LIGHT_LIST      "getLightList"          //获取12路灯光
 #define         CMD_SET_LIGHT_LIST      "setLightList"          //设置12路灯光
+#define         CMD_GET_AQUASTATE               "getAquaState"
+#define         CMD_GET_AQUA_RECIPE_NAME        "getAquaFormulaName"  //Aqua 获取配方名称
+#define         CMD_GET_AQUA_RECIPE             "getAquaFormula"      //Aqua 获取配肥配方参数
+#define         CMD_SET_AQUA_RECIPE             "setAquaFormula"
+#define         CMD_GET_AQUA_SET                "getAquaNutrient"       //Aqua 获取配肥参数
+#define         CMD_SET_AQUA_SET                "setAquaNutrient"       //Aqua 获取配肥参数
 
 rt_err_t GetValueByU8(cJSON *, char *, u8 *);
 rt_err_t GetValueByU16(cJSON *, char *, u16 *);
@@ -752,6 +782,7 @@ void CmdAddPumpValue(char *, cloudcmd_t *);
 void CmdSetPumpColor(char *, cloudcmd_t *);
 void CmdDelPumpValue(char *, cloudcmd_t *);
 void CmdSetTankSensor(char *, cloudcmd_t *);
+void CmdSetTankColor(char *data, cloudcmd_t *cmd);
 void CmdDelRecipe(char *, cloudcmd_t *);
 void CmdGetRecipe(char *, cloudcmd_t *);
 void CmdGetSensor(char *, cloudcmd_t *);
@@ -799,6 +830,7 @@ char *ReplyGetRecipeListAll(char *, cloudcmd_t , sys_recipe_t *);
 char *ReplyAddPumpValue(char *, cloudcmd_t , sys_tank_t *);
 char *ReplySetPumpColor(char *, cloudcmd_t , sys_tank_t *);
 char *ReplySetPumpSensor(char *, cloudcmd_t);
+char *ReplySetTankColor(char *, cloudcmd_t);
 char *ReplyDelRecipe(char *, cloudcmd_t);
 char *ReplyGetTank(char *, cloudcmd_t);
 char *ReplyGetPumpSensorList(char *, cloudcmd_t);
@@ -818,5 +850,25 @@ char *ReplySetSensorShow(char *cmd, u8 showType, char *msgid);
 char *ReplySetSensorName(char *cmd, u16 id, char *msgid);
 char *ReplySetTankPV(cloudcmd_t *cmd);
 char *ReplySetTankName(cloudcmd_t *cmd);
-
+#if(HUB_SELECT == HUB_IRRIGSTION)
+void CmdGetAquaState(char *data, cloudcmd_t *cmd);
+char *ReplyGetAquaState(cloudcmd_t *cmd);
+void CmdGetAquaRecipeName(char *data, cloudcmd_t *cmd);
+char *ReplyGetAquaRecipeName(cloudcmd_t *cmd);
+void CmdGetAquaRecipe(char *data, cloudcmd_t *cmd);
+char *ReplyGetAquaRecipe(cloudcmd_t *cmd);
+void CmdSetAquaRecipe(char *data, cloudcmd_t *cmd);
+void CmdGetAquaSet(char *data, cloudcmd_t *cmd);
+char *ReplyGetAquaSet(cloudcmd_t *cmd);
+void CmdSetAquaSet(char *data, cloudcmd_t *cmd);
+void GetAquaCurrentState(u32 uuid, u8 *stage, u8 *days, u8 *recipe_no);
+#endif
+void SendWarnToCloudAndApp(mqtt_client *client, char *cmd, u8 warn_no, u16 value, char *info);
+void GetTankNoById(sys_tank_t *list, u16 id, u8 *tankNo);
+char *replyGetDeviceList_NULL(char *cmd, char *msgid);
+void CmdDelTankPV(char *data, cloudcmd_t *cmd);
+void PumPAndValveChangeType(u16 id, u8 pre_type, u8 now_type);
+char *ReplyGetLightList(cloudcmd_t *cmd);
+void CmdGetLightList(char *data, cloudcmd_t *cmd);
+void CmdSetLightList(char *data, cloudcmd_t *cmd);
 #endif /* APPLICATIONS_CLOUDPROTOCOL_CLOUDPROTOCOLBUSINESS_H_ */

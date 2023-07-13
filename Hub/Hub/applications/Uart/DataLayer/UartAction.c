@@ -13,6 +13,8 @@
 #include "Module.h"
 #include "Recipe.h"
 #include "UartAction.h"
+#include "CloudProtocolBusiness.h"
+#include "Gpio.h"
 
 u8 sys_warn[WARN_MAX];
 #if(HUB_IRRIGSTION == HUB_SELECT)
@@ -34,6 +36,9 @@ extern struct ethDeviceStruct *eth;
 extern const u8    HEAD_CODE[4];
 extern int tcp_sock;
 
+u8 TankCannotRun[TANK_LIST_MAX] = {0,0,0,0};
+
+#if(HUB_ENVIRENMENT == HUB_SELECT)
 static u8 GetDeviceStateByFunc(type_monitor_t *monitor, u8 func)
 {
     int     i       = 0;
@@ -63,7 +68,7 @@ static u8 GetDeviceStateByFunc(type_monitor_t *monitor, u8 func)
         return OFF;
     }
 }
-
+#endif
 int GetSingleSensorDataByFunc(type_monitor_t *monitor, u8 id, u8 func)
 {
     sensor_t    *sensor     = RT_NULL;
@@ -109,13 +114,13 @@ u8 GetTankMaxWarn(u16 value, u16 targrt)
     return ret;
 }
 
-void *GetTankWarnData(sys_set_t *set, u8 index, u8 func, tankSensorData_t *data)
+rt_err_t GetTankWarnData(sys_set_t *set, u8 index, u8 func, tankSensorData_t *data)
 {
     rt_memset((u8 *)data, 0, sizeof(tankSensorData_t));
 
     if(index >= TANK_LIST_MAX)
     {
-        return RT_NULL;
+        return RT_ERROR;
     }
     else
     {
@@ -125,12 +130,15 @@ void *GetTankWarnData(sys_set_t *set, u8 index, u8 func, tankSensorData_t *data)
             {
                 data->min = set->tankWarnSet[index][i].min;
                 data->max = set->tankWarnSet[index][i].max;
-
+                return RT_EOK;
             }
         }
     }
+
+    return RT_ERROR;
 }
 
+#if(HUB_SELECT == HUB_IRRIGSTION)
 //监控桶传感器报警
 void monitorTankSensorWarn(sys_tank_t *list, sys_set_t *set)
 {
@@ -144,11 +152,14 @@ void monitorTankSensorWarn(sys_tank_t *list, sys_set_t *set)
     u8                  warnHigh    = 0;
     u8                  *preStateP  = RT_NULL;
     static u8           preState[TANK_SINGLE_GROUD][TANK_WARN_ITEM_MAX];
+    tankWarnState_t     *tankState  = RT_NULL;
 
     for(int index = 0; index < list->tank_size; index++)
     {
         tank = &list->tank[index];
-
+        tankState = GetTankWarnState();
+        //清除报警
+        rt_memset((u8 *)&tankState[index], 0, sizeof(tankWarnState_t));
         //遍历单个桶下的所有sensor
         for(int i = 0; i < TANK_SINGLE_GROUD; i++)//
         {
@@ -163,107 +174,176 @@ void monitorTankSensorWarn(sys_tank_t *list, sys_set_t *set)
                         //1.遍历该sensor 的端口
                         for(int port = 0; port < sensor->storage_size; port++)
                         {
-                            GetTankWarnData(set, index, sensor->__stora[port].func, &warnSet);
-
-                            switch (sensor->__stora[port].func) {
-                                case F_S_EC:
-                                    en = set->sysWarn.ecEn;
-                                    warnLow = WARN_EC_LOW - 1;
-                                    warnHigh = WARN_EC_HIGHT - 1;
-                                    preStateP = &preState[i][0];
-                                    break;
-                                case F_S_PH:
-                                    en = set->sysWarn.phEn;
-                                    warnLow = WARN_PH_LOW - 1;
-                                    warnHigh = WARN_PH_HIGHT - 1;
-                                    preStateP = &preState[i][1];
-                                    break;
-                                case F_S_WT:
-                                    en = set->sysWarn.wtEn;
-                                    warnLow = WARN_WT_LOW - 1;
-                                    warnHigh = WARN_WT_HIGHT - 1;
-                                    preStateP = &preState[i][2];
-                                    break;
-                                case F_S_WL:
-                                    en = set->sysWarn.wlEn;
-                                    warnLow = WARN_WL_LOW - 1;
-                                    warnHigh = WARN_WL_HIGHT - 1;
-                                    preStateP = &preState[i][3];
-                                    break;
-                                case F_S_SW:
-                                    en = set->sysWarn.mmEn;
-                                    warnLow = WARN_SOIL_W_LOW - 1;
-                                    warnHigh = WARN_SOIL_W_HIGHT - 1;
-                                    preStateP = &preState[i][4];
-                                    break;
-                                case F_S_SEC:
-                                    en = set->sysWarn.meEn;
-                                    warnLow = WARN_SOIL_EC_LOW - 1;
-                                    warnHigh = WARN_SOIL_EC_HIGHT - 1;
-                                    preStateP = &preState[i][5];
-                                    break;
-                                case F_S_ST:
-                                    en = set->sysWarn.mtEn;
-                                    warnLow = WARN_SOIL_T_LOW - 1;
-                                    warnHigh = WARN_SOIL_T_HIGHT - 1;
-                                    preStateP = &preState[i][6];
-                                    break;
-                                default:
-                                    break;
-                            }
-
-                            int sensorData = 0;
-
-                            if(ON == en)
+                            if(RT_EOK == GetTankWarnData(set, index, sensor->__stora[port].func, &warnSet))
                             {
-                                sensorData = GetSingleSensorDataByFunc(GetMonitor(), tank->sensorId[i][j], sensor->__stora[port].func);
-                                if(VALUE_NULL != sensorData)
+                                switch (sensor->__stora[port].func) {
+                                    case F_S_EC:
+                                        en = set->sysWarn.ecEn;
+                                        warnLow = WARN_EC_LOW - 1;
+                                        warnHigh = WARN_EC_HIGHT - 1;
+                                        preStateP = &preState[i][0];
+                                        break;
+                                    case F_S_PH:
+                                        en = set->sysWarn.phEn;
+                                        warnLow = WARN_PH_LOW - 1;
+                                        warnHigh = WARN_PH_HIGHT - 1;
+                                        preStateP = &preState[i][1];
+                                        break;
+                                    case F_S_WT:
+                                        en = set->sysWarn.wtEn;
+                                        warnLow = WARN_WT_LOW - 1;
+                                        warnHigh = WARN_WT_HIGHT - 1;
+                                        preStateP = &preState[i][2];
+                                        break;
+                                    case F_S_WL:
+                                        en = set->sysWarn.wlEn;
+                                        warnLow = WARN_WL_LOW - 1;
+                                        warnHigh = WARN_WL_HIGHT - 1;
+                                        preStateP = &preState[i][3];
+                                        break;
+                                    case F_S_SW:
+                                        en = set->sysWarn.mmEn;
+                                        warnLow = WARN_SOIL_W_LOW - 1;
+                                        warnHigh = WARN_SOIL_W_HIGHT - 1;
+                                        preStateP = &preState[i][4];
+                                        break;
+                                    case F_S_SEC:
+                                        en = set->sysWarn.meEn;
+                                        warnLow = WARN_SOIL_EC_LOW - 1;
+                                        warnHigh = WARN_SOIL_EC_HIGHT - 1;
+                                        preStateP = &preState[i][5];
+                                        break;
+                                    case F_S_ST:
+                                        en = set->sysWarn.mtEn;
+                                        warnLow = WARN_SOIL_T_LOW - 1;
+                                        warnHigh = WARN_SOIL_T_HIGHT - 1;
+                                        preStateP = &preState[i][6];
+                                        break;
+                                    default:
+                                        break;
+                                }
+
+                                int sensorData = 0;
+
+                                if(ON == en)
                                 {
-                                    if(YES == GetTankMinWarn(sensorData, warnSet.min))
+                                    sensorData = GetSingleSensorDataByFunc(GetMonitor(), tank->sensorId[i][j], sensor->__stora[port].func);
+
+                                    if(F_S_WL == sensor->__stora[port].func)
                                     {
-                                        state = 1;
-                                    }
-                                    else if(YES == GetTankMaxWarn(sensorData, warnSet.max))
-                                    {
-                                        state = 2;
-                                    }
-                                    else
-                                    {
-                                        state = 0;
+                                        sensorData /= 10;
                                     }
 
-                                    if(*preStateP != state)
+                                    if(VALUE_NULL != sensorData)
                                     {
-                                        *preStateP = state;
+                                        if(CON_FAIL != sensor->conn_state)
+                                        {
+                                            if(YES == GetTankMinWarn(sensorData, warnSet.min))
+                                            {
+                                                state = 2;
+                                            }
+                                            else if(YES == GetTankMaxWarn(sensorData, warnSet.max))
+                                            {
+                                                state = 1;
+                                            }
+                                            else
+                                            {
+                                                state = 0;
+                                            }
+                                        }
+                                        else
+                                        {
+                                            state = 0;
+                                        }
 
-                                        if(0 == i)
+                                        switch(sensor->__stora[port].func)
                                         {
-                                            sprintf(info, "%s %s",GetSysTank()->tank[index].name, "tank");
-                                        }
-                                        else if(1 == i)
-                                        {
-                                            sprintf(info, "%s %s",GetSysTank()->tank[index].name, "inline");
+                                            case F_S_EC:
+                                                if(0 == i)
+                                                {
+                                                    tankState[index].tank_ec = state;
+                                                }
+                                                else
+                                                {
+                                                    tankState[index].inline_ec = state;
+                                                }
+                                                break;
+                                            case F_S_PH:
+                                                if(0 == i)
+                                                {
+                                                    tankState[index].tank_ph = state;
+                                                }
+                                                else
+                                                {
+                                                    tankState[index].inline_ph = state;
+                                                }
+                                                break;
+                                            case F_S_WT:
+                                                if(0 == i)
+                                                {
+                                                    tankState[index].tank_wt = state;
+                                                }
+                                                else
+                                                {
+                                                    tankState[index].inline_wt = state;
+                                                }
+                                                break;
+
+                                            case F_S_WL:
+                                                tankState[index].wl = state;
+                                                break;
+
+                                            case F_S_SW:
+                                                tankState[index].sw = state;
+                                                break;
+
+                                            case F_S_SEC:
+                                                tankState[index].sec = state;
+                                                break;
+
+                                            case F_S_ST:
+                                                tankState[index].st = state;
+                                                break;
+                                            default : break;
                                         }
 
-                                        if(1 == state)
+                                        if(*preStateP != state)
                                         {
-                                            SendWarnToCloudAndApp(GetMqttClient(), CMD_HUB_REPORT_WARN, warnLow, sensorData, info);
-                                        }
-                                        else if(2 == state)
-                                        {
-                                            SendWarnToCloudAndApp(GetMqttClient(), CMD_HUB_REPORT_WARN, warnHigh, sensorData, info);
+                                            *preStateP = state;
+
+                                            if(0 == i)
+                                            {
+                                                sprintf(info, "%s %s",GetSysTank()->tank[index].name, "tank");
+                                            }
+                                            else if(1 == i)
+                                            {
+                                                sprintf(info, "%s %s",GetSysTank()->tank[index].name, "inline");
+                                            }
+
+                                            if(2 == state)
+                                            {
+                                                SendWarnToCloudAndApp(GetMqttClient(), CMD_HUB_REPORT_WARN, warnLow, sensorData, info);
+                                            }
+                                            else if(1 == state)
+                                            {
+                                                SendWarnToCloudAndApp(GetMqttClient(), CMD_HUB_REPORT_WARN, warnHigh, sensorData, info);
+                                            }
                                         }
                                     }
                                 }
-                            }
-                            else
-                            {
-                                if(RT_NULL != preStateP)
+                                else
                                 {
-                                    *preStateP = 0;
+                                    if(RT_NULL != preStateP)
+                                    {
+                                        *preStateP = 0;
+                                    }
                                 }
                             }
                         }
+                    }
+                    else
+                    {
+
                     }
 
                 }
@@ -316,8 +396,6 @@ void monitorTankTimeOutWarn(sys_tank_t *list, sys_set_t *set)
             }
         }
 
-        sensorData = 1;//Justin debug 仅仅测试
-
         //2.
         if(VALUE_NULL != sensorData)
         {
@@ -358,10 +436,9 @@ void monitorTankTimeOutWarn(sys_tank_t *list, sys_set_t *set)
         }
     }
 }
-
+#endif
 void warnProgram(type_monitor_t *monitor, sys_set_t *set)
 {
-
 #if(HUB_SELECT == HUB_ENVIRENMENT)
     u8              co2State    = OFF;
     u8              tempState   = OFF;
@@ -381,18 +458,6 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
     static u8       co2StateHigh_pre    = OFF;
     static u8       vpdStateLow_pre     = OFF;
     static u8       vpdStateHigh_pre    = OFF;
-#elif(HUB_SELECT == HUB_IRRIGSTION)
-    sensor_t        *sensor;
-    u8              tankState[TANK_LIST_MAX]    = {OFF,OFF,OFF,OFF};
-    u16             ec          = 0;
-    u16             ph          = 0;
-    u16             wt          = 0;
-    u16             wl          = 0;
-    u16             sw          = 0;    //基质湿度
-    u16             sec         = 0;    //基质EC
-    u16             st          = 0;    //基质温度
-    static time_t   tankAutoValve[TANK_LIST_MAX];
-    static u8       tankState_pre[TANK_LIST_MAX]    = {OFF,OFF,OFF,OFF};
 #endif
     static int      smog_Pre    = 0;
     static int      leakage_Pre = 0;
@@ -1196,291 +1261,6 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
     }
 #elif(HUB_SELECT == HUB_IRRIGSTION)
 
-//    //ph ec
-//    for(u8 tank = 0; tank < GetSysTank()->tank_size; tank++)
-//    {
-////        for(u8 item1 = 0; item1 < 2;item1++)
-//        {
-//            for(u8 item2 = 0; item2 < TANK_SENSOR_MAX; item2++)
-//            {
-//                if(GetSysTank()->tank[tank].sensorId[0][item2] != 0)
-//                {
-//                    sensor = GetSensorByAddr(monitor, GetSysTank()->tank[tank].sensorId[0][item2]);
-//
-//                    for(u8 sto = 0; sto < sensor->storage_size; sto++)
-//                    {
-//                        if(F_S_PH == sensor->__stora[sto].func)
-//                        {
-//                            ph = getSensorDataByAddr(monitor, sensor->addr, sto);
-//                        }
-//                        else if(F_S_EC == sensor->__stora[sto].func)
-//                        {
-//                            ec = getSensorDataByAddr(monitor, sensor->addr, sto);
-//                        }
-//                        else if(F_S_WT == sensor->__stora[sto].func)
-//                        {
-//                            wt = getSensorDataByAddr(monitor, sensor->addr, sto);
-//                        }
-//                        else if(F_S_WL == sensor->__stora[sto].func)
-//                        {
-//                            wl = getSensorDataByAddr(monitor, sensor->addr, sto);
-//                        }
-//                        else if(F_S_SW == sensor->__stora[sto].func)
-//                        {
-//                            sw = getSensorDataByAddr(monitor, sensor->addr, sto);
-//                        }
-//                        else if(F_S_SEC == sensor->__stora[sto].func)
-//                        {
-//                            sec = getSensorDataByAddr(monitor, sensor->addr, sto);
-//                        }
-//                        else if(F_S_ST == sensor->__stora[sto].func)
-//                        {
-//                            st = getSensorDataByAddr(monitor, sensor->addr, sto);
-//                        }
-//                    }
-//                }
-//            }
-//        }
-//
-//        //
-//        for(u8 item1 = 0; item1 < TANK_WARN_ITEM_MAX; item1++)
-//        {
-//            if(F_S_PH == set->tankWarnSet[tank][item1].func)
-//            {
-//                if(ON == set->sysWarn.phEn)
-//                {
-//                    if(ph < set->tankWarnSet[tank][item1].min)
-//                    {
-//                        set->warn[WARN_PH_LOW - 1] = ON;
-//                        set->warn_value[WARN_PH_LOW - 1] = ph;
-//                    }
-//                    else if(ph > set->tankWarnSet[tank][item1].max)
-//                    {
-//                        set->warn[WARN_PH_HIGHT - 1] = ON;
-//                        set->warn_value[WARN_PH_HIGHT - 1] = ph;
-//                    }
-//                    else
-//                    {
-//                        set->warn[WARN_PH_LOW - 1] = OFF;
-//                        set->warn[WARN_PH_HIGHT - 1] = OFF;
-//                    }
-//                }
-//                else
-//                {
-//                    set->warn[WARN_PH_LOW - 1] = OFF;
-//                    set->warn[WARN_PH_HIGHT - 1] = OFF;
-//                }
-//            }
-//            else if(F_S_EC == set->tankWarnSet[tank][item1].func)
-//            {
-//                if(ON == set->sysWarn.ecEn)
-//                {
-//                    if(ec < set->tankWarnSet[tank][item1].min)
-//                    {
-//                        set->warn[WARN_EC_LOW - 1] = ON;
-//                        set->warn_value[WARN_EC_LOW - 1] = ec;
-//                    }
-//                    else if(ec > set->tankWarnSet[tank][item1].max)
-//                    {
-//                        set->warn[WARN_EC_HIGHT - 1] = ON;
-//                        set->warn_value[WARN_EC_HIGHT - 1] = ec;
-//                    }
-//                    else
-//                    {
-//                        set->warn[WARN_EC_LOW - 1] = OFF;
-//                        set->warn[WARN_EC_HIGHT - 1] = OFF;
-//                    }
-//                }
-//                else
-//                {
-//                    set->warn[WARN_EC_LOW - 1] = OFF;
-//                    set->warn[WARN_EC_HIGHT - 1] = OFF;
-//                }
-//            }
-//            else if(F_S_WT == set->tankWarnSet[tank][item1].func)
-//            {
-//                if(ON == set->sysWarn.wtEn)
-//                {
-//                    if(wt < set->tankWarnSet[tank][item1].min)
-//                    {
-//                        set->warn[WARN_WT_LOW - 1] = ON;
-//                        set->warn_value[WARN_WT_LOW - 1] = wt;
-//                    }
-//                    else if(wt > set->tankWarnSet[tank][item1].max)
-//                    {
-//                        set->warn[WARN_WT_HIGHT - 1] = ON;
-//                        set->warn_value[WARN_WT_HIGHT - 1] = wt;
-//                    }
-//                    else
-//                    {
-//                        set->warn[WARN_WT_LOW - 1] = OFF;
-//                        set->warn[WARN_WT_HIGHT - 1] = OFF;
-//                    }
-//                }
-//                else
-//                {
-//                    set->warn[WARN_WT_LOW - 1] = OFF;
-//                    set->warn[WARN_WT_HIGHT - 1] = OFF;
-//                }
-//            }
-//            else if(F_S_WL == set->tankWarnSet[tank][item1].func)
-//            {
-//                if(ON == set->sysWarn.wlEn)
-//                {
-//                    if(wl < set->tankWarnSet[tank][item1].min)
-//                    {
-//                        set->warn[WARN_WL_LOW - 1] = ON;
-//                        set->warn_value[WARN_WL_LOW - 1] = wl;
-//                    }
-//                    else if(wl > set->tankWarnSet[tank][item1].max)
-//                    {
-//                        set->warn[WARN_WL_HIGHT - 1] = ON;
-//                        set->warn_value[WARN_WL_HIGHT - 1] = wl;
-//                    }
-//                    else
-//                    {
-//                        set->warn[WARN_WL_LOW - 1] = OFF;
-//                        set->warn[WARN_WL_HIGHT - 1] = OFF;
-//                    }
-//                }
-//                else
-//                {
-//                    set->warn[WARN_WL_LOW - 1] = OFF;
-//                    set->warn[WARN_WL_HIGHT - 1] = OFF;
-//                }
-//            }
-//            else if(F_S_SW == set->tankWarnSet[tank][item1].func)
-//            {
-//                if(ON == set->sysWarn.mmEn)
-//                {
-//                    if(sw < set->tankWarnSet[tank][item1].min)
-//                    {
-//                        set->warn[WARN_SOIL_W_LOW - 1] = ON;
-//                        set->warn_value[WARN_SOIL_W_LOW - 1] = sw;
-//                    }
-//                    else if(sw > set->tankWarnSet[tank][item1].max)
-//                    {
-//                        set->warn[WARN_SOIL_W_HIGHT - 1] = ON;
-//                        set->warn_value[WARN_SOIL_W_HIGHT - 1] = sw;
-//                    }
-//                    else
-//                    {
-//                        set->warn[WARN_SOIL_W_LOW - 1] = OFF;
-//                        set->warn[WARN_SOIL_W_HIGHT - 1] = OFF;
-//                    }
-//                }
-//                else
-//                {
-//                    set->warn[WARN_SOIL_W_LOW - 1] = OFF;
-//                    set->warn[WARN_SOIL_W_HIGHT - 1] = OFF;
-//                }
-//            }
-//            else if(F_S_SEC == set->tankWarnSet[tank][item1].func)
-//            {
-//                if(ON == set->sysWarn.meEn)
-//                {
-//                    if(sec < set->tankWarnSet[tank][item1].min)
-//                    {
-//                        set->warn[WARN_SOIL_EC_LOW - 1] = ON;
-//                        set->warn_value[WARN_SOIL_EC_LOW - 1] = sec;
-//                    }
-//                    else if(sec > set->tankWarnSet[tank][item1].max)
-//                    {
-//                        set->warn[WARN_SOIL_EC_HIGHT - 1] = ON;
-//                        set->warn_value[WARN_SOIL_EC_HIGHT - 1] = sec;
-//                    }
-//                    else
-//                    {
-//                        set->warn[WARN_SOIL_EC_LOW - 1] = OFF;
-//                        set->warn[WARN_SOIL_EC_HIGHT - 1] = OFF;
-//                    }
-//                }
-//                else
-//                {
-//                    set->warn[WARN_SOIL_EC_LOW - 1] = OFF;
-//                    set->warn[WARN_SOIL_EC_HIGHT - 1] = OFF;
-//                }
-//            }
-//            else if(F_S_ST == set->tankWarnSet[tank][item1].func)
-//            {
-//                if(ON == set->sysWarn.mtEn)
-//                {
-//                    if(st < set->tankWarnSet[tank][item1].min)
-//                    {
-//                        set->warn[WARN_SOIL_T_LOW - 1] = ON;
-//                        set->warn_value[WARN_SOIL_T_LOW - 1] = st;
-//                    }
-//                    else if(st > set->tankWarnSet[tank][item1].max)
-//                    {
-//                        set->warn[WARN_SOIL_T_HIGHT - 1] = ON;
-//                        set->warn_value[WARN_SOIL_T_HIGHT - 1] = st;
-//                    }
-//                    else
-//                    {
-//                        set->warn[WARN_SOIL_T_LOW - 1] = OFF;
-//                        set->warn[WARN_SOIL_T_HIGHT - 1] = OFF;
-//                    }
-//                }
-//                else
-//                {
-//                    set->warn[WARN_SOIL_T_LOW - 1] = OFF;
-//                    set->warn[WARN_SOIL_T_HIGHT - 1] = OFF;
-//                }
-//            }
-//        }
-//
-//        //自动补水超时报警
-//        if(VALUE_NULL == wl)
-//        {
-//            tankState[tank] = OFF;
-//        }
-//        else
-//        {
-//            if(wl < GetSysTank()->tank[tank].autoFillHeight)
-//            {
-//                tankState[tank] = ON;
-//            }
-//            else
-//            {
-//                tankState[tank] = OFF;
-//            }
-//        }
-//
-//        if(tankState_pre[tank] != tankState[tank])
-//        {
-//            tankState_pre[tank] = tankState[tank];
-//            if(tankState[tank] == ON)
-//            {
-//                tankAutoValve[tank] = getTimeStamp();
-//            }
-//        }
-//
-//        if(ON == tankState[tank])
-//        {
-//            if(ON == set->sysWarn.autoFillTimeout)
-//            {
-//                if(getTimeStamp() > GetSysTank()->tank[tank].poolTimeout + tankAutoValve[tank])
-//                {
-//                    set->warn[WARN_AUTOFILL_TIMEOUT - 1] = ON;
-//                    set->warn_value[WARN_AUTOFILL_TIMEOUT - 1] = wl;
-//                    break;
-//                }
-//                else
-//                {
-//                    set->warn[WARN_AUTOFILL_TIMEOUT - 1] = OFF;
-//                }
-//            }
-//            else
-//            {
-//                set->warn[WARN_AUTOFILL_TIMEOUT - 1] = OFF;
-//            }
-//        }
-//        else
-//        {
-//            set->warn[WARN_AUTOFILL_TIMEOUT - 1] = OFF;
-//        }
-//    }
-
     monitorTankSensorWarn(GetSysTank(), GetSysSet());
     monitorTankTimeOutWarn(GetSysTank(), GetSysSet());
 #endif
@@ -1597,12 +1377,16 @@ void GetRealLine4V(dimmingCurve_t* curve, u8 port, u8 value, u8 *real)
 
 
 //执行设备手动控制功能
-void menualHandProgram(type_monitor_t *monitor, type_uart_class *deviceUart, type_uart_class *lineUart)
+void menualHandProgram(type_monitor_t *monitor, type_uart_class *deviceUart, type_uart_class *lineUart, type_uart_class *aquaUart)
 {
     int         i           = 0;
     int         port        = 0;
     device_t    *device     = RT_NULL;
+#if(HUB_SELECT == HUB_ENVIRENMENT)
     line_t      *line       = RT_NULL;
+#elif(HUB_SELECT == HUB_IRRIGSTION)
+    aqua_t      *aqua       = RT_NULL;
+#endif
     time_t      nowTime     = getTimeStamp();
 
     for(i = 0; i < monitor->device_size; i++)
@@ -1612,7 +1396,7 @@ void menualHandProgram(type_monitor_t *monitor, type_uart_class *deviceUart, typ
         {
             if(MANUAL_HAND_OFF == device->port[port].manual.manual)
             {
-                 device->port[port].ctrl.d_state = OFF;//Justin
+                 device->port[port].ctrl.d_state = OFF;
             }
             else if(MANUAL_HAND_ON == device->port[port].manual.manual)
             {
@@ -1620,12 +1404,12 @@ void menualHandProgram(type_monitor_t *monitor, type_uart_class *deviceUart, typ
                 if((nowTime >= device->port[port].manual.manual_on_time_save) &&
                    (nowTime <= (device->port[port].manual.manual_on_time + device->port[port].manual.manual_on_time_save)))
                 {
-                    device->port[port].ctrl.d_state = ON;//Justin
+                    device->port[port].ctrl.d_state = ON;
                 }
                 else
                 {
                     device->port[port].manual.manual = MANUAL_NO_HAND;
-                    device->port[port].ctrl.d_state = OFF;//Justin
+                    device->port[port].ctrl.d_state = OFF;
                 }
             }
             else
@@ -1634,7 +1418,7 @@ void menualHandProgram(type_monitor_t *monitor, type_uart_class *deviceUart, typ
                 if((nowTime >= device->port[port].manual.manual_on_time_save) &&
                    (nowTime <= (device->port[port].manual.manual_on_time + device->port[port].manual.manual_on_time_save)))
                 {
-                    device->port[port].ctrl.d_state = OFF;//Justin
+                    device->port[port].ctrl.d_state = OFF;
                 }
             }
         }
@@ -1685,9 +1469,248 @@ void menualHandProgram(type_monitor_t *monitor, type_uart_class *deviceUart, typ
             }
         }
     }
+#elif(HUB_SELECT == HUB_IRRIGSTION)
+    for(i = 0; i < monitor->aqua_size; i++)
+    {
+        aqua = &monitor->aqua[i];
+
+        if(MANUAL_HAND_OFF == aqua->manual.manual)
+        {
+            aqua->ctrl.d_state = OFF;
+        }
+        else if(MANUAL_HAND_ON == aqua->manual.manual)
+        {
+            if((nowTime >= aqua->manual.manual_on_time_save) &&
+               (nowTime <= (aqua->manual.manual_on_time + aqua->manual.manual_on_time_save)))
+            {
+                aqua->ctrl.d_state = ON;
+            }
+            else
+            {
+                aqua->ctrl.d_state = OFF;
+                aqua->manual.manual = MANUAL_NO_HAND;
+            }
+        }
+        else
+        {
+            //如果上一个时刻为手动开启 突然关闭手动要将状态还回去
+            if((nowTime >= aqua->manual.manual_on_time_save) &&
+               (nowTime <= (aqua->manual.manual_on_time + aqua->manual.manual_on_time_save)))
+            {
+                aqua->ctrl.d_state = OFF;
+            }
+        }
+    }
 #endif
 }
+#if(HUB_SELECT == HUB_IRRIGSTION)
+void AquaMixProgram(sys_tank_t *list, type_monitor_t *monitor)
+{
+    tank_t          *tank       = RT_NULL;
+    aqua_t          *aqua       = RT_NULL;
+    device_t        *device     = RT_NULL;
+    u8              addr        = 0;
+    u8              port        = 0;
+    u8              aquaRunFlg  = 0;
+    u8              state       = 0;
+    type_sys_time   time_for;
+    u32             nowTime     = 0;
 
+    getRealTimeForMat(&time_for);
+    nowTime = time_for.hour * 60 * 60 + time_for.minute * 60 + time_for.second;
+
+    for(int i = 0; i < list->tank_size; i++)
+    {
+        tank = &list->tank[i];
+
+        aqua = GetAquaByAddr(monitor, tank->aquaId);
+        if(tank->mixId > 0xff)
+        {
+            addr = tank->mixId >> 8;
+            port = tank->mixId;
+        }
+        else
+        {
+            addr = tank->mixId;
+            port = 0;
+        }
+        device = GetDeviceByAddr(monitor, addr);
+
+        if((RT_NULL != aqua) && (RT_NULL != device))
+        {
+            aquaRunFlg = GetAquaWarnById(aqua->addr)->isAquaRunning;
+
+            if(device->special_data.mix_fertilizing & (1 << port))//是否跟随aqua配方
+            {
+                if(YES == aquaRunFlg)
+                {
+                    state = 1;
+                }
+                else
+                {
+                    state = 0;
+                }
+            }
+            else
+            {
+                //以下都是为了节省空间而复用
+                if(NO == device->port[0].timer[0].en)
+                {
+                    state = 0;
+                }
+                else
+                {
+                    u32 start = device->port[0].timer[0].on_at * 60;
+                    u32 end = device->port[0].timer[0].duration * 60;
+                    if(YES == device->port[0].timer[0].en)
+                    {
+                        //如果在一天内
+                        if(end > start)
+                        {
+                            if(nowTime > start && nowTime <= end)
+                            {
+                                state = 1;
+                            }
+                            else
+                            {
+                                state = 0;
+                            }
+                        }
+                        else
+                        {
+                            if(nowTime < start || nowTime >= end)
+                            {
+                                state = 1;
+                            }
+                            else
+                            {
+                                state = 0;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        state = 0;
+                    }
+                }
+            }
+
+            device->port[port].ctrl.d_state = state;
+        }
+    }
+}
+#endif
+void timmerProgram(type_monitor_t *monitor, type_uart_class deviceUart)
+{
+    u8                  index       = 0;
+    u8                  port        = 0;
+    u8                  item        = 0;
+    u8                  state       = 0;
+    device_t            *device     = RT_NULL;
+    type_sys_time       sys_time;
+
+    getRealTimeForMat(&sys_time);
+
+    for(index = 0; index < monitor->device_size; index++)
+    {
+        //如果是定时器的话
+        device = &monitor->device[index];
+
+        for(port = 0; port < device->storage_size; port++)
+        {
+            if(TIMER_TYPE == device->port[port].type)
+            {
+                if(BY_RECYCLE == device->port[port].mode)
+                {
+                    //1.判断当前时间是否是满足进入循环周期的条件,即大于开始时间
+                    if(getTimeStamp() > device->port[port].cycle.start_at_timestamp)
+                    {
+                        if(((getTimeStamp() - device->port[port].cycle.start_at_timestamp) %
+                            (device->port[port].cycle.duration + device->port[port].cycle.pauseTime)) <=
+                            device->port[port].cycle.duration)
+                        {
+                            state = ON;
+                        }
+                        else
+                        {
+                            state = OFF;
+                        }
+                    }
+                    else
+                    {
+                        state = OFF;
+                    }
+
+                    device->port[port].ctrl.d_state = state;
+                }
+                else if(BY_SCHEDULE == device->port[port].mode)//定时器模式
+                {
+                   for(item = 0; item < TIMER_GROUP; item++)//该功能待测试
+                   {
+                       //选择处于第几组定时器
+                       if(sys_time.hour * 60 * 60 + sys_time.minute * 60 + sys_time.second > device->port[port].timer[item].on_at * 60)
+                       {
+                           //小于持续时间
+                           if(sys_time.hour * 60 * 60 + sys_time.minute * 60 + sys_time.second <= (device->port[port].timer[item].on_at *60
+                                   + device->port[port].timer[item].duration) )
+                           {
+                               state = device->port[port].timer[item].en;
+                               break;
+                           }
+                       }
+                       else
+                       {
+                           //1.判断如果存在跨天的话
+                           if((device->port[port].timer[item].on_at *60 + device->port[port].timer[item].duration) >
+                               24 * 60 * 60)
+                           {
+                               //如果当前时间处于跨天的时间
+                               if((sys_time.hour * 60 * 60 + sys_time.minute * 60 + sys_time.second) <
+                                       ((device->port[port].timer[item].on_at *60 + device->port[port].timer[item].duration)- 24 * 60 * 60))
+                               {
+                                   state = device->port[port].timer[item].en;
+                                   break;
+                               }
+                           }
+                       }
+                   }
+
+                   if(item == TIMER_GROUP)
+                   {
+                       device->port[port].ctrl.d_state = 0;
+                   }
+                   else
+                   {
+                       //判断是否允许今日使能
+                       time_t nowTime = getTimeStamp();
+                       u8 today = getTimeStampByDate(&nowTime)->tm_wday;
+                       int day = 0;
+                       for(day = 0; day < 7; day++)
+                       {
+                           if(today == (day + 1))
+                           {
+                               if((device->port[port].weekDayEn >> day) & 0x01)
+                               {
+                                   break;
+                               }
+                           }
+                       }
+
+                       if(day == 7)
+                       {
+                           device->port[port].ctrl.d_state = 0;
+                       }
+                       else
+                       {
+                           device->port[port].ctrl.d_state = state;
+                       }
+                   }
+                }
+            }
+        }
+    }
+
+}
 #if(HUB_ENVIRENMENT == HUB_SELECT)
 //获取当前的参数设置
 void GetNowSysSet(proTempSet_t *tempSet, proCo2Set_t *co2Set, proHumiSet_t *humiSet,
@@ -1977,17 +2000,17 @@ void co2Program(type_monitor_t *monitor, type_uart_class uart, u16 mPeriod)
                         if((VALUE_NULL == getSensorDataByFunc(monitor, F_S_O2)) ||
                            (getSensorDataByFunc(monitor, F_S_O2) >= 180))
                         {
-                            co2UpState = ON;//Justin
+                            co2UpState = ON;
                         }
                     }
                     else
                     {
-                        co2UpState = OFF;//Justin
+                        co2UpState = OFF;
                     }
                 }
                 else
                 {
-                    co2UpState = OFF;//Justin
+                    co2UpState = OFF;
                 }
             }
             else
@@ -2002,33 +2025,33 @@ void co2Program(type_monitor_t *monitor, type_uart_class uart, u16 mPeriod)
                         if((VALUE_NULL == getSensorDataByFunc(monitor, F_S_O2)) ||
                            (getSensorDataByFunc(monitor, F_S_O2) >= 180))
                         {
-                            co2UpState = ON;//Justin
+                            co2UpState = ON;
                         }
                     }
                     else
                     {
-                        co2UpState = OFF;//Justin
+                        co2UpState = OFF;
                     }
                 }
                 else if(co2Now >= co2Target + co2Set.co2Deadband)
                 {
-                    co2UpState = OFF;//Justin
+                    co2UpState = OFF;
                 }
             }
 
-            co2DownState = OFF;//Justin
+            co2DownState = OFF;
         }
         else if(NIGHT_TIME == GetSysSet()->dayOrNight)
         {
             if(co2Now > co2Target)
             {
-                co2DownState = ON;//Justin
+                co2DownState = ON;
             }
             else if(co2Now + co2Set.co2Deadband <= co2Target)
             {
-                co2DownState = OFF;//Justin
+                co2DownState = OFF;
             }
-            co2UpState = OFF;//Justin
+            co2UpState = OFF;
         }
 
         CtrlAllDeviceByFunc(monitor, F_Co2_UP, co2UpState, 0);
@@ -3032,121 +3055,8 @@ void Light12Program(type_monitor_t *monitor, type_uart_class deviceUart)
             }
             device->port[port].ctrl.d_state = state;
         }
-        //Justin debug
 
     }
-}
-
-void timmerProgram(type_monitor_t *monitor, type_uart_class deviceUart)
-{
-    u8                  index       = 0;
-    u8                  port        = 0;
-    u8                  item        = 0;
-    u8                  state       = 0;
-    device_t            *device     = RT_NULL;
-    type_sys_time       sys_time;
-
-    getRealTimeForMat(&sys_time);
-
-    for(index = 0; index < monitor->device_size; index++)
-    {
-        //如果是定时器的话
-        device = &monitor->device[index];
-
-        for(port = 0; port < device->storage_size; port++)
-        {
-            if(TIMER_TYPE == device->port[port].type)
-            {
-                if(BY_RECYCLE == device->port[port].mode)
-                {
-                    //1.判断当前时间是否是满足进入循环周期的条件,即大于开始时间
-                    if(getTimeStamp() > device->port[port].cycle.start_at_timestamp)
-                    {
-                        if(((getTimeStamp() - device->port[port].cycle.start_at_timestamp) %
-                            (device->port[port].cycle.duration + device->port[port].cycle.pauseTime)) <=
-                            device->port[port].cycle.duration)
-                        {
-                            state = ON;
-                        }
-                        else
-                        {
-                            state = OFF;
-                        }
-                    }
-                    else
-                    {
-                        state = OFF;
-                    }
-
-                    device->port[port].ctrl.d_state = state;
-                }
-                else if(BY_SCHEDULE == device->port[port].mode)//定时器模式
-                {
-                   for(item = 0; item < TIMER_GROUP; item++)//该功能待测试
-                   {
-                       //选择处于第几组定时器
-                       if(sys_time.hour * 60 * 60 + sys_time.minute * 60 + sys_time.second > device->port[port].timer[item].on_at * 60)
-                       {
-                           //小于持续时间
-                           if(sys_time.hour * 60 * 60 + sys_time.minute * 60 + sys_time.second <= (device->port[port].timer[item].on_at *60
-                                   + device->port[port].timer[item].duration) )
-                           {
-                               state = device->port[port].timer[item].en;
-                               break;
-                           }
-                       }
-                       else
-                       {
-                           //1.判断如果存在跨天的话
-                           if((device->port[port].timer[item].on_at *60 + device->port[port].timer[item].duration) >
-                               24 * 60 * 60)
-                           {
-                               //如果当前时间处于跨天的时间
-                               if((sys_time.hour * 60 * 60 + sys_time.minute * 60 + sys_time.second) <
-                                       ((device->port[port].timer[item].on_at *60 + device->port[port].timer[item].duration)- 24 * 60 * 60))
-                               {
-                                   state = device->port[port].timer[item].en;
-                                   break;
-                               }
-                           }
-                       }
-                   }
-
-                   if(item == TIMER_GROUP)
-                   {
-                       device->port[port].ctrl.d_state = 0;
-                   }
-                   else
-                   {
-                       //判断是否允许今日使能
-                       time_t nowTime = getTimeStamp();
-                       u8 today = getTimeStampByDate(&nowTime)->tm_wday;
-                       int day = 0;
-                       for(day = 0; day < 7; day++)
-                       {
-                           if(today == (day + 1))
-                           {
-                               if((device->port[port].weekDayEn >> day) & 0x01)
-                               {
-                                   break;
-                               }
-                           }
-                       }
-
-                       if(day == 7)
-                       {
-                           device->port[port].ctrl.d_state = 0;
-                       }
-                       else
-                       {
-                           device->port[port].ctrl.d_state = state;
-                       }
-                   }
-                }
-            }
-        }
-    }
-
 }
 
 //默认在420ppm 环境中校准
@@ -3254,7 +3164,7 @@ void co2Calibrate1(type_monitor_t *monitor, int *data, u8 *do_cal_flg, u8 *saveF
 
 #elif(HUB_IRRIGSTION == HUB_SELECT)
 
-u8 pumpDoing(u8 addr, u8 port)//Justin 该函数的bu recycle 的逻辑有问题
+u8 pumpDoing(u8 addr, u8 port)
 {
     u8                  state           = OFF;
     u8                  item            = 0;
@@ -3414,7 +3324,7 @@ u8 pumpDoing(u8 addr, u8 port)//Justin 该函数的bu recycle 的逻辑有问题
     }
 }
 
-void pumpProgram(type_monitor_t *monitor, sys_tank_t *tank_list, type_uart_class deviceUart)//未完待续
+void pumpProgram(type_monitor_t *monitor, sys_tank_t *tank_list, type_uart_class deviceUart)
 {
     u8          addr                    = 0;
     u8          port                    = 0;
@@ -3425,6 +3335,7 @@ void pumpProgram(type_monitor_t *monitor, sys_tank_t *tank_list, type_uart_class
     u16         ph                      = 0;
     u16         ec                      = 0;
     u16         wl                      = 0;
+    u16         sw                      = 0;
     u8          type                    = 0;
     u8          port1                   = 0;
     device_t    *device                 = RT_NULL;
@@ -3432,6 +3343,7 @@ void pumpProgram(type_monitor_t *monitor, sys_tank_t *tank_list, type_uart_class
 
     for(tank = 0; tank < tank_list->tank_size; tank++)
     {
+        TankCannotRun[tank] = NO;
         //1.如果子阀的类型被修改了之后需要删除
         for(u8 item = 0; item < VALVE_MAX; item++)
         {
@@ -3512,6 +3424,10 @@ void pumpProgram(type_monitor_t *monitor, sys_tank_t *tank_list, type_uart_class
                         {
                             wl = getSensorDataByAddr(monitor, monitor->sensor[sensor_index].addr, stor);
                         }
+                        else if(F_S_SW == monitor->sensor[sensor_index].__stora[stor].func)
+                        {
+                            sw = getSensorDataByAddr(monitor, monitor->sensor[sensor_index].addr, stor);
+                        }
                     }
                 }
             }
@@ -3547,11 +3463,11 @@ void pumpProgram(type_monitor_t *monitor, sys_tank_t *tank_list, type_uart_class
         {
             if(ADD_WATER == waterState[tank])
             {
-                device->port[port].ctrl.d_state = ON;//Justin debug
+                device->port[port].ctrl.d_state = ON;
             }
             else if(NO_ADD_WATER == waterState[tank])
             {
-                device->port[port].ctrl.d_state = OFF;//Justin debug
+                device->port[port].ctrl.d_state = OFF;
             }
         }
 
@@ -3577,12 +3493,14 @@ void pumpProgram(type_monitor_t *monitor, sys_tank_t *tank_list, type_uart_class
                 if(((wl < tank_list->tank[tank].autoFillHeight) && (ON != tank_list->tank[tank].wlMonitorOnly)) ||
                    ((ph < tank_list->tank[tank].lowPhProtection) && (ON != tank_list->tank[tank].phMonitorOnly)) ||
                    ((ph > tank_list->tank[tank].highPhProtection) && (ON != tank_list->tank[tank].phMonitorOnly)) ||
-                   ((ec > tank_list->tank[tank].highEcProtection) && (ON != tank_list->tank[tank].ecMonitorOnly)))
+                   ((ec > tank_list->tank[tank].highEcProtection) && (ON != tank_list->tank[tank].ecMonitorOnly)) ||
+                   ((sw > tank_list->tank[tank].highMmProtection) && (ON != tank_list->tank[tank].mmMonitorOnly)))
                 {
                     state = OFF;
+                    TankCannotRun[tank] = YES;//禁止跑
                 }
 
-                GetDeviceByAddr(monitor, addr)->port[port].ctrl.d_state = state;//Justin debug
+                GetDeviceByAddr(monitor, addr)->port[port].ctrl.d_state = state;
             }
         }
 
@@ -3615,12 +3533,14 @@ void pumpProgram(type_monitor_t *monitor, sys_tank_t *tank_list, type_uart_class
             if(((wl < tank_list->tank[tank].autoFillHeight) && (ON != tank_list->tank[tank].wlMonitorOnly)) ||
                ((ph < tank_list->tank[tank].lowPhProtection) && (ON != tank_list->tank[tank].phMonitorOnly)) ||
                ((ph > tank_list->tank[tank].highPhProtection) && (ON != tank_list->tank[tank].phMonitorOnly)) ||
-               ((ec > tank_list->tank[tank].highEcProtection) && (ON != tank_list->tank[tank].ecMonitorOnly)))
+               ((ec > tank_list->tank[tank].highEcProtection) && (ON != tank_list->tank[tank].ecMonitorOnly)) ||
+               ((sw > tank_list->tank[tank].highMmProtection) && (ON != tank_list->tank[tank].mmMonitorOnly)))
             {
                 state = OFF;
+                TankCannotRun[tank] = YES;//禁止跑
             }
 
-            GetDeviceByAddr(monitor, addr)->port[port].ctrl.d_state = state;//Justin debug
+            GetDeviceByAddr(monitor, addr)->port[port].ctrl.d_state = state;
         }
         else
         {
@@ -3665,12 +3585,12 @@ void pumpProgram(type_monitor_t *monitor, sys_tank_t *tank_list, type_uart_class
                 if(VALVE_MAX == valve_index1)
                 {
                     //所关联的阀门状态为全关,则关闭水泵
-                    device->port[port].ctrl.d_state = OFF;//Justin
+                    device->port[port].ctrl.d_state = OFF;
                 }
                 else
                 {
                     //所关联的阀门状态有开着的，打开水泵
-                    device->port[port].ctrl.d_state = ON;//Justin
+                    device->port[port].ctrl.d_state = ON;
                 }
             }
         }
@@ -3697,12 +3617,14 @@ void pumpProgram(type_monitor_t *monitor, sys_tank_t *tank_list, type_uart_class
                 if(((wl < tank_list->tank[tank].autoFillHeight) && (ON != tank_list->tank[tank].wlMonitorOnly)) ||
                    ((ph < tank_list->tank[tank].lowPhProtection) && (ON != tank_list->tank[tank].phMonitorOnly)) ||
                    ((ph > tank_list->tank[tank].highPhProtection) && (ON != tank_list->tank[tank].phMonitorOnly)) ||
-                   ((ec > tank_list->tank[tank].highEcProtection) && (ON != tank_list->tank[tank].ecMonitorOnly)))
+                   ((ec > tank_list->tank[tank].highEcProtection) && (ON != tank_list->tank[tank].ecMonitorOnly)) ||
+                   ((sw > tank_list->tank[tank].highMmProtection) && (ON != tank_list->tank[tank].mmMonitorOnly)))
                 {
                     state = OFF;
+                    TankCannotRun[tank] = YES;//禁止跑
                 }
 
-                GetDeviceByAddr(monitor, addr)->port[port].ctrl.d_state = state;//Justin debug
+                GetDeviceByAddr(monitor, addr)->port[port].ctrl.d_state = state;
             }
         }
     }
@@ -3832,7 +3754,7 @@ void closeUnUseDevice(type_monitor_t *monitor, type_uart_class *uart)
         {
             if(NO == isBelongToTank(monitor->device[index].addr, GetSysTank()))
             {
-                monitor->device[index].port[0].ctrl.d_state = OFF;//Justin
+                monitor->device[index].port[0].ctrl.d_state = OFF;
             }
         }
         else
@@ -3841,7 +3763,7 @@ void closeUnUseDevice(type_monitor_t *monitor, type_uart_class *uart)
             {
                 if(NO == isBelongToTank((monitor->device[index].addr << 8) | port, GetSysTank()))
                 {
-                    monitor->device[index].port[port].ctrl.d_state = OFF;//Justin
+                    monitor->device[index].port[port].ctrl.d_state = OFF;
                 }
             }
         }
@@ -3862,7 +3784,7 @@ void sendReadDeviceCtrlToList(type_monitor_t *monitor, type_uart_class *deviceOb
         device = &monitor->device[index];
 
         //1.如果type不支持则删除
-        if(0 == TypeSupported(device->type))//Justin debug 新增加待测试
+        if(0 == TypeSupported(device->type))
         {
             DeleteModule(monitor, device->uuid);
         }
@@ -3874,6 +3796,325 @@ void sendReadDeviceCtrlToList(type_monitor_t *monitor, type_uart_class *deviceOb
     }
 }
 
+#if(HUB_IRRIGSTION == HUB_SELECT)
+u8 GetSendAquaWork(aqua_set *set)
+{
+    type_sys_time time;
+    u16 nowTime = 0;//分钟
+    u8 ecFlag = 0;
+    u8 phFlag = 0;
+
+    getRealTimeForMat(&time);
+    nowTime = time.hour * 60 * 60 + time.minute * 60 + time.second;
+
+    if(set)
+    {
+
+        if(1 == set->ecDailySupFerState)
+        {
+            //正常一天
+            if(set->ecDailySupFerStart < set->ecDailySupFerEnd)
+            {
+                if(nowTime > set->ecDailySupFerStart * 60 && nowTime <= set->ecDailySupFerEnd * 60)
+                {
+                    ecFlag = 1;
+                }
+            }
+            else
+            {
+                if(nowTime <= set->ecDailySupFerStart * 60 || nowTime > set->ecDailySupFerEnd * 60)
+                {
+                    ecFlag = 1;
+                }
+            }
+        }
+
+        if(1 == set->phDailySupFerState)
+        {
+            //正常一天
+            if(set->phDailySupFerStart < set->phDailySupFerEnd)
+            {
+                if(nowTime > set->phDailySupFerStart * 60 && nowTime <= set->phDailySupFerEnd * 60)
+                {
+                    phFlag = 1;
+                }
+            }
+            else
+            {
+                if(nowTime <= set->phDailySupFerStart * 60 || nowTime > set->phDailySupFerEnd * 60)
+                {
+                    phFlag = 1;
+                }
+            }
+        }
+
+        if((1 == ecFlag) && (0 == phFlag))
+        {
+            return 2;
+        }
+        else if((0 == ecFlag) && (1 == phFlag))
+        {
+            return 3;
+        }
+        else if((1 == ecFlag) && (1 == phFlag))
+        {
+            return 4;
+        }
+    }
+
+    return 0;
+}
+
+u8 CanAquaRunInTank(u8 addr)
+{
+    int i = 0;
+
+    for(i = 0; i < GetSysTank()->tank_size; i++)
+    {
+        if(addr == GetSysTank()->tank[i].aquaId)
+        {
+            break;
+        }
+    }
+
+    if(GetSysTank()->tank_size == i)
+    {
+        return YES;
+    }
+    else
+    {
+        if(YES == TankCannotRun[i])
+        {
+            return NO;
+        }
+        else
+        {
+            return YES;
+        }
+    }
+}
+
+//发送实际的命令给list发送
+void sendRealAquaCtrlToList(type_monitor_t *monitor, type_uart_class *aquaObj)
+{
+    int         index       = 0;
+    aqua_t      *aqua       = RT_NULL;
+    aqua_set    *set        = RT_NULL;
+
+    for(index = 0; index < monitor->aqua_size; index++)
+    {
+        aqua = &monitor->aqua[index];
+
+        set = GetAquaSetByUUID(aqua->uuid);
+
+        if(set)
+        {
+            u8 stage;
+            u8 day;
+            u8 recipe_no;
+            u8 state;
+            GetAquaCurrentState(aqua->uuid, &stage, &day, &recipe_no);
+            state = GetSendAquaWork(set);
+            if(0 != state)
+            {
+                aquaObj->AquaCtrl(aqua, set->monitor, state, recipe_no);
+            }
+            else
+            {
+                if(0 == recipe_no)
+                {
+                    aquaObj->AquaCtrl(aqua, set->monitor, 0, recipe_no);
+                }
+                else
+                {
+                    //如果该桶水位过低或者其他条件限制需要关闭
+                    if(YES == CanAquaRunInTank(aqua->addr))
+                    {
+                        aquaObj->AquaCtrl(aqua, set->monitor, 1, recipe_no);
+                    }
+                    else
+                    {
+                        aquaObj->AquaCtrl(aqua, set->monitor, 0, recipe_no);
+                    }
+                }
+            }
+        }
+    }
+
+}
+
+u8 CanTankDeviceRun(u16 id)
+{
+    int     i       = 0;
+    int     j       = 0;
+    tank_t  *tank   = RT_NULL;
+
+    for(i = 0; i < TANK_LIST_MAX; i++)
+    {
+        tank = &GetSysTank()->tank[i];
+        if(tank->pumpId == id)
+        {
+            break;
+        }
+
+        for(j = 0; j < VALVE_MAX; j++)
+        {
+            if(id == tank->valve[j])
+            {
+                break;
+            }
+        }
+        if(j != VALVE_MAX)
+        {
+            break;
+        }
+
+        for(j = 0; j < VALVE_MAX; j++)
+        {
+            if(id == tank->nopump_valve[j])
+            {
+                break;
+            }
+        }
+        if(j != VALVE_MAX)
+        {
+            break;
+        }
+    }
+
+    if(TANK_LIST_MAX == i)
+    {
+        return NO;
+    }
+    else
+    {
+        if(YES == TankCannotRun[i])
+        {
+            return NO;
+        }
+        else
+        {
+            return YES;
+        }
+    }
+}
+
+u32 GetNextStateLeftTime(type_monitor_t *monitor, u8 addr, u8 port)
+{
+    int             i           = 0;
+    u32             nowTime     = 0;
+    type_sys_time   time_for;
+    device_t        *device     = GetDeviceByAddr(monitor, addr);
+
+    getRealTimeForMat(&time_for);
+    nowTime = time_for.hour * 60 * 60 + time_for.minute * 60 + time_for.second;
+
+    if(device)
+    {
+        if(port < DEVICE_PORT_MAX)
+        {
+            //timer 模式
+            if(BY_SCHEDULE == device->port[port].mode)
+            {
+                //遍历列表
+                for(i = 0; i < TIMER_GROUP; i++)
+                {
+                    u32 start = device->port[port].timer[i].on_at * 60;
+                    u32 end = device->port[port].timer[i].on_at * 60 + device->port[port].timer[i].duration;
+                    if(YES == device->port[port].timer[i].en)
+                    {
+                        if(nowTime > start &&
+                           nowTime <= end)
+                        {
+                            break;
+                        }
+                    }
+                }
+
+                u8 state = OFF;
+                if(TIMER_GROUP == i)
+                {
+                    state = OFF;
+                }
+                else {
+                    state = ON;
+                }
+
+                if(ON == state)
+                {
+                    u32 max = 0;
+                    for(i = 0; i < TIMER_GROUP; i++)
+                    {
+                        u32 start = device->port[port].timer[i].on_at * 60;
+                        u32 end = device->port[port].timer[i].on_at * 60 + device->port[port].timer[i].duration;
+                        if(YES == device->port[port].timer[i].en)
+                        {
+                            if(nowTime > start &&
+                               nowTime <= end)
+                            {
+                                if(end - nowTime > max)
+                                {
+                                    max = end - nowTime;
+                                }
+                            }
+                        }
+                    }
+
+
+                    return max;
+                }
+                else
+                {
+                    u32 min = 0;
+                    for(i = 0; i < TIMER_GROUP; i++)
+                    {
+                        u32 start = device->port[port].timer[i].on_at * 60;
+                        if(YES == device->port[port].timer[i].en)
+                        {
+                            if(nowTime < start)
+                            {
+                                if(start - nowTime < min)
+                                {
+                                    min = start - nowTime;
+                                }
+                            }
+                        }
+                    }
+
+                    return min;
+                }
+            }
+            else if(BY_RECYCLE == device->port[port].mode)
+            {
+                u32 time = 0;
+                if(getTimeStamp() < device->port[port].cycle.start_at_timestamp)
+                {
+                    time = device->port[port].cycle.start_at_timestamp - getTimeStamp();
+                }
+                else
+                {
+                    u32 period = device->port[port].cycle.pauseTime + device->port[port].cycle.duration;
+                    u32 temp = nowTime % period;
+                    if(temp < device->port[port].cycle.duration)
+                    {
+                        time = device->port[port].cycle.duration - temp;
+                    }
+                    else
+                    {
+                        time = period - temp;
+                    }
+                }
+
+                return time;
+            }
+        }
+    }
+
+    return 0;
+}
+
+
+#endif
 //分辨白天黑夜
 void monitorDayAndNight(void)
 {

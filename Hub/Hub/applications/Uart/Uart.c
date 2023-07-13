@@ -25,12 +25,13 @@
 #include "OledBusiness.h"
 #include "SensorUartClass.h"
 #include "LightUartClass.h"
+#include "AquaUartClass.h"
 #include "SeqList.h"
 #include "UartEventType.h"
 #include "FileSystem.h"
 
 __attribute__((section(".ccmbss"))) type_monitor_t monitor;
-__attribute__((section(".ccmbss"))) u8 uart_task[1024 * /*6*/4];
+__attribute__((section(".ccmbss"))) u8 uart_task[1024 * 4];
 __attribute__((section(".ccmbss"))) struct rt_thread uart_thread;
 
 struct rx_msg uart1_msg;                      //接收串口数据以及相关消息
@@ -101,7 +102,6 @@ static rt_err_t Uart2_input(rt_device_t dev, rt_size_t size)
     }
 }
 
-#if(HUB_SELECT == HUB_ENVIRENMENT)
 static rt_err_t Uart3_input(rt_device_t dev, rt_size_t size)
 {
     u16 crc16 = 0x0000;
@@ -127,7 +127,7 @@ static rt_err_t Uart3_input(rt_device_t dev, rt_size_t size)
         return RT_ERROR;
     }
 }
-#endif
+
 
 //注册串口
 static void UartRegister(void)
@@ -140,11 +140,11 @@ static void UartRegister(void)
     uart2_serial = rt_device_find(DEVICE_UART2);
     rt_device_open(uart2_serial, RT_DEVICE_FLAG_DMA_RX);
     rt_device_set_rx_indicate(uart2_serial, Uart2_input);
-#if(HUB_SELECT == HUB_ENVIRENMENT)
+
     uart3_serial = rt_device_find(DEVICE_UART3);
     rt_device_open(uart3_serial, RT_DEVICE_FLAG_DMA_RX);
     rt_device_set_rx_indicate(uart3_serial, Uart3_input);
-#endif
+
 }
 
 static void GenerateBroadcast(type_uart_class *uart)
@@ -189,30 +189,10 @@ static void GenerateBroadcast(type_uart_class *uart)
     }
 }
 
-static void getRegisterData(u8* data, u8 len, u32 uuid,u8 type)
-{
-    if(len >= 13)
-    {
-        data[0] = 0xFA;
-        data[1] = 0x00;
-        data[2] = 0x00;
-        data[3] = 0x00;
-        data[4] = 0x00;
-        data[5] = 0x00;
-        data[6] = 6;
-        data[7] = 0x01;
-        data[8] = type;
-        data[9] = uuid >> 24;
-        data[10] = uuid >> 16;
-        data[11] = uuid >> 8;
-        data[12] = uuid;
-    }
-}
-
 //特殊注册
 static void specialRegister(type_monitor_t *monitor)
 {
-    u8                          data[13];
+//    u8                          data[13];
 #if (HUB_SELECT == HUB_ENVIRENMENT)
                 //特殊设备处理
                 if(RT_ERROR == CheckSensorCorrect(monitor, 0x00000000, 0x18, PAR_TYPE))
@@ -280,12 +260,14 @@ static void specialRegister(type_monitor_t *monitor)
  */
 void SensorUart2TaskEntry(void* parameter)
 {
-    static      u8              Timer1sTouch    = OFF;
     static      u8              Timer300msTouch    = OFF;
+    static      u8              Timer1sTouch    = OFF;
+    static      u8              Timer2sTouch    = OFF;
     static      u8              Timer10sTouch   = OFF;
     static      u8              Timer10mTouch   = OFF;
-    static      u16             time1S = 0;
     static      u16             time300mS = 0;
+    static      u16             time1S = 0;
+    static      u16             time2S = 0;
     static      u16             time10S = 0;
     static      u16             time10M = 0;
     static      u8              deviceSize = NO;
@@ -293,16 +275,18 @@ void SensorUart2TaskEntry(void* parameter)
     type_uart_class             *sensorObj          = GetSensorObject();
 #if(HUB_SELECT == HUB_ENVIRENMENT)
     type_uart_class             *lineObj            = GetLightObject();
+#elif(HUB_SELECT == HUB_IRRIGSTION)
+    type_uart_class             *aquaObj            = GetAquaObject();
 #endif
     device_t                    *device             = RT_NULL;
-//    static time_t now = 0;
-//    static u16 time = 0;
 
     UartRegister();
     InitUart2Object();
     InitSensorObject();
 #if(HUB_SELECT == HUB_ENVIRENMENT)
     InitLightObject();
+#elif(HUB_SELECT == HUB_IRRIGSTION)
+    InitAquaObject();
 #endif
 
     //需要指定device
@@ -310,6 +294,8 @@ void SensorUart2TaskEntry(void* parameter)
     deviceObj->ConfigureUart(&uart2_serial);
 #if(HUB_SELECT == HUB_ENVIRENMENT)
     lineObj->ConfigureUart(&uart3_serial);
+#elif(HUB_SELECT == HUB_IRRIGSTION)
+    aquaObj->ConfigureUart(&uart3_serial);
 #endif
     specialRegister(GetMonitor());
 
@@ -317,6 +303,7 @@ void SensorUart2TaskEntry(void* parameter)
     {
         time1S = TimerTask(&time1S, 1000/UART_PERIOD, &Timer1sTouch);                       //1s定时任务
         time300mS = TimerTask(&time300mS, 300/UART_PERIOD, &Timer300msTouch);               //300ms定时任务
+        time2S = TimerTask(&time2S, 2000/UART_PERIOD, &Timer2sTouch);                       //3s定时任务
         time10S = TimerTask(&time10S, 10000/UART_PERIOD, &Timer10sTouch);                   //10s定时任务
         time10M = TimerTask(&time10M, 600000/UART_PERIOD, &Timer10mTouch);                  //10m定时任务
 
@@ -333,11 +320,17 @@ void SensorUart2TaskEntry(void* parameter)
             {
                 GetMonitor()->sensor[index].conn_state = CON_SUCCESS;
             }
-
+#if(HUB_SELECT == HUB_ENVIRENMENT)
             for(u8 index = 0; index < GetMonitor()->line_size; index++)
             {
                 GetMonitor()->line[index].conn_state = CON_SUCCESS;
             }
+#elif(HUB_SELECT == HUB_IRRIGSTION)
+            for(u8 index = 0; index < GetMonitor()->aqua_size; index++)
+            {
+                GetMonitor()->aqua[index].conn_state = CON_SUCCESS;
+            }
+#endif
             continue;
         }
 
@@ -350,13 +343,6 @@ void SensorUart2TaskEntry(void* parameter)
                 sensorObj->RecvCmd(uart1_msg.data, uart1_msg.size);
                 uart1_msg.messageFlag = OFF;
 
-//                //Justin debug 打印
-//                rt_kprintf("print sensor data : ");
-//                for(int i = 0; i < uart1_msg.size; i++)
-//                {
-//                    rt_kprintf(" %x", uart1_msg.data[i]);
-//                }
-//                rt_kprintf("\r\n");
             }
             else
             {
@@ -366,6 +352,7 @@ void SensorUart2TaskEntry(void* parameter)
             if(ON == uart2_msg.messageFlag)
             {
                 deviceObj->RecvCmd(uart2_msg.data, uart2_msg.size);
+
                 uart2_msg.messageFlag = OFF;
             }
             else
@@ -373,18 +360,34 @@ void SensorUart2TaskEntry(void* parameter)
                 //实际发送串口
                 deviceObj->SendCmd();
             }
-#if(HUB_SELECT == HUB_ENVIRENMENT)
+
             if(ON == uart3_msg.messageFlag)
             {
+#if(HUB_SELECT == HUB_ENVIRENMENT)
                 lineObj->RecvCmd(uart3_msg.data, uart3_msg.size);
+#elif(HUB_SELECT == HUB_IRRIGSTION)
+                aquaObj->RecvCmd(uart3_msg.data, uart3_msg.size);
+#endif
+
+//                rt_kprintf("print aqua data : ");
+//                for(int i = 0; i < uart3_msg.size; i++)
+//                {
+//                    rt_kprintf(" %x", uart3_msg.data[i]);
+//                }
+//                rt_kprintf("\r\n");
+
                 uart3_msg.messageFlag = OFF;
             }
             else
             {
                 //实际发送串口
+#if(HUB_SELECT == HUB_ENVIRENMENT)
                 lineObj->SendCmd();
-            }
+#elif(HUB_SELECT == HUB_IRRIGSTION)
+                aquaObj->SendCmd();
 #endif
+            }
+
         }
 
         if(ON == Timer1sTouch)
@@ -402,6 +405,11 @@ void SensorUart2TaskEntry(void* parameter)
             lineObj->RecvListHandle();
             //数据发送优化 减少设备的一直发送
             lineObj->Optimization(GetMonitor());
+#elif(HUB_SELECT == HUB_IRRIGSTION)
+            //4.数据处理,包括设备注册以及设备开关状态接收
+            aquaObj->RecvListHandle();
+            //数据发送优化 减少设备的一直发送
+            aquaObj->Optimization(GetMonitor());
 #endif
         }
 
@@ -410,11 +418,25 @@ void SensorUart2TaskEntry(void* parameter)
             deviceObj->KeepConnect(GetMonitor());
 #if(HUB_SELECT == HUB_ENVIRENMENT)
             lineObj->KeepConnect(GetMonitor());
+#elif(HUB_SELECT == HUB_IRRIGSTION)
+            aquaObj->KeepConnect(GetMonitor());
 #endif
         }
         //循环发送询问命令
         sensorObj->KeepConnect(GetMonitor());
 
+        //2s
+        if(ON == Timer2sTouch)
+        {
+#if(HUB_SELECT == HUB_IRRIGSTION)
+            for(int i = 0; i < GetMonitor()->aqua_size; i++)
+            {
+                aquaObj->AskAquaState(&GetMonitor()->aqua[i], i);
+            }
+#endif
+        }
+
+        //10s
         if(ON == Timer10sTouch)
         {
             //询问端口类型
@@ -433,13 +455,15 @@ void SensorUart2TaskEntry(void* parameter)
                     }
                 }
             }
-
         }
 
         if(ON == Timer10mTouch)
         {
             //发送广播时间
             GenerateBroadcast(deviceObj);
+#if(HUB_SELECT == HUB_IRRIGSTION)
+            GenerateBroadcast(aquaObj);
+#endif
         }
 
         rt_thread_mdelay(UART_PERIOD);

@@ -197,6 +197,16 @@ void printLine(line_t line)
     LOG_D("ctr addr = %x",line.ctrl_addr);
 }
 
+void printAqua(aqua_t aqua)
+{
+    LOG_D("----------------------print new aqua-----------");
+    LOG_D("type = %x",aqua.type);
+    LOG_D("uuid = %x",aqua.uuid);
+    LOG_D("name = %s",aqua.name);
+    LOG_D("main_type = %d",aqua.main_type);
+    LOG_D("ctr addr = %x",aqua.ctrl_addr);
+}
+
 void rtcTest(type_sys_time time)
 {
     rt_err_t ret = RT_EOK;

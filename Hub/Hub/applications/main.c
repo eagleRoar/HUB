@@ -33,30 +33,35 @@
 
 extern rt_uint8_t GetEthDriverLinkStatus(void);            //获取网口连接状态
 extern cloudcmd_t      cloudCmd;
-
+extern u8              saveMqttUrlFile;
 //初始化一些必要的参数
 static void InitParameter(void)
 {
     initMonitor();
+#if(HUB_SELECT == HUB_ENVIRENMENT)
     initSysRecipe();
+#elif(HUB_SELECT == HUB_IRRIGSTION)
+    initAquaSetAndInfo();
+    initTankWarnState();
+#endif
     initSysTank();
     initSysSet();
     initCloudProtocol();
     GetSnName(GetSysSet()->hub_info.name, 13);
     InitMqttUrlUse();
 }
-
+extern void changeBigToLittle(u16 src, u8 *data);
 int main(void)
 {
     rt_uint8_t      ethStatus           = LINKDOWN;
-    u8              res                 = 0;
+//    u8              res                 = 0;
     type_uart_class *deviceObj          = GetDeviceObject();
 #if(HUB_SELECT == HUB_ENVIRENMENT)
     type_uart_class *lineObj            = GetLightObject();
     line_t          *line               = RT_NULL;
+#elif(HUB_SELECT == HUB_IRRIGSTION)
+    type_uart_class *aquaObj            = GetAquaObject();
 #endif
-
-    static u8       cnt                 = 0;
     static u8       start_warn_flg      = NO;
     static u8       Timer100msTouch     = OFF;
     static u8       Timer1sTouch        = OFF;
@@ -68,7 +73,9 @@ int main(void)
     static u16      time10S             = 0;
     static u16      time60S             = 0;
     static u16      timeInit            = 0;
+#if(HUB_SELECT == HUB_ENVIRENMENT)
     static u8       startProgram        = NO;
+#endif
 
     //初始化GPIO口
     GpioInit();
@@ -144,11 +151,11 @@ int main(void)
 
             if(0 == rt_memcmp(CMD_GET_DEVICELIST, cloudCmd.cmd, sizeof(CMD_GET_DEVICELIST)))
             {
-                res = ReplyDeviceListDataToCloud(GetMqttClient(), RT_NULL, YES);
+                ReplyDeviceListDataToCloud(GetMqttClient(), RT_NULL, YES);
             }
             else
             {
-                res = ReplyDataToCloud(GetMqttClient(), RT_NULL, YES);
+                ReplyDataToCloud(GetMqttClient(), RT_NULL, YES);
             }
 
             SetRecvMqttFlg(OFF);
@@ -161,7 +168,9 @@ int main(void)
             if(YES == start_warn_flg)
             {
                 sendOfflinewarnning(GetMonitor());      //发送离线报警
-//                sendwarnningInfo();     //该报警函数写的很乱，需要优化 Justin debug
+#if(HUB_SELECT == HUB_ENVIRENMENT)
+                sendwarnningInfo();     //该报警函数写的很乱，需要优化 Justin debug
+#endif
             }
         }
 
@@ -200,7 +209,6 @@ int main(void)
                         }
                     }
 
-                    timmerProgram(GetMonitor(), *deviceObj);
                     Light12Program(GetMonitor(), *deviceObj);
                 }
             }
@@ -239,20 +247,25 @@ int main(void)
                     }
                 }
             }
-#endif
 
+            AquaMixProgram(GetSysTank(), GetMonitor());
+#endif
+            timmerProgram(GetMonitor(), *deviceObj);
 #if(HUB_SELECT == HUB_ENVIRENMENT)
             //执行手动功能
-            menualHandProgram(GetMonitor(), deviceObj, lineObj);
+            menualHandProgram(GetMonitor(), deviceObj, lineObj, RT_NULL);
 #elif(HUB_SELECT == HUB_IRRIGSTION)
             //执行手动功能
-            menualHandProgram(GetMonitor(), deviceObj, RT_NULL);
+            menualHandProgram(GetMonitor(), deviceObj, RT_NULL, aquaObj);
 #endif
             //报警功能
             warnProgram(GetMonitor(), GetSysSet());             //监听告警信息
 
             //发送实际发送的数据
             sendReadDeviceCtrlToList(GetMonitor(), deviceObj);
+#if(HUB_IRRIGSTION == HUB_SELECT)
+            sendRealAquaCtrlToList(GetMonitor(), aquaObj);
+#endif
         }
 
         //10s
@@ -262,8 +275,9 @@ int main(void)
             {
                 sendReportToApp();
             }
-
+#if(HUB_SELECT == HUB_ENVIRENMENT)
             startProgram = YES;
+#endif
         }
 
         //60s 主动发送给云服务

@@ -22,12 +22,16 @@ __attribute__((section(".ccmbss"))) struct rt_thread file_sys_thread;
 rt_mutex_t dynamic_mutex = RT_NULL;
 static u8 fileSystemState = NO;
 extern u8 saveModuleFlag;
+u8 saveAquaInfoFlag = NO;
+
 char            new_dev_file[]          = "/main/informations/module.bin";
 char            new_sysset_file[]       = "/main/informations/sys_set.bin";
 char            new_recipe_file[]       = "/main/informations/recipe.bin";
 char            new_tank_file[]         = "/main/informations/tank.bin";
 char            new_struct_ver_file[]   = "/main/informations/ver.bin";
 char            new_mqtt_url_file[]     = "/main/informations/mqtt_url.bin";
+char            new_aqua_info_file[]    = "/main/informations/aqua_info.bin";
+char            new_aqua_set_file[]     = "/main/informations/aqua_set.bin";
 
 char            backup_dev_file[]       = "/backup/informations/module.bin";
 char            backup_sysset_file[]    = "/backup/informations/sys_set.bin";
@@ -409,6 +413,67 @@ static void SaveRecipeListToFile(sys_recipe_t *list, char *fileName)
 
 #elif(HUB_IRRIGSTION == HUB_SELECT)
 
+void printTankInfo(tank_t *tank)
+{
+
+    LOG_I("printTankInfo--------------------------------");
+    LOG_D("tankNo                       = %d",tank->tankNo);
+    LOG_D("name                         = %s",tank->name);
+    LOG_D("autoFillValveId              = %d",tank->autoFillValveId);
+    LOG_D("autoFillHeight               = %d",tank->autoFillHeight);
+    LOG_D("autoFillFulfilHeight         = %d",tank->autoFillFulfilHeight);
+    LOG_D("highEcProtection             = %d",tank->highEcProtection);
+    LOG_D("lowPhProtection              = %d",tank->lowPhProtection);
+    LOG_D("highPhProtection             = %d",tank->highPhProtection);
+    LOG_D("phMonitorOnly                = %d",tank->phMonitorOnly);
+    LOG_D("ecMonitorOnly                = %d",tank->ecMonitorOnly);
+    LOG_D("wlMonitorOnly                = %d",tank->wlMonitorOnly);
+    LOG_D("mmMonitorOnly                = %d",tank->mmMonitorOnly);
+    LOG_D("highMmProtection             = %d",tank->highMmProtection);
+    LOG_D("pumpId                       = %x",tank->pumpId);
+    LOG_D("color                        = %d",tank->color);
+    LOG_D("poolTimeout                  = %d",tank->poolTimeout);
+    LOG_D("aquaId                       = %d",tank->aquaId);
+    LOG_D("mixId                        = %d",tank->mixId);
+    rt_kprintf("valve : ");
+    for(int i = 0; i < VALVE_MAX; i++)
+    {
+        if(0 != tank->valve[i])
+        {
+            rt_kprintf("%x ",tank->valve[i]);
+        }
+    }
+    rt_kprintf("\r\n");
+    rt_kprintf("nopump_valve : ");
+    for(int i = 0; i < VALVE_MAX; i++)
+    {
+        if(0 != tank->nopump_valve[i])
+        {
+            rt_kprintf("%x ",tank->nopump_valve[i]);
+        }
+    }
+    rt_kprintf("\r\n");
+    for(int i = 0; i < TANK_SINGLE_GROUD; i++)
+    {
+        for(int j = 0; j < TANK_SENSOR_MAX; j++)
+        {
+            if(0 != tank->sensorId[i][j])
+            {
+                rt_kprintf("%x ",tank->sensorId[i][j]);
+            }
+        }
+    }
+    rt_kprintf("\r\n");
+//    u16     pumpId;                         //水泵Id
+//    u16     valve[VALVE_MAX];               //关联的阀的ID
+//    u16     nopump_valve[VALVE_MAX];        //未指定的阀ID
+//    u8      sensorId[TANK_SINGLE_GROUD][TANK_SENSOR_MAX];   //桶内存在两个sensor 一个是测试桶内的 一个测试管道的
+//    u8      color;                          //颜色
+//    u16     poolTimeout;
+//    u16     aquaId;
+//    u16     mixId;
+}
+
 static void GetSysTankFromFile(sys_tank_t *list, char *fileName)
 {
     static u8       FileHeadSpace       = 5;
@@ -428,6 +493,7 @@ static void GetSysTankFromFile(sys_tank_t *list, char *fileName)
     for(int i = 0; i < TANK_LIST_MAX; i++)
     {
         list->tank[i].tankNo = i + 1;
+        printTankInfo(&list->tank[i]);
     }
 }
 
@@ -445,6 +511,72 @@ static void SaveSysTankToFile(sys_tank_t *list, char *fileName)
     else
     {
         LOG_I("save tankList data Fail");
+    }
+}
+
+static void GetSysAquaInfoFromFile(aqua_info_t *list, char *fileName)
+{
+    static u8       FileHeadSpace       = 5;
+    u16             length              = 0;
+
+    length = FileHeadSpace;
+    if(RT_EOK == ReadFileData(fileName, (u8 *)list, length, sizeof(aqua_info_t) * TANK_LIST_MAX))
+    {
+        LOG_I("Get AquaInfo data OK");
+    }
+    else
+    {
+        LOG_E("Get AquaInfo data Fail");
+    }
+}
+
+static void SaveSysAquaInfoToFile(aqua_info_t *list, char *fileName)
+{
+    static u8       FileHeadSpace       = 5;
+    u16             length              = 0;
+
+    length = FileHeadSpace;
+    RemoveFileDirectory(fileName);
+    if(RT_EOK == WriteFileData(fileName, (u8 *)list, length, sizeof(aqua_info_t) * TANK_LIST_MAX))
+    {
+        LOG_I("save AquaInfo data OK");
+    }
+    else
+    {
+        LOG_I("save AquaInfo data Fail");
+    }
+}
+
+static void GetSysAquaSetFromFile(aqua_set *list, char *fileName)
+{
+    static u8       FileHeadSpace       = 5;
+    u16             length              = 0;
+
+    length = FileHeadSpace;
+    if(RT_EOK == ReadFileData(fileName, (u8 *)list, length, sizeof(aqua_info_t) * TANK_LIST_MAX))
+    {
+        LOG_I("Get AquaSet data OK");
+    }
+    else
+    {
+        LOG_E("Get AquaSet data Fail");
+    }
+}
+
+static void SaveSysAquaSetToFile(aqua_set *list, char *fileName)
+{
+    static u8       FileHeadSpace       = 5;
+    u16             length              = 0;
+
+    length = FileHeadSpace;
+    RemoveFileDirectory(fileName);
+    if(RT_EOK == WriteFileData(fileName, (u8 *)list, length, sizeof(aqua_info_t) * TANK_LIST_MAX))
+    {
+        LOG_I("save AquaSet data OK");
+    }
+    else
+    {
+        LOG_I("save AquaSet data Fail");
     }
 }
 
@@ -493,10 +625,16 @@ void FileSystemEntry(void* parameter)
     static      u8              sensorSize = 0;
     static      u8              deviceSize = 0;
     static      u8              lineSize = 0;
+#if(HUB_SELECT == HUB_IRRIGSTION)
+    static      u8              aquaSize = 0;
+#endif
 
     sensorSize = GetMonitor()->sensor_size;
     deviceSize = GetMonitor()->device_size;
     lineSize = GetMonitor()->line_size;
+#if(HUB_SELECT == HUB_IRRIGSTION)
+    aquaSize = GetMonitor()->aqua_size;
+#endif
     while(1)
     {
         time1S = TimerTask(&time1S, 1000/FILE_SYS_PERIOD, &Timer1sTouch);
@@ -508,6 +646,9 @@ void FileSystemEntry(void* parameter)
             if((sensorSize != GetMonitor()->sensor_size) ||
                (deviceSize != GetMonitor()->device_size) ||
                (lineSize != GetMonitor()->line_size) ||
+#if(HUB_SELECT == HUB_IRRIGSTION)
+               (aquaSize != GetMonitor()->aqua_size) ||
+#endif
                (YES == saveModuleFlag))
             {
                 SaveMonitorToFile(GetMonitor(), new_dev_file);
@@ -515,6 +656,9 @@ void FileSystemEntry(void* parameter)
                 sensorSize = GetMonitor()->sensor_size;
                 deviceSize = GetMonitor()->device_size;
                 lineSize = GetMonitor()->line_size;
+#if(HUB_SELECT == HUB_IRRIGSTION)
+                aquaSize = GetMonitor()->aqua_size;
+#endif
                 saveModuleFlag = NO;
             }
 
@@ -526,6 +670,14 @@ void FileSystemEntry(void* parameter)
                 rt_hw_cpu_reset();
                 saveMqttUrlFile = NO;
             }
+#if(HUB_SELECT == HUB_IRRIGSTION)
+            if(YES == saveAquaInfoFlag)
+            {
+                SaveSysAquaInfoToFile(GetAquaInfoList(), new_aqua_info_file);
+                SaveSysAquaSetToFile(GetAquaSetList(), new_aqua_set_file);
+                saveAquaInfoFlag = NO;
+            }
+#endif
         }
 
         //10s 任务
@@ -623,22 +775,6 @@ void FileSystemInit(void)
         {
             LOG_E("create main informations file Fail");
         }
-
-        //2.2判断是否是由于旧版本升级来的 此时存在旧结构体数据,迁移旧数据
-        //数据迁移由于之前版本太多不能做兼容
-//        if(RT_EOK == CheckDirectory(old_info))
-//        {
-//            OldDataMigration();
-//            SaveMonitorToFile(GetMonitor(), new_dev_file);
-//            SaveSysSetToFile(GetSysSet(), new_sysset_file);
-//#if(HUB_ENVIRENMENT == HUB_SELECT)
-//            SaveRecipeListToFile(GetSysRecipt(), new_recipe_file);
-//#elif(HUB_IRRIGSTION == HUB_SELECT)
-//            SaveSysTankToFile(GetSysTank(), new_tank_file);
-//#endif
-//
-//            rt_kprintf("OldDataMigration get old data to new module\r\n");
-//        }
     }
     else
     {
@@ -656,6 +792,8 @@ void FileSystemInit(void)
         GetRecipeListFromFile(GetSysRecipt(), new_recipe_file);
 #elif(HUB_IRRIGSTION == HUB_SELECT)
         GetSysTankFromFile(GetSysTank(), new_tank_file);
+        GetSysAquaInfoFromFile(GetAquaInfoList(), new_aqua_info_file);
+        GetSysAquaSetFromFile(GetAquaSetList(), new_aqua_set_file);
 #endif
         GetMqttUrlFile(getMqttUrlUse(), new_mqtt_url_file);
     }
