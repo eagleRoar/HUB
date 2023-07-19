@@ -15,6 +15,7 @@
 #include "UartAction.h"
 #include "CloudProtocolBusiness.h"
 #include "Gpio.h"
+#include "CloudProtocol.h"
 
 u8 sys_warn[WARN_MAX];
 #if(HUB_IRRIGSTION == HUB_SELECT)
@@ -61,11 +62,11 @@ static u8 GetDeviceStateByFunc(type_monitor_t *monitor, u8 func)
     //2 检测是否有端口开启
     if(i == monitor->device_size)
     {
-        return ON;
+        return OFF;
     }
     else
     {
-        return OFF;
+        return ON;
     }
 }
 #endif
@@ -153,6 +154,7 @@ void monitorTankSensorWarn(sys_tank_t *list, sys_set_t *set)
     u8                  *preStateP  = RT_NULL;
     static u8           preState[TANK_SINGLE_GROUD][TANK_WARN_ITEM_MAX];
     tankWarnState_t     *tankState  = RT_NULL;
+    static u8           tankStatePre[TANK_LIST_MAX][16];
 
     for(int index = 0; index < list->tank_size; index++)
     {
@@ -161,6 +163,76 @@ void monitorTankSensorWarn(sys_tank_t *list, sys_set_t *set)
         //清除报警
         rt_memset((u8 *)&tankState[index], 0, sizeof(tankWarnState_t));
         //遍历单个桶下的所有sensor
+        aqua_state_t *aquaWarnState = GetAquaWarn();
+        for(u8 bit = 0; bit < 16; bit++)
+        {
+            u8 temp = 0;
+            u16 value = 0;
+            //判断是否已经发送过
+            u8 warnFlag = (aquaWarnState[index].warn & (1 << bit)) > 0 ? 1 : 0;
+            if(warnFlag != tankStatePre[index][bit])
+            {
+                if(warnFlag)
+                {
+                    switch (bit)
+                    {
+                        case 0:
+                            //EC 高报警
+                            temp = 10;
+                            value = aquaWarnState[index].ec;
+                            break;
+                        case 1:
+                            //EC 低报警
+                            temp = 11;
+                            value = aquaWarnState[index].ec;
+                            break;
+                        case 2:
+                            //PH 高报警
+                            temp = 8;
+                            value = aquaWarnState[index].ph;
+                            break;
+                        case 3:
+                            //PH 低报警
+                            temp = 9;
+                            value = aquaWarnState[index].ph;
+                            break;
+                        case 4:
+                            //水温高
+                            temp = 12;
+                            value = aquaWarnState[index].wt;
+                            break;
+                        case 5:
+                            //水温低
+                            temp = 13;
+                            value = aquaWarnState[index].wt;
+                            break;
+                        case 6:
+                            //EC 掉线
+                            temp = 24;
+                            break;
+                        case 7:
+                            //PH 掉线
+                            temp = 25;
+                            break;
+                        case 8:
+                            //EC 配肥时间超时
+                            temp = 4;
+                            break;
+                        case 9:
+                            //PH 配肥时间超时
+                            temp = 5;
+                            break;
+                        default:
+                            break;
+                    }
+                    //LOG_W("monitorTankSensorWarn tank no = %d, temp = %d",index,temp);
+                    SendWarnToCloudAndApp(GetMqttClient(), CMD_HUB_REPORT_WARN, 62500 + temp - 1, value, RT_NULL);
+                }
+
+                tankStatePre[index][bit] = warnFlag;
+            }
+        }
+
         for(int i = 0; i < TANK_SINGLE_GROUD; i++)//
         {
             for(int j = 0; j < TANK_SENSOR_MAX; j++)
@@ -3173,13 +3245,11 @@ u8 pumpDoing(u8 addr, u8 port)
     time_t              time            = getTimeStamp();
     int                 nowTime         = 0;//显示当前的时间
     int                 setTime         = 0;//显示当前的时间
-    int                 tempTime         = 0;
+    int                 tempTime        = 0;
 
     getRealTimeForMat(&sys_time);
 
     nowTime = sys_time.hour * 60 * 60 + sys_time.minute * 60 + sys_time.second;
-
-//    LOG_W("now time = %d %d",sys_time.hour,sys_time.minute);
 
     if(RT_NULL != device)
     {
@@ -3778,6 +3848,7 @@ void sendReadDeviceCtrlToList(type_monitor_t *monitor, type_uart_class *deviceOb
     int         index       = 0;
     int         port        = 0;
     device_t    *device     = RT_NULL;
+    u8          maintain    = GetSysSet()->sysPara.maintain;
 
     for(index = 0; index < monitor->device_size; index++)
     {
@@ -3791,7 +3862,13 @@ void sendReadDeviceCtrlToList(type_monitor_t *monitor, type_uart_class *deviceOb
 
         for(port = 0; port < device->storage_size; port++)
         {
+            if(ON == maintain)
+            {
+                device->port[port].ctrl.d_state = OFF;
+            }
+
             deviceObj->DeviceCtrlSingle(device, port, device->port[port].ctrl.d_state);
+
         }
     }
 }
@@ -3917,24 +3994,24 @@ void sendRealAquaCtrlToList(type_monitor_t *monitor, type_uart_class *aquaObj)
             state = GetSendAquaWork(set);
             if(0 != state)
             {
-                aquaObj->AquaCtrl(aqua, set->monitor, state, recipe_no);
+                aquaObj->AquaCtrl(aqua, state, recipe_no);
             }
             else
             {
                 if(0 == recipe_no)
                 {
-                    aquaObj->AquaCtrl(aqua, set->monitor, 0, recipe_no);
+                    aquaObj->AquaCtrl(aqua, 0, recipe_no);
                 }
                 else
                 {
                     //如果该桶水位过低或者其他条件限制需要关闭
                     if(YES == CanAquaRunInTank(aqua->addr))
                     {
-                        aquaObj->AquaCtrl(aqua, set->monitor, 1, recipe_no);
+                        aquaObj->AquaCtrl(aqua, 1, recipe_no);
                     }
                     else
                     {
-                        aquaObj->AquaCtrl(aqua, set->monitor, 0, recipe_no);
+                        aquaObj->AquaCtrl(aqua, 0, recipe_no);
                     }
                 }
             }
@@ -4179,7 +4256,7 @@ void sendReportToApp(void)
         if(RT_NULL != buf)
         {
             rt_memcpy(buf, HEAD_CODE, 4);
-            if(RT_EOK == SendDataToCloud(RT_NULL, CMD_HUB_REPORT, 0 , 0, buf + sizeof(eth_page_head), &length, NO, 0))
+            if(RT_EOK == SendDataToCloud(RT_NULL, CMD_HUB_REPORT, 0 , 0, buf + sizeof(eth_page_head), &length, NO, 0, NO))
             {
                 if(length > 0)
                 {

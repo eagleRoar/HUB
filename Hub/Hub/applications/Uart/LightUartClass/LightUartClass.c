@@ -24,6 +24,8 @@ static uart_send_line sendMoni[LINE_MAX]; //优化设备发送
 
 static void GenerateVuleByCtrl(line_t *line, u8 port, u8 state, u8 value, u16 *res)
 {
+    u8  maintain    = GetSysSet()->sysPara.maintain;
+
     if((LINE_TYPE == line->type) || (LINE1_TYPE == line->type) || (LINE2_TYPE == line->type))
     {
         if(MANUAL_HAND_ON == line->port[port]._manual.manual)
@@ -38,13 +40,20 @@ static void GenerateVuleByCtrl(line_t *line, u8 port, u8 state, u8 value, u16 *r
         {
             *res = (state << 8) | value;
         }
+
+        //检修模式
+        if(YES == maintain)
+        {
+            *res = 0x0000;
+        }
     }
 }
 
 static void GenerateLine4VuleByCtrl(line_t *line, u16 *value, u16 *res)
 {
-    u8  vol = 0;
-    u8  manual = line->port[0]._manual.manual;
+    u8  vol         = 0;
+    u8  manual      = line->port[0]._manual.manual;
+    u8  maintain    = GetSysSet()->sysPara.maintain;
 
     if(LINE_4_TYPE == line->type)
     {
@@ -62,6 +71,12 @@ static void GenerateLine4VuleByCtrl(line_t *line, u16 *value, u16 *res)
             else
             {
                 res[i] = value[i];
+            }
+
+            //检修模式
+            if(YES == maintain)
+            {
+                res[i] = 0x0000;
             }
         }
     }

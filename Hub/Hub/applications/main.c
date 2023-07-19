@@ -61,6 +61,7 @@ int main(void)
     line_t          *line               = RT_NULL;
 #elif(HUB_SELECT == HUB_IRRIGSTION)
     type_uart_class *aquaObj            = GetAquaObject();
+    static u8       sendWarnFlag        = NO;
 #endif
     static u8       start_warn_flg      = NO;
     static u8       Timer100msTouch     = OFF;
@@ -259,7 +260,10 @@ int main(void)
             menualHandProgram(GetMonitor(), deviceObj, RT_NULL, aquaObj);
 #endif
             //报警功能
-            warnProgram(GetMonitor(), GetSysSet());             //监听告警信息
+            if(YES == sendWarnFlag)
+            {
+                warnProgram(GetMonitor(), GetSysSet());             //监听告警信息
+            }
 
             //发送实际发送的数据
             sendReadDeviceCtrlToList(GetMonitor(), deviceObj);
@@ -278,6 +282,7 @@ int main(void)
 #if(HUB_SELECT == HUB_ENVIRENMENT)
             startProgram = YES;
 #endif
+
         }
 
         //60s 主动发送给云服务
@@ -288,9 +293,11 @@ int main(void)
             {
                 if(YES == GetMqttStartFlg())
                 {
-                    SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT, 0 , 0, RT_NULL, RT_NULL, YES, 0);
+                    SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT, 0 , 0, RT_NULL, RT_NULL, YES, 0, NO);
                 }
             }
+
+            sendWarnFlag = YES;
         }
 
         rt_thread_mdelay(MAIN_PERIOD);

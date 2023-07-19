@@ -369,12 +369,12 @@ void SensorUart2TaskEntry(void* parameter)
                 aquaObj->RecvCmd(uart3_msg.data, uart3_msg.size);
 #endif
 
-//                rt_kprintf("print aqua data : ");
-//                for(int i = 0; i < uart3_msg.size; i++)
-//                {
-//                    rt_kprintf(" %x", uart3_msg.data[i]);
-//                }
-//                rt_kprintf("\r\n");
+                rt_kprintf("print aqua data : ");
+                for(int i = 0; i < uart3_msg.size; i++)
+                {
+                    rt_kprintf(" %x", uart3_msg.data[i]);
+                }
+                rt_kprintf("\r\n");
 
                 uart3_msg.messageFlag = OFF;
             }
@@ -455,6 +455,7 @@ void SensorUart2TaskEntry(void* parameter)
                     }
                 }
             }
+
         }
 
         if(ON == Timer10mTouch)

@@ -16,14 +16,14 @@
 //#define FACTORY_MODE                  //是否支持工厂模式
 
 #define DEBUG_MODE                      0//1                    //1.如果是debug mode 的话不需要偏移位置，否则偏移位置SD卡升级 2.修改link.lds
-#define HUB_SELECT                      HUB_ENVIRENMENT         //HUB_IRRIGSTION//
+#define HUB_SELECT                      HUB_IRRIGSTION//HUB_ENVIRENMENT         //
 
 /* 软件号的 第一个分配为:
     0 : HUB_ENVIRENMENT
     1 : HUB_IRRIGSTION
 */
 #if(HUB_ENVIRENMENT == HUB_SELECT)
-#define FIRMWAREVISION                  "0.1.3"
+#define FIRMWAREVISION                  "0.1.4"
 #elif(HUB_IRRIGSTION == HUB_SELECT)
 #define FIRMWAREVISION                  "1.1.4"
 #endif

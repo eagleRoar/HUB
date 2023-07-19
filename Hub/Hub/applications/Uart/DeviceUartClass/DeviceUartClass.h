@@ -63,7 +63,8 @@ typedef struct uartClass{
     void(*RecvListHandle)(void);
 #if(HUB_SELECT == HUB_IRRIGSTION)
     /*aqua部分的*/
-    void(*AquaCtrl)(aqua_t *aqua, u8 monitor, u8 state, u8 recipe_i);
+    void(*AquaCtrl)(aqua_t *aqua, u8 state, u8 recipe_i);
+    void(*AquaSendMonitor)(aqua_t *aqua, u8 monitor);
     void(*aquaSendInfo)(aqua_t *aqua, aqua_info_t *info, u8 recipe_no);
     void(*AskAquaState)(aqua_t *aqua, int index);
 #endif
@@ -85,12 +86,22 @@ typedef struct uartSendLine{
 
 typedef struct uartSendAqua{
     u8 addr;
-    u8 monitor;
     u16 ctrl;
     u8 recipe_i;    //使用的recipe 号
     time_t sendTime;
     u8 SendCnt;
 }uart_send_aqua;
+
+#if(HUB_SELECT == HUB_IRRIGSTION)
+typedef struct uartCacheData{
+    u8 addr;
+    u8 txFlag;
+    u8 cnt;
+    u8 TimeOut;//s
+    aqua_info_t *info;
+    u8 recipe_no;
+}uart_cache_t;
+#endif
 
 typedef struct monitorAskData{
     u8 length;
@@ -110,6 +121,7 @@ enum{
     ASK_RECIPE_6,
     ASK_RECIPE_7,
     ASK_RECIPE_8,
+    ASK_MONITOR,
 };
 
 void InitUart2Object(void);

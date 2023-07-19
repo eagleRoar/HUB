@@ -196,6 +196,7 @@ static void GenarateHvacCtrData(u8 HvacMode, u8 cool, u8 heat, u16 *value)
 #endif
 static void GenerateVuleBySingleCtrl(device_t device, u8 port, u8 state, u16 *value)
 {
+    u8 maintain = GetSysSet()->sysPara.maintain;
 
     if (1 == device.storage_size)//一个寄存器
     {
@@ -305,6 +306,11 @@ static void GenerateVuleBySingleCtrl(device_t device, u8 port, u8 state, u16 *va
                 }
             }
         }
+    }
+
+    if(ON == maintain)
+    {
+        *value = 0x0000;
     }
 }
 
@@ -759,7 +765,6 @@ static void DeviceCtrl(type_monitor_t *monitor, u8 func, u8 state)
     //1.遍历当前设备列表 控制设备
     for(u8 i = 0; i < monitor->device_size; i++)
     {
-
         //2.组合发送的数据
         value = 0x0000;
         device = GetMonitor()->device[i];

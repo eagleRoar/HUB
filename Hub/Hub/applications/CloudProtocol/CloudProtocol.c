@@ -983,11 +983,11 @@ rt_err_t ReplyDataToCloud(mqtt_client *client, int *sock, u8 sendCloudFlg)
 #elif(HUB_SELECT == HUB_IRRIGSTION)
         else if(0 == rt_memcmp(CMD_SET_TANK_INFO, cloudCmd.cmd, sizeof(CMD_SET_TANK_INFO)))//设置桶设置
         {
-            str = ReplySetTank(CMD_SET_TANK_INFO, cloudCmd);//Justin debug 有可能内存泄漏
+            str = ReplySetTank(CMD_SET_TANK_INFO, cloudCmd);
         }
         else if(0 == rt_memcmp(CMD_GET_TANK_INFO, cloudCmd.cmd, sizeof(CMD_GET_TANK_INFO)))//获取桶设置
         {
-            str = ReplyGetTank(CMD_GET_TANK_INFO, cloudCmd);//Justin 着重排查该函数是否导致内存泄漏
+            str = ReplyGetTank(CMD_GET_TANK_INFO, cloudCmd);
         }
         else if(0 == rt_memcmp(CMD_ADD_PUMP_VALUE, cloudCmd.cmd, sizeof(CMD_ADD_PUMP_VALUE)))//设置泵子阀
         {
@@ -1190,7 +1190,7 @@ rt_err_t ReplyDataToCloud(mqtt_client *client, int *sock, u8 sendCloudFlg)
     return ret;
 }
 
-rt_err_t SendDataToCloud(mqtt_client *client, char *cmd, u8 warn_no, u16 value, u8 *buf, u16 *length, u8 cloudFlg, u8 offline_no)
+rt_err_t SendDataToCloud(mqtt_client *client, char *cmd, u8 warn_no, u16 value, u8 *buf, u16 *length, u8 cloudFlg, u8 offline_no, u8 deviceOrNo)
 {
     rt_err_t    ret     = RT_ERROR;
     char name[20];
@@ -1202,7 +1202,7 @@ rt_err_t SendDataToCloud(mqtt_client *client, char *cmd, u8 warn_no, u16 value, 
     }
     else if(0 == rt_memcmp(CMD_HUB_REPORT_WARN, cmd, sizeof(CMD_HUB_REPORT_WARN)))//主动上报报警
     {
-        str = SendHubReportWarn(CMD_HUB_REPORT_WARN, GetSysSet(), warn_no, value, offline_no);
+        str = SendHubReportWarn(CMD_HUB_REPORT_WARN, GetSysSet(), warn_no, value, offline_no, deviceOrNo);
     }
 
     if(RT_NULL != str)
@@ -1660,35 +1660,35 @@ time_t ReplyTimeStamp(void)
     char *p         = RT_NULL;
 
     now_time = getTimeStamp();
-    time = getTimeStampByDate(&now_time);
-    strcpy(ntpzone, GetSysSet()->sysPara.ntpzone);
-    ntpzone[8] = '\0';
-    p = strtok(ntpzone, delim);
-    if(RT_NULL != p)
-    {
-        zone = atoi(p);
-        if(zone > 0)
-        {
-            time->tm_hour -= zone;
-            p = strtok(NULL, delim);
-            if(RT_NULL != p)
-            {
-                time->tm_min -= atoi(p);
-            }
-        }
-        else
-        {
-            time->tm_hour += zone;
-            p = strtok(NULL, delim);
-            if(RT_NULL != p)
-            {
-                time->tm_min += atoi(p);
-            }
-        }
-
-    }
-
-    now_time = changeTmTotimet(time);
+//    time = getTimeStampByDate(&now_time);
+//    strcpy(ntpzone, GetSysSet()->sysPara.ntpzone);
+//    ntpzone[8] = '\0';
+//    p = strtok(ntpzone, delim);
+//    if(RT_NULL != p)
+//    {
+//        zone = atoi(p);
+//        if(zone > 0)
+//        {
+//            time->tm_hour -= zone;
+//            p = strtok(NULL, delim);
+//            if(RT_NULL != p)
+//            {
+//                time->tm_min -= atoi(p);
+//            }
+//        }
+//        else
+//        {
+//            time->tm_hour += zone;
+//            p = strtok(NULL, delim);
+//            if(RT_NULL != p)
+//            {
+//                time->tm_min += atoi(p);
+//            }
+//        }
+//
+//    }
+//
+//    now_time = changeTmTotimet(time);
 
     return now_time;
 }
@@ -1859,12 +1859,18 @@ void sendOfflinewarnning(type_monitor_t *monitor)
     u16         length              = 0;
     sys_set_t   *set                = GetSysSet();
     static u8   offline[DEVICE_MAX] = {NO};
+#if (HUB_SELECT == HUB_IRRIGSTION)
+    static u8   offlineAqua[TANK_LIST_MAX] = {CON_FAIL,CON_FAIL,CON_FAIL,CON_FAIL};
+#endif
     static u8   first_run           = YES;
 
     //初始化静态数据
     if(YES == first_run)
     {
         rt_memset(offline, YES, DEVICE_MAX);
+#if (HUB_SELECT == HUB_IRRIGSTION)
+        rt_memset(offlineAqua, YES, TANK_LIST_MAX);
+#endif
         first_run = NO;
     }
 
@@ -1889,7 +1895,7 @@ void sendOfflinewarnning(type_monitor_t *monitor)
             if(YES == offline[index])
             {
                 //发送给云服务器
-                SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT_WARN, WARN_OFFLINE - 1, VALUE_NULL, RT_NULL, RT_NULL, YES, index);
+                SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT_WARN, WARN_OFFLINE - 1, VALUE_NULL, RT_NULL, RT_NULL, YES, index, YES);
                 //发送给app
                 buf = rt_malloc(1024 * 2);
                 if(RT_NULL != buf)
@@ -1897,7 +1903,47 @@ void sendOfflinewarnning(type_monitor_t *monitor)
                     rt_memcpy(buf, HEAD_CODE, 4);
 
                     if(RT_EOK == SendDataToCloud(RT_NULL, CMD_HUB_REPORT_WARN, WARN_OFFLINE - 1,
-                            VALUE_NULL, (u8 *)buf + sizeof(eth_page_head), &length, NO, index))
+                            VALUE_NULL, (u8 *)buf + sizeof(eth_page_head), &length, NO, index, YES))
+                    {
+                        if(length > 0)
+                        {
+                            rt_memcpy(buf + 4, &length, 2);
+                            if (RT_EOK != TcpSendMsg(&tcp_sock, buf, length + sizeof(eth_page_head)))
+                            {
+                                eth->tcp.SetConnectStatus(OFF);
+                                eth->tcp.SetConnectTry(ON);
+                            }
+                        }
+                    }
+
+                    //回收内存 避免内存泄露
+                    rt_free(buf);
+                    buf = RT_NULL;
+                }
+            }
+        }
+    }
+
+    //报aqua失联
+    for(index = 0; index < monitor->aqua_size; index++)
+    {
+        if(offlineAqua[index] != monitor->aqua[index].conn_state)
+        {
+            offlineAqua[index] = monitor->aqua[index].conn_state;
+
+            if(CON_FAIL == offlineAqua[index])
+            {
+
+                //发送给云服务器
+                SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT_WARN, WARN_OFFLINE - 1, VALUE_NULL, RT_NULL, RT_NULL, YES, index, NO);
+                //发送给app
+                buf = rt_malloc(1024 * 2);
+                if(RT_NULL != buf)
+                {
+                    rt_memcpy(buf, HEAD_CODE, 4);
+
+                    if(RT_EOK == SendDataToCloud(RT_NULL, CMD_HUB_REPORT_WARN, WARN_OFFLINE - 1,
+                            VALUE_NULL, (u8 *)buf + sizeof(eth_page_head), &length, NO, index, NO))
                     {
                         if(length > 0)
                         {
@@ -1956,7 +2002,7 @@ void sendwarnningInfo(void)
                             ((item + 1) == WARN_SMOKE) ||
                             ((item + 1) == WARN_WATER))
                         {
-                            SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT_WARN, item, GetSysSet()->warn_value[item], RT_NULL, RT_NULL, YES, 0);
+                            SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT_WARN, item, GetSysSet()->warn_value[item], RT_NULL, RT_NULL, YES, 0, NO);
                         }
 #elif (HUB_SELECT == HUB_IRRIGSTION)
                         if(((item + 1) == WARN_PH_HIGHT) ||
@@ -1977,7 +2023,7 @@ void sendwarnningInfo(void)
                             ((item + 1) == WARN_SOIL_EC_HIGHT) ||
                             ((item + 1) == WARN_SOIL_EC_LOW))
                         {
-                            SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT_WARN, item, GetSysSet()->warn_value[item], RT_NULL, RT_NULL, YES, 0);
+                            SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT_WARN, item, GetSysSet()->warn_value[item], RT_NULL, RT_NULL, YES, 0, NO);
                         }
 #endif
                 }
@@ -2012,7 +2058,7 @@ void sendwarnningInfo(void)
                                 ((item + 1) == WARN_WATER))
                             {
                                 if(RT_EOK == SendDataToCloud(RT_NULL, CMD_HUB_REPORT_WARN, item,
-                                        GetSysSet()->warn_value[item], (u8 *)buf + sizeof(eth_page_head), &length, NO, 0))
+                                        GetSysSet()->warn_value[item], (u8 *)buf + sizeof(eth_page_head), &length, NO, 0, NO))
                                 {
                                     if(length > 0)
                                     {
@@ -2050,7 +2096,7 @@ void sendwarnningInfo(void)
                             {
                                 //rt_memset(package.data, ' ', SEND_ETH_BUFFSZ);
                                 if(RT_EOK == SendDataToCloud(RT_NULL, CMD_HUB_REPORT_WARN, item,
-                                        GetSysSet()->warn_value[item], buf + sizeof(eth_page_head), &length, NO, 0))
+                                        GetSysSet()->warn_value[item], buf + sizeof(eth_page_head), &length, NO, 0, NO))
                                 {
                                     if(length > 0)
                                     {

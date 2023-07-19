@@ -19,6 +19,7 @@
 //设备类型
 type_uart_class aquaObject;
 static uart_send_aqua sendMoni[TANK_LIST_MAX]; //优化设备发送
+static uart_cache_t sendCache[TANK_LIST_MAX];
 static monitor_ask askState;
 extern u8 saveAquaInfoFlag;
 
@@ -34,11 +35,101 @@ monitor_ask *GetAquaAskState(void)
     return &askState;
 }
 
-static void GenerateVuleByCtrl(aqua_t *aqua, u8 monitor, u8 state, u8 recipe_i, u16 *res)
+void InitAquaCache(void)
 {
-    *res = monitor;
-    *(res + 1) = state;
-    *(res + 2) = recipe_i;
+    for(int i = 0; i < TANK_LIST_MAX; i++)
+    {
+        sendCache[i].addr = 0;
+        sendCache[i].txFlag = OFF;
+        sendCache[i].cnt = 0;
+        sendCache[i].TimeOut = 3;
+        sendCache[i].info = RT_NULL;
+        sendCache[i].recipe_no = TANK_LIST_MAX;
+    }
+}
+
+void SetAquaSendCacheHaveSend(u8 addr, aqua_info_t *info, u8 recipe_no)
+{
+    int i = 0;
+
+    for(i = 0; i < TANK_LIST_MAX; i++)
+    {
+        if(sendCache[i].addr == addr)
+        {
+            break;
+        }
+    }
+
+    if(i == TANK_LIST_MAX)
+    {
+        for(i = 0; i < TANK_LIST_MAX; i++)
+        {
+            if(0 == sendCache[i].addr)
+            {
+                break;
+            }
+        }
+    }
+
+    if(i < TANK_LIST_MAX)
+    {
+        sendCache[i].addr = addr;
+        sendCache[i].txFlag = YES;
+        sendCache[i].info = info;
+        sendCache[i].recipe_no = recipe_no;
+    }
+}
+
+void SetAquaSendCacheRecv(u8 addr)
+{
+    int i = 0;
+
+    for(i = 0; i < TANK_LIST_MAX; i++)
+    {
+        if(addr == sendCache[i].addr)
+        {
+            sendCache[i].addr = 0;
+            sendCache[i].txFlag = NO;
+            sendCache[i].cnt = 0;
+            sendCache[i].info = RT_NULL;
+            sendCache[i].recipe_no = 0;
+            break;
+        }
+    }
+}
+
+uart_cache_t *GetAquaSendCache(u8 index)
+{
+    if(index > 0 && index < TANK_LIST_MAX)
+    {
+        return &sendCache[index];
+    }
+
+    return RT_NULL;
+}
+
+static void GenerateVuleByCtrl(aqua_t *aqua, u8 state, u8 recipe_i, u16 *res)
+{
+    *res= state;
+    *(res + 1) = recipe_i;
+}
+
+//生成发送的数据
+static void GenerateSendMonitor(aqua_t *aqua, u16 *ctrl, u8 *data)
+{
+    rt_memset(data, 0, 11);
+
+    data[0] = aqua->addr;
+    data[1] = WRITE_MUTI;
+    data[2] = AQUA_MONITOR_ADDR >> 8;
+    data[3] = AQUA_MONITOR_ADDR;
+    data[4] = 0x00;
+    data[5] = 1;
+    data[6] = 2;
+    data[7] = *ctrl >> 8;
+    data[8] = *ctrl;
+    data[9] = usModbusRTU_CRC(data, 9);
+    data[10] = usModbusRTU_CRC(data, 9) >> 8;
 }
 
 //生成发送的数据
@@ -48,19 +139,17 @@ static void GenerateSendData(aqua_t *aqua, u16 *ctrl, u8 *data)
 
     data[0] = aqua->addr;
     data[1] = WRITE_MUTI;
-    data[2] = AQUA_MONITOR_ADDR >> 8;
-    data[3] = AQUA_MONITOR_ADDR;
+    data[2] = AQUA_WORK_ADDR >> 8;
+    data[3] = AQUA_WORK_ADDR;
     data[4] = 0x00;
-    data[5] = 3;
-    data[6] = 6;
+    data[5] = 2;
+    data[6] = 4;
     data[7] = ctrl[0] >> 8;
     data[8] = ctrl[0];
     data[9] = ctrl[1] >> 8;
     data[10] = ctrl[1];
-    data[11] = ctrl[2] >> 8;
-    data[12] = ctrl[2];
-    data[13] = usModbusRTU_CRC(data, 13);
-    data[14] = usModbusRTU_CRC(data, 13) >> 8;
+    data[11] = usModbusRTU_CRC(data, 11);
+    data[12] = usModbusRTU_CRC(data, 11) >> 8;
 }
 
 void changeBigToLittle(u16 src, u8 *data)
@@ -198,7 +287,7 @@ static rt_err_t GenerateKVData(KV *kv, aqua_t aqua, u8 *data, u8 len)
  *
  * @return
  */
-static u8 IsCtrlChange(u8 addr, u8 monitor, u16 ctrl, u8 recipe_i)
+static u8 IsCtrlChange(u8 addr, u16 ctrl, u8 recipe_i)
 {
     u8              i           = 0;
     u8              ret         = NO;
@@ -209,8 +298,7 @@ static u8 IsCtrlChange(u8 addr, u8 monitor, u16 ctrl, u8 recipe_i)
         if(addr == sendMoni[i].addr)
         {
             //控制内容发生变化
-            if(monitor != sendMoni[i].monitor ||
-               ctrl != sendMoni[i].ctrl ||
+            if(ctrl != sendMoni[i].ctrl ||
                recipe_i != sendMoni[i].recipe_i)
             {
                 ret = YES;
@@ -264,7 +352,7 @@ static void SignAquaRecvFlag(u8 addr)
     }
 }
 
-static void AddLastCtrl(u8 addr, u16 monitor, u16 ctrl, u8 recipe_i)
+static void AddLastCtrl(u8 addr, u16 ctrl, u8 recipe_i)
 {
     u8              i           = 0;
 
@@ -272,7 +360,6 @@ static void AddLastCtrl(u8 addr, u16 monitor, u16 ctrl, u8 recipe_i)
     {
         if(addr == sendMoni[i].addr)
         {
-            sendMoni[i].monitor = monitor;
             sendMoni[i].ctrl = ctrl;
             sendMoni[i].recipe_i = recipe_i;
             break;
@@ -286,7 +373,6 @@ static void AddLastCtrl(u8 addr, u16 monitor, u16 ctrl, u8 recipe_i)
             if(0x00 == sendMoni[i].addr)
             {
                 sendMoni[i].addr = addr;
-                sendMoni[i].monitor = monitor;
                 sendMoni[i].ctrl = ctrl;
                 sendMoni[i].recipe_i = recipe_i;
                 break;
@@ -318,9 +404,8 @@ static u8 IsNeedSendCtrToConnect(u8 addr, u16 *ctrl)
             if(getTimerRun() > (sendMoni[i].sendTime + timeOut))
             {
                 ret = YES;
-                *ctrl = sendMoni[i].monitor;
-                *(ctrl+1) = sendMoni[i].ctrl;
-                *(ctrl+2) = sendMoni[i].recipe_i;
+                *ctrl = sendMoni[i].ctrl;
+                *(ctrl+1) = sendMoni[i].recipe_i;
             }
         }
     }
@@ -366,6 +451,35 @@ static void Optimization(type_monitor_t *monitor)
                     sendMoni[j].ctrl = 0;
 
                     break;
+                }
+            }
+        }
+    }
+
+    //重发机制
+    for(i = 0; i < TANK_LIST_MAX; i++)
+    {
+        if(YES == sendCache[i].txFlag)
+        {
+            if(sendCache[i].cnt < sendCache[i].TimeOut)
+            {
+                sendCache[i].cnt++;
+            }
+            else
+            {
+                aqua_t *aqua = GetAquaByAddr(monitor, sendCache[i].addr);
+                if(aqua)
+                {
+                    if((RT_NULL != sendCache[i].info) && (sendCache[i].recipe_no < TANK_LIST_MAX))
+                    {
+                        aquaObject.aquaSendInfo(aqua, sendCache[i].info, sendCache[i].recipe_no);
+                        LOG_W("--------------------send cache again ok");
+                        sendCache[i].cnt = 0;
+                    }
+                }
+                else
+                {
+                    LOG_W("Optimization  aqua is NULL -----------------------");
                 }
             }
         }
@@ -465,9 +579,9 @@ static void ConfigureUart3(rt_device_t *dev)
  *        reg_data  寄存器实际值
  *        reg_size  控制的寄存器值的数量
  */
-static void aquaCtrl(aqua_t *aqua, u8 monitor, u8 state, u8 recipe_i)
+static void AquaSendMonitor(aqua_t *aqua, u8 monitor)
 {
-    u8          data[15];
+    u8          data[11];
     KV          keyValue;
     seq_key_t   seq_key;
 
@@ -477,11 +591,62 @@ static void aquaCtrl(aqua_t *aqua, u8 monitor, u8 state, u8 recipe_i)
     }
 
     //3.加入到发送列表
-    u16 ctrl[3] = {0,0,0};
-    GenerateVuleByCtrl(aqua, monitor, state, recipe_i, ctrl);
+    u16 ctrl = monitor;
+    GenerateSendMonitor(aqua, &ctrl, data);
+
+    {
+        //4.添加到taskList 之后会在统一接口中实现数据的发送
+        seq_key.addr = aqua->addr;
+        seq_key.regH = AQUA_MONITOR_ADDR >> 8;
+        seq_key.regL = AQUA_MONITOR_ADDR;
+        seq_key.regSize = 1;
+        keyValue.key = SeqKeyToLong(seq_key);
+        keyValue.dataSegment.len = 11;
+        keyValue.dataSegment.data = rt_malloc(keyValue.dataSegment.len);
+        if(keyValue.dataSegment.data)
+        {
+            //5.复制实际数据
+            rt_memcpy(keyValue.dataSegment.data, data, keyValue.dataSegment.len);
+
+            aquaObject.taskList.AddToList(keyValue, NO);
+
+            //6.回收空间
+            rt_free(keyValue.dataSegment.data);
+        }
+
+    }
+}
+
+
+/**传入参数
+ *
+ * @param addr      设备485地址
+ *        reg_addr  寄存器地址
+ *        reg_data  寄存器实际值
+ *        reg_size  控制的寄存器值的数量
+ */
+static void aquaCtrl(aqua_t *aqua, u8 state, u8 recipe_i)
+{
+    u8          data[13];
+    KV          keyValue;
+    seq_key_t   seq_key;
+    u8          maintain = GetSysSet()->sysPara.maintain;
+
+    if(RT_NULL == aquaObject.dev)
+    {
+        return;
+    }
+
+    //3.加入到发送列表
+    u16 ctrl[2] = {0,0};
+    if(YES == maintain)
+    {
+        state = OFF;
+    }
+    GenerateVuleByCtrl(aqua, state, recipe_i, ctrl);
 
     GenerateSendData(aqua, ctrl, data);
-    if(YES == IsCtrlChange(aqua->addr, monitor, state, recipe_i))
+    if(YES == IsCtrlChange(aqua->addr, state, recipe_i))
     {
         //4.添加到taskList 之后会在统一接口中实现数据的发送
         seq_key.addr = aqua->addr;
@@ -489,7 +654,7 @@ static void aquaCtrl(aqua_t *aqua, u8 monitor, u8 state, u8 recipe_i)
         seq_key.regL = aqua->ctrl_addr;
         seq_key.regSize = 1;
         keyValue.key = SeqKeyToLong(seq_key);
-        keyValue.dataSegment.len = 15;
+        keyValue.dataSegment.len = 13;
         keyValue.dataSegment.data = rt_malloc(keyValue.dataSegment.len);
         if(keyValue.dataSegment.data)
         {
@@ -519,10 +684,13 @@ static void aquaSendInfo(aqua_t *aqua, aqua_info_t *info, u8 recipe_no)
     //1.生成要发送的数据
     GenerateSendAqueRecipeData(aqua->addr, info, recipe_no, data, sizeof(data));
 
+    //添加到数据缓存
+    SetAquaSendCacheHaveSend(aqua->addr, info, recipe_no);
+
     //2.添加到taskList 之后会在统一接口中实现数据的发送
     seq_key.addr = aqua->addr;
-    seq_key.regH = aqua->ctrl_addr >> 8;
-    seq_key.regL = aqua->ctrl_addr;
+    seq_key.regH = AQUA_RECIPE_ADDR >> 8;
+    seq_key.regL = AQUA_RECIPE_ADDR;
     seq_key.regSize = 1;
     keyValue.key = SeqKeyToLong(seq_key);
     keyValue.dataSegment.len = sizeof(data);
@@ -557,7 +725,7 @@ void AskAquaState(aqua_t *aqua, int index)
     //只有接收数据了才能往下循环
     if(NO == askState.flag)
     {
-        if(askList[index] < (2 + AQUA_RECIPE_MX) - 1)
+        if(askList[index] < (3 + AQUA_RECIPE_MX) - 1)
         {
             askList[index]++;
         }
@@ -657,6 +825,14 @@ void AskAquaState(aqua_t *aqua, int index)
             askState.askType = ASK_RECIPE_8;
             askState.length = regLen * 2;
             break;
+        case 11:
+            //1.生成要发送的数据
+            regLen = 1;
+            GenerateAskStateData(aqua, AQUA_MONITOR_ADDR, data, regLen);
+            dataLen = 8;
+            askState.askType = ASK_MONITOR;
+            askState.length = regLen * 2;
+            break;
         default:
             break;
     }
@@ -686,7 +862,7 @@ void AskAquaState(aqua_t *aqua, int index)
 static void KeepConnect(type_monitor_t *monitor)
 {
     KV          keyValue;
-    u16         lastCtrl[3];
+    u16         lastCtrl[2];
     u8          data[17];
     static u8   i           = 0;
 
@@ -694,7 +870,7 @@ static void KeepConnect(type_monitor_t *monitor)
     {
         //1.如果是在线 则发送前一次的数据保持连续
         GenerateSendData(&monitor->aqua[i], lastCtrl, data);
-        if(RT_EOK == GenerateKVData(&keyValue, monitor->aqua[i], data, 15))
+        if(RT_EOK == GenerateKVData(&keyValue, monitor->aqua[i], data, 13))
         {
             aquaObject.taskList.AddToList(keyValue, NO);
 
@@ -780,27 +956,31 @@ static void SendCmd(void)
         //添加到记录控制内容数组
         if(WRITE_SINGLE == first->keyData.dataSegment.data[1])
         {
-
             SignAquaSendFlag(LongToSeqKey(first->keyData.key).addr);
         }
         else if(WRITE_MUTI == first->keyData.dataSegment.data[1])
         {
-            u16 monitor = (first->keyData.dataSegment.data[7] << 8) | first->keyData.dataSegment.data[8];
-            u16 value = (first->keyData.dataSegment.data[9] << 8) | first->keyData.dataSegment.data[10];
-            u16 recipe_i = (first->keyData.dataSegment.data[11] << 8) | first->keyData.dataSegment.data[12];
-            //该部分要重新写
-            AddLastCtrl(LongToSeqKey(first->keyData.key).addr, monitor, value, recipe_i);
-            SignAquaSendFlag(LongToSeqKey(first->keyData.key).addr);
+            u16 reg = LongToSeqKey(first->keyData.key).regH << 8 |
+                    LongToSeqKey(first->keyData.key).regL;
+            if(aqua->ctrl_addr == reg)
+            {
+                u16 value = (first->keyData.dataSegment.data[7] << 8) | first->keyData.dataSegment.data[8];
+                u16 recipe_i = (first->keyData.dataSegment.data[9] << 8) | first->keyData.dataSegment.data[10];
+
+                AddLastCtrl(LongToSeqKey(first->keyData.key).addr, value, recipe_i);
+                SignAquaSendFlag(LongToSeqKey(first->keyData.key).addr);
+            }
+
         }
     }
 
-//    LOG_I("aqua sendCmd : ");
-//    for(int i = 0; i < first->keyData.dataSegment.len; i++)
-//    {
-//        rt_kprintf(" %x",first->keyData.dataSegment.data[i]);
-//
-//    }
-//    rt_kprintf("\r\n");
+    LOG_I("aqua sendCmd : ");
+    for(int i = 0; i < first->keyData.dataSegment.len; i++)
+    {
+        rt_kprintf(" %02x",first->keyData.dataSegment.data[i]);
+
+    }
+    rt_kprintf("\r\n");//Justin
 
     //5.将这个任务从任务列表中移出去
     aquaObject.taskList.DeleteToList(first->keyData);
@@ -950,7 +1130,11 @@ static void RecvListHandle(void)
                 }
                 else if(WRITE_MUTI == rwType)
                 {
-
+                    u16 reg = tail->keyData.dataSegment.data[2] << 8 | tail->keyData.dataSegment.data[3];
+                    if(AQUA_RECIPE_ADDR == reg)
+                    {
+                        SetAquaSendCacheRecv(aqua->addr);
+                    }
                 }
                 else if(READ_MUTI == rwType)
                 {
@@ -958,7 +1142,6 @@ static void RecvListHandle(void)
                     aqua_state_t *state;
                     monitor_ask *ask = GetAquaAskState();
                     aqua_info_t *info = RT_NULL;
-                    aqua_t *aqua = RT_NULL;
                     aqua_recipe *recipe = RT_NULL;
                     if(YES == ask->flag)
                     {
@@ -966,11 +1149,8 @@ static void RecvListHandle(void)
                         {
                             if(ask->length == (tail->keyData.dataSegment.len - 5))//扣除地址 类型 长度 两个crc位
                             {
-                                aqua = GetAquaByAddr(monitor, tail->keyData.dataSegment.data[0]);
-                                if(aqua)
-                                {
-                                    info = GetAquaInfoByUUID(aqua->uuid);
-                                }
+
+                                info = GetAquaInfoByUUID(aqua->uuid);
 
                                 if(info)
                                 {
@@ -994,11 +1174,7 @@ static void RecvListHandle(void)
                                             state->warn = (tail->keyData.dataSegment.data[13] << 8) | tail->keyData.dataSegment.data[14];
                                             state->work = (tail->keyData.dataSegment.data[15] << 8) | tail->keyData.dataSegment.data[16];
 
-                                            aqua_t *aqua = GetAquaByAddr(monitor, state->id);
-                                            if(aqua)
-                                            {
-                                                aqua->pumpSize = state->pumpSize;
-                                            }
+                                            aqua->pumpSize = state->pumpSize;
 
                                             if(RT_NULL == GetAquaWarnById(tail->keyData.dataSegment.data[0]))
                                             {
@@ -1054,6 +1230,14 @@ static void RecvListHandle(void)
                                         case ASK_RECIPE_8:
                                             recipe = &info->list[8];
                                             break;
+                                        case ASK_MONITOR:
+                                            //同步monitor状态
+                                            if(RT_NULL != GetAquaSetByUUID(aqua->uuid))
+                                            {
+                                                GetAquaSetByUUID(aqua->uuid)->monitor = (tail->keyData.dataSegment.data[3] << 8) | tail->keyData.dataSegment.data[4];
+
+                                            }
+                                            break;
                                         default:
                                             break;
                                     }
@@ -1090,8 +1274,14 @@ static void RecvListHandle(void)
                                             recipe->pumpList[i].ratio = tail->keyData.dataSegment.data[49 + 2 * i] << 8 | tail->keyData.dataSegment.data[50 + 2 * i];
 
                                         }
-                                        char recipeName[10];
-                                        strncpy(recipeName, &tail->keyData.dataSegment.data[71], 9);
+                                        u8 recipeName[10];
+                                        rt_memcpy(recipeName, &tail->keyData.dataSegment.data[65], 9);
+                                        recipeName[9] = 0;
+                                        rt_memcpy(recipe->formName, recipeName, AQUA_RECIPE_NAMESZ - 1);
+                                        recipe->formName[AQUA_RECIPE_NAMESZ - 1] = '\0';
+                                        LOG_W("num %d, recipe name = %s",
+                                                ask->askType - ASK_RECIPE_0, recipeName);
+
                                     }
                                 }
 
@@ -1144,6 +1334,7 @@ static void RecvListHandle(void)
 void InitAquaObject(void)
 {
     //1.初始化记录发送情况
+    InitAquaCache();
     rt_memset(sendMoni, 0, sizeof(uart_send_aqua) * TANK_LIST_MAX);
 
     //2.初始化相关数据
@@ -1159,6 +1350,7 @@ void InitAquaObject(void)
     aquaObject.LineCtrl = RT_NULL;
     aquaObject.Line4Ctrl = RT_NULL;
     aquaObject.AquaCtrl = aquaCtrl;
+    aquaObject.AquaSendMonitor = AquaSendMonitor;
     aquaObject.aquaSendInfo = aquaSendInfo;
     aquaObject.AskDevice = RT_NULL;
     aquaObject.AskSensor = RT_NULL;

@@ -200,6 +200,7 @@ void printLine(line_t line)
 void printAqua(aqua_t aqua)
 {
     LOG_D("----------------------print new aqua-----------");
+    LOG_D("addr = %d",aqua.addr);
     LOG_D("type = %x",aqua.type);
     LOG_D("uuid = %x",aqua.uuid);
     LOG_D("name = %s",aqua.name);

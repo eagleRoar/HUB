@@ -628,6 +628,7 @@ typedef struct tankWarnState{
     u8 sw;
     u8 sec;
     u8 st;
+    u8 aquaWarn;
 }tankWarnState_t;
 
 struct sysSet{
@@ -801,7 +802,7 @@ void CmdDeleteSensor(char *data, cloudcmd_t *cmd);
 void CmdSetTankName(char *data, cloudcmd_t *cmd);
 void CmdSetTankPV(char *data, cloudcmd_t *cmd);
 char *SendHubReport(char *, sys_set_t *);
-char *SendHubReportWarn(char *, sys_set_t *, u8, u16, u8);
+char *SendHubReportWarn(char *, sys_set_t *, u8, u16, u8, u8);
 char *ReplySetSchedule(char *, cloudcmd_t);
 char *ReplyGetTempValue(char *,cloudcmd_t);
 char *ReplyGetCo2(char *,cloudcmd_t);
@@ -863,7 +864,7 @@ char *ReplyGetAquaSet(cloudcmd_t *cmd);
 void CmdSetAquaSet(char *data, cloudcmd_t *cmd);
 void GetAquaCurrentState(u32 uuid, u8 *stage, u8 *days, u8 *recipe_no);
 #endif
-void SendWarnToCloudAndApp(mqtt_client *client, char *cmd, u8 warn_no, u16 value, char *info);
+void SendWarnToCloudAndApp(mqtt_client *client, char *cmd, u16 warn_no, u16 value, char *info);
 void GetTankNoById(sys_tank_t *list, u16 id, u8 *tankNo);
 char *replyGetDeviceList_NULL(char *cmd, char *msgid);
 void CmdDelTankPV(char *data, cloudcmd_t *cmd);

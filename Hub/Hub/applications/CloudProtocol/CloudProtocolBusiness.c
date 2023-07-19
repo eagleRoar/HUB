@@ -2387,7 +2387,7 @@ void CmdSetLine(char *data, proLine_t *line, proLine_4_t *line_4, cloudcmd_t *cm
     }
 }
 
-char *SendHubReportWarn(char *cmd, sys_set_t *set, u8 warn_no, u16 value, u8 offline_no)
+char *SendHubReportWarn(char *cmd, sys_set_t *set, u8 warn_no, u16 value, u8 offline_no, u8 deviceOrNo)
 {
     char            *str        = RT_NULL;
     char            name[12];
@@ -2406,9 +2406,19 @@ char *SendHubReportWarn(char *cmd, sys_set_t *set, u8 warn_no, u16 value, u8 off
         cJSON_AddNumberToObject(json, "warning", warn);
         if(WARN_OFFLINE == warn)
         {
-            if(offline_no < DEVICE_MAX)
+            if(YES == deviceOrNo)
             {
-                cJSON_AddStringToObject(json, "name", GetMonitor()->device[offline_no].name);
+                if(offline_no < DEVICE_MAX)
+                {
+                    cJSON_AddStringToObject(json, "name", GetMonitor()->device[offline_no].name);
+                }
+            }
+            else
+            {
+                if(offline_no < TANK_LIST_MAX)
+                {
+                    cJSON_AddStringToObject(json, "name", GetMonitor()->aqua[offline_no].name);
+                }
             }
             cJSON_AddNumberToObject(json, "value", VALUE_NULL);
         }
@@ -2416,7 +2426,7 @@ char *SendHubReportWarn(char *cmd, sys_set_t *set, u8 warn_no, u16 value, u8 off
         {
             cJSON_AddNumberToObject(json, "value", value);
         }
-        cJSON_AddStringToObject(json, "ntpzone", GetSysSet()->sysPara.ntpzone);
+        cJSON_AddStringToObject(json, "ntpzone", "+00:00");//唐工要求固定返回+00:00
         cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
 
         str = cJSON_PrintUnformatted(json);
@@ -2426,11 +2436,11 @@ char *SendHubReportWarn(char *cmd, sys_set_t *set, u8 warn_no, u16 value, u8 off
     return str;
 }
 
-void SendWarnToCloudAndApp(mqtt_client *client, char *cmd, u8 warn_no, u16 value, char *info)
+void SendWarnToCloudAndApp(mqtt_client *client, char *cmd, u16 warn_no, u16 value, char *info)
 {
     char            name[100];
     char            *str        = RT_NULL;
-    u8              warn        = warn_no + 1;
+    u16             warn        = warn_no + 1;
     u8              type        = 0;
     cJSON           *json       = cJSON_CreateObject();
     u8              *page       = RT_NULL;
@@ -2450,7 +2460,7 @@ void SendWarnToCloudAndApp(mqtt_client *client, char *cmd, u8 warn_no, u16 value
             cJSON_AddStringToObject(json, "name", info);
         }
         cJSON_AddNumberToObject(json, "value", value);
-        cJSON_AddStringToObject(json, "ntpzone", GetSysSet()->sysPara.ntpzone);
+        cJSON_AddStringToObject(json, "ntpzone", "+00:00");
         cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
 
         str = cJSON_PrintUnformatted(json);
@@ -2825,7 +2835,7 @@ char *SendHubReport(char *cmd, sys_set_t *set)
 
         cJSON_AddNumberToObject(json, "dayNight", GetSysSet()->dayOrNight);
         cJSON_AddNumberToObject(json, "maintain", GetSysSet()->sysPara.maintain);
-        cJSON_AddStringToObject(json, "ntpzone", GetSysSet()->sysPara.ntpzone);
+        cJSON_AddStringToObject(json, "ntpzone", "+00:00");
         cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
 
         str = cJSON_PrintUnformatted(json);
@@ -4804,7 +4814,7 @@ char *ReplyGetHubState(char *cmd, cloudcmd_t cloud)
         }
 #endif
 
-        cJSON_AddStringToObject(json, "ntpzone", GetSysSet()->sysPara.ntpzone);
+        cJSON_AddStringToObject(json, "ntpzone", "+00:00");
 
         cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
 
@@ -5040,6 +5050,7 @@ char *ReplyGetPortSet(char *cmd, cloudcmd_t cloud)
                         }
 
                         cJSON_AddItemToObject(json, "valve", valveList);
+                        break;
                     }
                 }
             }
@@ -7090,7 +7101,16 @@ void CmdSetAquaSet(char *data, cloudcmd_t *cmd)
 
             set->uuid = aqua->uuid;
 
-            GetValueByU8(json, "monitor", &set->monitor);
+            u8 monitorState = 0;
+            GetValueByU8(json, "monitor", &monitorState);
+            if(monitorState != set->monitor)
+            {
+                set->monitor = monitorState;
+                if(RT_NULL != GetAquaObject())
+                {
+                    GetAquaObject()->AquaSendMonitor(aqua, set->monitor);
+                }
+            }
             GetValueByU8(json, "ecDailySupFerState", &set->ecDailySupFerState);
             GetValueByU16(json, "ecDailySupFerStart", &set->ecDailySupFerStart);
             GetValueByU16(json, "ecDailySupFerEnd", &set->ecDailySupFerEnd);
