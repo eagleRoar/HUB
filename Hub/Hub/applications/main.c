@@ -149,7 +149,6 @@ int main(void)
 
         if(ON == GetRecvMqttFlg())
         {
-
             if(0 == rt_memcmp(CMD_GET_DEVICELIST, cloudCmd.cmd, sizeof(CMD_GET_DEVICELIST)))
             {
                 ReplyDeviceListDataToCloud(GetMqttClient(), RT_NULL, YES);
@@ -160,7 +159,6 @@ int main(void)
             }
 
             SetRecvMqttFlg(OFF);
-
         }
 
         //主动发送告警
@@ -186,9 +184,10 @@ int main(void)
             {
                 if(YES == startProgram)
                 {
-                    tempProgram(GetMonitor(), *deviceObj);
+//                    tempProgram(GetMonitor(), *deviceObj);
                     co2Program(GetMonitor(), *deviceObj, 1000);
-                    humiProgram(GetMonitor(), *deviceObj);
+//                    humiProgram(GetMonitor(), *deviceObj);
+                    TempAndHumiProgram(GetMonitor(), *deviceObj);
 
                     for(int i = 0; i < GetMonitor()->line_size; i++)
                     {

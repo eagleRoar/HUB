@@ -45,4 +45,5 @@ u8 GetReportType(u8 warn);
 void sendRealAquaCtrlToList(type_monitor_t *monitor, type_uart_class *aquaObj);
 u32 GetNextStateLeftTime(type_monitor_t *monitor, u8 addr, u8 port);
 u8 CanTankDeviceRun(u16 id);
+void TempAndHumiProgram(type_monitor_t *monitor, type_uart_class uart);
 #endif /* APPLICATIONS_UART_DATALAYER_UARTACTION_H_ */

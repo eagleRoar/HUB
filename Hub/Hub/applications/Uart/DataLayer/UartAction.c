@@ -2131,6 +2131,115 @@ void co2Program(type_monitor_t *monitor, type_uart_class uart, u16 mPeriod)
     }
 }
 
+void TempAndHumiProgram(type_monitor_t *monitor, type_uart_class uart)
+{
+    int             humiNow             = GetSensorMainValue(monitor, F_S_HUMI);
+    u16             humiTarget          = 0;
+    u16             dehumiTarget        = 0;
+    proHumiSet_t    humiSet;
+    int             tempNow             = GetSensorMainValue(monitor, F_S_TEMP);
+    u16             coolTarge           = 0;
+    u16             HeatTarge           = 0;
+    proTempSet_t    tempSet;
+    u8              lock                = OFF;
+
+    GetNowSysSet(&tempSet, RT_NULL, &humiSet, RT_NULL, RT_NULL, RT_NULL, RT_NULL);
+    lock = GetSysSet()->tempSet.coolingDehumidifyLock;
+
+    if(VALUE_NULL != humiNow)
+    {
+        if(DAY_TIME == GetSysSet()->dayOrNight)
+        {
+            humiTarget = humiSet.dayHumiTarget;
+            dehumiTarget = humiSet.dayDehumiTarget;
+        }
+        else if(NIGHT_TIME == GetSysSet()->dayOrNight)
+        {
+            humiTarget = humiSet.nightHumiTarget;
+            dehumiTarget = humiSet.nightDehumiTarget;
+        }
+    }
+
+    if(VALUE_NULL != tempNow)
+    {
+        if(DAY_TIME == GetSysSet()->dayOrNight)
+        {
+            coolTarge = tempSet.dayCoolingTarget;
+            HeatTarge = tempSet.dayHeatingTarget;
+        }
+        else if(NIGHT_TIME == GetSysSet()->dayOrNight)
+        {
+            coolTarge = tempSet.nightCoolingTarget;
+            HeatTarge = tempSet.nightHeatingTarget;
+        }
+    }
+
+    //加湿度
+    if(humiNow <= humiTarget)
+    {
+        CtrlAllDeviceByFunc(monitor, F_HUMI, ON, 0);
+    }
+    else if(humiNow >= humiTarget + humiSet.humidDeadband)
+    {
+        CtrlAllDeviceByFunc(monitor, F_HUMI, OFF, 0);
+    }
+
+    //加热
+    if(tempNow <= HeatTarge)
+    {
+        CtrlAllDeviceByFunc(monitor, F_HEAT, ON, 0);
+    }
+    else if(tempNow >= HeatTarge + tempSet.tempDeadband)
+    {
+        CtrlAllDeviceByFunc(monitor, F_HEAT, OFF, 0);
+    }
+
+    //除湿 降温
+    if(humiNow >= dehumiTarget)
+    {
+        CtrlAllDeviceByFunc(monitor, F_DEHUMI, ON, 0);
+        //如果关联的话需要开启COOL_TYPE
+        if(ON == lock)
+        {
+            CtrlAllDeviceByType(monitor, COOL_TYPE, ON, 0);
+        }
+    }
+    else if(humiNow <= dehumiTarget - humiSet.humidDeadband)
+    {
+        CtrlAllDeviceByFunc(monitor, F_DEHUMI, OFF, 0);
+        //如果cool和dehumi关联的话
+        if(ON == lock)
+        {
+            if(tempNow >= coolTarge)
+            {
+                CtrlAllDeviceByType(monitor, DEHUMI_TYPE, ON, 0);
+            }
+        }
+    }
+
+    if(tempNow >= coolTarge)
+    {
+        //打开所以制冷功能设备
+        CtrlAllDeviceByFunc(monitor, F_COOL, ON, 0);
+        if(ON == lock)
+        {
+            CtrlAllDeviceByType(monitor, DEHUMI_TYPE, ON, 0);
+        }
+    }
+    else if(tempNow <= (coolTarge - tempSet.tempDeadband))
+    {
+        CtrlAllDeviceByFunc(monitor, F_COOL, OFF, 0);
+        if(ON == lock)
+        {
+            if(humiNow >= dehumiTarget)
+            {
+                CtrlAllDeviceByType(monitor, COOL_TYPE, ON, 0);
+            }
+        }
+    }
+
+}
+
 void humiProgram(type_monitor_t *monitor, type_uart_class uart)
 {
     int             humiNow             = GetSensorMainValue(monitor, F_S_HUMI);
@@ -2158,10 +2267,21 @@ void humiProgram(type_monitor_t *monitor, type_uart_class uart)
         if(humiNow >= dehumiTarget)
         {
             CtrlAllDeviceByFunc(monitor, F_DEHUMI, ON, 0);
+            if(ON == GetSysSet()->tempSet.coolingDehumidifyLock)//Justin lock
+            {
+                CtrlAllDeviceByType(monitor, COOL_TYPE, ON, 0);
+            }
         }
         else if(humiNow <= dehumiTarget - humiSet.humidDeadband)
         {
             CtrlAllDeviceByFunc(monitor, F_DEHUMI, OFF, 0);
+            if(ON == GetSysSet()->tempSet.coolingDehumidifyLock)//Justin lock
+            {
+                if(ON == GetACState_UseByLock(monitor, COOL_TYPE))
+                {
+                    CtrlAllDeviceByType(monitor, DEHUMI_TYPE, ON, 0);
+                }
+            }
         }
 
         if(humiNow <= humiTarget)
@@ -2172,16 +2292,6 @@ void humiProgram(type_monitor_t *monitor, type_uart_class uart)
         {
             CtrlAllDeviceByFunc(monitor, F_HUMI, OFF, 0);
         }
-
-//        //当前有一个逻辑是降温和除湿联动选择
-//        if(ON == tempSet.coolingDehumidifyLock)//Justin
-//        {
-//            //如果除湿是开的话，AC_cool 不能关，因为可能AC_cool 上插着风扇
-//            if(ON == GetDeviceStateByFunc(monitor, F_DEHUMI))
-//            {
-//                CtrlAllDeviceByType(monitor, COOL_TYPE, ON, 0);
-//            }
-//        }
     }
 
 }
@@ -2212,10 +2322,21 @@ void tempProgram(type_monitor_t *monitor, type_uart_class uart)
         {
             //打开所以制冷功能设备
             CtrlAllDeviceByFunc(monitor, F_COOL, ON, 0);
+            if(ON == GetSysSet()->tempSet.coolingDehumidifyLock)//Justin lock
+            {
+                CtrlAllDeviceByType(monitor, DEHUMI_TYPE, ON, 0);
+            }
         }
         else if(tempNow <= (coolTarge - tempSet.tempDeadband))
         {
             CtrlAllDeviceByFunc(monitor, F_COOL, OFF, 0);
+            if(ON == GetSysSet()->tempSet.coolingDehumidifyLock)//Justin lock
+            {
+                if(ON == GetACState_UseByLock(monitor, DEHUMI_TYPE))
+                {
+                    CtrlAllDeviceByType(monitor, COOL_TYPE, ON, 0);
+                }
+            }
         }
 
         if(tempNow <= HeatTarge)

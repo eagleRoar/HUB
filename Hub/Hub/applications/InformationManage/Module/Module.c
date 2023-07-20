@@ -373,29 +373,6 @@ void CtrlAllDeviceByFunc(type_monitor_t *monitor, u8 func, u8 en, u8 value)
                 }
             }
         }
-
-        //如果是除湿制冷关联
-        if(ON == GetSysSet()->tempSet.coolingDehumidifyLock)
-        {
-            for(port = 0; port < device->storage_size; port++)
-            {
-                //如果是制冷
-                if(COOL_TYPE == device->port[port].type)
-                {
-                    if(ON == GetACState_UseByLock(monitor, DEHUMI_TYPE))
-                    {
-                        device->port[port].ctrl.d_state = ON;
-                    }
-                }
-                else if(DEHUMI_TYPE == device->port[port].type)
-                {
-                    if(ON == GetACState_UseByLock(monitor, COOL_TYPE))
-                    {
-                        device->port[port].ctrl.d_state = ON;
-                    }
-                }
-            }
-        }
     }
 }
 
@@ -1629,7 +1606,7 @@ rt_err_t SetAquaDefault(type_monitor_t *monitor, u32 uuid, u8 type, u8 addr)
             aqua.uuid = uuid;
             aqua.type = type;
             aqua.addr = addr;
-            strncpy(aqua.name, "aqua", MODULE_NAMESZ);
+            strncpy(aqua.name, "Aqua", MODULE_NAMESZ);
             aqua.ctrl_addr = AQUA_WORK_ADDR;
             aqua.main_type = S_AQUA;
             aqua.storage_size = 1;
