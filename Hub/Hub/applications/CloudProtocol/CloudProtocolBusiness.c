@@ -2415,10 +2415,12 @@ char *SendHubReportWarn(char *cmd, sys_set_t *set, u8 warn_no, u16 value, u8 off
             }
             else
             {
+#if (HUB_SELECT == HUB_IRRIGSTION)
                 if(offline_no < TANK_LIST_MAX)
                 {
                     cJSON_AddStringToObject(json, "name", GetMonitor()->aqua[offline_no].name);
                 }
+#endif
             }
             cJSON_AddNumberToObject(json, "value", VALUE_NULL);
         }
@@ -6706,10 +6708,10 @@ char *ReplyGetAquaState(cloudcmd_t *cmd)
                     itoa(aqua->uuid, name1, 16);
                     sprintf(name, "AQU%s",name1);
                     cJSON_AddStringToObject(json, "aquaSn", name);
-                    cJSON_AddStringToObject(json, "model", "Aqua-Pro-I");
-                    sprintf(name, "v%d.%3d", state->aqua_firm_ver / 1000, state->aqua_firm_ver % 1000);
+                    cJSON_AddStringToObject(json, "model", "Aqua-Pro");
+                    sprintf(name, "v%d.%03d", state->aqua_firm_ver / 1000, state->aqua_firm_ver % 1000);
                     cJSON_AddStringToObject(json, "firmwareVer", name);
-                    sprintf(name, "v%d.%3d", state->aqua_hmi_ver / 1000, state->aqua_hmi_ver % 1000);
+                    sprintf(name, "v%d.%03d", state->aqua_hmi_ver / 1000, state->aqua_hmi_ver % 1000);
                     cJSON_AddStringToObject(json, "hmiVer", name);
                     break;
                 }

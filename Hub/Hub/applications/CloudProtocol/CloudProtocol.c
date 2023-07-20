@@ -1925,6 +1925,7 @@ void sendOfflinewarnning(type_monitor_t *monitor)
     }
 
     //报aqua失联
+#if (HUB_SELECT == HUB_IRRIGSTION)
     for(index = 0; index < monitor->aqua_size; index++)
     {
         if(offlineAqua[index] != monitor->aqua[index].conn_state)
@@ -1963,6 +1964,7 @@ void sendOfflinewarnning(type_monitor_t *monitor)
             }
         }
     }
+#endif
 }
 
 void sendwarnningInfo(void)

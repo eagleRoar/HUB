@@ -25,7 +25,7 @@
 #if(HUB_ENVIRENMENT == HUB_SELECT)
 #define FIRMWAREVISION                  "0.1.4"
 #elif(HUB_IRRIGSTION == HUB_SELECT)
-#define FIRMWAREVISION                  "1.1.4"
+#define FIRMWAREVISION                  "1.1.5"
 #endif
 #define BOOTLOADVISION                  "0.0.1"
 

@@ -313,25 +313,43 @@ void CtrlAllDeviceByType(type_monitor_t *monitor, u8 type, u8 en, u8 value)
     }
 }
 
+//专用于判断cool和dehumi联动
+u8 GetACState_UseByLock(type_monitor_t *monitor, u8 type)
+{
+    device_t    *device     = RT_NULL;
+
+    for(int i = 0; i < monitor->device_size; i++)
+    {
+        device = &monitor->device[i];
+        if(type == device->type)
+        {
+            if((ON == device->port[0].ctrl.d_state) &&
+               (MANUAL_HAND_ON != device->port[0].manual.manual))
+            {
+                return ON;
+            }
+        }
+        else if(AC_4_TYPE == device->type)
+        {
+            for(int j = 0; j < device->storage_size; j++)
+            {
+                if((ON == device->port[j].ctrl.d_state) &&
+                   (MANUAL_HAND_ON != device->port[j].manual.manual))
+                {
+                    return ON;
+                }
+            }
+        }
+    }
+
+    return OFF;
+}
+
 void CtrlAllDeviceByFunc(type_monitor_t *monitor, u8 func, u8 en, u8 value)
 {
     u8          index       = 0;
     u8          port        = 0;
-//    u16         temp        = 0;
-//    u16         res         = 0;
     device_t    *device     = RT_NULL;
-//    proTempSet_t    tempSet;
-
-//    GetNowSysSet(&tempSet, RT_NULL, RT_NULL, RT_NULL, RT_NULL, RT_NULL, RT_NULL);
-
-//    if(DAY_TIME == GetSysSet()->dayOrNight)
-//    {
-//        temp = tempSet.dayCoolingTarget;
-//    }
-//    else
-//    {
-//        temp = tempSet.nightCoolingTarget;
-//    }
 
     for(index = 0;index < monitor->device_size; index++)
     {
@@ -352,6 +370,29 @@ void CtrlAllDeviceByFunc(type_monitor_t *monitor, u8 func, u8 en, u8 value)
                 {
                     device->port[port].ctrl.d_state = en;
                     device->port[port].ctrl.d_value = value;
+                }
+            }
+        }
+
+        //如果是除湿制冷关联
+        if(ON == GetSysSet()->tempSet.coolingDehumidifyLock)
+        {
+            for(port = 0; port < device->storage_size; port++)
+            {
+                //如果是制冷
+                if(COOL_TYPE == device->port[port].type)
+                {
+                    if(ON == GetACState_UseByLock(monitor, DEHUMI_TYPE))
+                    {
+                        device->port[port].ctrl.d_state = ON;
+                    }
+                }
+                else if(DEHUMI_TYPE == device->port[port].type)
+                {
+                    if(ON == GetACState_UseByLock(monitor, COOL_TYPE))
+                    {
+                        device->port[port].ctrl.d_state = ON;
+                    }
                 }
             }
         }

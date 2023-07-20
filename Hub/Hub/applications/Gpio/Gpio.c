@@ -133,7 +133,7 @@ void LedTaskEntry(void* parameter)
     static      u16             time1s              = 0;
     while(1)
     {
-        time500ms = TimerTask(&time500ms, 500/100, &Timer500msTouch);                       //1s定时任务
+        time500ms = TimerTask(&time500ms, 500/100, &Timer500msTouch);               //1s定时任务
         time1s = TimerTask(&time1s, 1000/100, &Timer1sTouch);                       //1s定时任务
 
         //100ms

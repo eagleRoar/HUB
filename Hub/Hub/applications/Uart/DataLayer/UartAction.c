@@ -2173,15 +2173,15 @@ void humiProgram(type_monitor_t *monitor, type_uart_class uart)
             CtrlAllDeviceByFunc(monitor, F_HUMI, OFF, 0);
         }
 
-        //当前有一个逻辑是降温和除湿联动选择
-        if(ON == tempSet.coolingDehumidifyLock)
-        {
-            //如果除湿是开的话，AC_cool 不能关，因为可能AC_cool 上插着风扇
-            if(ON == GetDeviceStateByFunc(monitor, F_DEHUMI))
-            {
-                CtrlAllDeviceByType(monitor, COOL_TYPE, ON, 0);
-            }
-        }
+//        //当前有一个逻辑是降温和除湿联动选择
+//        if(ON == tempSet.coolingDehumidifyLock)//Justin
+//        {
+//            //如果除湿是开的话，AC_cool 不能关，因为可能AC_cool 上插着风扇
+//            if(ON == GetDeviceStateByFunc(monitor, F_DEHUMI))
+//            {
+//                CtrlAllDeviceByType(monitor, COOL_TYPE, ON, 0);
+//            }
+//        }
     }
 
 }

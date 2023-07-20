@@ -260,7 +260,9 @@ int main(void)
             menualHandProgram(GetMonitor(), deviceObj, RT_NULL, aquaObj);
 #endif
             //报警功能
+#if(HUB_SELECT == HUB_IRRIGSTION)
             if(YES == sendWarnFlag)
+#endif
             {
                 warnProgram(GetMonitor(), GetSysSet());             //监听告警信息
             }
@@ -282,7 +284,6 @@ int main(void)
 #if(HUB_SELECT == HUB_ENVIRENMENT)
             startProgram = YES;
 #endif
-
         }
 
         //60s 主动发送给云服务
@@ -296,8 +297,9 @@ int main(void)
                     SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT, 0 , 0, RT_NULL, RT_NULL, YES, 0, NO);
                 }
             }
-
+#if(HUB_SELECT == HUB_IRRIGSTION)
             sendWarnFlag = YES;
+#endif
         }
 
         rt_thread_mdelay(MAIN_PERIOD);
