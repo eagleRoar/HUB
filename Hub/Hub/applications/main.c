@@ -168,7 +168,7 @@ int main(void)
             {
                 sendOfflinewarnning(GetMonitor());      //发送离线报警
 #if(HUB_SELECT == HUB_ENVIRENMENT)
-                sendwarnningInfo();     //该报警函数写的很乱，需要优化 Justin debug
+                sendwarnningInfo();                     //该报警函数写的很乱，需要优化 Justin debug
 #endif
             }
         }

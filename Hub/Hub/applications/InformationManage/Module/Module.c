@@ -597,7 +597,7 @@ int getSensorDataByFunc(type_monitor_t *monitor, u8 func)
                         temp_data = sensor->__stora[port].value;
                     }
 
-                    data += temp_data;//sensor->__stora[port].value;
+                    data += temp_data;
                 }
             }
         }

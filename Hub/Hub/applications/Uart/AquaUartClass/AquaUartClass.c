@@ -974,13 +974,13 @@ static void SendCmd(void)
         }
     }
 
-    LOG_I("aqua sendCmd : ");
-    for(int i = 0; i < first->keyData.dataSegment.len; i++)
-    {
-        rt_kprintf(" %02x",first->keyData.dataSegment.data[i]);
-
-    }
-    rt_kprintf("\r\n");//Justin
+//    LOG_I("aqua sendCmd : ");
+//    for(int i = 0; i < first->keyData.dataSegment.len; i++)
+//    {
+//        rt_kprintf(" %02x",first->keyData.dataSegment.data[i]);
+//
+//    }
+//    rt_kprintf("\r\n");//Justin
 
     //5.将这个任务从任务列表中移出去
     aquaObject.taskList.DeleteToList(first->keyData);

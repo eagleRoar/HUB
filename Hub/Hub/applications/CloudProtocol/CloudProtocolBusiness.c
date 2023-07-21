@@ -1247,9 +1247,11 @@ void CmdSetWarn(char *data, cloudcmd_t *cmd, sys_set_t *set)
         GetValueByU16(temp, "dayTempMin", &set->sysWarn.dayTempMin);
         GetValueByU16(temp, "dayTempMax", &set->sysWarn.dayTempMax);
         GetValueByU8(temp, "dayTempEn", &set->sysWarn.dayTempEn);
+        GetValueByU8(temp, "dayTempBuzz", &set->sysWarn.dayTempBuzz);
         GetValueByU16(temp, "dayhumidMin", &set->sysWarn.dayhumidMin);
         GetValueByU16(temp, "dayhumidMax", &set->sysWarn.dayhumidMax);
         GetValueByU8(temp, "dayhumidEn", &set->sysWarn.dayhumidEn);
+        GetValueByU8(temp, "dayhumidBuzz", &set->sysWarn.dayhumidBuzz);
         GetValueByU16(temp, "dayCo2Min", &set->sysWarn.dayCo2Min);
         GetValueByU16(temp, "dayCo2Max", &set->sysWarn.dayCo2Max);
         GetValueByU8(temp, "dayCo2En", &set->sysWarn.dayCo2En);
@@ -1263,9 +1265,11 @@ void CmdSetWarn(char *data, cloudcmd_t *cmd, sys_set_t *set)
         GetValueByU16(temp, "nightTempMin", &set->sysWarn.nightTempMin);
         GetValueByU16(temp, "nightTempMax", &set->sysWarn.nightTempMax);
         GetValueByU8(temp, "nightTempEn", &set->sysWarn.nightTempEn);
+        GetValueByU8(temp, "nightTempBuzz", &set->sysWarn.nightTempBuzz);
         GetValueByU16(temp, "nighthumidMin", &set->sysWarn.nighthumidMin);
         GetValueByU16(temp, "nighthumidMax", &set->sysWarn.nighthumidMax);
         GetValueByU8(temp, "nighthumidEn", &set->sysWarn.nighthumidEn);
+        GetValueByU8(temp, "nighthumidBuzz", &set->sysWarn.nighthumidBuzz);
         GetValueByU16(temp, "nightCo2Min", &set->sysWarn.nightCo2Min);
         GetValueByU16(temp, "nightCo2Max", &set->sysWarn.nightCo2Max);
         GetValueByU8(temp, "nightCo2En", &set->sysWarn.nightCo2En);
@@ -2585,9 +2589,9 @@ char *SendHubReport(char *cmd, sys_set_t *set)
         cJSON_AddNumberToObject(json, "nameSeq", GetHub()->nameSeq);
 
 #if(HUB_SELECT == HUB_ENVIRENMENT)
-        cJSON_AddNumberToObject(json, "co2", getSensorDataByFunc(GetMonitor(), F_S_CO2));
-        cJSON_AddNumberToObject(json, "temp", getSensorDataByFunc(GetMonitor(), F_S_TEMP));
-        cJSON_AddNumberToObject(json, "humid", getSensorDataByFunc(GetMonitor(), F_S_HUMI));
+        cJSON_AddNumberToObject(json, "co2", GetSensorMainValue(GetMonitor(), F_S_CO2));
+        cJSON_AddNumberToObject(json, "temp", GetSensorMainValue(GetMonitor(), F_S_TEMP));
+        cJSON_AddNumberToObject(json, "humid", GetSensorMainValue(GetMonitor(), F_S_HUMI));
 
         if(ON == set->warn[WARN_CO2_HIGHT - 1])
         {
@@ -4350,7 +4354,7 @@ char *ReplyGetSysPara(char *cmd, cloudcmd_t cloud, sys_para_t para)
         cJSON_AddNumberToObject(json, "dayNightMode", para.dayNightMode);
         cJSON_AddNumberToObject(json, "photocellSensitivity", para.photocellSensitivity);
 
-        cJSON_AddNumberToObject(json, "lightIntensity", getSensorDataByFunc(GetMonitor(), F_S_LIGHT));
+        cJSON_AddNumberToObject(json, "lightIntensity", GetSensorMainValue(GetMonitor(), F_S_LIGHT));
         cJSON_AddNumberToObject(json, "dayTime", para.dayTime);
         cJSON_AddNumberToObject(json, "nightTime", para.nightTime);
         cJSON_AddNumberToObject(json, "maintain", para.maintain);
@@ -4526,9 +4530,9 @@ char *ReplyGetHubState(char *cmd, cloudcmd_t cloud)
         cJSON_AddNumberToObject(json, "maintain", GetSysSet()->sysPara.maintain);
         cJSON_AddNumberToObject(json, "ver", GetSysSet()->ver);
 #if(HUB_SELECT == HUB_ENVIRENMENT)
-        cJSON_AddNumberToObject(json, "co2", getSensorDataByFunc(GetMonitor(), F_S_CO2));
-        cJSON_AddNumberToObject(json, "temp", getSensorDataByFunc(GetMonitor(), F_S_TEMP));
-        cJSON_AddNumberToObject(json, "humid", getSensorDataByFunc(GetMonitor(), F_S_HUMI));
+        cJSON_AddNumberToObject(json, "co2", GetSensorMainValue(GetMonitor(), F_S_CO2));
+        cJSON_AddNumberToObject(json, "temp", GetSensorMainValue(GetMonitor(), F_S_TEMP));
+        cJSON_AddNumberToObject(json, "humid", GetSensorMainValue(GetMonitor(), F_S_HUMI));
 
         if((GetSysSet()->co2Set.coolingLock == ON) || (GetSysSet()->co2Set.dehumidifyLock == ON))
         {

@@ -164,46 +164,81 @@ void LedTaskEntry(void* parameter)
 }
 #if(HUB_SELECT == HUB_ENVIRENMENT)
 //报警逻辑: 如果是有标志报警的话就一直报 否则关闭
-void AlarmLedProgram(void)
+void AlarmLedProgram(void)//Justin debug 未完待续
 {
-    u8 state = OFF;
+    u8          state           = OFF;
+    sys_set_t   *set            = GetSysSet();
+    u8          dayOrNight      = GetSysSet()->dayOrNight;
 
-    if((ON == GetSysSet()->sysWarn.dayCo2Buzz && DAY_TIME == GetSysSet()->dayOrNight) ||
-       (ON == GetSysSet()->sysWarn.nightCo2Buzz && NIGHT_TIME == GetSysSet()->dayOrNight))
+    if(DAY_TIME == dayOrNight)
     {
-        if(ON == GetSysSet()->warn[WARN_CO2_HIGHT - 1])
+        //Justin debug
+        if(ON == set->sysWarn.dayTempEn)
         {
-            state = ON;
+            if(ON == set->sysWarn.dayTempBuzz)
+            {
+                if(ON ==set->warn[WARN_TEMP_HIGHT - 1] || ON == set->warn[WARN_TEMP_LOW - 1])
+                {
+                    state = ON;
+                }
+            }
         }
-        else
+
+        if(ON == set->sysWarn.dayhumidEn)
         {
-            state = OFF;
+            if(ON == set->sysWarn.dayhumidBuzz)
+            {
+                if(ON == set->warn[WARN_HUMI_HIGHT - 1] || ON == set->warn[WARN_HUMI_LOW - 1])
+                {
+                    state = ON;
+                }
+            }
+        }
+
+        if(ON == set->sysWarn.dayCo2En)
+        {
+            if(ON == set->sysWarn.dayCo2Buzz)
+            {
+                if(ON == set->warn[WARN_CO2_HIGHT - 1] || ON == set->warn[WARN_CO2_LOW - 1])
+                {
+                    state = ON;
+                }
+            }
         }
     }
-
-    if((ON == GetSysSet()->sysWarn.dayTempBuzz && DAY_TIME == GetSysSet()->dayOrNight) ||
-       (ON == GetSysSet()->sysWarn.nightTempBuzz && NIGHT_TIME == GetSysSet()->dayOrNight))
+    else
     {
-        if(ON == GetSysSet()->warn[WARN_TEMP_HIGHT - 1] || ON == GetSysSet()->warn[WARN_TEMP_LOW - 1])
+        if(ON == set->sysWarn.nightTempEn)
         {
-            state = ON;
+            if(ON == set->sysWarn.nightTempBuzz)
+            {
+                if(ON ==set->warn[WARN_TEMP_HIGHT - 1] || ON == set->warn[WARN_TEMP_LOW - 1])
+                {
+                    state = ON;
+                }
+            }
         }
-        else
-        {
-            state = OFF;
-        }
-    }
 
-    if((ON == GetSysSet()->sysWarn.dayhumidBuzz && DAY_TIME == GetSysSet()->dayOrNight) ||
-       (ON == GetSysSet()->sysWarn.nighthumidBuzz && NIGHT_TIME == GetSysSet()->dayOrNight))
-    {
-        if(ON == GetSysSet()->warn[WARN_HUMI_HIGHT - 1] || ON == GetSysSet()->warn[WARN_HUMI_LOW - 1])
+        if(ON == set->sysWarn.nighthumidEn)
         {
-            state = ON;
+            if(ON == set->sysWarn.nighthumidBuzz)
+            {
+                if(ON == set->warn[WARN_HUMI_HIGHT - 1] || ON == set->warn[WARN_HUMI_LOW - 1])
+                {
+                    state = ON;
+                }
+            }
         }
-        else
+
+        if(ON == set->sysWarn.nightCo2En)
         {
-            state = OFF;
+            if(ON == set->sysWarn.nightCo2Buzz)
+            {
+                if(ON == set->warn[WARN_CO2_HIGHT - 1] || ON == set->warn[WARN_CO2_LOW - 1])
+                {
+                    state = ON;
+                }
+            }
         }
     }
 
