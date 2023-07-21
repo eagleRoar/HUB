@@ -1680,6 +1680,8 @@ void CmdSetPortName(char *data, cloudcmd_t *cmd)
     device_t        *device             = RT_NULL;
 #if(HUB_SELECT == HUB_ENVIRENMENT)
     line_t          *line               = RT_NULL;
+#elif(HUB_SELECT == HUB_IRRIGSTION)
+    aqua_t          *aqua               = RT_NULL;
 #endif
     u8              fatherFlg           = 0;
 
@@ -1706,6 +1708,8 @@ void CmdSetPortName(char *data, cloudcmd_t *cmd)
         device = GetDeviceByAddr(GetMonitor(), addr);
 #if(HUB_SELECT == HUB_ENVIRENMENT)
         line = GetLineByAddr(GetMonitor(), addr);
+#elif(HUB_SELECT == HUB_IRRIGSTION)
+        aqua = GetAquaByAddr(GetMonitor(), addr);//Justin debug新增加aqua改名字未验证
 #endif
 
         if(RT_NULL != device)
@@ -1727,6 +1731,12 @@ void CmdSetPortName(char *data, cloudcmd_t *cmd)
         {
             strncpy(line->name, name, STORAGE_NAMESZ - 1);
             line->name[STORAGE_NAMESZ - 1] = '\0';
+        }
+#elif(HUB_SELECT == HUB_IRRIGSTION)
+        else if(RT_NULL != aqua)
+        {
+            strncpy(aqua->name, name, STORAGE_NAMESZ - 1);
+            aqua->name[STORAGE_NAMESZ - 1] = '\0';
         }
 #endif
 
@@ -4410,6 +4420,8 @@ char *ReplySetPortName(char *cmd, cloudcmd_t cloud)
     device_t        *device     = RT_NULL;
 #if(HUB_SELECT == HUB_ENVIRENMENT)
     line_t          *line       = RT_NULL;
+#elif(HUB_SELECT == HUB_IRRIGSTION)
+    aqua_t          *aqua       = RT_NULL;
 #endif
     u8              fatherFlg   = 0;
     if(RT_NULL != json)
@@ -4433,6 +4445,8 @@ char *ReplySetPortName(char *cmd, cloudcmd_t cloud)
         device = GetDeviceByAddr(GetMonitor(), addr);
 #if(HUB_SELECT == HUB_ENVIRENMENT)
         line = GetLineByAddr(GetMonitor(), addr);
+#elif(HUB_SELECT == HUB_IRRIGSTION)
+        aqua = GetAquaByAddr(GetMonitor(), addr);//Justin debug 新加未验证
 #endif
 
         if(RT_NULL != device)
@@ -4451,6 +4465,11 @@ char *ReplySetPortName(char *cmd, cloudcmd_t cloud)
         else if(RT_NULL != line)
         {
             cJSON_AddStringToObject(json, "name", line->name);
+        }
+#elif(HUB_SELECT == HUB_IRRIGSTION)
+        else if(RT_NULL != aqua)
+        {
+            cJSON_AddStringToObject(json, "name", aqua->name);
         }
 #endif
         cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
