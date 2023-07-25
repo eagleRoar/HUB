@@ -457,14 +457,14 @@ void CtrlAllDeviceByFunc(type_monitor_t *monitor, u8 func, u8 en, u8 value)
                 }
                 else if(PRO_DEHUMI_TYPE == device->port[0].type)
                 {
-                    deHumi = deHumi / 10;
+                    u16 deHumiTemp = deHumi / 10;
                     if(ON == en)
                     {
                         u8 state = 0;
 
                         state |= 0x80;//开启
-                        LOG_I("deHumi = %x",deHumi);//Justin
-                        state |= deHumi;
+                        //LOG_I("deHumiTemp = %d",deHumiTemp);
+                        state |= deHumiTemp;
                         device->port[0].ctrl.d_state = state;
                         device->port[0].ctrl.d_value = 0x00;//自动
                     }
@@ -473,7 +473,7 @@ void CtrlAllDeviceByFunc(type_monitor_t *monitor, u8 func, u8 en, u8 value)
                         u8 state = 0;
 
                         state &= 0x7F;//开启
-                        state |= deHumi;
+                        state |= deHumiTemp;
                         device->port[0].ctrl.d_state = state;
                         device->port[0].ctrl.d_value = 0x00;//自动
                     }
