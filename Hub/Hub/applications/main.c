@@ -184,9 +184,7 @@ int main(void)
             {
                 if(YES == startProgram)
                 {
-//                    tempProgram(GetMonitor(), *deviceObj);
                     co2Program(GetMonitor(), *deviceObj, 1000);
-//                    humiProgram(GetMonitor(), *deviceObj);
                     TempAndHumiProgram(GetMonitor(), *deviceObj);
 
                     for(int i = 0; i < GetMonitor()->line_size; i++)
@@ -283,6 +281,7 @@ int main(void)
 #if(HUB_SELECT == HUB_ENVIRENMENT)
             startProgram = YES;
 #endif
+
         }
 
         //60s 主动发送给云服务

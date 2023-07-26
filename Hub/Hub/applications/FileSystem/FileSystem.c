@@ -37,6 +37,7 @@ char            backup_dev_file[]       = "/backup/informations/module.bin";
 char            backup_sysset_file[]    = "/backup/informations/sys_set.bin";
 char            backup_recipe_file[]    = "/backup/informations/recipe.bin";
 char            backup_tank_file[]      = "/backup/informations/tank.bin";
+char            backup_ulog[]           = "/backup/console.txt";
 u8              saveMqttUrlFile         = NO;
 
 sys_ver_t   sys_ver;
@@ -262,6 +263,18 @@ static void SaveStructVer(char *fileName)
     else
     {
         LOG_E("Save struct ver data Fail");
+    }
+}
+
+void SaveConsole(char *data, size_t len)//保存日志文件
+{
+    if(RT_EOK == WriteFileData(backup_ulog, (u8 *)data, 0, len))
+    {
+        LOG_I("Save ulog data OK");
+    }
+    else
+    {
+        LOG_E("Save ulog data Fail");
     }
 }
 

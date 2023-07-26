@@ -438,28 +438,6 @@ static void GenerateVuleByCtrl(device_t device, u8 func, u8 state, u16 *value)
     }
 }
 
-////生成发送的数据
-//static void GenerateRegisterData(u32 destUuid, u8 newAddr, u8 type, u32 souceUuid, u8 *data)
-//{
-//    rt_memset(data, 0, 15);
-//
-//    data[0] = REGISTER_CODE;
-//    data[1] = 0x80;
-//    data[2] = destUuid >> 24;
-//    data[3] = destUuid >> 16;
-//    data[4] = destUuid >> 8;
-//    data[5] = destUuid;
-//    data[6] = 6;
-//    data[7] = newAddr;
-//    data[8] = type;
-//    data[9] = souceUuid >> 24;
-//    data[10] = souceUuid >> 16;
-//    data[11] = souceUuid >> 8;
-//    data[12] = souceUuid;
-//    data[13] = usModbusRTU_CRC(data, 13);
-//    data[14] = usModbusRTU_CRC(data, 13) >> 8;
-//}
-
 //生成可以加载到keyValue 的数据
 static rt_err_t GenerateKVData(KV *kv, device_t device, u8 *data, u8 len)
 {
@@ -940,26 +918,14 @@ static void KeepConnect(type_monitor_t *monitor)
 
     if(YES == IsNeedSendCtrToConnect(monitor->device[i].addr, &lastCtrl))
     {
-//        LOG_E(".................KeepConnect, addr = %x",monitor->device[i].addr);
-        //1.如果是在线 则发送前一次的数据保持连续
-
-//            if((CON_SUCCESS == monitor->device[i].conn_state) ||
-//               (CON_NULL == monitor->device[i].conn_state))
-
+        GenerateSendData(monitor->device[i], lastCtrl, data);
+        if(RT_EOK == GenerateKVData(&keyValue, monitor->device[i], data, 8))
         {
-            GenerateSendData(monitor->device[i], lastCtrl, data);
-            if(RT_EOK == GenerateKVData(&keyValue, monitor->device[i], data, 8))
-            {
-                uart2Object.taskList.AddToList(keyValue, NO);
+            uart2Object.taskList.AddToList(keyValue, NO);
 
-                //3.回收空间
-                rt_free(keyValue.dataSegment.data);
-            }
+            //3.回收空间
+            rt_free(keyValue.dataSegment.data);
         }
-//            else if(CON_FAIL == monitor->device[i].conn_state)//要考虑刚开始的时候全部都是失联的情况
-//            {
-//
-//            }
     }
 
     if((i + 1) < monitor->device_size)

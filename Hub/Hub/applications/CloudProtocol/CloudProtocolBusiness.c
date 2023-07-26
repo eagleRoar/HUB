@@ -1709,7 +1709,7 @@ void CmdSetPortName(char *data, cloudcmd_t *cmd)
 #if(HUB_SELECT == HUB_ENVIRENMENT)
         line = GetLineByAddr(GetMonitor(), addr);
 #elif(HUB_SELECT == HUB_IRRIGSTION)
-        aqua = GetAquaByAddr(GetMonitor(), addr);//Justin debug新增加aqua改名字未验证
+        aqua = GetAquaByAddr(GetMonitor(), addr);
 #endif
 
         if(RT_NULL != device)
@@ -2616,7 +2616,6 @@ char *SendHubReport(char *cmd, sys_set_t *set)
             cJSON_AddNumberToObject(json, "co2State", NormalState);
         }
 
-
         if(ON == set->warn[WARN_TEMP_HIGHT - 1])
         {
             cJSON_AddNumberToObject(json, "tempState", HightState);
@@ -2629,7 +2628,6 @@ char *SendHubReport(char *cmd, sys_set_t *set)
         {
             cJSON_AddNumberToObject(json, "tempState", NormalState);
         }
-
 
         if(ON == set->warn[WARN_HUMI_HIGHT - 1])
         {
@@ -4139,16 +4137,10 @@ char *ReplyGetPumpSensorList(char *cmd, cloudcmd_t cloud)
                                (F_S_SEC == sensor.__stora[sen_no].func) ||
                                (F_S_ST == sensor.__stora[sen_no].func))
                             {
-                                item = cJSON_CreateObject();
-
-                                cJSON_AddNumberToObject(item, "id", sensor.addr);
-                                cJSON_AddNumberToObject(item, "mid", sensor.addr);
-                                cJSON_AddStringToObject(item, "name", GetTankSensorNameByType(sensor.__stora[sen_no].func));
-                                cJSON_AddNumberToObject(item, "value", getSensorDataByAddr(GetMonitor(), sensor.addr, sen_no));
-                                cJSON_AddNumberToObject(item, "tankNo", tankNo);
-                                cJSON_AddNumberToObject(item, "type", type);
-                                cJSON_AddStringToObject(item, "sensorType", GetTankSensorSByType(sensor.__stora[sen_no].func));
-                                cJSON_AddItemToArray(list, item);
+                                //生成标记
+                                char flagName[20] = " ";
+                                sprintf(flagName, "sen%dreg%d",index,sen_no);
+                                cJSON_AddItemToArray(list, cJSON_CreateString(flagName));
                             }
                         }
                     }
@@ -4160,6 +4152,48 @@ char *ReplyGetPumpSensorList(char *cmd, cloudcmd_t cloud)
         cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
         str = cJSON_PrintUnformatted(json);
         cJSON_Delete(json);
+
+        //替换
+        u16 length = strlen(str);
+        for(index = 0; index < GetMonitor()->sensor_size; index++)
+        {
+            sensor = GetMonitor()->sensor[index];
+            for(sen_no = 0; sen_no < SENSOR_VALUE_MAX; sen_no++)
+            {
+                char flagName[20] = " ";
+                sprintf(flagName, "sen%dreg%d",index,sen_no);
+                //对比出符合条件的寄存器
+                if(NULL != strstr(str, flagName))
+                {
+                    item = cJSON_CreateObject();
+                    if(item)
+                    {
+                        cJSON_AddNumberToObject(item, "id", sensor.addr);
+                        cJSON_AddNumberToObject(item, "mid", sensor.addr);
+                        cJSON_AddStringToObject(item, "name", GetTankSensorNameByType(sensor.__stora[sen_no].func));
+                        cJSON_AddNumberToObject(item, "value", getSensorDataByAddr(GetMonitor(), sensor.addr, sen_no));
+                        cJSON_AddNumberToObject(item, "tankNo", tankNo);
+                        cJSON_AddNumberToObject(item, "type", type);
+                        cJSON_AddStringToObject(item, "sensorType", GetTankSensorSByType(sensor.__stora[sen_no].func));
+
+                        char *tempC = RT_NULL;
+
+                        tempC = cJSON_PrintUnformatted(item);
+                        cJSON_Delete(item);
+                        if(tempC)
+                        {
+                            length += strlen(tempC);
+                            str = rt_realloc(str, length);
+                            sprintf(flagName, "\"sen%dreg%d\"",index,sen_no);//要全部替换
+                            str_replace1(str, flagName, tempC, length);
+                            //释放空间
+                            cJSON_free(tempC);
+                            tempC = RT_NULL;
+                        }
+                    }
+                }
+            }
+        }
     }
     else
     {
@@ -4488,6 +4522,13 @@ char *ReplyTest(char *cmd, cloudcmd_t cloud)
     if(RT_NULL != json)
     {
         cJSON_AddStringToObject(json, "cmd", cmd);
+
+        /*for(u16 i = 0; i < 1000; i++)
+        {
+            char test[10] = " ";
+            sprintf(test, "c%d", i);
+            cJSON_AddNumberToObject(json, test, i);
+        }*/
 
         str = cJSON_PrintUnformatted(json);
 

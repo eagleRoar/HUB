@@ -2267,7 +2267,7 @@ void humiProgram(type_monitor_t *monitor, type_uart_class uart)
         if(humiNow >= dehumiTarget)
         {
             CtrlAllDeviceByFunc(monitor, F_DEHUMI, ON, 0);
-            if(ON == GetSysSet()->tempSet.coolingDehumidifyLock)//Justin lock
+            if(ON == GetSysSet()->tempSet.coolingDehumidifyLock)
             {
                 CtrlAllDeviceByType(monitor, COOL_TYPE, ON, 0);
             }
@@ -2275,7 +2275,7 @@ void humiProgram(type_monitor_t *monitor, type_uart_class uart)
         else if(humiNow <= dehumiTarget - humiSet.humidDeadband)
         {
             CtrlAllDeviceByFunc(monitor, F_DEHUMI, OFF, 0);
-            if(ON == GetSysSet()->tempSet.coolingDehumidifyLock)//Justin lock
+            if(ON == GetSysSet()->tempSet.coolingDehumidifyLock)
             {
                 if(ON == GetACState_UseByLock(monitor, COOL_TYPE))
                 {
@@ -2322,7 +2322,7 @@ void tempProgram(type_monitor_t *monitor, type_uart_class uart)
         {
             //打开所以制冷功能设备
             CtrlAllDeviceByFunc(monitor, F_COOL, ON, 0);
-            if(ON == GetSysSet()->tempSet.coolingDehumidifyLock)//Justin lock
+            if(ON == GetSysSet()->tempSet.coolingDehumidifyLock)
             {
                 CtrlAllDeviceByType(monitor, DEHUMI_TYPE, ON, 0);
             }
@@ -2330,7 +2330,7 @@ void tempProgram(type_monitor_t *monitor, type_uart_class uart)
         else if(tempNow <= (coolTarge - tempSet.tempDeadband))
         {
             CtrlAllDeviceByFunc(monitor, F_COOL, OFF, 0);
-            if(ON == GetSysSet()->tempSet.coolingDehumidifyLock)//Justin lock
+            if(ON == GetSysSet()->tempSet.coolingDehumidifyLock)
             {
                 if(ON == GetACState_UseByLock(monitor, DEHUMI_TYPE))
                 {

@@ -318,7 +318,6 @@ void str_replace(char *original, char *pattern, char *replacement)
 
 void str_replace1(char *original, char *pattern, char *replacement, u16 size)
 {
-//    char buffer[2048];
     char *buffer = RT_NULL;
     buffer = rt_malloc(size);
     if(buffer)

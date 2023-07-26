@@ -164,7 +164,7 @@ void LedTaskEntry(void* parameter)
 }
 #if(HUB_SELECT == HUB_ENVIRENMENT)
 //报警逻辑: 如果是有标志报警的话就一直报 否则关闭
-void AlarmLedProgram(void)//Justin debug 未完待续
+void AlarmLedProgram(void)
 {
     u8          state           = OFF;
     sys_set_t   *set            = GetSysSet();
@@ -172,7 +172,6 @@ void AlarmLedProgram(void)//Justin debug 未完待续
 
     if(DAY_TIME == dayOrNight)
     {
-        //Justin debug
         if(ON == set->sysWarn.dayTempEn)
         {
             if(ON == set->sysWarn.dayTempBuzz)

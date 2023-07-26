@@ -980,7 +980,7 @@ static void SendCmd(void)
 //        rt_kprintf(" %02x",first->keyData.dataSegment.data[i]);
 //
 //    }
-//    rt_kprintf("\r\n");//Justin
+//    rt_kprintf("\r\n");
 
     //5.将这个任务从任务列表中移出去
     aquaObject.taskList.DeleteToList(first->keyData);
