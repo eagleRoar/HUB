@@ -4480,7 +4480,7 @@ char *ReplySetPortName(char *cmd, cloudcmd_t cloud)
 #if(HUB_SELECT == HUB_ENVIRENMENT)
         line = GetLineByAddr(GetMonitor(), addr);
 #elif(HUB_SELECT == HUB_IRRIGSTION)
-        aqua = GetAquaByAddr(GetMonitor(), addr);//Justin debug 新加未验证
+        aqua = GetAquaByAddr(GetMonitor(), addr);
 #endif
 
         if(RT_NULL != device)
@@ -4564,7 +4564,7 @@ char *ReplyGetHubState(char *cmd, cloudcmd_t cloud)
 
     char            *str        = RT_NULL;
     char            model[15];
-    char            name[12];
+    char            name[20];
     cJSON           *json       = cJSON_CreateObject();
 #if(HUB_SELECT == HUB_ENVIRENMENT)
     struct recipeInfor info;
@@ -4572,6 +4572,7 @@ char *ReplyGetHubState(char *cmd, cloudcmd_t cloud)
     char            day[3]      = "";
     sys_set_t       *set        = GetSysSet();
 #elif(HUB_SELECT == HUB_IRRIGSTION)
+    u16             length      = 0;
     cJSON           *tank       = RT_NULL;
     int             valueTemp[10]    = {VALUE_NULL,VALUE_NULL,VALUE_NULL,VALUE_NULL,VALUE_NULL,VALUE_NULL,VALUE_NULL,VALUE_NULL,VALUE_NULL,VALUE_NULL};
 #endif
@@ -4715,166 +4716,8 @@ char *ReplyGetHubState(char *cmd, cloudcmd_t cloud)
         {
             for(u8 no = 0; no < GetSysTank()->tank_size; no++)
             {
-                tank = cJSON_CreateObject();
-
-                if(RT_NULL != tank)
-                {
-                    cJSON_AddNumberToObject(tank, "no", GetSysTank()->tank[no].tankNo);
-                    for(u8 i = 0; i < 10; i++)
-                    {
-                        valueTemp[i] = VALUE_NULL;
-                    }
-                    for(u8 tank_id = 0; tank_id < 2; tank_id++)
-                    {
-                        for(u8 id = 0; id < TANK_SENSOR_MAX; id++)
-                        {
-                            if(GetSysTank()->tank[no].sensorId[tank_id][id] != 0)
-                            {
-                                for(u8 stora = 0; stora < GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->storage_size; stora++)
-                                {
-                                    if(F_S_EC == GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].func)
-                                    {
-                                        if(0 == tank_id)
-                                        {
-                                            valueTemp[0] = getSensorDataByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id], stora);
-                                        }
-                                        else
-                                        {
-                                            valueTemp[1] = getSensorDataByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id], stora);
-                                        }
-                                    }
-                                    else if(F_S_PH == GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].func)
-                                    {
-                                        if(0 == tank_id)
-                                        {
-                                            valueTemp[2] = getSensorDataByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id], stora);
-
-                                        }
-                                        else
-                                        {
-                                            valueTemp[3] = getSensorDataByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id], stora);
-
-                                        }
-                                    }
-                                    else if(F_S_WT == GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].func)
-                                    {
-                                        if(0 == tank_id)
-                                        {
-                                            valueTemp[4] = getSensorDataByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id], stora);
-                                        }
-                                        else
-                                        {
-                                            valueTemp[5] = getSensorDataByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id], stora);
-                                        }
-                                    }
-                                    else if(F_S_WL == GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].func)
-                                    {
-                                        valueTemp[6] = getSensorDataByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id], stora);
-                                    }
-                                    else if(F_S_SW == GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].func)
-                                    {
-                                        valueTemp[7] = getSensorDataByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id], stora);
-                                    }
-                                    else if(F_S_SEC == GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].func)
-                                    {
-                                        valueTemp[8] = getSensorDataByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id], stora);
-                                    }
-                                    else if(F_S_ST == GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].func)
-                                    {
-                                        valueTemp[9] = getSensorDataByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id], stora);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    cJSON_AddStringToObject(tank, "name",GetSysTank()->tank[no].name);
-                    cJSON_AddNumberToObject(tank, "tankEc",valueTemp[0]);
-                    cJSON_AddNumberToObject(tank, "inlineEc",valueTemp[1]);
-                    cJSON_AddNumberToObject(tank, "tankPh",valueTemp[2]);
-                    cJSON_AddNumberToObject(tank, "inlinePh",valueTemp[3]);
-                    cJSON_AddNumberToObject(tank, "tankWt",valueTemp[4]);
-                    cJSON_AddNumberToObject(tank, "inlineWt",valueTemp[5]);
-                    cJSON_AddNumberToObject(tank, "wl",valueTemp[6]);
-                    cJSON_AddNumberToObject(tank, "mm",valueTemp[7]);
-                    cJSON_AddNumberToObject(tank, "me",valueTemp[8]);
-                    cJSON_AddNumberToObject(tank, "mt",valueTemp[9]);
-
-                    tankWarnState_t *tankState = GetTankWarnState();
-
-                    cJSON_AddNumberToObject(tank, "tankEcState", tankState[no].tank_ec);
-                    cJSON_AddNumberToObject(tank, "tankPhState", tankState[no].tank_ph);
-                    cJSON_AddNumberToObject(tank, "tankWtState", tankState[no].tank_wt);
-                    cJSON_AddNumberToObject(tank, "inlineEcState", tankState[no].inline_ec);
-                    cJSON_AddNumberToObject(tank, "inlinePhState", tankState[no].inline_ph);
-                    cJSON_AddNumberToObject(tank, "inlineWtState", tankState[no].inline_wt);
-                    cJSON_AddNumberToObject(tank, "wlState", tankState[no].wl);
-                    cJSON_AddNumberToObject(tank, "mmState", tankState[no].sw);
-                    cJSON_AddNumberToObject(tank, "meState", tankState[no].sec);
-                    cJSON_AddNumberToObject(tank, "mtState", tankState[no].st);
-
-                    //Justin 加入以下的数据 会导致内存不足
-//                    cJSON *workingList = cJSON_CreateArray();
-//
-//                    if(workingList)
-//                    {
-//                        //返回pump
-//                        if(0 != GetSysTank()->tank[no].pumpId)
-//                        {
-//
-//                            //是否只有pump
-//                            u8 j = 0;
-//                            for(j = 0; j < VALVE_MAX; j++)
-//                            {
-//                                if(0 != GetSysTank()->tank[no].valve[j])
-//                                {
-//                                    break;
-//                                }
-//                            }
-//
-//                            if(VALVE_MAX == j)
-//                            {
-//                                cJSON *item = GetPumpAndValueState(GetMonitor(), GetSysTank()->tank[no].pumpId);
-//                                if(item)
-//                                {
-//
-//                                    cJSON_AddItemToArray(workingList, item);
-//                                }
-//                            }
-//                            else
-//                            {
-//                                for(u8 k = 0; k < VALVE_MAX; k++)
-//                                {
-//                                    if(0 != GetSysTank()->tank[no].valve[k])
-//                                    {
-//                                        cJSON *item = GetPumpAndValueState(GetMonitor(), GetSysTank()->tank[no].valve[k]);
-//                                        if(item)
-//                                        {
-//
-//                                            cJSON_AddItemToArray(workingList, item);
-//                                        }
-//                                    }
-//                                }
-//                            }
-//                        }
-//
-//                        for(u8 k = 0; k < VALVE_MAX; k++)
-//                        {
-//                            if(0 != GetSysTank()->tank[no].nopump_valve[k])
-//                            {
-//                                cJSON *item = GetPumpAndValueState(GetMonitor(), GetSysTank()->tank[no].nopump_valve[k]);
-//                                if(item)
-//                                {
-//
-//                                    cJSON_AddItemToArray(workingList, item);
-//                                }
-//                            }
-//                        }
-//
-//                        cJSON_AddItemToObject(tank, "workingList", workingList);
-//                    }
-
-                    cJSON_AddItemToArray(list, tank);
-                }
+                sprintf(name, "TankRep%d", no);
+                cJSON_AddItemToArray(list, cJSON_CreateString(name));//Justin debug 仅仅测试
             }
             cJSON_AddItemToObject(json, "pool", list);
         }
@@ -4886,6 +4729,213 @@ char *ReplyGetHubState(char *cmd, cloudcmd_t cloud)
 
         str = cJSON_PrintUnformatted(json);
         cJSON_Delete(json);
+
+#if(HUB_SELECT == HUB_IRRIGSTION)
+        length = strlen(str);
+        //替换
+        for(u8 no = 0; no < GetSysTank()->tank_size; no++)
+        {
+            tank = cJSON_CreateObject();
+
+            if(RT_NULL != tank)
+            {
+                cJSON_AddNumberToObject(tank, "no", GetSysTank()->tank[no].tankNo);
+                for(u8 i = 0; i < 10; i++)
+                {
+                    valueTemp[i] = VALUE_NULL;
+                }
+                for(u8 tank_id = 0; tank_id < 2; tank_id++)
+                {
+                    for(u8 id = 0; id < TANK_SENSOR_MAX; id++)
+                    {
+                        if(GetSysTank()->tank[no].sensorId[tank_id][id] != 0)
+                        {
+                            for(u8 stora = 0; stora < GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->storage_size; stora++)
+                            {
+                                if(F_S_EC == GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].func)
+                                {
+                                    if(0 == tank_id)
+                                    {
+                                        valueTemp[0] = getSensorDataByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id], stora);
+                                    }
+                                    else
+                                    {
+                                        valueTemp[1] = getSensorDataByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id], stora);
+                                    }
+                                }
+                                else if(F_S_PH == GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].func)
+                                {
+                                    if(0 == tank_id)
+                                    {
+                                        valueTemp[2] = getSensorDataByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id], stora);
+
+                                    }
+                                    else
+                                    {
+                                        valueTemp[3] = getSensorDataByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id], stora);
+
+                                    }
+                                }
+                                else if(F_S_WT == GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].func)
+                                {
+                                    if(0 == tank_id)
+                                    {
+                                        valueTemp[4] = getSensorDataByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id], stora);
+                                    }
+                                    else
+                                    {
+                                        valueTemp[5] = getSensorDataByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id], stora);
+                                    }
+                                }
+                                else if(F_S_WL == GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].func)
+                                {
+                                    valueTemp[6] = getSensorDataByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id], stora);
+                                }
+                                else if(F_S_SW == GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].func)
+                                {
+                                    valueTemp[7] = getSensorDataByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id], stora);
+                                }
+                                else if(F_S_SEC == GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].func)
+                                {
+                                    valueTemp[8] = getSensorDataByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id], stora);
+                                }
+                                else if(F_S_ST == GetSensorByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id])->__stora[stora].func)
+                                {
+                                    valueTemp[9] = getSensorDataByAddr(GetMonitor(), GetSysTank()->tank[no].sensorId[tank_id][id], stora);
+                                }
+                            }
+                        }
+                    }
+                }
+                cJSON_AddStringToObject(tank, "name",GetSysTank()->tank[no].name);
+                cJSON_AddNumberToObject(tank, "tankEc",valueTemp[0]);
+                cJSON_AddNumberToObject(tank, "inlineEc",valueTemp[1]);
+                cJSON_AddNumberToObject(tank, "tankPh",valueTemp[2]);
+                cJSON_AddNumberToObject(tank, "inlinePh",valueTemp[3]);
+                cJSON_AddNumberToObject(tank, "tankWt",valueTemp[4]);
+                cJSON_AddNumberToObject(tank, "inlineWt",valueTemp[5]);
+                cJSON_AddNumberToObject(tank, "wl",valueTemp[6]);
+                cJSON_AddNumberToObject(tank, "mm",valueTemp[7]);
+                cJSON_AddNumberToObject(tank, "me",valueTemp[8]);
+                cJSON_AddNumberToObject(tank, "mt",valueTemp[9]);
+
+                tankWarnState_t *tankState = GetTankWarnState();
+
+                cJSON_AddNumberToObject(tank, "tankEcState", tankState[no].tank_ec);
+                cJSON_AddNumberToObject(tank, "tankPhState", tankState[no].tank_ph);
+                cJSON_AddNumberToObject(tank, "tankWtState", tankState[no].tank_wt);
+                cJSON_AddNumberToObject(tank, "inlineEcState", tankState[no].inline_ec);
+                cJSON_AddNumberToObject(tank, "inlinePhState", tankState[no].inline_ph);
+                cJSON_AddNumberToObject(tank, "inlineWtState", tankState[no].inline_wt);
+                cJSON_AddNumberToObject(tank, "wlState", tankState[no].wl);
+                cJSON_AddNumberToObject(tank, "mmState", tankState[no].sw);
+                cJSON_AddNumberToObject(tank, "meState", tankState[no].sec);
+                cJSON_AddNumberToObject(tank, "mtState", tankState[no].st);
+
+                //Justin 加入以下的数据 会导致内存不足 测试有问题
+//                cJSON *workingList = cJSON_CreateArray();
+//
+//                if(workingList)
+//                {
+//                    //返回pump
+//                    if(0 != GetSysTank()->tank[no].pumpId)
+//                    {
+//
+//                        //是否只有pump
+//                        u8 j = 0;
+//                        for(j = 0; j < VALVE_MAX; j++)
+//                        {
+//                            if(0 != GetSysTank()->tank[no].valve[j])
+//                            {
+//                                break;
+//                            }
+//                        }
+//
+//                        if(VALVE_MAX == j)
+//                        {
+//                            sprintf(name, "WorkRep%d", GetSysTank()->tank[no].pumpId);
+//                            cJSON_AddItemToArray(workingList, cJSON_CreateString(name));
+//                        }
+//                        else
+//                        {
+//                            for(u8 k = 0; k < VALVE_MAX; k++)
+//                            {
+//                                if(0 != GetSysTank()->tank[no].valve[k])
+//                                {
+//                                    sprintf(name, "WorkRep%d", GetSysTank()->tank[no].valve[k]);
+//                                    cJSON_AddItemToArray(workingList, cJSON_CreateString(name));
+//                                }
+//                            }
+//                        }
+//                    }
+//
+//                    for(u8 k = 0; k < VALVE_MAX; k++)
+//                    {
+//                        if(0 != GetSysTank()->tank[no].nopump_valve[k])
+//                        {
+//                            sprintf(name, "WorkRep%d", GetSysTank()->tank[no].nopump_valve[k]);
+//                            cJSON_AddItemToArray(workingList, cJSON_CreateString(name));
+//                        }
+//                    }
+//
+//                    cJSON_AddItemToObject(tank, "workingList", workingList);
+//                }
+
+                char *tempC = cJSON_PrintUnformatted(tank);
+                cJSON_Delete(tank);
+
+                if(tempC)
+                {
+                    //替代数据
+//                    u16 itemLen = strlen(tempC);
+//                    for(int dev_i = 0 ; dev_i < GetMonitor()->device_size; dev_i++)
+//                    {
+//                        for(int port_i = 0; port_i < GetMonitor()->device[dev_i].storage_size; port_i++)
+//                        {
+//                            u16 id = 0;
+//                            if(1 == GetMonitor()->device[dev_i].storage_size)
+//                            {
+//                                id = GetMonitor()->device[dev_i].addr;
+//                            }
+//                            else
+//                            {
+//                                id = GetMonitor()->device[dev_i].addr << 8 | port_i;
+//                            }
+//
+//                            sprintf(name, "WorkRep%d", id);
+//                            if(NULL != strstr(tempC, name))
+//                            {
+//                                cJSON *item = GetPumpAndValueState(GetMonitor(), id);
+//                                if(item)
+//                                {
+//                                    char *tempWorkC = cJSON_PrintUnformatted(item);
+//                                    cJSON_Delete(item);
+//                                    if(tempWorkC)
+//                                    {
+//                                        itemLen += strlen(tempWorkC);
+//                                        tempC = rt_realloc(tempC, itemLen);
+//                                        sprintf(name, "\"WorkRep%d\"", id);
+//                                        str_replace1(tempC, name, tempWorkC, itemLen);
+//
+//                                        //释放空间
+//                                        cJSON_free(tempWorkC);
+//                                        tempWorkC = RT_NULL;
+//                                    }
+//                                }
+//                            }
+//                        }
+//                    }
+                    length += strlen(tempC);
+                    str = rt_realloc(str, length);
+                    sprintf(name, "\"TankRep%d\"",no);//要全部替换
+                    str_replace1(str, name, tempC, length);
+                    //释放空间
+                    cJSON_free(tempC);
+                    tempC = RT_NULL;
+                }
+            }
+        }
+#endif
     }
 
     return str;
