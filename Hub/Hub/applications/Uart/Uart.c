@@ -147,7 +147,7 @@ static void UartRegister(void)
 
 }
 
-static void GenerateBroadcast(type_uart_class *uart)
+static void GenerateBroadcastTime(type_uart_class *uart)
 {
     KV          keyValue;
     seq_key_t   seq_key;
@@ -175,6 +175,55 @@ static void GenerateBroadcast(type_uart_class *uart)
     seq_key.regSize = 2;
     keyValue.key = SeqKeyToLong(seq_key);
     keyValue.dataSegment.len = 13;
+    keyValue.dataSegment.data = rt_malloc(keyValue.dataSegment.len);
+    if(keyValue.dataSegment.data)
+    {
+        //5.复制实际数据
+        rt_memcpy(keyValue.dataSegment.data, data, keyValue.dataSegment.len);
+
+        uart->taskList.AddToList(keyValue, NO);
+
+        //6.回收空间
+        rt_free(keyValue.dataSegment.data);
+        keyValue.dataSegment.data = RT_NULL;
+    }
+}
+
+static void GenerateBroadcastSensorValue(type_uart_class *uart)
+{
+    KV          keyValue;
+    seq_key_t   seq_key;
+    u8          data[17];
+    int         co2         = GetSensorMainValue(GetMonitor(), F_S_CO2);
+    int         humi        = GetSensorMainValue(GetMonitor(), F_S_HUMI);
+    int         temp        = GetSensorMainValue(GetMonitor(), F_S_TEMP);
+    int         light       = GetSensorMainValue(GetMonitor(), F_S_LIGHT);
+
+    //1.生成数据
+    data[0] = 0x00;
+    data[1] = WRITE_MUTI;
+    data[2] = 0xf0;
+    data[3] = 0x00;
+    data[4] = 0x00;
+    data[5] = 0x04;
+    data[6] = 0x08;
+    data[7] = co2 >> 8;
+    data[8] = co2;
+    data[9] = humi >> 8;
+    data[10] = humi;
+    data[11] = temp >> 8;
+    data[12] = temp;
+    data[13] = light >> 8;
+    data[14] = light;
+    data[15] = usModbusRTU_CRC(data, 15);
+    data[16] = usModbusRTU_CRC(data, 15) >> 8;
+
+    seq_key.addr = 0x00;
+    seq_key.regH = 0xf0;
+    seq_key.regL = 0x00;
+    seq_key.regSize = 4;
+    keyValue.key = SeqKeyToLong(seq_key);
+    keyValue.dataSegment.len = 17;
     keyValue.dataSegment.data = rt_malloc(keyValue.dataSegment.len);
     if(keyValue.dataSegment.data)
     {
@@ -303,7 +352,7 @@ void SensorUart2TaskEntry(void* parameter)
     {
         time1S = TimerTask(&time1S, 1000/UART_PERIOD, &Timer1sTouch);                       //1s定时任务
         time300mS = TimerTask(&time300mS, 300/UART_PERIOD, &Timer300msTouch);               //300ms定时任务
-        time2S = TimerTask(&time2S, 2000/UART_PERIOD, &Timer2sTouch);                       //3s定时任务
+        time2S = TimerTask(&time2S, 4000/UART_PERIOD, &Timer2sTouch);                       //3s定时任务
         time10S = TimerTask(&time10S, 10000/UART_PERIOD, &Timer10sTouch);                   //10s定时任务
         time10M = TimerTask(&time10M, 600000/UART_PERIOD, &Timer10mTouch);                  //10m定时任务
 
@@ -354,6 +403,15 @@ void SensorUart2TaskEntry(void* parameter)
                 deviceObj->RecvCmd(uart2_msg.data, uart2_msg.size);
 
                 uart2_msg.messageFlag = OFF;
+
+//                {
+//                    rt_kprintf("===============device recv data : ");
+//                    for(int i = 0; i < uart2_msg.size; i++)
+//                    {
+//                        rt_kprintf(" %x", uart2_msg.data[i]);
+//                    }
+//                    rt_kprintf("\r\n");
+//                }
             }
             else
             {
@@ -429,10 +487,10 @@ void SensorUart2TaskEntry(void* parameter)
         if(ON == Timer2sTouch)
         {
 #if(HUB_SELECT == HUB_IRRIGSTION)
-            for(int i = 0; i < GetMonitor()->aqua_size; i++)
-            {
-                aquaObj->AskAquaState(&GetMonitor()->aqua[i], i);
-            }
+//            for(int i = 0; i < GetMonitor()->aqua_size; i++)
+//            {
+                aquaObj->AskAquaState();//Justin
+//            }
 #endif
         }
 
@@ -456,14 +514,16 @@ void SensorUart2TaskEntry(void* parameter)
                 }
             }
 
+            //广播传感器数据
+            GenerateBroadcastSensorValue(deviceObj);
         }
 
         if(ON == Timer10mTouch)
         {
             //发送广播时间
-            GenerateBroadcast(deviceObj);
+            GenerateBroadcastTime(deviceObj);
 #if(HUB_SELECT == HUB_IRRIGSTION)
-            GenerateBroadcast(aquaObj);
+            GenerateBroadcastTime(aquaObj);
 #endif
         }
 

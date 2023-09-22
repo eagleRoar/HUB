@@ -34,6 +34,7 @@ typedef struct SeqListKey{
     u8 regL;
     u8 regSize;
 }seq_key_t;
+
 #pragma pack()
 
 #endif /* APPLICATIONS_UART_UARTEVENTTYPE_H_ */

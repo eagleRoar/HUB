@@ -66,7 +66,7 @@ typedef struct uartClass{
     void(*AquaCtrl)(aqua_t *aqua, u8 state, u8 recipe_i);
     void(*AquaSendMonitor)(aqua_t *aqua, u8 monitor);
     void(*aquaSendInfo)(aqua_t *aqua, aqua_info_t *info, u8 recipe_no);
-    void(*AskAquaState)(aqua_t *aqua, int index);
+    void(*AskAquaState)(void);
 #endif
 } type_uart_class;
 

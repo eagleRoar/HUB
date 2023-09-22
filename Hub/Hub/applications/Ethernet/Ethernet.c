@@ -18,17 +18,20 @@
 
 __attribute__((section(".ccmbss"))) u8          udp_task[1024 * 4];
 __attribute__((section(".ccmbss"))) struct      rt_thread udp_thread;
-__attribute__((section(".ccmbss"))) u8          tcp_task[1024 * 2];
+__attribute__((section(".ccmbss"))) u8          tcp_task[1024 * 3];
 __attribute__((section(".ccmbss"))) struct      rt_thread tcp_thread;
 
 __attribute__((section(".ccmbss"))) char        tcpRecvBuffer[RCV_ETH_BUFFSZ];
                                     u8          *tcp_reply              = RT_NULL;
 
+rt_mutex_t eth_dynamic_mutex = RT_NULL;
 struct ethDeviceStruct  *eth = RT_NULL;          //申请ethernet实例化对象
 eth_heart_t             eth_heart;
 
+int linkState = 1;
+
 u8                  tcp_recv_flag           = NO;
-int                 tcp_sock                = 0;
+int                 tcp_sock                = -1;
 u8                  udpSendBuffer[30];
 
 extern rt_uint8_t GetEthDriverLinkStatus(void);             //获取网口连接状态
@@ -47,41 +50,75 @@ eth_heart_t *getEthHeart(void)
     return &eth_heart;
 }
 
+//获取tcp socket
+int GetTcpSocket(void)
+{
+    return tcp_sock;
+}
+
+void closeTcpSocket(void)
+{
+    rt_mutex_take(eth_dynamic_mutex, RT_WAITING_FOREVER);
+    if(tcp_sock > 0)
+    {
+        LOG_E("closeTcpSocket-----------------------------");
+        closesocket(tcp_sock);
+        tcp_sock = -1;
+    }
+    rt_mutex_release(eth_dynamic_mutex);
+}
+
 void TcpRecvTaskEntry(void* parameter)
 {
-    static u8 Timer1sTouch      = OFF;
-    static u16 time1S = 0;
     int length;
 
     while(1)
     {
-        //文件系统还没有准备好
-        if(YES != GetFileSystemState())
+        //1.文件系统还没有准备好,或者tcp断开
+        if((YES != GetFileSystemState()) || (GetTcpSocket() < 0))
         {
+//            LOG_E("--------------TcpRecvTaskEntry err");
+            rt_thread_mdelay(1000);
             continue;
         }
 
-        /* 启用定时器 */
-        time1S = TimerTask(&time1S, 20, &Timer1sTouch);                 //1秒任务定时器
-
-        //正常连接
-        if(ON == eth->tcp.GetConnectStatus())
+        //2.正常接收
+        rt_memset(tcpRecvBuffer, ' ', RCV_ETH_BUFFSZ);
+        if(RT_EOK == TcpRecvMsg(&tcp_sock, (u8 *)tcpRecvBuffer, RCV_ETH_BUFFSZ, &length))
         {
-            rt_memset(tcpRecvBuffer, ' ', RCV_ETH_BUFFSZ);
-            //解析数据
-            //LOG_D("------------- tcp_sock = %d",tcp_sock);
-            if(RT_EOK == TcpRecvMsg(&tcp_sock, (u8 *)tcpRecvBuffer, RCV_ETH_BUFFSZ, &length))
-            {
-                analyzeTcpData(tcpRecvBuffer, length);
-            }
-            else
-            {
-                eth->tcp.SetConnectStatus(OFF);
-            }
+            //2.1解析数据
+            analyzeTcpData(tcpRecvBuffer, length);
+        }
+        else
+        {
+//            LOG_E("--------------TcpRecvTaskEntry err 1, tcp_sock = %d, state = %d",
+//                    tcp_sock, eth->tcp.GetConnectStatus());
+            closeTcpSocket();
         }
 
         rt_thread_mdelay(50);
     }
+}
+
+rt_err_t TcpRecvTaskInit(void)
+{
+    if(RT_EOK != rt_thread_init(&tcp_thread, TCP_RECV_TASK, TcpRecvTaskEntry, RT_NULL, tcp_task, sizeof(tcp_task), TCP_PRIORITY, 10))
+    {
+        return RT_ERROR;
+    }
+    else
+    {
+        if(RT_EOK == rt_thread_startup(&tcp_thread))
+        {
+            return RT_EOK;
+        }
+        else
+        {
+            return RT_ERROR;
+        }
+    }
+
+    return RT_EOK;
 }
 
 /**
@@ -108,6 +145,7 @@ void UdpTaskEntry(void* parameter)
     static u16  time10S             = 0;
     static u8       Timer60sTouch   = OFF;
     static u16      time60S         = 0;
+    static u8       connectNewFlag  = NO;
 
     eth->SetethLinkStatus(GetEthDriverLinkStatus());
     if(LINKUP == eth->GetethLinkStatus())    //检查网口是否有连接
@@ -119,7 +157,7 @@ void UdpTaskEntry(void* parameter)
         }
         else
         {
-            closesocket(broadcastSock);
+            DestoryUdpSocket(broadcastSock);
         }
     }
     else if(LINKDOWN == eth->GetethLinkStatus())
@@ -141,8 +179,12 @@ void UdpTaskEntry(void* parameter)
         }
 
         /* 网络掉线 */
-        if(LINKDOWN == eth->GetethLinkStatus())
+        if(LINKDOWN == eth->GetethLinkStatus() || 0 == linkState)
         {
+            //如果物理网线被拔就关闭sock
+            LOG_W("关闭tcp socket----------------------------");
+            closeTcpSocket();
+
             rt_thread_mdelay(1000);
             continue;
         }
@@ -153,79 +195,85 @@ void UdpTaskEntry(void* parameter)
         {
             /* 判断主机的ip或者port为新,更新 */
             /* 通知TCP和UDP需要更改socket,以监听新的网络 */
-            if(OFF == eth->tcp.GetConnectStatus())
+            if(GetTcpSocket() < 0)//未连接上tcp
             {
-                eth->tcp.SetConnectTry(ON);
-
                 SetIpAndPort(inet_ntoa(broadcastRecvSerAddr.sin_addr), ntohs(broadcastRecvSerAddr.sin_port), eth);
                 /* 更新网络以及申请TCP */
                 notifyTcpAndUdpSocket(inet_ntoa(broadcastRecvSerAddr.sin_addr), ntohs(broadcastRecvSerAddr.sin_port), eth);
                 LOG_I("recv new master register massge, ip = %s, port = %d", eth->GetIp(), eth->GetPort());
+                connectNewFlag = YES;
             }
         }
 
-        if((ON == eth->tcp.GetConnectTry()) &&
-           (OFF == eth->tcp.GetConnectStatus()))
+        if(YES == connectNewFlag)
         {
             //尝试连接
             if(RT_EOK == ConnectToSever(&tcp_sock, eth->GetIp(), eth->GetPort()))
             {
-                eth->tcp.SetConnectStatus(ON);
-                eth->tcp.SetConnectTry(OFF);
-                LOG_W("reconnrct Ok......");
-
-                eth_heart.connect = YES;
                 eth_heart.last_connet_time = getTimeStamp();
+
+                //需要重启线程否则会导致收不到新的socket的消息
+                if(RT_NULL != rt_thread_find(TCP_RECV_TASK))
+                {
+                    if(RT_EOK == rt_thread_detach(&tcp_thread))
+                    {
+                        LOG_W("成功删除tcp thread");
+                        if(RT_EOK == TcpRecvTaskInit())
+                        {
+                            LOG_W("重启 tcp thread ok---------------");
+                        }
+                        else
+                        {
+                            LOG_E("UdpTaskEntry restart tcp thread fail");
+                        }
+                    }
+                    else {
+                        LOG_E("UdpTaskEntry delete tcp thread fail");
+                    }
+                }
+                else {
+                    LOG_E("Can not find tcp thread--------");
+                }
+
+                connectNewFlag = NO;
             }
             else
             {
-                LOG_E("connrct Fail......");
-                eth->tcp.SetConnectTry(OFF);
+                closeTcpSocket();
             }
         }
         else
         {
-            if((OFF == eth->tcp.GetConnectTry()) &&
-               (ON == eth->tcp.GetConnectStatus()))
+            if(ON == cloudCmd.recv_flag)
             {
-                if(ON == cloudCmd.recv_flag)
+                if(YES == cloudCmd.recv_app_flag)
                 {
-                    if(YES == cloudCmd.recv_app_flag)
+                    if(0 == rt_memcmp(CMD_GET_DEVICELIST, cloudCmd.cmd, sizeof(CMD_GET_DEVICELIST)))
                     {
-                        if(0 == rt_memcmp(CMD_GET_DEVICELIST, cloudCmd.cmd, sizeof(CMD_GET_DEVICELIST)))
-                        {
-                            ret = ReplyDeviceListDataToCloud(RT_NULL, &tcp_sock, NO);
-                        }
-                        else
-                        {
-                            ret = ReplyDataToCloud(RT_NULL, &tcp_sock, NO);
-                        }
-
-                        if(RT_ERROR == ret)
-                        {
-                            eth->tcp.SetConnectStatus(OFF);
-                        }
-
-                        cloudCmd.recv_app_flag = NO;
+                        ret = ReplyDeviceListDataToCloud(RT_NULL, &tcp_sock, NO);
                     }
+                    else
+                    {
+                        ret = ReplyDataToCloud(RT_NULL, &tcp_sock, NO);
+                    }
+
+                    if(RT_ERROR == ret)
+                    {
+
+                    }
+
+                    cloudCmd.recv_app_flag = NO;
                 }
+            }
 
-                //心跳包检测,如果超时2分钟,断掉连接
-                if(YES == getEthHeart()->connect)
+            //心跳包检测,如果超时2分钟,断掉连接
+            if(GetTcpSocket() > 0)
+            {
+                if(getTimeStamp() > getEthHeart()->last_connet_time + CONNECT_TIME_OUT)
                 {
-                    if(getTimeStamp() > getEthHeart()->last_connet_time + CONNECT_TIME_OUT)
-                    {
-                        getEthHeart()->connect = NO;
-                        if(getSockState(tcp_sock) >= 0)
-                        {
-                            //断开连接
-                            LOG_E("over 2 min have not recv ack, sock close, sock = %d",tcp_sock);
-                            shutdown(tcp_sock, SHUT_RDWR);
-                            closesocket(tcp_sock);
-                        }
-
-                        eth->tcp.SetConnectStatus(OFF);
-                    }
+                    //断开连接
+                    LOG_E("over 2 min have not recv ack, sock close, sock = %d",tcp_sock);
+                    closeTcpSocket();
                 }
             }
         }
@@ -233,16 +281,19 @@ void UdpTaskEntry(void* parameter)
         /* 10s 定时任务 */
         if(ON == Timer10sTouch)
         {
-//            LOG_I("now %x, last %x, get sock state = %d",
-//                    getTimeStamp(), getEthHeart()->last_connet_time,getSockState(tcp_sock));
+//            LOG_I("ip = %s, port = %d, sock = %d, getsockState = %d",
+//                    eth->GetIp(), eth->GetPort(), tcp_sock, getSockState(tcp_sock));
         }
 
         /* 线程休眠一段时间 */
         rt_thread_mdelay(50);
     }
     /* 关闭这个socket */
+    shutdown(broadcastSock, SHUT_RDWR);
     closesocket(broadcastSock);
+    broadcastSock = -1;
 }
+
 rt_err_t UdpTaskInit(void)
 {
     if(RT_EOK != rt_thread_init(&udp_thread, UDP_TASK, UdpTaskEntry, RT_NULL, udp_task, sizeof(udp_task), UDP_PRIORITY, 10))
@@ -257,21 +308,18 @@ rt_err_t UdpTaskInit(void)
     return RT_EOK;
 }
 
-rt_err_t TcpRecvTaskInit(void)
-{
-    if(RT_EOK != rt_thread_init(&tcp_thread, TCP_RECV_TASK, TcpRecvTaskEntry, RT_NULL, tcp_task, sizeof(tcp_task), TCP_PRIORITY, 10))
-    {
-        LOG_E("uart thread fail");
-    }
-    else
-    {
-        rt_thread_startup(&tcp_thread);
-    }
-
-    return RT_EOK;
-}
 void EthernetTaskInit(void)
 {
+    /* 创建一个动态互斥量 */
+    if (eth_dynamic_mutex == RT_NULL)
+    {
+        eth_dynamic_mutex = rt_mutex_create("dmutex", RT_IPC_FLAG_FIFO);
+        if(eth_dynamic_mutex == RT_NULL)
+        {
+            rt_kprintf("create dynamic mutex failed.\n");
+        }
+    }
+
     if(RT_NULL == eth)
     {
         /* 初始化Ethernet信息结构体 */

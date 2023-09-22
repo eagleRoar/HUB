@@ -25,9 +25,9 @@ void setDeviceDefaultPara(device_t *module, char *name, u16 ctrl_addr, u8 main_t
 
     if(HVAC_6_TYPE == type)
     {
-        module->special_data._hvac.manualOnMode = HVAC_COOL;
+        module->special_data._hvac.dayPoint = HVAC_DAY_POINT;
         module->special_data._hvac.fanNormallyOpen = HVAC_FAN_AUTO;
-        module->special_data._hvac.hvacMode = HVAC_CONVENTIONAL;
+        module->special_data._hvac.nightPoint = HVAC_NIGHT_POINT;
     }
 }
 
@@ -116,6 +116,12 @@ char *GetModelByType(u8 type, char *name, u8 len)
         case DEHUMI_TYPE:
             strncpy(name, "BHS-D", len);
             break;
+        case PRO_DEHUMI_TYPE:
+            strncpy(name, "BRC-DH", len);
+            break;
+        case PRO_HUMI_TYPE:
+            strncpy(name, "BRC-H", len);
+            break;
         case COOL_TYPE:
             strncpy(name, "BTS-C", len);
             break;
@@ -192,9 +198,11 @@ u8 GetFuncByType(u8 type)
             ret = F_HEAT;
             break;
         case HUMI_TYPE:
+        case PRO_HUMI_TYPE:
             ret = F_HUMI;
             break;
         case DEHUMI_TYPE:
+        case PRO_DEHUMI_TYPE:
             ret = F_DEHUMI;
             break;
         case COOL_TYPE:
@@ -338,9 +346,11 @@ char *GetFunNameByType(u8 type, char *name, u8 len)
             strncpy(name, "Heat", len);
             break;
         case HUMI_TYPE:
+        case PRO_HUMI_TYPE:
             strncpy(name, "Humi", len);
             break;
         case DEHUMI_TYPE:
+        case PRO_DEHUMI_TYPE:
             strncpy(name, "DeHumi", len);
             break;
         case COOL_TYPE:
@@ -472,6 +482,8 @@ u8 TypeSupported(u8 type)
         case HEAT_TYPE:
         case HUMI_TYPE:
         case DEHUMI_TYPE:
+        case PRO_DEHUMI_TYPE:
+        case PRO_HUMI_TYPE:
         case COOL_TYPE:
         case MIX_TYPE:
         case HVAC_6_TYPE:

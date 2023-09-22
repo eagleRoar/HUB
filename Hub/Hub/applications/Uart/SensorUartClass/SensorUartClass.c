@@ -423,7 +423,7 @@ static void RecvListHandle(void)
     }
 
     //6.判断失联情况
-    for(u8 i = 0; i < monitor->sensor_size; i++)
+    for(u8 i = 0; i < SENSOR_MAX; i++)
     {
         //1.已经发送数据了 但是数据接收超时判断为失联
 
@@ -505,7 +505,7 @@ static void KeepConnect(type_monitor_t *monitor)
 
     sensor = monitor->sensor[i];
 
-    for(int item = 0; item < monitor->sensor_size; item++)
+    for(int item = 0; item < SENSOR_MAX; item++)
     {
         if(sendMoni[item].addr == sensor.addr)
         {

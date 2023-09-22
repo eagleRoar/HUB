@@ -118,6 +118,30 @@ static void GenerateChangeType(device_t *device, u8 port, u8 type, u8 *data)
 }
 
 #if(HUB_ENVIRENMENT == HUB_SELECT)
+
+static void GenerateHvacData(device_t *device, u8 state, u16 *res)
+{
+    u8 point = 0;
+
+    if(DAY_TIME == GetSysSet()->dayOrNight)
+    {
+        point = device->special_data._hvac.dayPoint;
+    }
+    else
+    {
+        point = device->special_data._hvac.nightPoint;
+    }
+
+    if(ON == state)
+    {
+        *res = 0x80 << 8 | point;
+    }
+    else if(OFF == state)
+    {
+        *res = 0x00 << 8 | point;
+    }
+}
+
 //获取红外空调命令
 static void GenerateIrAirCtrlData(u8 state, u16 *res)
 {
@@ -148,52 +172,77 @@ static void GenerateIrAirCtrlData(u8 state, u16 *res)
         *res = 0x6000;
     }
 }
-#endif
 
-#if(HUB_ENVIRENMENT == HUB_SELECT)
-static void GenarateHvacCtrData(u8 HvacMode, u8 cool, u8 heat, u16 *value)
+/*
+ * 协议除湿模块
+ */
+static void GenerateProDehumiCtrlData(u8 state, u16 *res)
 {
-    //只允许AC的不允许端口中为hvac型的
-    if((ON == heat) && (OFF == cool))
+    u16         dehumi        = 0;
+
+    proHumiSet_t    humiSet;
+    GetNowSysSet(RT_NULL, RT_NULL, &humiSet, RT_NULL, RT_NULL, RT_NULL, RT_NULL);
+
+    if(DAY_TIME == GetSysSet()->dayOrNight)
     {
-        if(HVAC_CONVENTIONAL == HvacMode)
-        {
-            *value = 0x14;
-        }
-        else if(HVAC_PUM_O == HvacMode)
-        {
-            *value = 0x1C;
-        }
-        else if(HVAC_PUM_B == HvacMode)
-        {
-            *value = 0x0C;
-        }
+        dehumi = humiSet.dayDehumiTarget;
     }
-    else if((ON == cool) && (OFF == heat))
+    else if(NIGHT_TIME == GetSysSet()->dayOrNight)
     {
-        if(HVAC_CONVENTIONAL == HvacMode)
-        {
-            *value = 0x0C;
-        }
-        else if(HVAC_PUM_O == HvacMode)
-        {
-            *value = 0x0C;
-        }
-        else if(HVAC_PUM_B == HvacMode)
-        {
-            *value = 0x1C;
-        }
+        dehumi = humiSet.nightDehumiTarget;
     }
-    else if((ON == cool) && (ON == heat))
+
+    if(ON == state)
     {
-        *value = 0x1F;
+
+        u8 value = 0x00;
+        value |= 0x80;
+        value |= dehumi/10;
+        *res = (value << 8);
     }
     else
     {
-        *value = 0x00;
+        u8 value = 0x00;
+        value &= 0x7F;
+        value |= dehumi/10;
+        *res = (value << 8);
     }
 }
+
+static void GenerateProHumiCtrlData(u8 state, u16 *res)
+{
+    u16         humi        = 0;
+
+    proHumiSet_t    humiSet;
+    GetNowSysSet(RT_NULL, RT_NULL, &humiSet, RT_NULL, RT_NULL, RT_NULL, RT_NULL);
+
+    if(DAY_TIME == GetSysSet()->dayOrNight)
+    {
+        humi = humiSet.dayHumiTarget;
+    }
+    else if(NIGHT_TIME == GetSysSet()->dayOrNight)
+    {
+        humi = humiSet.nightHumiTarget;
+    }
+
+    if(ON == state)
+    {
+        u8 value = 0x00;
+        value |= 0x80;
+        value |= humi/10;
+        *res = (value << 8);
+    }
+    else
+    {
+        u8 value = 0x00;
+        value &= 0x7F;
+        value |= humi/10;
+        *res = (value << 8);
+    }
+}
+
 #endif
+
 static void GenerateVuleBySingleCtrl(device_t device, u8 port, u8 state, u16 *value)
 {
     u8 maintain = GetSysSet()->sysPara.maintain;
@@ -204,13 +253,21 @@ static void GenerateVuleBySingleCtrl(device_t device, u8 port, u8 state, u16 *va
         if(MANUAL_HAND_ON == device.port[0].manual.manual)
         {
 #if(HUB_ENVIRENMENT == HUB_SELECT)
-            if(HVAC_6_TYPE == device.type)
-            {
-                GenarateHvacCtrData(device.special_data._hvac.hvacMode, ON, ON, value);
-            }
-            else if(IR_AIR_TYPE == device.type)
+            if(IR_AIR_TYPE == device.type)
             {
                 GenerateIrAirCtrlData(ON, value);
+            }
+            else if(PRO_DEHUMI_TYPE == device.type)
+            {
+                GenerateProDehumiCtrlData(ON, value);
+            }
+            else if(PRO_HUMI_TYPE == device.type)
+            {
+                GenerateProHumiCtrlData(ON, value);
+            }
+            else if(HVAC_6_TYPE == device.type)
+            {
+                GenerateHvacData(&device, ON, value);
             }
             else
 #endif
@@ -221,13 +278,21 @@ static void GenerateVuleBySingleCtrl(device_t device, u8 port, u8 state, u16 *va
         else if(MANUAL_HAND_OFF == device.port[0].manual.manual)
         {
 #if(HUB_ENVIRENMENT == HUB_SELECT)
-            if(HVAC_6_TYPE == device.type)
-            {
-                GenarateHvacCtrData(device.special_data._hvac.hvacMode, OFF, OFF, value);
-            }
-            else if(IR_AIR_TYPE == device.type)
+            if(IR_AIR_TYPE == device.type)
             {
                 GenerateIrAirCtrlData(OFF, value);
+            }
+            else if(PRO_DEHUMI_TYPE == device.type)
+            {
+                GenerateProDehumiCtrlData(OFF, value);
+            }
+            else if(PRO_HUMI_TYPE == device.type)
+            {
+                GenerateProHumiCtrlData(OFF, value);
+            }
+            else if(HVAC_6_TYPE == device.type)
+            {
+                GenerateHvacData(&device, OFF, value);
             }
             else
 #endif
@@ -244,9 +309,13 @@ static void GenerateVuleBySingleCtrl(device_t device, u8 port, u8 state, u16 *va
                 {
                     GenerateIrAirCtrlData(ON, value);
                 }
-                else if(HVAC_6_TYPE == device.type)
+                else if(PRO_DEHUMI_TYPE == device.type)
                 {
-                    GenarateHvacCtrData(device.special_data._hvac.hvacMode, ON, ON, value);
+                    GenerateProDehumiCtrlData(ON, value);
+                }
+                else if(PRO_HUMI_TYPE == device.type)
+                {
+                    GenerateProHumiCtrlData(ON, value);
                 }
                 else
 #endif
@@ -257,13 +326,17 @@ static void GenerateVuleBySingleCtrl(device_t device, u8 port, u8 state, u16 *va
             else if(OFF == state)
             {
 #if(HUB_ENVIRENMENT == HUB_SELECT)
-                if(HVAC_6_TYPE == device.type)
-                {
-                    GenarateHvacCtrData(device.special_data._hvac.hvacMode, OFF, OFF, value);
-                }
-                else if(IR_AIR_TYPE == device.type)
+                if(IR_AIR_TYPE == device.type)
                 {
                     GenerateIrAirCtrlData(OFF, value);
+                }
+                else if(PRO_DEHUMI_TYPE == device.type)
+                {
+                    GenerateProDehumiCtrlData(OFF, value);
+                }
+                else if(PRO_HUMI_TYPE == device.type)
+                {
+                    GenerateProHumiCtrlData(OFF, value);
                 }
                 else
 #endif
@@ -271,6 +344,14 @@ static void GenerateVuleBySingleCtrl(device_t device, u8 port, u8 state, u16 *va
                     *value = 0x0000;
                 }
             }
+
+            //Justin debug
+#if(HUB_ENVIRENMENT == HUB_SELECT)
+            if(HVAC_6_TYPE == device.type)
+            {
+                GenerateHvacData(&device, ON, value);
+            }
+#endif
         }
     }
     else//多个寄存器
@@ -325,13 +406,17 @@ static void GenerateVuleByCtrl(device_t device, u8 func, u8 state, u16 *value)
             if(MANUAL_HAND_ON == device.port[0].manual.manual)
             {
 #if(HUB_ENVIRENMENT == HUB_SELECT)
-                if(HVAC_6_TYPE == device.type)
-                {
-                    GenarateHvacCtrData(device.special_data._hvac.hvacMode, ON, ON, value);
-                }
-                else if(IR_AIR_TYPE == device.type)
+                if(IR_AIR_TYPE == device.type)
                 {
                     GenerateIrAirCtrlData(ON, value);
+                }
+                else if(PRO_DEHUMI_TYPE == device.type)
+                {
+                    GenerateProDehumiCtrlData(ON, value);
+                }
+                else if(PRO_HUMI_TYPE == device.type)
+                {
+                    GenerateProHumiCtrlData(ON, value);
                 }
                 else
 #endif
@@ -342,13 +427,17 @@ static void GenerateVuleByCtrl(device_t device, u8 func, u8 state, u16 *value)
             else if(MANUAL_HAND_OFF == device.port[0].manual.manual)
             {
 #if(HUB_ENVIRENMENT == HUB_SELECT)
-                if(HVAC_6_TYPE == device.type)
-                {
-                    GenarateHvacCtrData(device.special_data._hvac.hvacMode, OFF, OFF, value);
-                }
-                else if(IR_AIR_TYPE == device.type)
+                if(IR_AIR_TYPE == device.type)
                 {
                     GenerateIrAirCtrlData(OFF, value);
+                }
+                else if(PRO_DEHUMI_TYPE == device.type)
+                {
+                    GenerateProDehumiCtrlData(OFF, value);
+                }
+                else if(PRO_HUMI_TYPE == device.type)
+                {
+                    GenerateProHumiCtrlData(OFF, value);
                 }
                 else
 #endif
@@ -365,16 +454,13 @@ static void GenerateVuleByCtrl(device_t device, u8 func, u8 state, u16 *value)
                     {
                         GenerateIrAirCtrlData(ON, value);
                     }
-                    else if(HVAC_6_TYPE == device.type)
+                    else if(PRO_DEHUMI_TYPE == device.type)
                     {
-                        if(F_COOL == func)
-                        {
-                            GenarateHvacCtrData(device.special_data._hvac.hvacMode, ON, OFF, value);
-                        }
-                        else if(F_HEAT)
-                        {
-                            GenarateHvacCtrData(device.special_data._hvac.hvacMode, OFF, ON, value);
-                        }
+                        GenerateProDehumiCtrlData(ON, value);
+                    }
+                    else if(PRO_HUMI_TYPE == device.type)
+                    {
+                        GenerateProHumiCtrlData(ON, value);
                     }
                     else
 #endif
@@ -389,9 +475,13 @@ static void GenerateVuleByCtrl(device_t device, u8 func, u8 state, u16 *value)
                     {
                         GenerateIrAirCtrlData(OFF, value);
                     }
-                    else if(HVAC_6_TYPE == device.type)
+                    else if(PRO_DEHUMI_TYPE == device.type)
                     {
-                        GenarateHvacCtrData(device.special_data._hvac.hvacMode, ON, ON, value);
+                        GenerateProDehumiCtrlData(OFF, value);
+                    }
+                    else if(PRO_HUMI_TYPE == device.type)
+                    {
+                        GenerateProHumiCtrlData(OFF, value);
                     }
                     else
 #endif
@@ -546,7 +636,7 @@ static void AddLastCtrl(u8 addr, u16 ctrl)
     {
         for(i = 0; i < DEVICE_MAX; i++)
         {
-            if(0x00 == sendMoni[i].addr)
+            if(0x00 == DEVICE_MAX)
             {
                 sendMoni[i].addr = addr;
                 sendMoni[i].ctrl = ctrl;
@@ -561,7 +651,7 @@ static u8 IsNeedSendCtrToConnect(u8 addr, u16 *ctrl)
     u8 ret = NO;
 
     //2.如果控制内容发送变化
-    for(u8 i = 0; i < GetMonitor()->device_size; i++)
+    for(u8 i = 0; i < DEVICE_MAX; i++)
     {
         if(addr == sendMoni[i].addr)
         {
@@ -1028,15 +1118,18 @@ static void SendCmd(void)
             AddLastCtrl(LongToSeqKey(first->keyData.key).addr, value);
             SignDeviceSendFlag(LongToSeqKey(first->keyData.key).addr);
         }
+
     }
 
-//    rt_kprintf("==========================device sendCmd : ");
-//    for(int i = 0; i < first->keyData.dataSegment.len; i++)
 //    {
-//        rt_kprintf(" %x",first->keyData.dataSegment.data[i]);
+//        LOG_I("///////////////////////////device sendCmd : ");
+//        for(int i = 0; i < first->keyData.dataSegment.len; i++)
+//        {
+//            rt_kprintf(" %x",first->keyData.dataSegment.data[i]);
 //
+//        }
+//        rt_kprintf("\r\n");//Justin
 //    }
-//    rt_kprintf("\r\n");
 
     //5.将这个任务从任务列表中移出去
     uart2Object.taskList.DeleteToList(first->keyData);
@@ -1199,6 +1292,28 @@ static void RecvListHandle(void)
                                     device->port[0].ctrl.d_state = OFF;
                                 }
                             }
+                            else if(PRO_DEHUMI_TYPE == device->type)
+                            {
+                                if(tail->keyData.dataSegment.data[4] & 0x80)
+                                {
+                                    device->port[0].ctrl.d_state = ON;
+                                }
+                                else
+                                {
+                                    device->port[0].ctrl.d_state = OFF;
+                                }
+                            }
+                            else if(PRO_HUMI_TYPE == device->type)
+                            {
+                                if(tail->keyData.dataSegment.data[4] & 0x80)
+                                {
+                                    device->port[0].ctrl.d_state = ON;
+                                }
+                                else
+                                {
+                                    device->port[0].ctrl.d_state = OFF;
+                                }
+                            }
                             else
                             {
                                 device->port[0].ctrl.d_state = tail->keyData.dataSegment.data[4];
@@ -1266,7 +1381,7 @@ static void RecvListHandle(void)
     }
 
     //6.判断失联情况
-    for(u8 i = 0; i < monitor->device_size; i++)
+    for(u8 i = 0; i < DEVICE_MAX; i++)
     {
         //1.已经发送数据了 但是数据接收超时判断为失联
         if(sendMoni[i].SendCnt > 2)

@@ -77,6 +77,8 @@ typedef     struct eth_heart                eth_heart_t;
 #define     SYS_RECIPE_VER                  1
 #define     SYS_TANK_VER                    1
 
+#define     HVAC_DAY_POINT                  25
+#define     HVAC_NIGHT_POINT                25
 
 //如果修改了结构体要修改相应的结构体的版本号
 #pragma pack(1)
@@ -89,12 +91,6 @@ typedef struct system_ver{
     int recipe_ver;
     int tank_ver;
 }sys_ver_t;
-
-typedef struct hubOld{
-    u16 crc;
-    char name[HUB_NAMESZ];
-    u8 nameSeq;   //名称序号 仅仅提供给主机使用
-}hubOld_t;
 
 struct hub{
     u16 crc;
@@ -118,32 +114,11 @@ enum{
     WORK_UP,
 };
 
-typedef struct sen_stora_Old{
-    char            name[9];
-    u8              func;
-    s16             value;
-}sen_storaOld_t;
-
 struct sen_stora{
     char            name[STORAGE_NAMESZ];
     u8              func;
     s16             value;
 };
-
-typedef struct sensorOld
-{
-    u16             crc;
-    u32             uuid;
-    char            name[9];                            //产品名称
-    u8              addr;                                   //hub管控的地址
-    u8              type;                                   //产品类型号
-    u16             ctrl_addr;                              //终端控制的寄存器地址
-    u8              conn_state;                             //连接状态
-    u8              reg_state;                              //注册状态
-    u8              save_state;                             //是否已经存储
-    u8              storage_size;                           //寄存器数量
-    sen_storaOld_t     __stora[4];
-}sensorOld_t;//占35字节
 
 struct sensor
 {
@@ -161,15 +136,6 @@ struct sensor
     sen_stora_t     __stora[SENSOR_VALUE_MAX];
 };//占35字节
 
-typedef struct cycleOld
-{
-    time_t start_at_timestamp;                      //保存当天的时间戳
-    u16     startAt;                                //开启时间点 8:00 8*60=480
-    int     duration;                               //持续时间 秒
-    int     pauseTime;                              //停止时间 秒
-    u16     times;//旧的结构体
-}type_cycleOld_t;
-
 struct cycle
 {
     time_t start_at_timestamp;                      //保存当天的时间戳
@@ -179,26 +145,12 @@ struct cycle
     u16     times;
 };
 
-typedef struct timerOld
-{
-    int     on_at;                                  //开始的时间
-    int     duration;                               //持续时间 //该时间以秒为单位的
-    u8      en;
-}type_timmerOld_t;
-
 struct timer
 {
     int     on_at;                                  //开始的时间
     int     duration;                               //持续时间 //该时间以秒为单位的
     u8      en;
 };
-
-typedef struct manualOld
-{
-    u8      manual;                                 //手动开关/ 开、关
-    u16     manual_on_time;                         //手动开启的时间
-    timer_t manual_on_time_save;                    //保存手动开的时间
-}type_manualOld_t;
 
 struct manual
 {
@@ -207,31 +159,11 @@ struct manual
     timer_t manual_on_time_save;                    //保存手动开的时间
 };
 
-typedef struct controlOld
-{
-    u8      d_state;                                //device 的状态位
-    u8      d_value;                                //device 的控制数值
-}type_ctrlOld_t;
-
 struct control
 {
     u8      d_state;                                //device 的状态位
     u8      d_value;                                //device 的控制数值
 };
-
-typedef struct lineOld{
-    u16             crc;
-    u8              type;                                   //产品类型号
-    u32             uuid;
-    char            name[9];                    //产品名称
-    u8              addr;                                   //hub管控的地址
-    u16             ctrl_addr;                              //终端控制的寄存器地址
-    u8              d_state;                                //device 的状态位
-    u8              d_value;                                //device 的控制数值
-    u8              save_state;                             //是否已经存储
-    u8              conn_state;
-    type_manual_t   _manual;
-}lineOld_t;
 
 struct line{
     u16             crc;
@@ -249,42 +181,6 @@ struct line{
     u8              conn_state;
     u8              lineNo;                                 //指定该路灯是第几路
 };
-
-typedef struct deviceOld{
-    u16             crc;
-    u32             uuid;
-    char            name[MODULE_NAMESZ];
-    u8              addr;                                   //hub管控的地址
-    u8              type;                                   //类型
-    u16             ctrl_addr;                              //实际上终端需要控制的地址
-    u8              main_type;                              //主类型 如co2 温度 湿度 line timer
-    u8              conn_state;                             //连接状态
-    u8              reg_state;                              //注册状态
-    u8              save_state;                             //是否已经存储
-    u8              storage_size;                           //寄存器数量
-    u8              color;                                  //颜色
-    //12个端口需要 state time cycle
-    struct portOld{
-        char    name[9];
-        u16     addr;
-        u8      type;                                       //类型
-        u8      hotStartDelay;                              //对于制冷 制热 除湿设备需要有该保护
-        u8      mode;                                       // 模式 1-By Schedule 2-By Recycle
-        u8      func;
-        //timer
-        type_timmerOld_t timer[12];
-        type_cycleOld_t cycle;
-        type_manualOld_t manual;
-        type_ctrlOld_t ctrl;
-    }port[12];
-    //特殊处理
-    struct hvacOld
-    {
-        u8      manualOnMode;        //1-cooling 2-heating //手动开关的时候 该选项才有意义
-        u8      fanNormallyOpen;     //风扇常开 1-常开 0-自动
-        u8      hvacMode;            //1-conventional 模式 2-HEAT PUM 模式 O 模式 3-HEAT PUM 模式 B 模式
-    }_hvac;
-}deviceOld_t;
 
 struct device{
     u16             crc;
@@ -314,17 +210,17 @@ struct device{
         type_manual_t manual;
         type_ctrl_t ctrl;
         u8  weekDayEn;//星期1-7使能
-//        u16 startDelay;//对于cool heat dehumi humi 的设备做阶梯控制//Justin
+//        u16 startDelay;//对于cool heat dehumi humi 的设备做阶梯控制
     }port[DEVICE_PORT_MAX];
     //特殊处理
     union special{
         struct hvac
         {
-            u8      manualOnMode;        //1-cooling 2-heating //手动开关的时候 该选项才有意义
-            u8      fanNormallyOpen;     //风扇常开 1-常开 0-自动
-            u8      hvacMode;            //1-conventional 模式 2-HEAT PUM 模式 O 模式 3-HEAT PUM 模式 B 模式
+            u8      dayPoint;               //白天point
+            u8      fanNormallyOpen;        //风扇常开 1-常开 0-自动
+            u8      nightPoint;             //夜晚point
         }_hvac;
-        u16 mix_fertilizing;              //是否跟随aqua的配肥状态 /bit0~bit12表示对应的port口
+        u16 mix_fertilizing;                //是否跟随aqua的配肥状态 /bit0~bit12表示对应的port口
     }special_data;
 
 };
@@ -498,30 +394,12 @@ enum{
     SENSOR_CTRL_MAIN
 };
 
-struct allocate_old
-{
-    u8 address[256];
-};
-
 struct allocate
 {
     u8 address[ALLOCATE_ADDRESS_SIZE];
 };
 
 /** 一下结构顺序不能打乱 否则存取SD卡的GetMonitorFromSdCard相关逻辑要改 **/
-
-typedef struct monitorOld
-{
-    /* 以下为统一分配 */
-    struct allocate_old     allocateStr;
-    u8                  sensor_size;
-    u8                  device_size;
-    u8                  line_size;
-    sensorOld_t         sensor[20];
-    deviceOld_t         device[16];
-    lineOld_t           line[2];
-    u16                 crc;
-}type_monitorOld_t;
 
 typedef struct monitor
 {
@@ -672,6 +550,7 @@ typedef     void (*FAC_FUNC)(type_monitor_t *);
 #define     CO2_DOWN_TYPE       0x4A
 #define     PUMP_TYPE           0x4B        //水泵
 #define     TIMER_TYPE          0x4f
+#define     AUTO_WATER_TYPE     0x54
 #define     HVAC_6_TYPE         0x61
 #define     AC_4_TYPE           0x50
 #define     IO_12_TYPE          0x80
@@ -680,6 +559,8 @@ typedef     void (*FAC_FUNC)(type_monitor_t *);
 #define     IR_AIR_TYPE         0xB4        //红外空调
 #define     AQUE_SLAVE_TYPE     0XC1        //aqua 从机模式
 #define     MIX_TYPE            0x4C
+#define     PRO_DEHUMI_TYPE     0xB8        //协议转换模块-除湿
+#define     PRO_HUMI_TYPE       0xB9        //协议转换模块-加湿
 /**************************************从机 End*******************************************/
 
 /************************************** 功能码定义 **************************************/
@@ -708,7 +589,8 @@ enum{
     S_IO_4,
     S_LIGHT_12,
     S_AQUA,
-    S_MIX
+    S_MIX,
+    S_AUTO_WATER,
 };
 
 //后续加入要加在后面
@@ -744,6 +626,8 @@ enum{
     F_S_O2,     //氧气传感器
     /*****************************device 类型功能*/
     F_MIX,
+    F_AUTO_WATER,
+    F_HVAC
 };
 
 /*设备工作状态 0-Off 1-On 2-PPM UP 3-FUZZY LOGIC

@@ -460,6 +460,8 @@ void monitorTankTimeOutWarn(sys_tank_t *list, sys_set_t *set)
                                 if(F_S_WL == sensor->__stora[port].func)
                                 {
                                     sensorData = sensor->__stora[port].value;
+                                    //相对于
+                                    sensorData /= 10;
                                 }
                             }
                         }
@@ -545,13 +547,13 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
         {
             if(ON == set->sysWarn.dayTempEn)
             {
-                if(data <= set->sysWarn.dayTempMin)
+                if(data < set->sysWarn.dayTempMin)
                 {
                     set->warn[WARN_TEMP_LOW - 1] = ON;
                     set->warn_value[WARN_TEMP_LOW - 1] = data;
                     tempStateLow_pre = ON;
                 }
-                else if(data >= set->sysWarn.dayTempMax)
+                else if(data > set->sysWarn.dayTempMax)
                 {
                     set->warn[WARN_TEMP_HIGHT - 1] = ON;
                     set->warn_value[WARN_TEMP_HIGHT - 1] = data;
@@ -638,13 +640,13 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
         {
             if(ON == set->sysWarn.dayhumidEn)
             {
-                if(data <= set->sysWarn.dayhumidMin)
+                if(data < set->sysWarn.dayhumidMin)
                 {
                     set->warn[WARN_HUMI_LOW - 1] = ON;
                     set->warn_value[WARN_HUMI_LOW - 1] = data;
                     humiStateLow_pre = ON;
                 }
-                else if(data >= set->sysWarn.dayhumidMax)
+                else if(data > set->sysWarn.dayhumidMax)
                 {
                     set->warn[WARN_HUMI_HIGHT - 1] = ON;
                     set->warn_value[WARN_HUMI_HIGHT - 1] = data;
@@ -734,13 +736,13 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
         {
             if(ON == set->sysWarn.dayCo2En)
             {
-                if(data <= set->sysWarn.dayCo2Min)
+                if(data < set->sysWarn.dayCo2Min)
                 {
                     set->warn[WARN_CO2_LOW - 1] = ON;
                     set->warn_value[WARN_CO2_LOW - 1] = data;
                     co2StateLow_pre = ON;
                 }
-                else if(data >= set->sysWarn.dayCo2Max)
+                else if(data > set->sysWarn.dayCo2Max)
                 {
                     set->warn[WARN_CO2_HIGHT - 1] = ON;
                     set->warn_value[WARN_CO2_HIGHT - 1] = data;
@@ -824,13 +826,13 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
         {
             if(0 != getVpd())
             {
-                if(getVpd() <= set->sysWarn.dayVpdMin)
+                if(getVpd() < set->sysWarn.dayVpdMin)
                 {
                     set->warn[WARN_VPD_LOW - 1] = ON;
                     set->warn_value[WARN_VPD_LOW - 1] = getVpd();
                     vpdStateLow_pre = ON;
                 }
-                else if(getVpd() >= set->sysWarn.dayVpdMax)
+                else if(getVpd() > set->sysWarn.dayVpdMax)
                 {
                     set->warn[WARN_VPD_HIGHT - 1] = ON;
                     set->warn_value[WARN_VPD_HIGHT - 1] = getVpd();
@@ -870,12 +872,12 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
         {
             if(ON == set->sysWarn.dayParEn)
             {
-                if(data <= set->sysWarn.dayParMin)
+                if(data < set->sysWarn.dayParMin)
                 {
                     set->warn[WARN_PAR_LOW - 1] = ON;
                     set->warn_value[WARN_PAR_LOW - 1] = data;
                 }
-                else if(data >= set->sysWarn.dayParMax)
+                else if(data > set->sysWarn.dayParMax)
                 {
                     set->warn[WARN_PAR_HIGHT - 1] = ON;
                     set->warn_value[WARN_PAR_HIGHT - 1] = data;
@@ -906,13 +908,13 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
         {
             if(ON == set->sysWarn.nightTempEn)
             {
-                if(data <= set->sysWarn.nightTempMin)
+                if(data < set->sysWarn.nightTempMin)
                 {
                     set->warn[WARN_TEMP_LOW - 1] = ON;
                     set->warn_value[WARN_TEMP_LOW - 1] = data;
                     tempStateLow_pre = ON;
                 }
-                else if(data >= set->sysWarn.nightTempMax)
+                else if(data > set->sysWarn.nightTempMax)
                 {
                     set->warn[WARN_TEMP_HIGHT - 1] = ON;
                     set->warn_value[WARN_TEMP_HIGHT - 1] = data;
@@ -998,13 +1000,13 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
         {
             if(ON == set->sysWarn.nighthumidEn)
             {
-                if(data <= set->sysWarn.nighthumidMin)
+                if(data < set->sysWarn.nighthumidMin)
                 {
                     set->warn[WARN_HUMI_LOW - 1] = ON;
                     set->warn_value[WARN_HUMI_LOW - 1] = data;
                     humiStateLow_pre = ON;
                 }
-                else if(data >= set->sysWarn.nighthumidMax)
+                else if(data > set->sysWarn.nighthumidMax)
                 {
                     set->warn[WARN_HUMI_HIGHT - 1] = ON;
                     set->warn_value[WARN_HUMI_HIGHT - 1] = data;
@@ -1088,13 +1090,13 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
         {
             if(ON == set->sysWarn.nightCo2En)
             {
-                if(data <= set->sysWarn.nightCo2Min)
+                if(data < set->sysWarn.nightCo2Min)
                 {
                     set->warn[WARN_CO2_LOW - 1] = ON;
                     set->warn_value[WARN_CO2_LOW - 1] = data;
                     co2StateLow_pre = ON;
                 }
-                else if(data >= set->sysWarn.nightCo2Max)
+                else if(data > set->sysWarn.nightCo2Max)
                 {
                     set->warn[WARN_CO2_HIGHT - 1] = ON;
                     set->warn_value[WARN_CO2_HIGHT - 1] = data;
@@ -1178,13 +1180,13 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
         {
             if(0 != getVpd())
             {
-                if(getVpd() <= set->sysWarn.nightVpdMin)
+                if(getVpd() < set->sysWarn.nightVpdMin)
                 {
                     set->warn[WARN_VPD_LOW - 1] = ON;
                     set->warn_value[WARN_VPD_LOW - 1] = getVpd();
                     vpdStateLow_pre = ON;
                 }
-                else if(getVpd() >= set->sysWarn.nightVpdMax)
+                else if(getVpd() > set->sysWarn.nightVpdMax)
                 {
                     set->warn[WARN_VPD_HIGHT - 1] = ON;
                     set->warn_value[WARN_VPD_HIGHT - 1] = getVpd();
@@ -1487,11 +1489,11 @@ void menualHandProgram(type_monitor_t *monitor, type_uart_class *deviceUart, typ
             else
             {
                 //如果上一个时刻为手动开启 突然关闭手动要将状态还回去
-                if((nowTime >= device->port[port].manual.manual_on_time_save) &&
-                   (nowTime <= (device->port[port].manual.manual_on_time + device->port[port].manual.manual_on_time_save)))
-                {
-                    device->port[port].ctrl.d_state = OFF;
-                }
+//                if((nowTime >= device->port[port].manual.manual_on_time_save) &&
+//                   (nowTime <= (device->port[port].manual.manual_on_time + device->port[port].manual.manual_on_time_save)))
+//                {
+//                    device->port[port].ctrl.d_state = OFF;
+//                }
             }
         }
     }
@@ -1608,7 +1610,7 @@ void AquaMixProgram(sys_tank_t *list, type_monitor_t *monitor)
         }
         device = GetDeviceByAddr(monitor, addr);
 
-        if((RT_NULL != aqua) && (RT_NULL != device))
+        if(RT_NULL != aqua)
         {
             aquaRunFlg = GetAquaWarnById(aqua->addr)->isAquaRunning;
 
@@ -1623,47 +1625,48 @@ void AquaMixProgram(sys_tank_t *list, type_monitor_t *monitor)
                     state = 0;
                 }
             }
+        }
+
+        if(RT_NULL != device)
+        {
+            //以下都是为了节省空间而复用
+            if(NO == device->port[port].timer[0].en)
+            {
+                state = 0;
+            }
             else
             {
-                //以下都是为了节省空间而复用
-                if(NO == device->port[0].timer[0].en)
+                u32 start = device->port[port].timer[0].on_at * 60;
+                u32 end = device->port[port].timer[0].duration * 60;
+                if(YES == device->port[port].timer[0].en)
                 {
-                    state = 0;
-                }
-                else
-                {
-                    u32 start = device->port[0].timer[0].on_at * 60;
-                    u32 end = device->port[0].timer[0].duration * 60;
-                    if(YES == device->port[0].timer[0].en)
+                    //如果在一天内
+                    if(end > start)
                     {
-                        //如果在一天内
-                        if(end > start)
+                        if(nowTime > start && nowTime <= end)
                         {
-                            if(nowTime > start && nowTime <= end)
-                            {
-                                state = 1;
-                            }
-                            else
-                            {
-                                state = 0;
-                            }
+                            state = 1;
                         }
                         else
                         {
-                            if(nowTime < start || nowTime >= end)
-                            {
-                                state = 1;
-                            }
-                            else
-                            {
-                                state = 0;
-                            }
+                            state = 0;
                         }
                     }
                     else
                     {
-                        state = 0;
+                        if(nowTime < start || nowTime >= end)
+                        {
+                            state = 1;
+                        }
+                        else
+                        {
+                            state = 0;
+                        }
                     }
+                }
+                else
+                {
+                    state = 0;
                 }
             }
 
@@ -2066,7 +2069,7 @@ void co2Program(type_monitor_t *monitor, type_uart_class uart, u16 mPeriod)
 
                 if(1 == switchFlg)
                 {
-                    if(!((ON == co2Set.dehumidifyLock && YES == GetDeviceStateByCo2Lock(monitor, DEHUMI_TYPE)) ||
+                    if(!((ON == co2Set.dehumidifyLock && (YES == GetDeviceStateByCo2Lock(monitor, DEHUMI_TYPE))) ||
                          (ON == co2Set.coolingLock && YES == GetDeviceStateByCo2Lock(monitor, COOL_TYPE))))
                     {
                         if((VALUE_NULL == getSensorDataByFunc(monitor, F_S_O2)) ||
@@ -2091,7 +2094,7 @@ void co2Program(type_monitor_t *monitor, type_uart_class uart, u16 mPeriod)
                 {
                     //如果和制冷联动 则制冷的时候不增加co2
                     //如果和除湿联动 则除湿的时候不增加co2
-                    if(!((ON == co2Set.dehumidifyLock && YES == GetDeviceStateByCo2Lock(monitor, DEHUMI_TYPE)) ||
+                    if(!((ON == co2Set.dehumidifyLock && (YES == GetDeviceStateByCo2Lock(monitor, DEHUMI_TYPE))) ||
                          (ON == co2Set.coolingLock && YES == GetDeviceStateByCo2Lock(monitor, COOL_TYPE))))
                     {
                         if((VALUE_NULL == getSensorDataByFunc(monitor, F_S_O2)) ||
@@ -2238,116 +2241,6 @@ void TempAndHumiProgram(type_monitor_t *monitor, type_uart_class uart)
         }
     }
 
-}
-
-void humiProgram(type_monitor_t *monitor, type_uart_class uart)
-{
-    int             humiNow             = GetSensorMainValue(monitor, F_S_HUMI);
-    u16             humiTarget          = 0;
-    u16             dehumiTarget        = 0;
-    proHumiSet_t    humiSet;
-    proTempSet_t    tempSet;
-
-    GetNowSysSet(&tempSet, RT_NULL, &humiSet, RT_NULL, RT_NULL, RT_NULL, RT_NULL);
-
-    if(VALUE_NULL != humiNow)
-    {
-        if(DAY_TIME == GetSysSet()->dayOrNight)
-        {
-            humiTarget = humiSet.dayHumiTarget;
-            dehumiTarget = humiSet.dayDehumiTarget;
-        }
-        else if(NIGHT_TIME == GetSysSet()->dayOrNight)
-        {
-            humiTarget = humiSet.nightHumiTarget;
-            dehumiTarget = humiSet.nightDehumiTarget;
-        }
-
-        //达到湿度目标
-        if(humiNow >= dehumiTarget)
-        {
-            CtrlAllDeviceByFunc(monitor, F_DEHUMI, ON, 0);
-            if(ON == GetSysSet()->tempSet.coolingDehumidifyLock)
-            {
-                CtrlAllDeviceByType(monitor, COOL_TYPE, ON, 0);
-            }
-        }
-        else if(humiNow <= dehumiTarget - humiSet.humidDeadband)
-        {
-            CtrlAllDeviceByFunc(monitor, F_DEHUMI, OFF, 0);
-            if(ON == GetSysSet()->tempSet.coolingDehumidifyLock)
-            {
-                if(ON == GetACState_UseByLock(monitor, COOL_TYPE))
-                {
-                    CtrlAllDeviceByType(monitor, DEHUMI_TYPE, ON, 0);
-                }
-            }
-        }
-
-        if(humiNow <= humiTarget)
-        {
-            CtrlAllDeviceByFunc(monitor, F_HUMI, ON, 0);
-        }
-        else if(humiNow >= humiTarget + humiSet.humidDeadband)
-        {
-            CtrlAllDeviceByFunc(monitor, F_HUMI, OFF, 0);
-        }
-    }
-
-}
-
-void tempProgram(type_monitor_t *monitor, type_uart_class uart)
-{
-    int             tempNow             = GetSensorMainValue(monitor, F_S_TEMP);
-    u16             coolTarge           = 0;
-    u16             HeatTarge           = 0;
-    proTempSet_t    tempSet;
-
-    GetNowSysSet(&tempSet, RT_NULL, RT_NULL, RT_NULL, RT_NULL, RT_NULL, RT_NULL);
-
-    if(VALUE_NULL != tempNow)
-    {
-        if(DAY_TIME == GetSysSet()->dayOrNight)
-        {
-            coolTarge = tempSet.dayCoolingTarget;
-            HeatTarge = tempSet.dayHeatingTarget;
-        }
-        else if(NIGHT_TIME == GetSysSet()->dayOrNight)
-        {
-            coolTarge = tempSet.nightCoolingTarget;
-            HeatTarge = tempSet.nightHeatingTarget;
-        }
-
-        if(tempNow >= coolTarge)
-        {
-            //打开所以制冷功能设备
-            CtrlAllDeviceByFunc(monitor, F_COOL, ON, 0);
-            if(ON == GetSysSet()->tempSet.coolingDehumidifyLock)
-            {
-                CtrlAllDeviceByType(monitor, DEHUMI_TYPE, ON, 0);
-            }
-        }
-        else if(tempNow <= (coolTarge - tempSet.tempDeadband))
-        {
-            CtrlAllDeviceByFunc(monitor, F_COOL, OFF, 0);
-            if(ON == GetSysSet()->tempSet.coolingDehumidifyLock)
-            {
-                if(ON == GetACState_UseByLock(monitor, DEHUMI_TYPE))
-                {
-                    CtrlAllDeviceByType(monitor, COOL_TYPE, ON, 0);
-                }
-            }
-        }
-
-        if(tempNow <= HeatTarge)
-        {
-            CtrlAllDeviceByFunc(monitor, F_HEAT, ON, 0);
-        }
-        else if(tempNow >= HeatTarge + tempSet.tempDeadband)
-        {
-            CtrlAllDeviceByFunc(monitor, F_HEAT, OFF, 0);
-        }
-    }
 }
 
 void dimmingLineCtrl(u8 *stage, u16 ppfd)
@@ -2596,7 +2489,11 @@ void line_4Program(line_t *line, type_uart_class lineUart)
             //日升日落
             if(0 == line_4set.sunriseSunSet)
             {
-                state = OFF;
+                state = ON;
+                stage[0] = sys_set->lineRecipeList[lineRecipeNo].output1;
+                stage[1] = sys_set->lineRecipeList[lineRecipeNo].output2;
+                stage[2] = sys_set->lineRecipeList[lineRecipeNo].output3;
+                stage[3] = sys_set->lineRecipeList[lineRecipeNo].output4;
             }
             else
             {
@@ -2669,7 +2566,6 @@ void line_4Program(line_t *line, type_uart_class lineUart)
             ctrlValue[i] = (stage[i] << 8) | res;
         }
     }
-
     lineUart.Line4Ctrl(line, ctrlValue);
 }
 
@@ -3523,10 +3419,10 @@ void pumpProgram(type_monitor_t *monitor, sys_tank_t *tank_list, type_uart_class
     u8          valve_index             = 0;
     u8          valve_index1            = 0;
     u8          tank                    = 0;
-    u16         ph                      = 0;
-    u16         ec                      = 0;
-    u16         wl                      = 0;
-    u16         sw                      = 0;
+    int         ph                      = VALUE_NULL;
+    int         ec                      = VALUE_NULL;
+    int         wl                      = VALUE_NULL;
+    int         sw                      = VALUE_NULL;
     u8          type                    = 0;
     u8          port1                   = 0;
     device_t    *device                 = RT_NULL;
@@ -3589,10 +3485,17 @@ void pumpProgram(type_monitor_t *monitor, sys_tank_t *tank_list, type_uart_class
             }
         }
 
-        if(VALVE_TYPE != type)
+        if((VALVE_TYPE != type) &&
+           (AUTO_WATER_TYPE != type))
         {
             tank_list->tank[tank].autoFillValveId = 0;
         }
+
+        //初始化参数
+        ph = VALUE_NULL;
+        ec = VALUE_NULL;
+        wl = VALUE_NULL;
+        sw = VALUE_NULL;
 
         for(sensor_index = 0; sensor_index < monitor->sensor_size; sensor_index++)
         {
@@ -3624,8 +3527,8 @@ void pumpProgram(type_monitor_t *monitor, sys_tank_t *tank_list, type_uart_class
             }
         }
 
-        //1.判断是否需要补水
-        if(wl < tank_list->tank[tank].autoFillHeight)
+        if((wl < tank_list->tank[tank].autoFillHeight) &&
+           (wl != VALUE_NULL))
         {
             waterState[tank] = ADD_WATER;
         }
@@ -4369,8 +4272,7 @@ void sendReportToApp(void)
     u8              *buf                = RT_NULL;
     u16             length              = 0;
 
-    if((OFF == eth->tcp.GetConnectTry()) &&
-       (ON == eth->tcp.GetConnectStatus()))
+    if(GetTcpSocket() > 0)
     {
         //申请内存
         buf = rt_malloc(1024 * 2);
@@ -4384,9 +4286,7 @@ void sendReportToApp(void)
                     rt_memcpy(buf + 4, &length, 2);
                     if (RT_EOK != TcpSendMsg(&tcp_sock, buf, length + sizeof(eth_page_head)))
                     {
-                        LOG_E("send tcp err 3");
-                        eth->tcp.SetConnectStatus(OFF);
-                        eth->tcp.SetConnectTry(ON);
+                        closeTcpSocket();
                     }
                 }
             }
@@ -4402,7 +4302,7 @@ void sendReportToApp(void)
     }
 }
 
-u8 GetReportType(u8 warn)
+u8 GetReportType(u16 warn)
 {
     u8 type = 0;
 
@@ -4453,11 +4353,11 @@ u8 GetReportType(u8 warn)
     {
         type = 9;
     }
-    else if((warn == WARN_PH_HIGHT) || (warn == WARN_PH_LOW))
+    else if((warn == WARN_PH_HIGHT) || (warn == WARN_PH_LOW) || (warn == 62508) || (warn == 62509))
     {
         type = 10;
     }
-    else if((warn == WARN_EC_HIGHT) || (warn == WARN_EC_LOW))
+    else if((warn == WARN_EC_HIGHT) || (warn == WARN_EC_LOW) || (warn == 62510) || (warn == 62511))
     {
         type = 11;
     }

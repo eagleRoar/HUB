@@ -36,6 +36,8 @@
 
 #define MAX_ADDR_LEN 6
 
+extern int linkState;
+
 struct rt_stm32_eth
 {
     /* inherit from ethernet device */
@@ -440,6 +442,8 @@ static void phy_linkchange()
         if (phy_speed & PHY_LINK)
         {
             LOG_I("link up");
+            linkState = 0x01;
+
             if (phy_speed & PHY_100M)
             {
                 LOG_D("100Mbps");
@@ -469,6 +473,7 @@ static void phy_linkchange()
         {
             LOG_I("Eth link down");
             eth_device_linkchange(&stm32_eth_device.parent, RT_FALSE);
+            linkState = 0x00;
         }
     }
 }

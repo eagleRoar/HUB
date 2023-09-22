@@ -22,6 +22,7 @@ extern rt_mutex_t dynamic_mutex;
 extern void printLine(line_t);
 extern void GetNowSysSet(proTempSet_t *, proCo2Set_t *, proHumiSet_t *, proLine_t *, proLine_t *, struct recipeInfor *);
 extern void setSensorDefuleStora(sensor_t *module, sen_stora_t , sen_stora_t , sen_stora_t , sen_stora_t);
+extern u8 saveAquaInfoFlag;
 //获取phec sensor
 //注意:如果有多线程使用该函数的时候需要使用锁
 phec_sensor_t* getPhEcList(type_monitor_t *monitor, u8 isOnline)
@@ -67,6 +68,36 @@ phec_sensor_t* getPhEcList(type_monitor_t *monitor, u8 isOnline)
 
     return &phec_sensor;
 }
+#if (HUB_IRRIGSTION == HUB_SELECT)
+void PHEC_Correction(void)
+{
+    //phec 校准
+    for(u8 phec_i = 0; phec_i < getPhEcList(GetMonitor(), YES)->num; phec_i++)
+    {
+        ph_cal_t *ph = RT_NULL;
+        ph = getPhCalByuuid(GetSensorByAddr(GetMonitor(), getPhEcList(GetMonitor(), YES)->addr[phec_i])->uuid);
+        if(RT_NULL != ph)
+        {
+            if((CAL_INCAL == ph->cal_7_flag) || (CAL_INCAL == ph->cal_4_flag))
+            {
+                phCalibrate1(GetSensorByAddr(GetMonitor(), getPhEcList(GetMonitor(), YES)->addr[phec_i]),
+                        GetMonitor(),ph, GetSysSet());
+            }
+        }
+
+        ec_cal_t *ec = RT_NULL;
+        ec = getEcCalByuuid(GetSensorByAddr(GetMonitor(), getPhEcList(GetMonitor(), YES)->addr[phec_i])->uuid);
+        if(RT_NULL != ec)
+        {
+            if((CAL_INCAL == ec->cal_0_flag) || (CAL_INCAL == ec->cal_141_flag))
+            {
+                ecCalibrate1(GetSensorByAddr(GetMonitor(), getPhEcList(GetMonitor(), YES)->addr[phec_i]),
+                        GetMonitor(),ec, GetSysSet());
+            }
+        }
+    }
+}
+#endif
 
 void changeDeviceType(type_monitor_t *monitor, u8 addr, u8 port, u8 type)
 {
@@ -512,48 +543,6 @@ tank_t *GetTankByNo(sys_tank_t *sys_tank, u8 no)
     }
 
     return RT_NULL;
-}
-
-u16 GetValueAboutHACV(device_t *device, u8 cool, u8 heat)
-{
-    u16         value       = 0x0000;
-
-    //只允许AC的不允许端口中为hvac型的
-    if(HVAC_6_TYPE == device->type)
-    {
-        if(ON == heat)
-        {
-            if(HVAC_CONVENTIONAL == device->special_data._hvac.hvacMode)
-            {
-                value = 0x14;
-            }
-            else if(HVAC_PUM_O == device->special_data._hvac.hvacMode)
-            {
-                value = 0x1C;
-            }
-            else if(HVAC_PUM_B == device->special_data._hvac.hvacMode)
-            {
-                value = 0x0C;
-            }
-        }
-        else if(ON == cool)
-        {
-            if(HVAC_CONVENTIONAL == device->special_data._hvac.hvacMode)
-            {
-                value = 0x0C;
-            }
-            else if(HVAC_PUM_O == device->special_data._hvac.hvacMode)
-            {
-                value = 0x0C;
-            }
-            else if(HVAC_PUM_B == device->special_data._hvac.hvacMode)
-            {
-                value = 0x1C;
-            }
-        }
-    }
-
-    return value;
 }
 
 /**
@@ -1058,6 +1047,19 @@ void DeleteModule(type_monitor_t *monitor, u32 uuid)
             }
         }
     }
+
+    aqua_info_t *info = GetAquaInfoByUUID(uuid);
+    if(info)
+    {
+        rt_memset((u8 *)info, 0, sizeof(aqua_info_t));
+        saveAquaInfoFlag = YES;
+    }
+
+    aqua_state_t *state = GetAquaWarnById(uuid);
+    if(state)
+    {
+        rt_memset(state, 0, sizeof(aqua_state_t));
+    }
 #endif
 }
 
@@ -1230,6 +1232,16 @@ rt_err_t SetDeviceDefault(type_monitor_t *monitor, u32 uuid, u8 type, u8 addr)
                         setDeviceDefaultStora(device, 0 , "Dehumi", F_DEHUMI, device->type, addr , MANUAL_NO_HAND, 0);
                         ret = RT_EOK;
                         break;
+                    case PRO_DEHUMI_TYPE:
+                        setDeviceDefaultPara(device, "BRC-DH", 0x0100, S_HUMI, device->type, 1);
+                        setDeviceDefaultStora(device, 0 , "Dehumi", F_DEHUMI, device->type, addr , MANUAL_NO_HAND, 0);
+                        ret = RT_EOK;
+                        break;
+                    case PRO_HUMI_TYPE:
+                        setDeviceDefaultPara(device, "BRC-H", 0x0100, S_HUMI, device->type, 1);
+                        setDeviceDefaultStora(device, 0 , "Humi", F_HUMI, device->type, addr , MANUAL_NO_HAND, 0);
+                        ret = RT_EOK;
+                        break;
                     case COOL_TYPE:
                         setDeviceDefaultPara(device, "BTS-C", 0x0040, S_TEMP, device->type, 1);
                         setDeviceDefaultStora(device, 0 , "Cool", F_COOL, device->type, addr , MANUAL_NO_HAND, 0);
@@ -1242,7 +1254,7 @@ rt_err_t SetDeviceDefault(type_monitor_t *monitor, u32 uuid, u8 type, u8 addr)
                         break;
                     case HVAC_6_TYPE:
                         setDeviceDefaultPara(device, "BTS-1", 0x0401, S_TEMP, device->type, 1);
-                        setDeviceDefaultStora(device, 0 , "Hvac", F_COOL, device->type, addr, MANUAL_NO_HAND, 0);
+                        setDeviceDefaultStora(device, 0 , "Hvac", F_HVAC, device->type, addr, MANUAL_NO_HAND, 0);
                         ret = RT_EOK;
                         break;
                     case TIMER_TYPE:
@@ -1273,6 +1285,12 @@ rt_err_t SetDeviceDefault(type_monitor_t *monitor, u32 uuid, u8 type, u8 addr)
                     case VALVE_TYPE:
                         setDeviceDefaultPara(device, "BIS-V", 0x0040, S_VALVE, device->type, 1);
                         setDeviceDefaultStora(device, 0 , "Valve", F_VALVE, device->type, addr , MANUAL_NO_HAND, 0);
+                        device->port[0].mode = BY_SCHEDULE;
+                        ret = RT_EOK;
+                        break;
+                    case AUTO_WATER_TYPE://Juatin 自动灌溉 暂时需要分配
+                        setDeviceDefaultPara(device, "BIS-A", 0x0040, S_AUTO_WATER, device->type, 1);
+                        setDeviceDefaultStora(device, 0 , "Auto Water", F_AUTO_WATER, device->type, addr , MANUAL_NO_HAND, 0);
                         device->port[0].mode = BY_SCHEDULE;
                         ret = RT_EOK;
                         break;

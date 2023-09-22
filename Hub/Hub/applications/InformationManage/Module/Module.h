@@ -31,7 +31,6 @@ tank_t *GetTankByNo(sys_tank_t *, u8);
 void InsertLineToTable(type_monitor_t *, line_t , u8 );
 void CtrlAllDeviceByType(type_monitor_t *, u8 , u8 , u8);
 u8 FindLine(type_monitor_t *, line_t , u8 *);
-u16 GetValueAboutHACV(device_t *, u8, u8);
 void CtrlAllDeviceByFunc(type_monitor_t *, u8, u8, u8);
 int getSensorDataByFunc(type_monitor_t *, u8);
 int getSensorSizeByFunc(type_monitor_t *, u8);
@@ -56,6 +55,7 @@ sensor_t *GetMainSensorByAddr(type_monitor_t *monitor, u8 type);
 int GetSensorMainValue(type_monitor_t *monitor, u8 func);
 #if (HUB_IRRIGSTION == HUB_SELECT)
 void deletePumpValveGroup(type_monitor_t *monitor, u8 addr, u8 port);
+void PHEC_Correction(void);
 #endif
 aqua_t *GetAquaByAddr(type_monitor_t *monitor, u8 addr);
 rt_err_t CheckAquaCorrect(type_monitor_t *monitor, u32 uuid, u8 addr);

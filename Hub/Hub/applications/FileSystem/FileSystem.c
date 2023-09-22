@@ -477,14 +477,6 @@ void printTankInfo(tank_t *tank)
         }
     }
     rt_kprintf("\r\n");
-//    u16     pumpId;                         //水泵Id
-//    u16     valve[VALVE_MAX];               //关联的阀的ID
-//    u16     nopump_valve[VALVE_MAX];        //未指定的阀ID
-//    u8      sensorId[TANK_SINGLE_GROUD][TANK_SENSOR_MAX];   //桶内存在两个sensor 一个是测试桶内的 一个测试管道的
-//    u8      color;                          //颜色
-//    u16     poolTimeout;
-//    u16     aquaId;
-//    u16     mixId;
 }
 
 static void GetSysTankFromFile(sys_tank_t *list, char *fileName)
@@ -536,6 +528,12 @@ static void GetSysAquaInfoFromFile(aqua_info_t *list, char *fileName)
     if(RT_EOK == ReadFileData(fileName, (u8 *)list, length, sizeof(aqua_info_t) * TANK_LIST_MAX))
     {
         LOG_I("Get AquaInfo data OK");
+
+        //Justin debug
+        for(int i = 0; i < 4; i++)
+        {
+            rt_kprintf("--------------------------------------------i = %d, uuid = %x\r\n",i, list[i].uuid);//Justin
+        }
     }
     else
     {
@@ -648,6 +646,7 @@ void FileSystemEntry(void* parameter)
 #if(HUB_SELECT == HUB_IRRIGSTION)
     aquaSize = GetMonitor()->aqua_size;
 #endif
+
     while(1)
     {
         time1S = TimerTask(&time1S, 1000/FILE_SYS_PERIOD, &Timer1sTouch);
@@ -691,6 +690,7 @@ void FileSystemEntry(void* parameter)
                 saveAquaInfoFlag = NO;
             }
 #endif
+
         }
 
         //10s 任务
@@ -741,7 +741,6 @@ void FileSystemInit(void)
     char        backupFile[]        = "backup";
     char        main_information[]  = "/main/informations";
 //    char        old_info[]          = "/backup/moduleInfo";
-
     //1.首先将flash作为主存储区挂载到根文件夹 sd卡作为备份存储区挂载到根目录下的文件夹
     if (0 != dfs_mount(FLASH_MEMORY_NAME, "/", "elm", 0, 0))
     {

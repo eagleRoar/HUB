@@ -475,16 +475,11 @@ void CmdSetPortSet(char *data, cloudcmd_t *cmd)
 
             if((COOL_TYPE == device->port[port].type) ||
                (HEAT_TYPE == device->port[port].type) ||
-               (DEHUMI_TYPE == device->port[port].type))
+               (DEHUMI_TYPE == device->port[port].type) ||
+               (PRO_DEHUMI_TYPE == device->port[port].type))
             {
                 GetValueByU8(temp, "hotStartDelay", &device->port[port].hotStartDelay);
-//                GetValueByU16(temp, "startDelay", &device->port[port].startDelay);//Justin debug
-            }
-            if(HVAC_6_TYPE == device->port[port].type)
-            {
-                GetValueByU8(temp, "manualOnMode", &device->special_data._hvac.manualOnMode);
-                GetValueByU8(temp, "fanNormallyOpen", &device->special_data._hvac.fanNormallyOpen);
-                GetValueByU8(temp, "hvacMode", &device->special_data._hvac.hvacMode);
+//                GetValueByU16(temp, "startDelay", &device->port[port].startDelay);
             }
 
             if((TIMER_TYPE == device->port[port].type) ||
@@ -512,7 +507,6 @@ void CmdSetPortSet(char *data, cloudcmd_t *cmd)
 
                             if(RT_NULL != list_item)
                             {
-
                                 GetValueByInt(list_item, "onAt", &device->port[port].timer[index].on_at);
                                 GetValueByInt(list_item, "duration", &device->port[port].timer[index].duration);
                                 GetValueByU8(list_item, "en", &device->port[port].timer[index].en);
@@ -575,6 +569,15 @@ void CmdSetPortSet(char *data, cloudcmd_t *cmd)
                 {
                     device->special_data.mix_fertilizing &= ~(1 << port);
                 }
+            }
+            else if(HVAC_6_TYPE == device->port[port].type)
+            {
+                int setPoint = 0;
+                GetValueByInt(temp, "dayTempSetpoint", &setPoint);
+                device->special_data._hvac.dayPoint = setPoint / 10;
+                GetValueByInt(temp, "nightTempSetpoint", &setPoint);//复用为开始时间
+                device->special_data._hvac.nightPoint = setPoint / 10;
+                GetValueByU8(temp, "fanNormallyOpen", &device->special_data._hvac.fanNormallyOpen);//复用为结束时间
             }
         }
 #if (HUB_SELECT == HUB_ENVIRENMENT)
@@ -1218,6 +1221,7 @@ void CmdSetHubName(char *data, cloudcmd_t *cmd)
     {
         GetValueByC16(temp, "msgid", cmd->msgid, KEYVALUE_VALUE_SIZE);
         GetValueByC16(temp, "name", GetHub()->name, HUB_NAMESZ);
+
         GetValueByU8(temp, "nameSeq", &GetHub()->nameSeq);
 
         cJSON_Delete(temp);
@@ -2169,6 +2173,7 @@ void CmdSetLightList(char *data, cloudcmd_t *cmd)
 
     if(json)
     {
+
         GetValueByC16(json, "msgid", cmd->msgid, KEYVALUE_VALUE_SIZE);
         GetValueByU8(json, "id", &cmd->getLightListId);
 
@@ -2212,10 +2217,19 @@ void CmdSetLightList(char *data, cloudcmd_t *cmd)
                     }
 
                 }
+                else
+                {
+                }
             }
+        }
+        else
+        {
         }
 
         cJSON_Delete(json);
+    }
+    else
+    {
     }
 }
 
@@ -2502,7 +2516,10 @@ void SendWarnToCloudAndApp(mqtt_client *client, char *cmd, u16 warn_no, u16 valu
             rt_memcpy(page + 4, (u8 *)&len, 2);
             rt_memcpy(page + sizeof(eth_page_head), str, len);
 
-            TcpSendMsg(&tcp_sock, page, len + sizeof(eth_page_head));
+            if(RT_EOK != TcpSendMsg(&tcp_sock, page, len + sizeof(eth_page_head)))
+            {
+                closeTcpSocket();
+            }
             rt_free(page);
         }
 
@@ -4064,6 +4081,33 @@ char *ReplyDelPumpSensor(char *cmd, cloudcmd_t cloud)
     return str;
 }
 
+u8 GetTankSensor(sensor_t *sensor, u8 *TankNo, u8 *TankOrInline)
+{
+    tank_t *tank = RT_NULL;
+
+
+    for(int i = 0; i < GetSysTank()->tank_size; i++)
+    {
+        tank = &GetSysTank()->tank[i];
+
+        for(int j = 0; j < 2; j++)
+        {
+            for(int k = 0; k < TANK_SENSOR_MAX; k++)
+            {
+                if(tank->sensorId[j][k] == sensor->addr)
+                {
+                    *TankNo = tank->tankNo;
+                    *TankOrInline = j;
+
+                    return YES;
+                }
+            }
+        }
+    }
+
+    return NO;
+}
+
 //该接口应该返回全部存在的属于EC PH WL WH 的 sensor
 char *ReplyGetPumpSensorList(char *cmd, cloudcmd_t cloud)
 {
@@ -4077,7 +4121,6 @@ char *ReplyGetPumpSensorList(char *cmd, cloudcmd_t cloud)
     cJSON           *item       = RT_NULL;
     cJSON           *list       = RT_NULL;
     sensor_t        sensor;
-
 
     if(RT_NULL != json)
     {
@@ -4093,36 +4136,12 @@ char *ReplyGetPumpSensorList(char *cmd, cloudcmd_t cloud)
                 tankNo = 0;
                 type = 0;
                 sensor = GetMonitor()->sensor[index];
+
                 if(PHEC_NEW_TYPE == sensor.type ||
                    PHEC_TYPE == sensor.type ||
                    WATERlEVEL_TYPE == sensor.type ||
                    SOIL_T_H_TYPE == sensor.type)
                 {
-                    //2.遍历 sysTank 里面的sensor
-                    for(u8 no = 0; no < TANK_LIST_MAX; no++)
-                    {
-//                        if(0 != GetSysTank()->tank[no].pumpId)
-                        {
-                            for(in_out = 0; in_out < 2; in_out++)
-                            {
-                                for(sen_no = 0; sen_no < TANK_SENSOR_MAX; sen_no++)
-                                {
-                                    if(GetMonitor()->sensor[index].addr == GetSysTank()->tank[no].sensorId[in_out][sen_no])
-                                    {
-                                        tankNo = GetSysTank()->tank[no].tankNo;
-                                        if(0 == in_out)
-                                        {
-                                            type = 1;
-                                        }
-                                        else
-                                        {
-                                            type = 2;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
 
                     //3.
                     if(CON_FAIL != sensor.conn_state)//如果不在线的不上传
@@ -4168,6 +4187,21 @@ char *ReplyGetPumpSensorList(char *cmd, cloudcmd_t cloud)
                     item = cJSON_CreateObject();
                     if(item)
                     {
+                        if(YES == GetTankSensor(&sensor, &tankNo, &in_out))
+                        {
+                            if(0 == in_out)
+                            {
+                                type = 1;
+                            }
+                            else {
+                                type = 2;
+                            }
+                        }
+                        else {
+                            tankNo = 0;
+                            type = 0;
+                        }
+
                         cJSON_AddNumberToObject(item, "id", sensor.addr);
                         cJSON_AddNumberToObject(item, "mid", sensor.addr);
                         cJSON_AddStringToObject(item, "name", GetTankSensorNameByType(sensor.__stora[sen_no].func));
@@ -4717,7 +4751,7 @@ char *ReplyGetHubState(char *cmd, cloudcmd_t cloud)
             for(u8 no = 0; no < GetSysTank()->tank_size; no++)
             {
                 sprintf(name, "TankRep%d", no);
-                cJSON_AddItemToArray(list, cJSON_CreateString(name));//Justin debug 仅仅测试
+                cJSON_AddItemToArray(list, cJSON_CreateString(name));
             }
             cJSON_AddItemToObject(json, "pool", list);
         }
@@ -4996,181 +5030,227 @@ char *ReplyGetPortSet(char *cmd, cloudcmd_t cloud)
 #endif
         if(RT_NULL != module)
         {
-            cJSON_AddStringToObject(json, "cmd", cmd);
-            cJSON_AddStringToObject(json, "msgid", cloud.msgid);
-            cJSON_AddStringToObject(json, "sn", GetSnName(name, 12));
-            cJSON_AddStringToObject(json, "model", GetModelByType(module->type, model, 14));
-            model[14] = '\0';
-            cJSON_AddNumberToObject(json, "id", cloud.get_port_id);
-            if(0 == fatherFlg)//端口
+            if((1 == fatherFlg) &&
+               (module->type == AC_4_TYPE ||
+                module->type == IO_12_TYPE ||
+                module->type == IO_4_TYPE ||
+                module->type == LIGHT_12_TYPE))
             {
-                cJSON_AddStringToObject(json, "name", module->port[port].name);
-                cJSON_AddStringToObject(json, "funcName", GetFunNameByType(module->port[port].type, fun_name, 14));
-                fun_name[14] = '\0';
-                cJSON_AddNumberToObject(json, "type", module->port[port].type);
-            }
-            else
-            {
+                cJSON_AddStringToObject(json, "cmd", cmd);
+                cJSON_AddStringToObject(json, "msgid", cloud.msgid);
+                cJSON_AddStringToObject(json, "sn", GetSnName(name, 12));
+                cJSON_AddStringToObject(json, "model", GetModelByType(module->type, model, 14));
+                model[14] = '\0';
+                cJSON_AddNumberToObject(json, "id", cloud.get_port_id);
                 cJSON_AddStringToObject(json, "name", module->name);
                 cJSON_AddStringToObject(json, "funcName", GetFunNameByType(module->type, fun_name, 14));
                 fun_name[14] = '\0';
                 cJSON_AddNumberToObject(json, "type", module->type);
-            }
-            cJSON_AddNumberToObject(json, "mainType", module->main_type);
-
-            cJSON_AddNumberToObject(json, "manual", module->port[port].manual.manual);
-            cJSON_AddNumberToObject(json, "manualOnTime", module->port[port].manual.manual_on_time);
-
-            u16 leftTime = 0;
-            if((getTimeStamp() > module->port[port].manual.manual_on_time_save) &&
-               (getTimeStamp() < (module->port[port].manual.manual_on_time_save + module->port[port].manual.manual_on_time)))
-            {
-                leftTime = module->port[port].manual.manual_on_time_save + module->port[port].manual.manual_on_time - getTimeStamp();
+                cJSON_AddNumberToObject(json, "mainType", module->main_type);
             }
             else
             {
-                leftTime = 0;
-            }
-            cJSON_AddNumberToObject(json, "manualOnLeftTime", leftTime);
-
-            if((COOL_TYPE == module->port[port].type) ||
-               (HEAT_TYPE == module->port[port].type) ||
-               (DEHUMI_TYPE == module->port[port].type))
-            {
-                cJSON_AddNumberToObject(json, "hotStartDelay", module->port[port].hotStartDelay);
-            }
-
-            //延时启动
-//            if((COOL_TYPE == module->port[port].type) ||
-//               (DEHUMI_TYPE == module->port[port].type))
-//            {
-//                cJSON_AddNumberToObject(json, "startDelay", module->port[port].startDelay);//Justin
-//            }
-
-            if(HVAC_6_TYPE == module->type)
-            {
-                cJSON_AddNumberToObject(json, "manualOnMode", module->special_data._hvac.manualOnMode);
-                cJSON_AddNumberToObject(json, "fanNormallyOpen", module->special_data._hvac.fanNormallyOpen);
-                cJSON_AddNumberToObject(json, "hvacMode", module->special_data._hvac.hvacMode);
-            }
-
-            if((TIMER_TYPE == module->port[port].type) ||
-               (PUMP_TYPE == module->port[port].type) ||
-               (VALVE_TYPE == module->port[port].type))
-            {
-                cJSON_AddNumberToObject(json, "mode", module->port[port].mode);
-
-                timerList = cJSON_CreateArray();
-                if(RT_NULL != timerList)
+                cJSON_AddStringToObject(json, "cmd", cmd);
+                cJSON_AddStringToObject(json, "msgid", cloud.msgid);
+                cJSON_AddStringToObject(json, "sn", GetSnName(name, 12));
+                cJSON_AddStringToObject(json, "model", GetModelByType(module->type, model, 14));
+                model[14] = '\0';
+                cJSON_AddNumberToObject(json, "id", cloud.get_port_id);
+                if(0 == fatherFlg)//端口
                 {
-                    for(group = 0; group < TIMER_GROUP; group++)
-                    {
-                        if(!((0 == module->port[port].timer[group].on_at) &&
-                            (0 == module->port[port].timer[group].duration)))
-                        {
-                            valid_gro = group;
-                        }
-                    }
-
-                    if(valid_gro <= TIMER_GROUP)
-                    {
-                        for(group = 0; group <= valid_gro; group++)
-                        {
-                            timer = cJSON_CreateObject();
-                            if(RT_NULL != timer)
-                            {
-                                cJSON_AddNumberToObject(timer, "onAt", module->port[port].timer[group].on_at);
-                                cJSON_AddNumberToObject(timer, "duration", module->port[port].timer[group].duration);
-                                cJSON_AddNumberToObject(timer, "en", module->port[port].timer[group].en);
-
-                                cJSON_AddItemToArray(timerList, timer);
-                            }
-                        }
-                    }
-
-                    cJSON_AddItemToObject(json, "list", timerList);
+                    cJSON_AddStringToObject(json, "name", module->port[port].name);
+                    cJSON_AddStringToObject(json, "funcName", GetFunNameByType(module->port[port].type, fun_name, 14));
+                    fun_name[14] = '\0';
+                    cJSON_AddNumberToObject(json, "type", module->port[port].type);
                 }
                 else
                 {
-                    LOG_E("ReplyGetPortSet err5");
+                    cJSON_AddStringToObject(json, "name", module->name);
+                    cJSON_AddStringToObject(json, "funcName", GetFunNameByType(module->type, fun_name, 14));
+                    fun_name[14] = '\0';
+                    cJSON_AddNumberToObject(json, "type", module->type);
                 }
-//#if(HUB_SELECT == HUB_IRRIGSTION)
-                cJSON_AddNumberToObject(json, "startAt", module->port[port].cycle.startAt);
-//#elif(HUB_SELECT == HUB_ENVIRENMENT)
-                if(TIMER_TYPE == module->port[port].type)
+                cJSON_AddNumberToObject(json, "mainType", module->main_type);
+
+                cJSON_AddNumberToObject(json, "manual", module->port[port].manual.manual);
+                cJSON_AddNumberToObject(json, "manualOnTime", module->port[port].manual.manual_on_time);
+
+                u16 leftTime = 0;
+                if((getTimeStamp() > module->port[port].manual.manual_on_time_save) &&
+                   (getTimeStamp() < (module->port[port].manual.manual_on_time_save + module->port[port].manual.manual_on_time)))
                 {
-                    if(0 != module->port[port].cycle.start_at_timestamp)
-                    {
-                        struct tm *time1 = getTimeStampByDate(&module->port[port].cycle.start_at_timestamp);
-                        format_time.year = time1->tm_year + 1900;
-                        format_time.month = time1->tm_mon + 1;
-                        format_time.day = time1->tm_mday;
-                        format_time.hour = module->port[port].cycle.startAt / 60;
-                        format_time.minute = module->port[port].cycle.startAt % 60;
-                        format_time.second = 0;
-                        changeDataToChar(firstStartAt, &format_time);
-                    }
-                    else
-                    {
-                        getRealTimeForMat(&format_time);
-                        format_time.hour = 0;
-                        format_time.minute = 0;
-                        format_time.second = 0;
-                        changeDataToChar(firstStartAt, &format_time);
-                    }
-                    cJSON_AddStringToObject(json, "firstStartAt", firstStartAt);
+                    leftTime = module->port[port].manual.manual_on_time_save + module->port[port].manual.manual_on_time - getTimeStamp();
                 }
-//#endif
-                cJSON_AddNumberToObject(json, "duration", module->port[port].cycle.duration);
-                cJSON_AddNumberToObject(json, "pauseTime", module->port[port].cycle.pauseTime);
-                cJSON_AddNumberToObject(json, "times", module->port[port].cycle.times);
-
-                rt_memset(firstStartAt, 0, sizeof(firstStartAt));
-                for(int day = 0; day < 7; day++)
+                else
                 {
-                    if((module->port[port].weekDayEn >> day) & 0x01)
-                    {
-                        char num[2];
-                        itoa(day+1, num, 10);
-                        strcat(firstStartAt, num);
-                    }
+                    leftTime = 0;
                 }
-                cJSON_AddStringToObject(json, "weekdayList", firstStartAt);
-            }
-            else if(MIX_TYPE == module->port[port].type)
-            {
-                cJSON_AddNumberToObject(json, "ferWithMix", module->special_data.mix_fertilizing & (1 << port));//是否跟随aqua搅拌
-                cJSON_AddNumberToObject(json, "reservoirDailyBlendState", module->port[0].timer[0].en);//注意 这里是复用了timer时间上只有一个en
-                cJSON_AddNumberToObject(json, "reservoirDailyBlendStart", module->port[0].timer[0].on_at);//注意 这里是复用了timer时间上只有一个开始时间
-                cJSON_AddNumberToObject(json, "reservoirDailyBlendEnd", module->port[0].timer[0].duration);//注意 这里是duration复用为结束时间
-            }
 
-            for(u8 tank_no = 0; tank_no < GetSysTank()->tank_size; tank_no++)
-            {
-                if((((addr << 8) | port) == GetSysTank()->tank[tank_no].pumpId) ||
-                   (addr == GetSysTank()->tank[tank_no].pumpId))//如果是查泵
+                if(MANUAL_HAND_ON == module->port[port].manual.manual)
                 {
-                    cJSON_AddNumberToObject(json, "tankNo", GetSysTank()->tank[tank_no].tankNo);
-                    cJSON_AddNumberToObject(json, "color", GetSysTank()->tank[tank_no].color);
+                    cJSON_AddNumberToObject(json, "manualOnLeftTime", leftTime);
+                }
 
-                    valveList = cJSON_CreateArray();
-                    if(RT_NULL != valveList)
+                if((COOL_TYPE == module->port[port].type) ||
+                   (HEAT_TYPE == module->port[port].type) ||
+                   (DEHUMI_TYPE == module->port[port].type) ||
+                   (PRO_DEHUMI_TYPE == module->port[port].type))
+                {
+                    cJSON_AddNumberToObject(json, "hotStartDelay", module->port[port].hotStartDelay);
+                }
+
+                //延时启动
+    //            if((COOL_TYPE == module->port[port].type) ||
+    //               (DEHUMI_TYPE == module->port[port].type))
+    //            {
+    //                cJSON_AddNumberToObject(json, "startDelay", module->port[port].startDelay);
+    //            }
+
+                if((TIMER_TYPE == module->port[port].type) ||
+                   (PUMP_TYPE == module->port[port].type) ||
+                   (VALVE_TYPE == module->port[port].type))
+                {
+                    cJSON_AddNumberToObject(json, "mode", module->port[port].mode);
+
+                    timerList = cJSON_CreateArray();
+                    if(RT_NULL != timerList)
                     {
-                        for(u8 valve_id = 0; valve_id < VALVE_MAX; valve_id++)
+                        for(group = 0; group < TIMER_GROUP; group++)
                         {
-                            if(0 != GetSysTank()->tank[tank_no].valve[valve_id])
+                            if(!((0 == module->port[port].timer[group].on_at) &&
+                                (0 == module->port[port].timer[group].duration)))
                             {
-                                cJSON_AddItemToArray(valveList,
-                                        cJSON_CreateNumber(GetSysTank()->tank[tank_no].valve[valve_id]));
+                                valid_gro = group;
                             }
                         }
 
-                        cJSON_AddItemToObject(json, "valve", valveList);
-                        break;
+                        if(valid_gro <= TIMER_GROUP)
+                        {
+                            for(group = 0; group <= valid_gro; group++)
+                            {
+                                timer = cJSON_CreateObject();
+                                if(RT_NULL != timer)
+                                {
+                                    cJSON_AddNumberToObject(timer, "onAt", module->port[port].timer[group].on_at);
+                                    cJSON_AddNumberToObject(timer, "duration", module->port[port].timer[group].duration);
+                                    cJSON_AddNumberToObject(timer, "en", module->port[port].timer[group].en);
+
+                                    cJSON_AddItemToArray(timerList, timer);
+                                }
+                            }
+                        }
+
+                        cJSON_AddItemToObject(json, "list", timerList);
+                    }
+                    else
+                    {
+                        LOG_E("ReplyGetPortSet err5");
+                    }
+    //#if(HUB_SELECT == HUB_IRRIGSTION)
+                    cJSON_AddNumberToObject(json, "startAt", module->port[port].cycle.startAt);
+    //#elif(HUB_SELECT == HUB_ENVIRENMENT)
+                    if(TIMER_TYPE == module->port[port].type)
+                    {
+                        if(0 != module->port[port].cycle.start_at_timestamp)
+                        {
+                            struct tm *time1 = getTimeStampByDate(&module->port[port].cycle.start_at_timestamp);
+                            format_time.year = time1->tm_year + 1900;
+                            format_time.month = time1->tm_mon + 1;
+                            format_time.day = time1->tm_mday;
+                            format_time.hour = module->port[port].cycle.startAt / 60;
+                            format_time.minute = module->port[port].cycle.startAt % 60;
+                            format_time.second = 0;
+                            changeDataToChar(firstStartAt, &format_time);
+                        }
+                        else
+                        {
+                            getRealTimeForMat(&format_time);
+                            format_time.hour = 0;
+                            format_time.minute = 0;
+                            format_time.second = 0;
+                            changeDataToChar(firstStartAt, &format_time);
+                        }
+                        cJSON_AddStringToObject(json, "firstStartAt", firstStartAt);
+                    }
+    //#endif
+                    cJSON_AddNumberToObject(json, "duration", module->port[port].cycle.duration);
+                    cJSON_AddNumberToObject(json, "pauseTime", module->port[port].cycle.pauseTime);
+                    cJSON_AddNumberToObject(json, "times", module->port[port].cycle.times);
+
+                    rt_memset(firstStartAt, 0, sizeof(firstStartAt));
+                    for(int day = 0; day < 7; day++)
+                    {
+                        if((module->port[port].weekDayEn >> day) & 0x01)
+                        {
+                            char num[2];
+                            itoa(day+1, num, 10);
+                            strcat(firstStartAt, num);
+                        }
+                    }
+                    cJSON_AddStringToObject(json, "weekdayList", firstStartAt);
+                    //如果是自动补水阀就返回isAutoFillValve字段
+                    u16 id = 0;
+                    if(1 == module->storage_size)
+                    {
+                        id = module->addr;
+                    }
+                    else {
+                        id = (module->addr << 8) | port;
+                    }
+
+                    u8 no = 0;
+                    u8 belong = 0;
+                    GetTankNoById(GetSysTank(), id, &no);
+                    if(no > 0 && no < TANK_LIST_MAX)
+                    {
+                        if(id == GetSysTank()->tank[no - 1].autoFillValveId)
+                        {
+                            belong = 1;
+                        }
+                    }
+                    cJSON_AddNumberToObject(json, "isAutoFillValve", belong);
+                }
+                else if(MIX_TYPE == module->port[port].type)
+                {
+                    cJSON_AddNumberToObject(json, "ferWithMix", module->special_data.mix_fertilizing & (1 << port));//是否跟随aqua搅拌
+                    cJSON_AddNumberToObject(json, "reservoirDailyBlendState", module->port[port].timer[0].en);//注意 这里是复用了timer时间上只有一个en
+                    cJSON_AddNumberToObject(json, "reservoirDailyBlendStart", module->port[port].timer[0].on_at);//注意 这里是复用了timer时间上只有一个开始时间
+                    cJSON_AddNumberToObject(json, "reservoirDailyBlendEnd", module->port[port].timer[0].duration);//注意 这里是duration复用为结束时间
+                }
+                else if(HVAC_6_TYPE == module->port[port].type)
+                {
+                    //Day 和 night point 存的是具体的度数，上传要* 10
+                    cJSON_AddNumberToObject(json, "dayTempSetpoint", module->special_data._hvac.dayPoint * 10);//白天point
+                    cJSON_AddNumberToObject(json, "nightTempSetpoint", module->special_data._hvac.nightPoint * 10);//黑夜point
+                    cJSON_AddNumberToObject(json, "fanNormallyOpen", module->special_data._hvac.fanNormallyOpen);//风扇常开
+                }
+
+                for(u8 tank_no = 0; tank_no < GetSysTank()->tank_size; tank_no++)
+                {
+                    if((((addr << 8) | port) == GetSysTank()->tank[tank_no].pumpId) ||
+                       (addr == GetSysTank()->tank[tank_no].pumpId))//如果是查泵
+                    {
+                        cJSON_AddNumberToObject(json, "tankNo", GetSysTank()->tank[tank_no].tankNo);
+                        cJSON_AddNumberToObject(json, "color", GetSysTank()->tank[tank_no].color);
+
+                        valveList = cJSON_CreateArray();
+                        if(RT_NULL != valveList)
+                        {
+                            for(u8 valve_id = 0; valve_id < VALVE_MAX; valve_id++)
+                            {
+                                if(0 != GetSysTank()->tank[tank_no].valve[valve_id])
+                                {
+                                    cJSON_AddItemToArray(valveList,
+                                            cJSON_CreateNumber(GetSysTank()->tank[tank_no].valve[valve_id]));
+                                }
+                            }
+
+                            cJSON_AddItemToObject(json, "valve", valveList);
+                            break;
+                        }
                     }
                 }
             }
-
             cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
 
             str = cJSON_PrintUnformatted(json);
@@ -5203,7 +5283,11 @@ char *ReplyGetPortSet(char *cmd, cloudcmd_t cloud)
             {
                 leftTime = 0;
             }
-            cJSON_AddNumberToObject(json, "manualOnLeftTime", leftTime);
+
+            if(MANUAL_HAND_ON == line->port[0]._manual.manual)
+            {
+                cJSON_AddNumberToObject(json, "manualOnLeftTime", leftTime);
+            }
 
             str = cJSON_PrintUnformatted(json);
 
@@ -6270,6 +6354,12 @@ void GetTankNoById(sys_tank_t *list, u16 id, u8 *tankNo)
                 return;
             }
         }
+
+        if(id == list->tank[i].mixId)
+        {
+            *tankNo = list->tank[i].tankNo;
+            return;
+        }
     }
 }
 
@@ -6474,9 +6564,21 @@ char *ReplyGetDeviceList_new(char *cmd, char *msgid, u8 deviceType, u8 no)
                             if(module->addr == GetSysTank()->tank[no - 1].autoFillValveId)
                             {
                                 autoNo = no;
+                                cJSON_AddNumberToObject(item, "autoFillValveTankNo", autoNo);
                             }
                         }
-                        cJSON_AddNumberToObject(item, "autoFillValveTankNo", autoNo);
+                    }
+                    else if(MIX_TYPE == module->type)
+                    {
+                        GetTankNoById(GetSysTank(), module->addr, &no);
+                        if(no > 0)
+                        {
+                            if(module->addr == GetSysTank()->tank[no - 1].mixId)
+                            {
+                                autoNo = no;
+                                cJSON_AddNumberToObject(item, "mixTankNo", autoNo);
+                            }
+                        }
                     }
                 }
                 //2.多个口的如  AC_4 IO_12
@@ -6546,12 +6648,26 @@ char *ReplyGetDeviceList_new(char *cmd, char *msgid, u8 deviceType, u8 no)
                                     cJSON_AddNumberToObject(port, "tankNo", no);
                                     if(no > 0)
                                     {
-                                        if(module->addr == GetSysTank()->tank[no - 1].autoFillValveId)
+                                        u16 myId = module->addr << 8 | storage;
+                                        if(myId == GetSysTank()->tank[no - 1].autoFillValveId)
                                         {
                                             autoNo = no;
+                                            cJSON_AddNumberToObject(port, "autoFillValveTankNo", autoNo);
                                         }
                                     }
-                                    cJSON_AddNumberToObject(port, "autoFillValveTankNo", autoNo);
+                                }
+                                else if(MIX_TYPE == module->port[storage].type)
+                                {
+                                    GetTankNoById(GetSysTank(), (module->addr << 8) | storage, &no);
+                                    if(no > 0)
+                                    {
+                                        u16 myId = module->addr << 8 | storage;
+                                        if(myId == GetSysTank()->tank[no - 1].mixId)
+                                        {
+                                            autoNo = no;
+                                            cJSON_AddNumberToObject(port, "mixTankNo", autoNo);
+                                        }
+                                    }
                                 }
 
                                 cJSON_AddItemToArray(portList, port);
@@ -6569,17 +6685,16 @@ char *ReplyGetDeviceList_new(char *cmd, char *msgid, u8 deviceType, u8 no)
                 cJSON_AddNumberToObject(item, "mainType", 4);
                 cJSON_AddNumberToObject(item, "type", line.type);
                 cJSON_AddNumberToObject(item, "lineNo", line.lineNo);
-                cJSON_AddNumberToObject(item, "manual", line.port[0]._manual.manual);
+
 
                 if(CON_FAIL == line.conn_state)
                 {
                     cJSON_AddNumberToObject(item, "online", 0);
-                    cJSON_AddNumberToObject(item, "workingStatus", OFF);
                 }
                 else
                 {
                     cJSON_AddNumberToObject(item, "online", 1);
-                    cJSON_AddNumberToObject(item, "workingStatus", line.port[0].ctrl.d_state);
+
                 }
 
                 u8 lineType = 0;
@@ -6604,6 +6719,8 @@ char *ReplyGetDeviceList_new(char *cmd, char *msgid, u8 deviceType, u8 no)
                     }
 
                     cJSON_AddNumberToObject(item, "lightPower", line.port[0].ctrl.d_value);
+                    cJSON_AddNumberToObject(item, "manual", line.port[0]._manual.manual);
+                    cJSON_AddNumberToObject(item, "workingStatus", line.port[0].ctrl.d_state);
                 }
                 else if(2 == lineType)
                 {
@@ -6616,6 +6733,17 @@ char *ReplyGetDeviceList_new(char *cmd, char *msgid, u8 deviceType, u8 no)
                         cJSON_AddItemToArray(out, cJSON_CreateNumber(line.port[3].ctrl.d_value));
 
                         cJSON_AddItemToObject(item, "outputRatio", out);
+                    }
+
+                    if(line.port[0].ctrl.d_value ||
+                       line.port[1].ctrl.d_value ||
+                       line.port[2].ctrl.d_value ||
+                       line.port[3].ctrl.d_value)
+                    {
+                        cJSON_AddNumberToObject(item, "workingStatus", 1);
+                    }
+                    else {
+                        cJSON_AddNumberToObject(item, "workingStatus", 0);
                     }
                 }
             }
@@ -6733,20 +6861,21 @@ void GetAquaCurrentState(u32 uuid, u8 *stage, u8 *days, u8 *recipe_no)
             else if (1 == set->currRunMode)
             {
                 int j = 0;
-                time_t startTime = set->runModeTime;
-                time_t endTime = set->runModeTime;
+                time_t startTime = changeDataToTimestamp(set->scheduleStart[0], set->scheduleStart[1], set->scheduleStart[2], 0, 0, 0);
+                time_t endTime = changeDataToTimestamp(set->scheduleStart[0], set->scheduleStart[1], set->scheduleStart[2], 0, 0, 0);
+
                 for(j = 0; j < AQUA_SCHEDULE_MX; j++)
                 {
                     endTime += set->scheduleList[j].days * 24 * 60 * 60;
-                    if((getTimeStamp() > startTime) && (getTimeStamp() < endTime))
+                    if((getTimeStamp() >= startTime) && (getTimeStamp() <= endTime))
                     {
                         *stage = j + 1;
-                        *days = (getTimeStamp() - startTime) / (24 * 60 * 60) + 1;
+                        *days = (getTimeStamp() - startTime) / (24 * 60 * 60);
                         *recipe_no = set->scheduleList[j].form;
                         break;
                     }
 
-                    startTime += endTime;
+                    startTime = endTime;
                 }
             }
 
@@ -6773,10 +6902,13 @@ char *ReplyGetAquaState(cloudcmd_t *cmd)
         {
             cJSON_AddNumberToObject(json, "manual", aqua->manual.manual);
             cJSON_AddNumberToObject(json, "manualOnTime", aqua->manual.manual_on_time);
-            if(getTimeStamp() <= aqua->manual.manual_on_time + aqua->manual.manual_on_time_save)
+            if(MANUAL_HAND_ON == aqua->manual.manual_on_time)
             {
-                cJSON_AddNumberToObject(json, "manualOnLeftTime",
-                        aqua->manual.manual_on_time + aqua->manual.manual_on_time_save - getTimeStamp());
+                if(getTimeStamp() <= aqua->manual.manual_on_time + aqua->manual.manual_on_time_save)
+                {
+                    cJSON_AddNumberToObject(json, "manualOnLeftTime",
+                            aqua->manual.manual_on_time + aqua->manual.manual_on_time_save - getTimeStamp());
+                }
             }
             for(int i = 0; i < TANK_LIST_MAX; i++)
             {
@@ -6821,12 +6953,15 @@ char *ReplyGetAquaState(cloudcmd_t *cmd)
                     cJSON_AddNumberToObject(json, "aquaTankNo", 1);
                     itoa(aqua->uuid, name1, 16);
                     sprintf(name, "AQU%s",name1);
-                    cJSON_AddStringToObject(json, "aquaSn", name);
+                    char *testName = strupr(name);
+                    cJSON_AddStringToObject(json, "aquaSn", testName);
                     cJSON_AddStringToObject(json, "model", "Aqua-Pro");
                     sprintf(name, "v%d.%03d", state->aqua_firm_ver / 1000, state->aqua_firm_ver % 1000);
                     cJSON_AddStringToObject(json, "firmwareVer", name);
                     sprintf(name, "v%d.%03d", state->aqua_hmi_ver / 1000, state->aqua_hmi_ver % 1000);
                     cJSON_AddStringToObject(json, "hmiVer", name);
+                    cJSON_AddStringToObject(json,"ntpzone", "+00:00");
+                    cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
                     break;
                 }
             }
@@ -6919,20 +7054,24 @@ char *ReplyGetAquaRecipe(cloudcmd_t *cmd)
         cJSON_AddStringToObject(json, "msgid", cmd->msgid);
         cJSON_AddStringToObject(json, "sn", GetSnName(name, 12));
 
-        for(int i = 0; i < TANK_LIST_MAX; i++)
-        {
-            aqua_info_t *info = GetAquaInfoList();
+//        for(int i = 0; i < TANK_LIST_MAX; i++)
+//        {
+            aqua_info_t *info = RT_NULL;
             aqua_t *aqua = GetAquaByAddr(GetMonitor(), cmd->getAquaRecipeId);
             if(aqua)
             {
-                if(aqua->uuid == info[i].uuid)
+                aqua_info_t *info = GetAquaInfoByUUID(aqua->uuid);
+                if(info)
                 {
                     u8 no = cmd->getAquaRecipeNo <= AQUA_RECIPE_MX ? cmd->getAquaRecipeNo : AQUA_RECIPE_MX;
+
+                    rt_kprintf("uuid = %x, recipe = %d\n", info->uuid, no);//Justin
 
                     if(no > 0)
                     {
                         cJSON_AddNumberToObject(json, "formulaNumber", no);
                         aqua_recipe *recipe = &info->list[no - 1];
+                        //printAquaRecipt(recipe);
                         cJSON_AddStringToObject(json, "formName", recipe->formName);
                         cJSON_AddNumberToObject(json, "ecTarget", recipe->ecTarget);
                         cJSON_AddNumberToObject(json, "ecDeadband", recipe->ecDeadband);
@@ -6976,10 +7115,10 @@ char *ReplyGetAquaRecipe(cloudcmd_t *cmd)
                         }
                     }
 
-                    break;
+//                    break;
                 }
             }
-        }
+//        }
 
         str = cJSON_PrintUnformatted(json);
         cJSON_Delete(json);

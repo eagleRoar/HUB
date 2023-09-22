@@ -233,6 +233,10 @@
 /* Wiced WiFi */
 
 /* end of Wiced WiFi */
+
+/* CYW43012 WiFi */
+
+/* end of CYW43012 WiFi */
 /* end of Wi-Fi */
 
 /* IoT Cloud */
@@ -288,8 +292,8 @@
 
 /* end of Micrium: Micrium software products porting for RT-Thread */
 #define PKG_USING_SYSWATCH
-#define SYSWATCH_EXCEPT_RESOLVE_MODE_2
-#define SYSWATCH_EXCEPT_RESOLVE_MODE 2
+#define SYSWATCH_EXCEPT_RESOLVE_MODE_0
+#define SYSWATCH_EXCEPT_RESOLVE_MODE 0
 #define SYSWATCH_EXCEPT_TIMEOUT 60
 #define SYSWATCH_EXCEPT_CONFIRM_TMO 15
 #define SYSWATCH_EXCEPT_RESUME_DLY 15

@@ -237,6 +237,7 @@ static void GenerateSendAqueRecipeData(u8 addr,aqua_info_t *info, u8 recipe_no, 
         index += 2;
         rt_memcpy(&data[index], (u8 *)&info->list[recipe_no].formName[6], 2);
         index += 2;
+        info->list[recipe_no].formName[9] = '\0';
         rt_memcpy(&data[index], (u8 *)&info->list[recipe_no].formName[8], 2);
         index += 2;
 
@@ -352,6 +353,18 @@ static void SignAquaRecvFlag(u8 addr)
     }
 }
 
+//Justin
+void printAquaSendMoni(void)
+{
+    rt_kprintf("printAquaSendMoni----------------------------------\n");
+
+    for(int i = 0; i < TANK_LIST_MAX; i++)
+    {
+        rt_kprintf("i = %d, sendMoni[i] = %d, SendCnt = %d\n",
+                i, sendMoni[i].addr, sendMoni[i].SendCnt);//Justin debug
+    }
+}
+
 static void AddLastCtrl(u8 addr, u16 ctrl, u8 recipe_i)
 {
     u8              i           = 0;
@@ -386,7 +399,7 @@ static u8 IsNeedSendCtrToConnect(u8 addr, u16 *ctrl)
     u8 ret = NO;
 
     //2.如果控制内容发送变化
-    for(u8 i = 0; i < GetMonitor()->aqua_size; i++)
+    for(u8 i = 0; i < TANK_LIST_MAX; i++)
     {
         if(addr == sendMoni[i].addr)
         {
@@ -708,23 +721,42 @@ static void aquaSendInfo(aqua_t *aqua, aqua_info_t *info, u8 recipe_no)
 
 }
 
-void AskAquaState(aqua_t *aqua, int index)
+/**
+ ** Aqua 1 - 4 循环查询数据，只有接收到查询的数据才能依次往下
+ * @param aqua
+ * @param index
+ */
+void AskAquaState(void)
 {
     u8          data[8];
     KV          keyValue;
     seq_key_t   seq_key;
-    u8          dataLen = 0;
-    u8          regLen = 0;
+    u8          dataLen     = 0;
+    u8          regLen      = 0;
+    aqua_t      *aqua       = RT_NULL;
+    u8          aquaSize    = GetMonitor()->aqua_size;
     static u8   askList[TANK_LIST_MAX] = {0,0,0,0};//数据最大是（1 + AQUA_RECIPE_MX ）-1
+    static u8   index   = 0;
 
-    if(RT_NULL == aquaObject.dev)
+    if((RT_NULL == aquaObject.dev) || (aquaSize < 1))
     {
         return;
     }
 
+//    rt_kprintf("aquaSize = %d, NO == askState.flag = %d\n",aquaSize, askState.flag);//Justin debug
+
     //只有接收数据了才能往下循环
     if(NO == askState.flag)
     {
+        if(index < aquaSize - 1)
+        {
+            index++;
+        }
+        else
+        {
+            index = 0;
+        }
+
         if(askList[index] < (3 + AQUA_RECIPE_MX) - 1)
         {
             askList[index]++;
@@ -734,6 +766,11 @@ void AskAquaState(aqua_t *aqua, int index)
             askList[index] = 0;
         }
     }
+//    else
+//    {
+//        return;//Justin debug 如果还没有数据回复的话就不发送
+//    }
+    aqua = &GetMonitor()->aqua[index];
 
     switch (askList[index])
     {
@@ -838,7 +875,9 @@ void AskAquaState(aqua_t *aqua, int index)
     }
     askState.flag = YES;
 
-    //2.添加到taskList 之后会在统一接口中实现数据的发送
+//    rt_kprintf("----------------------------------------index = %d, askList[index] = %d\n",index, askList[index]);//Justin debug
+
+    //2.添加到taskList 之后会在统一接口中实现数据的发送  //Justin
     seq_key.addr = aqua->addr;
     seq_key.regH = AQUA_EC_ADDR >> 8;
     seq_key.regL = AQUA_EC_ADDR;
@@ -1117,6 +1156,7 @@ static void RecvListHandle(void)
                 u16 reg = (LongToSeqKey(tail->keyData.key).regH << 8) | (LongToSeqKey(tail->keyData.key).regL);
 
                 SignAquaRecvFlag(aqua->addr);
+//                printAquaSendMoni();//Justin debug
 
                 //1.判断返回是否是读取功能
                 if(WRITE_SINGLE == rwType)
@@ -1152,8 +1192,28 @@ static void RecvListHandle(void)
 
                                 info = GetAquaInfoByUUID(aqua->uuid);
 
+                                if(RT_NULL != info)
+                                {
+                                    rt_kprintf("info uuid = %x, aqua->uuid = %x\n",info->uuid, aqua->uuid);//Justin 有问题
+                                }
+                                else
+                                {
+                                    LOG_E("info is null, aqua->uuid = %x",aqua->uuid);//Justin 有问题
+                                }
+                                LOG_W("recv addr = %d", tail->keyData.dataSegment.data[0]);//Justin
+                                for(int i = 0; i < 4; i++)
+                                {
+                                    LOG_I("i = %d, uuid = %x",i, GetAquaInfoList()[i].uuid);
+                                }
+
+                                if(RT_NULL == GetAquaWarnById(tail->keyData.dataSegment.data[0]))
+                                {
+                                    AddAquaWarn(tail->keyData.dataSegment.data[0]);
+                                }
+
                                 if(info)
                                 {
+                                    printAquaWarn();//Justin
                                     switch (ask->askType) {
                                         case ASK_STATE:
 
@@ -1165,6 +1225,7 @@ static void RecvListHandle(void)
                                             {
                                                 state = GetAquaWarnById(tail->keyData.dataSegment.data[0]);
                                             }
+
                                             state->id = tail->keyData.dataSegment.data[0];
                                             state->pumpSize = (tail->keyData.dataSegment.data[3] << 8) | tail->keyData.dataSegment.data[4];
                                             state->ec = (tail->keyData.dataSegment.data[5] << 8) | tail->keyData.dataSegment.data[6];
@@ -1175,10 +1236,21 @@ static void RecvListHandle(void)
                                             state->work = (tail->keyData.dataSegment.data[15] << 8) | tail->keyData.dataSegment.data[16];
 
                                             aqua->pumpSize = state->pumpSize;
-
+                                            rt_kprintf("收到uuid = %x, addr = %d 的STATE信息\n",info->uuid, aqua->addr);//Justin debug
                                             if(RT_NULL == GetAquaWarnById(tail->keyData.dataSegment.data[0]))
                                             {
+                                                if(5 == state->id)//Justin debug
+                                                {
+                                                    LOG_E(" addr 5, state 为空");
+                                                }
+
                                                 SetAquaWarn(state);
+                                            }
+                                            else {
+                                                if(5 == state->id)//Justin debug
+                                                {
+                                                    LOG_W(" addr 5, state 不为空");
+                                                }
                                             }
                                             break;
                                         case ASK_VER:
@@ -1196,7 +1268,7 @@ static void RecvListHandle(void)
                                             state->isAquaRunning = (tail->keyData.dataSegment.data[3] << 8) | tail->keyData.dataSegment.data[4];
                                             state->aqua_hmi_ver = (tail->keyData.dataSegment.data[5] << 8) | tail->keyData.dataSegment.data[6];
                                             state->aqua_firm_ver = (tail->keyData.dataSegment.data[7] << 8) | tail->keyData.dataSegment.data[8];
-
+                                            rt_kprintf("收到uuid = %x, addr = %d 的VERSION信息\n",info->uuid, aqua->addr);//Justin debug
                                             if(RT_NULL == GetAquaWarnById(tail->keyData.dataSegment.data[0]))
                                             {
                                                 SetAquaWarn(state);
@@ -1205,30 +1277,57 @@ static void RecvListHandle(void)
                                             break;
                                         case ASK_RECIPE_0:
                                             recipe = &info->list[0];
+                                            //Justin debug
+                                            rt_kprintf("收到uuid = %x, addr = %d 的第%d个配方信息\n",info->uuid, aqua->addr, ask->askType - 1);//Justin debug
+//                                            printAquaRecipt(recipe);
                                             break;
                                         case ASK_RECIPE_1:
                                             recipe = &info->list[1];
+                                            //Justin debug
+                                            rt_kprintf("收到uuid = %x, addr = %d 的第%d个配方信息\n",info->uuid, aqua->addr, ask->askType - 1);//Justin debug
+//                                            printAquaRecipt(recipe);
                                             break;
                                         case ASK_RECIPE_2:
                                             recipe = &info->list[2];
+                                            //Justin debug
+                                            rt_kprintf("收到uuid = %x, addr = %d 的第%d个配方信息\n",info->uuid, aqua->addr, ask->askType - 1);//Justin debug
+//                                            printAquaRecipt(recipe);
                                             break;
                                         case ASK_RECIPE_3:
                                             recipe = &info->list[3];
+                                            //Justin debug
+                                            rt_kprintf("收到uuid = %x, addr = %d 的第%d个配方信息\n",info->uuid, aqua->addr, ask->askType - 1);//Justin debug
+//                                            printAquaRecipt(recipe);
                                             break;
                                         case ASK_RECIPE_4:
                                             recipe = &info->list[4];
+                                            //Justin debug
+                                            rt_kprintf("收到uuid = %x, addr = %d 的第%d个配方信息\n",info->uuid, aqua->addr, ask->askType - 1);//Justin debug
+//                                            printAquaRecipt(recipe);
                                             break;
                                         case ASK_RECIPE_5:
                                             recipe = &info->list[5];
+                                            //Justin debug
+                                            rt_kprintf("收到uuid = %x, addr = %d 的第%d个配方信息\n",info->uuid, aqua->addr, ask->askType - 1);//Justin debug
+//                                            printAquaRecipt(recipe);
                                             break;
                                         case ASK_RECIPE_6:
                                             recipe = &info->list[6];
+                                            //Justin debug
+                                            rt_kprintf("收到uuid = %x, addr = %d 的第%d个配方信息\n",info->uuid, aqua->addr, ask->askType - 1);//Justin debug
+//                                            printAquaRecipt(recipe);
                                             break;
                                         case ASK_RECIPE_7:
                                             recipe = &info->list[7];
+                                            //Justin debug
+                                            rt_kprintf("收到uuid = %x, addr = %d 的第%d个配方信息\n",info->uuid, aqua->addr, ask->askType - 1);//Justin debug
+//                                            printAquaRecipt(recipe);
                                             break;
                                         case ASK_RECIPE_8:
                                             recipe = &info->list[8];
+                                            //Justin debug
+                                            rt_kprintf("收到uuid = %x, addr = %d 的第%d个配方信息\n",info->uuid, aqua->addr, ask->askType - 1);//Justin debug
+//                                            printAquaRecipt(recipe);
                                             break;
                                         case ASK_MONITOR:
                                             //同步monitor状态
@@ -1279,10 +1378,24 @@ static void RecvListHandle(void)
                                         recipeName[9] = 0;
                                         rt_memcpy(recipe->formName, recipeName, AQUA_RECIPE_NAMESZ - 1);
                                         recipe->formName[AQUA_RECIPE_NAMESZ - 1] = '\0';
-                                        LOG_W("num %d, recipe name = %s",
-                                                ask->askType - ASK_RECIPE_0, recipeName);
+
+                                        //Justin debug
+                                        LOG_W("num %d, recipe name = %s, ecTarget = %d",
+                                                ask->askType - ASK_RECIPE_0, recipeName, recipe->ecTarget);
+//                                        if(ask->askType >= ASK_RECIPE_0 && ask->askType <= ASK_RECIPE_8)
+//                                        {
+//                                            printAquaRecipt(recipe);
+//                                        }
+                                        //Justin debug 接收到的数据都是正确的，怀疑是上传到app的接口的数据传输错误，
+                                         //导致显示错误，可以通过更改某一台的配方中的ph 数据来测试
 
                                     }
+                                }
+                                else {
+                                    addNewAquaSetAndInfo(aqua->uuid);
+                                    saveAquaInfoFlag = YES;
+                                    rt_kprintf("info 加入失败, aqua uuid = %x\n",aqua->uuid);//Justin debug
+                                    printAquaWarn();//Justin
                                 }
 
                                 setAskStateOK();
@@ -1300,10 +1413,10 @@ static void RecvListHandle(void)
     }
 
     //6.判断失联情况
-    for(u8 i = 0; i < monitor->aqua_size; i++)
+    for(u8 i = 0; i < TANK_LIST_MAX; i++)
     {
         //1.已经发送数据了 但是数据接收超时判断为失联
-        if(sendMoni[i].SendCnt > 2)
+        if(sendMoni[i].SendCnt > 7)
         {
             GetAquaByAddr(monitor,  sendMoni[i].addr)->conn_state = CON_FAIL;
         }
@@ -1329,6 +1442,26 @@ static void RecvListHandle(void)
         }
     }
 
+}
+
+void printAquaRecipt(aqua_recipe *recipe)
+{
+    LOG_D("name = %s",recipe->formName);
+    LOG_D("ecTarget = %d",recipe->ecTarget);
+    LOG_D("ecDeadband = %d",recipe->ecDeadband);
+    LOG_D("ecHigh = %d",recipe->ecHigh);
+    LOG_D("ecLow = %d",recipe->ecLow);
+    LOG_D("ecDosingTime = %d",recipe->ecDosingTime);
+    LOG_D("ecMixingTime = %d",recipe->ecMixingTime);
+    LOG_D("ecMaxDosingCycles = %d",recipe->ecMaxDosingCycles);
+    LOG_D("phDeadband = %d",recipe->phDeadband);
+    LOG_D("phTarget = %d",recipe->phTarget);
+    LOG_D("phHigh = %d",recipe->phHigh);
+    LOG_D("phLow = %d",recipe->phLow);
+    LOG_D("phDosingTime = %d",recipe->phDosingTime);
+    LOG_D("phMixingTime = %d",recipe->phMixingTime);
+    LOG_D("phMaxDosingCycles = %d",recipe->phMaxDosingCycles);
+    LOG_D("pumpFlowRate = %d",recipe->pumpFlowRate);
 }
 
 void InitAquaObject(void)

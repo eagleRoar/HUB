@@ -11,6 +11,7 @@
 #include "Udp.h"
 
 const u8    HEAD_CODE[4] = {0xA5,0xA5,0x5A,0x5A};      //该头部标识符需要修改
+extern rt_mutex_t eth_dynamic_mutex;
 /**
  * 连接tcp
  * flg 是否是阻塞
@@ -22,6 +23,7 @@ rt_err_t ConnectToSever(int *sock, char *ip, uint32_t port)
     struct hostent      *host;
     struct sockaddr_in  server_addr;
 
+    rt_mutex_take(eth_dynamic_mutex, RT_WAITING_FOREVER);
     host = gethostbyname(ip);
     /* 创建一个socket，类型是SOCKET_STREAM，TCP类型 */
     if ((*sock = socket(AF_INET, SOCK_STREAM, 0)) == -1)
@@ -38,14 +40,14 @@ rt_err_t ConnectToSever(int *sock, char *ip, uint32_t port)
     /* 连接到服务端 */
     if (connect(*sock, (struct sockaddr *)&server_addr, sizeof(struct sockaddr)) == -1)
     {
-        closesocket(*sock);
         ret = RT_ERROR;
-        LOG_W("ConnectToSever close sock");
+        LOG_E("ConnectToSever close sock");
     }
     else
     {
         LOG_I("---------------- connect new sock = %d",*sock);
     }
+    rt_mutex_release(eth_dynamic_mutex);
     return ret;
 }
 
@@ -55,40 +57,62 @@ rt_err_t TcpRecvMsg(int *sock, u8 *buff, u16 size, int *recLen)
     int bytes_received = 0;
     int state = 0;
 
+    if(*sock < 0)
+    {
+        ret = RT_ERROR;
+        return ret;
+    }
+
+//    LOG_W("--------------------TcpRecvMsg");
+
     state = getSockState(*sock);
     if(state >= 0)
     {
         bytes_received = recv(*sock, buff, size, 0);
+//        LOG_I("---------------TcpRecvMsg bytes_received = %d",bytes_received);
+        if(bytes_received >= RCV_ETH_BUFFSZ)
+        {
+            LOG_E("--------------------TcpRecvMsg err");
+        }
         *recLen = bytes_received;
         if (bytes_received <= 0)
         {
-            closesocket(*sock);
             ret = RT_ERROR;
-            LOG_W("TcpRecvMsg err, close sock, sock state = %d",state);
+            return ret;
         }
+    }
+    else {
+        ret = RT_ERROR;
     }
 
     return ret;
 }
 
-rt_err_t TcpSendMsg(int *sock, u8 *buff, u16 size)
+rt_err_t TcpSendMsg(int *sock, u8 *buff, u16 size)//此处失败要增加全部断开
 {
     rt_err_t ret = RT_EOK;
     int state = 0;
+    int len     = 0;
 
-//    if(0 != *sock)
-    state = getSockState(*sock);
-    if(state >= 0)
+    if(sock < 0)
     {
-        if(send(*sock, buff, size, 0) < 0)
+        ret = RT_ERROR;
+        return ret;
+    }
+
+
+    state = getSockState(*sock);
+//    if(state >= 0)
+    {
+        len = send(*sock, buff, size, 0);
+        if(len < 0)
         {
-//            if(getSockState(*sock) >= 0)
-            {
-                closesocket(*sock);
-            }
-            //*sock = 0;
             ret = RT_ERROR;
             LOG_W("1 TcpSendMsg close sock, sock state = %d",state);
+        }
+        else
+        {
+//            LOG_W("--------------------TcpSendMsg, result = %d",len);
         }
     }
 
@@ -140,7 +164,7 @@ void analyzeTcpData(char *data, u16 size)
         {
             if(index != 0)
             {
-                //rt_kprintf("recv : %.*s\r\n",index - start,data + start);
+//                rt_kprintf("analyzeTcpData recv : %.*s\r\n",index - start,data + start);
                 splitJointData(data + start, index - start);
             }
             start = index;
@@ -150,7 +174,7 @@ void analyzeTcpData(char *data, u16 size)
     //标识后面如果还有数据的话需要解决
     if(start + 4 != size)//start + 3 == size - 1
     {
-        //LOG_E("%.*s",size - start,data + start);
+        LOG_E("%.*s",size - start,data + start);
         splitJointData(data + start, size - start);
     }
 }
@@ -201,7 +225,7 @@ void splitJointData(char *data, u16 size)
                 now_size = 0;
                 nocompleted = NO;       //标识为完整包
                 //3.调用上层解析
-                //LOG_W("recv buf = %.*s",page.head.length,page.data);
+//                LOG_W("recv app buf = %.*s",page.head.length,page.data);
                 analyzeCloudData(page.data, NO);
                 //4.注意解析完数据后要释放空间
                 if(RT_NULL != page.data)
@@ -270,7 +294,7 @@ void splitJointData(char *data, u16 size)
                             page_size = 0;
                             now_size = 0;
                             //2.调用上层解析
-                            //rt_kprintf("----------------------len = %d ,recv buf = %.*s\r\n",page.head.length,page.head.length,page.data);
+//                            rt_kprintf("---------------------- recv app,len = %d ,recv buf = %.*s\r\n",page.head.length,page.head.length,page.data);
                             analyzeCloudData(page.data, NO);
                             //3.注意解析完数据后要释放空间
                             if(RT_NULL != page.data)

@@ -279,7 +279,7 @@ static u8 IsNeedSendCtrToConnect(u8 addr, u8 port, u16 *ctrl)
     u8 ret = NO;
 
     //2.如果控制内容发送变化
-    for(u8 i = 0; i < GetMonitor()->line_size; i++)
+    for(u8 i = 0; i < LINE_MAX; i++)
     {
         if(addr == sendMoni[i].addr)
         {
@@ -899,7 +899,7 @@ static void RecvListHandle(void)
     }
 
     //6.判断失联情况
-    for(u8 i = 0; i < monitor->line_size; i++)
+    for(u8 i = 0; i < LINE_MAX; i++)
     {
         //1.已经发送数据了 但是数据接收超时判断为失联
         if(sendMoni[i].SendCnt > 2)

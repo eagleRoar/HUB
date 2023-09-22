@@ -242,6 +242,32 @@ void addNewAquaSetAndInfo(u32 uuid)
                     strcpy(aquaInfo[i].list[j].formName, name);
                 }
                 aquaInfo[i].uuid = uuid;
+                LOG_E("------------------------------------------------ addNewAquaSetAndInfo 增加新info");//Justin
+                break;
+            }
+        }
+    }
+}
+
+void AddAquaWarn(u8 addr)
+{
+    int i = 0;
+
+    for(i = 0; i < TANK_LIST_MAX; i++)
+    {
+        if(addr == aquaWarn[i].id)
+        {
+            break;
+        }
+    }
+
+    if(TANK_LIST_MAX == i)
+    {
+        for(i = 0; i < TANK_LIST_MAX; i++)
+        {
+            if(0 == aquaWarn[i].id)
+            {
+                aquaWarn[i].id = addr;
                 break;
             }
         }
@@ -274,6 +300,16 @@ void SetAquaWarn(aqua_state_t *aqua_state)
     }
 }
 
+//Justin
+void printAquaWarn(void)
+{
+    rt_kprintf("printAquaWarn------------------------------\n");
+    for(int i = 0; i < TANK_LIST_MAX; i++)
+    {
+        rt_kprintf("i = %d, addr = %x\n",i,aquaWarn[i].id);
+    }
+}
+
 aqua_state_t *GetAquaWarnById(u8 id)
 {
     int i = 0;
@@ -301,61 +337,12 @@ void initAquaSetAndInfo(void)
 }
 #endif
 
-void insertPumpToTank(type_monitor_t *monitor, sys_tank_t *tank_list, u16 id)
-{
-    u8      index       = 0;
-    char    name[TANK_NAMESZ];
-
-    if(tank_list->tank_size < TANK_LIST_MAX)
-    {
-        for(index = 0; index < tank_list->tank_size; index++)
-        {
-            //1.2 判断当前要加入的id是否存在，不存在就加入
-            if(id == tank_list->tank[index].pumpId)
-            {
-                break;
-            }
-        }
-
-        if(index == tank_list->tank_size)
-        {
-            //1.2.1 id 在 tank 中不存在
-            for(u8 item = 0; item < TANK_LIST_MAX; item++)
-            {
-                if(0 == tank_list->tank[item].pumpId)
-                {
-
-                    tank_list->tank[item].tankNo = item + 1;
-                    sprintf(name, "reservoir%d",tank_list->tank[item].tankNo);
-                    strncpy(tank_list->tank[item].name, name, TANK_NAMESZ);
-                    tank_list->tank[item].autoFillValveId = 0;
-                    tank_list->tank[item].autoFillHeight = 10;
-                    tank_list->tank[item].autoFillFulfilHeight = 100;
-                    tank_list->tank[item].highEcProtection = 500;                  //EC 高停止值
-                    tank_list->tank[item].lowPhProtection = 0;                     //PH 低停止值
-                    tank_list->tank[item].highPhProtection = 1200;                 //PH 高停止值
-                    tank_list->tank[item].color = 1;
-                    tank_list->tank[item].pumpId = id;
-                    tank_list->tank[item].poolTimeout = 100;
-                    tank_list->tank[item].phMonitorOnly = ON;
-                    tank_list->tank[item].ecMonitorOnly = ON;
-                    tank_list->tank[item].wlMonitorOnly = ON;
-                    tank_list->tank_size++;
-                    //保存到SD卡
-                    tank_list->saveFlag = YES;
-
-                    break;
-                }
-            }
-        }
-    }
-}
 
 void initSysTank(void)
 {
     char name[20] = " ";
     rt_memset((u8 *)GetSysTank(), 0, sizeof(sys_tank_t));
-
+    GetSysTank()->tank_size = TANK_LIST_MAX;
     for(int i = 0; i < TANK_LIST_MAX; i++)
     {
         sprintf(name, "%s%d", "tank", i + 1);
@@ -372,7 +359,6 @@ void initSysTank(void)
     }
 
     GetSysTank()->crc = usModbusRTU_CRC((u8 *)GetSysTank() + 2, sizeof(sys_tank_t) - 2);
-    GetSysTank()->saveFlag = YES;
 }
 
 void initSysSet(void)
@@ -728,6 +714,10 @@ rt_err_t ReplyDeviceListDataToCloud(mqtt_client *client, int *sock, u8 sendCloud
                         //发送
                         //printf("---------------send data:%.*s\r\n",len,str);
                         ret = TcpSendMsg(sock, page, len + sizeof(eth_page_head));
+                        if(RT_EOK != ret)
+                        {
+                            closeTcpSocket();
+                        }
                         rt_free(page);
                     }
                 }
@@ -767,9 +757,17 @@ rt_err_t ReplyDeviceListDataToCloud(mqtt_client *client, int *sock, u8 sendCloud
                             rt_memcpy(page + sizeof(eth_page_head), str, len);
 
                             //发送
-                            //printf("---------------send data:%.*s\r\n",len,str);
+//                            printf("---------------app send data:%.*s\r\n",len,str);
                             ret = TcpSendMsg(sock, page, len + sizeof(eth_page_head));
+                            if(RT_EOK != ret)
+                            {
+                                closeTcpSocket();
+                            }
                             rt_free(page);
+                        }
+                        else
+                        {
+                            LOG_E("ReplyDeviceListDataToCloud, apply memory fail");
                         }
                     }
 
@@ -814,6 +812,10 @@ rt_err_t ReplyDeviceListDataToCloud(mqtt_client *client, int *sock, u8 sendCloud
 
                             //发送
                             ret = TcpSendMsg(sock, page, len + sizeof(eth_page_head));
+                            if(RT_EOK != ret)
+                            {
+                                closeTcpSocket();
+                            }
                             rt_free(page);
                         }
                     }
@@ -858,6 +860,10 @@ rt_err_t ReplyDeviceListDataToCloud(mqtt_client *client, int *sock, u8 sendCloud
 
                             //发送
                             ret = TcpSendMsg(sock, page, len + sizeof(eth_page_head));
+                            if(RT_EOK != ret)
+                            {
+                                closeTcpSocket();
+                            }
                             rt_free(page);
                         }
                     }
@@ -868,7 +874,7 @@ rt_err_t ReplyDeviceListDataToCloud(mqtt_client *client, int *sock, u8 sendCloud
                 }
                 else
                 {
-                    LOG_E("str == RT_NULL, ReplyDeviceListDataToCloud");
+                    LOG_E("str == RT_NULL, ReplyDeviceListDataToCloud  1\r\n");
                 }
 
             }
@@ -1164,11 +1170,18 @@ rt_err_t ReplyDataToCloud(mqtt_client *client, int *sock, u8 sendCloudFlg)
                     rt_memcpy(page + 4, (u8 *)&len, 2);
                     rt_memcpy(page + sizeof(eth_page_head), str, len);
 
-                    //rt_kprintf("send : %.*s\r\n",len,str);
+//                    rt_kprintf("///////////////send to app: %.*s\r\n",len,str);
 
                     //发送
                     ret = TcpSendMsg(sock, page, len + sizeof(eth_page_head));
+                    if(RT_EOK != ret)
+                    {
+                        closeTcpSocket();
+                    }
                     rt_free(page);
+                }
+                else {
+                    LOG_W("apply memory for app to reply fail");
                 }
             }
 
@@ -1405,6 +1418,7 @@ void analyzeCloudData(char *data, u8 cloudFlg)
                 CmdSetTank(data, &cloudCmd);
                 GetSysTank()->saveFlag = YES;
                 setCloudCmd(cmd->valuestring, ON, cloudFlg);
+
             }
             else if(0 == rt_memcmp(CMD_GET_TANK_INFO, cmd->valuestring, strlen(CMD_GET_TANK_INFO)))
             {
@@ -1715,41 +1729,6 @@ u16 getVpd(void)
     return res;
 }
 
-void autoBindPumpTotank(type_monitor_t *monitor, sys_tank_t *tank_list)
-{
-    device_t    *device     = RT_NULL;
-    u8          index       = 0;
-    u8          stora       = 0;
-    u16         id          = 0;
-
-    //1.遍历整个system tank，如果没有达到tank上限的话，又有新的pump 那么就自动关联
-    for(index = 0; index < monitor->device_size; index++)
-    {
-        device = &monitor->device[index];
-
-        if(1 == device->storage_size)
-        {
-              if(PUMP_TYPE == device->type)
-              {
-                    id = monitor->device[index].addr;
-                    insertPumpToTank(monitor, tank_list, id);
-              }
-        }
-        else
-        {
-            for(stora = 0; stora < device->storage_size; stora++)
-            {
-                if(PUMP_TYPE == device->port[stora].type)
-                {
-                    id = device->addr << 8 | stora;
-
-                    insertPumpToTank(monitor, tank_list, id);
-                }
-            }
-        }
-    }
-}
-
 //默认在420ppm 环境中校准
 void co2Calibrate(type_monitor_t *monitor, int *data, u8 *do_cal_flg, u8 *saveFlg, PAGE_CB cb)
 {
@@ -1910,8 +1889,7 @@ void sendOfflinewarnning(type_monitor_t *monitor)
                             rt_memcpy(buf + 4, &length, 2);
                             if (RT_EOK != TcpSendMsg(&tcp_sock, buf, length + sizeof(eth_page_head)))
                             {
-                                eth->tcp.SetConnectStatus(OFF);
-                                eth->tcp.SetConnectTry(ON);
+                                closeTcpSocket();
                             }
                         }
                     }
@@ -1951,8 +1929,7 @@ void sendOfflinewarnning(type_monitor_t *monitor)
                             rt_memcpy(buf + 4, &length, 2);
                             if (RT_EOK != TcpSendMsg(&tcp_sock, buf, length + sizeof(eth_page_head)))
                             {
-                                eth->tcp.SetConnectStatus(OFF);
-                                eth->tcp.SetConnectTry(ON);
+                                closeTcpSocket();
                             }
                         }
                     }
@@ -2031,8 +2008,7 @@ void sendwarnningInfo(void)
                 }
 
                 //发送给app
-                if((OFF == eth->tcp.GetConnectTry()) &&
-                   (ON == eth->tcp.GetConnectStatus()))
+                if(GetTcpSocket() > 0)
                 {
                     //申请内存
                     buf = rt_malloc(1024 * 2);
@@ -2068,9 +2044,7 @@ void sendwarnningInfo(void)
                                         rt_memcpy(buf + 4, &length, 2);
                                         if (RT_EOK != TcpSendMsg(&tcp_sock, buf, length + sizeof(eth_page_head)))
                                         {
-                                            LOG_E("send tcp err 2");
-                                            eth->tcp.SetConnectStatus(OFF);
-                                            eth->tcp.SetConnectTry(ON);
+                                            closeTcpSocket();
                                         }
                                         LOG_W("send to app: %.*s",length,buf + sizeof(eth_page_head));
                                     }
@@ -2105,9 +2079,7 @@ void sendwarnningInfo(void)
                                         rt_memcpy(buf + 4, &length, 2);
                                         if (RT_EOK != TcpSendMsg(&tcp_sock, buf, length + sizeof(eth_page_head)))
                                         {
-                                            LOG_E("send tcp err 2");
-                                            eth->tcp.SetConnectStatus(OFF);
-                                            eth->tcp.SetConnectTry(ON);
+                                            closeTcpSocket();
                                         }
                                     }
                                 }

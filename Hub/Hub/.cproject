@@ -129,6 +129,7 @@
                   <listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/applications/Uart/LightUartClass}&quot;" />
                   <listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/applications/Uart/AquaUartClass}&quot;" />
                   <listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/applications/SetToolType}&quot;" />
+                  <listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/applications/PdfLib}&quot;" />
                   <listOptionValue builtIn="false" value="&quot;${workspace_loc://${ProjName}//.}&quot;" />
                   <listOptionValue builtIn="false" value="&quot;${workspace_loc://${ProjName}//packages/syswatch-latest/inc}&quot;" />
                   <listOptionValue builtIn="false" value="&quot;${workspace_loc://${ProjName}//rt-thread/components/dfs/filesystems/devfs}&quot;" />

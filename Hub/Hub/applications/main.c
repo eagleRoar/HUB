@@ -34,6 +34,7 @@
 extern rt_uint8_t GetEthDriverLinkStatus(void);            //获取网口连接状态
 extern cloudcmd_t      cloudCmd;
 extern u8              saveMqttUrlFile;
+
 //初始化一些必要的参数
 static void InitParameter(void)
 {
@@ -147,6 +148,7 @@ int main(void)
             }
         }
 
+        //回复app和云端服务器
         if(ON == GetRecvMqttFlg())
         {
             if(0 == rt_memcmp(CMD_GET_DEVICELIST, cloudCmd.cmd, sizeof(CMD_GET_DEVICELIST)))
@@ -162,7 +164,7 @@ int main(void)
         }
 
         //主动发送告警
-        if(LINKUP == ethStatus)
+        if(GetTcpSocket() > 0)
         {
             if(YES == start_warn_flg)
             {
@@ -218,34 +220,12 @@ int main(void)
             }
 #elif(HUB_SELECT == HUB_IRRIGSTION)
 
+            //水泵的工作
             closeUnUseDevice(GetMonitor(), deviceObj);
-            pumpProgram(GetMonitor(), GetSysTank(), *deviceObj);        //水泵的工作
-            //phec 校准
-            for(u8 phec_i = 0; phec_i < getPhEcList(GetMonitor(), YES)->num; phec_i++)
-            {
-                ph_cal_t *ph = RT_NULL;
-                ph = getPhCalByuuid(GetSensorByAddr(GetMonitor(), getPhEcList(GetMonitor(), YES)->addr[phec_i])->uuid);
-                if(RT_NULL != ph)
-                {
-                    if((CAL_INCAL == ph->cal_7_flag) || (CAL_INCAL == ph->cal_4_flag))
-                    {
-                        phCalibrate1(GetSensorByAddr(GetMonitor(), getPhEcList(GetMonitor(), YES)->addr[phec_i]),
-                                GetMonitor(),ph, GetSysSet());
-                    }
-                }
-
-                ec_cal_t *ec = RT_NULL;
-                ec = getEcCalByuuid(GetSensorByAddr(GetMonitor(), getPhEcList(GetMonitor(), YES)->addr[phec_i])->uuid);
-                if(RT_NULL != ec)
-                {
-                    if((CAL_INCAL == ec->cal_0_flag) || (CAL_INCAL == ec->cal_141_flag))
-                    {
-                        ecCalibrate1(GetSensorByAddr(GetMonitor(), getPhEcList(GetMonitor(), YES)->addr[phec_i]),
-                                GetMonitor(),ec, GetSysSet());
-                    }
-                }
-            }
-
+            pumpProgram(GetMonitor(), GetSysTank(), *deviceObj);
+            //PHEC校准
+            PHEC_Correction();
+            //Aqua 混合装置工作
             AquaMixProgram(GetSysTank(), GetMonitor());
 #endif
             timmerProgram(GetMonitor(), *deviceObj);
@@ -269,12 +249,13 @@ int main(void)
 #if(HUB_IRRIGSTION == HUB_SELECT)
             sendRealAquaCtrlToList(GetMonitor(), aquaObj);
 #endif
+
         }
 
         //10s
         if(ON == Timer10sTouch)
         {
-            if(LINKUP == ethStatus)
+            if(GetTcpSocket() > 0)
             {
                 sendReportToApp();
             }
@@ -282,18 +263,16 @@ int main(void)
             startProgram = YES;
 #endif
 
+            //LOG_W("*********************device size = %d",GetMonitor()->device_size);
         }
 
         //60s 主动发送给云服务
         if(ON == Timer60sTouch)
         {
             start_warn_flg = YES;
-            if(LINKUP == ethStatus)
+            if(YES == GetMqttStartFlg())
             {
-                if(YES == GetMqttStartFlg())
-                {
-                    SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT, 0 , 0, RT_NULL, RT_NULL, YES, 0, NO);
-                }
+                SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT, 0 , 0, RT_NULL, RT_NULL, YES, 0, NO);
             }
 #if(HUB_SELECT == HUB_IRRIGSTION)
             sendWarnFlag = YES;

@@ -53,7 +53,9 @@ void setnonblocking(int sockfd)
 
 void DestoryUdpSocket( int sock)
 {
+    shutdown(sock, SHUT_RDWR);
     closesocket(sock);
+    sock = -1;
 }
 
 /**
