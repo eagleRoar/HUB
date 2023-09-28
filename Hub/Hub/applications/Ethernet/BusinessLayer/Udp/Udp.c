@@ -16,9 +16,9 @@
  * @author  : Qiuyijie
  * @date    : 2022.03.03
  */
-rt_err_t GetIPAddress(void)
+rt_err_t GetIPAddress(u8 *ip)
 {
-    u8  ip[4];
+//    u8  ip[4];
     u32 ipAddress;
 
     ipAddress = netdev_default->ip_addr.addr;

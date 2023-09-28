@@ -570,11 +570,11 @@ void SettingPage(type_page_t page, u8 canShow)
     char                temp1[4];
     type_sys_time       time_for;
 #if(HUB_SELECT == HUB_ENVIRENMENT)
-    char                show[9][16] = {"Sensor List", "Device List", "Light List", "QR Code", "Update Firmware", "CO2 Calibration",
-                                       "Data Export", "Data Import", "Server Url"};
+    char                show[12][16] = {"Sensor List", "Device List", "Light List", "QR Code", "Update Firmware", "CO2 Calibration",
+                                       "Data Export", "Data Import", "Server Url", "Verson Info", "Ip Info", "Restore Settings"};
 #elif (HUB_SELECT == HUB_IRRIGSTION)
-    char                show[8][16] = {"Sensor List", "Device List", "QR Code", "Update Firmware", "Sensor Calibrate",
-                                       "Data Export", "Data Import", "Server Url"};
+    char                show[11][16] = {"Sensor List", "Device List", "QR Code", "Update Firmware", "Sensor Calibrate",
+                                       "Data Export", "Data Import", "Server Url", "Verson Info", "Ip Info", "Restore Settings"};
 #endif
     type_sys_time       sys_time;
     u8                  line        = LINE_HIGHT;
@@ -2779,5 +2779,82 @@ void ServerUrlPage(type_btn_event *event, u64 *info)
         }
     }
     //6.刷新界面
+    ST7567_UpdateScreen();
+}
+
+void hubInfoPage(type_page_t *page)
+{
+    u8              line        = 0;
+    u8              column      = 0;
+    char            data[20]    = " ";
+    char            ver[20]    = " ";
+
+    //1.显示hub名称和版本号
+    sprintf(data, "Name:%s",GetHub()->name);
+    ST7567_GotoXY(line, column);
+    ST7567_Puts(data, &Font_8x16, 1);
+
+    //2.显示版本号
+    column += 16;
+    getAppVersion(ver);
+    sprintf(data, "Ver:%s",ver);
+    ST7567_GotoXY(line, column);
+    ST7567_Puts(data, &Font_8x16, 1);
+
+    ST7567_UpdateScreen();
+}
+
+void ipInfoPage(type_page_t *page)
+{
+    u8              line        = 0;
+    u8              column      = 0;
+    u8              ip[4];
+    char            data[20]    = " ";
+    char            res[6]      = " ";
+    struct netdev   *ethDev     = RT_NULL;
+
+    //1.显示ip
+    GetIPAddress(ip);
+    sprintf(data, "ip:%d.%d.%d.%d",ip[3],ip[2],ip[1],ip[0]);
+    ST7567_GotoXY(line, column);
+    ST7567_Puts(data, &Font_8x16, 1);
+
+    //2.显示是否连接外网
+    ethDev = netdev_get_first_by_flags(NETDEV_FLAG_INTERNET_UP);
+    column += 16;
+    if(ethDev){
+        sprintf(data, "network:OK");
+    } else {
+        sprintf(data, "network:Fail");
+    }
+    ST7567_GotoXY(line, column);
+    ST7567_Puts(data, &Font_8x16, 1);
+
+    ST7567_UpdateScreen();
+}
+
+void restoreSettingsPage(type_page_t *page)
+{
+    u8              line        = 0;
+    u8              column      = 0;
+    char            data[20]    = " ";
+
+    //1.显示是否清空数据
+    sprintf(data, "restore setting");
+    ST7567_GotoXY(line, column);
+    ST7567_Puts(data, &Font_8x16, 1);
+
+    //2.显示选择
+    line = 28;
+    column = 32;
+    ST7567_GotoXY(line, column);
+    ST7567_Puts("NO", &Font_12x24, 1 == page->cusor ? 0 : 1);
+
+
+    line = 64;
+    column = 32;
+    ST7567_GotoXY(line, column);
+    ST7567_Puts("YES", &Font_12x24, 2 == page->cusor ? 0 : 1);
+
     ST7567_UpdateScreen();
 }

@@ -2320,6 +2320,7 @@ void CmdSetLine(char *data, proLine_t *line, proLine_4_t *line_4, cloudcmd_t *cm
     u8              lineType = 0;
     char            firstStartAt[15] = "";
     type_sys_time   time;
+    sys_set_extern *set_ex = GetSysSetExtern();
 
     temp = cJSON_Parse(data);
 
@@ -2406,6 +2407,7 @@ void CmdSetLine(char *data, proLine_t *line, proLine_4_t *line_4, cloudcmd_t *cm
             GetValueByU16(temp, "tempStartDimming", &line_4->tempStartDimming);
             GetValueByU16(temp, "tempOffDimming", &line_4->tempOffDimming);
             GetValueByU8(temp, "sunriseSunSet", &line_4->sunriseSunSet);
+            GetValueByU8(temp, "byPower", &set_ex->line_4_by_power);
         }
         cJSON_Delete(temp);
     }
@@ -2991,12 +2993,13 @@ char *ReplySetLightRecipe(char *cmd, line_4_recipe_t *recipe, cloudcmd_t cloud)
 #if(HUB_SELECT == HUB_ENVIRENMENT)
 char *ReplyGetLine(u8 lineNo, char *cmd, char *msgid, proLine_t line, proLine_4_t line_4, line_4_recipe_t *recipe,cloudcmd_t cloud)
 {
-    char    firstStartAt[15] = "";
+    char    firstStartAt[15]    = "";
     char    name[12];
-    char    *str        = RT_NULL;
-    u8      lineType    = 0;
-    cJSON   *json       = cJSON_CreateObject();
-    type_sys_time       format_time;
+    char    *str                = RT_NULL;
+    u8      lineType            = 0;
+    cJSON   *json               = cJSON_CreateObject();
+    type_sys_time format_time;
+    sys_set_extern *set_ex      = GetSysSetExtern();
 
     if(RT_NULL != json)
     {
@@ -3126,6 +3129,8 @@ char *ReplyGetLine(u8 lineNo, char *cmd, char *msgid, proLine_t line, proLine_4_
             cJSON_AddNumberToObject(json, "tempStartDimming", line_4.tempStartDimming);
             cJSON_AddNumberToObject(json, "tempOffDimming", line_4.tempOffDimming);
             cJSON_AddNumberToObject(json, "sunriseSunSet", line_4.sunriseSunSet);
+            cJSON_AddNumberToObject(json, "byPower", set_ex->line_4_by_power);
+
         }
 
         cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
@@ -7092,7 +7097,7 @@ char *ReplyGetAquaRecipe(cloudcmd_t *cmd)
                         cJSON *list = cJSON_CreateArray();
                         if(list)
                         {
-                            u8 pumSize = GetAquaWarnById(aqua->addr)->pumpSize;
+                            u8 pumSize = GetAquaWarnByAddr(aqua->addr)->pumpSize;
                             if(0 == pumSize || pumSize >= AQUA_RECIPE_PUMP_MX)
                             {
                                 pumSize = AQUA_RECIPE_PUMP_MX;

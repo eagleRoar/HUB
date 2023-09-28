@@ -23,4 +23,5 @@ void DataExport(void);
 void DataImport(void);
 void setMqttUrlFileFlag(u8 flag);
 void SaveConsole(char *data, size_t len);
+void RestoreFactorySettings(void);
 #endif /* APPLICATIONS_FILESYSTEM_FILESYSTEM_H_ */

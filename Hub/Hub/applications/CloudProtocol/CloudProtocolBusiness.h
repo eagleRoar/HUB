@@ -440,8 +440,13 @@ struct sysSet{
     hub_t           hub_info;
     u8              saveFlag;
     u8 ver;//标志软件第几期
+//    u8 line_4_by_power; //该成员是新增
 };
 
+typedef struct sysSet_extern{
+    u8 line_4_by_power;
+    u8 saveFlag;
+}sys_set_extern;
 
 enum{
     TANK_SENSOR_TANK = 0x01,        //桶内

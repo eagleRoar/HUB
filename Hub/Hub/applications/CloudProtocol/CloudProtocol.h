@@ -20,6 +20,7 @@
 typedef void(*PAGE_CB)(u8);
 
 void initSysSet(void);
+void initSysSetExtern(void);
 void initCloudSet(void);
 void initCloudProtocol(void);
 char *GetSnName(char *,u8);
@@ -52,7 +53,7 @@ void addNewAquaSetAndInfo(u32 uuid);
 void addToAquaSetList(aqua_set *set);
 void SetAquaWarn(aqua_state_t *aqua_state);
 void AddAquaWarn(u8 addr);
-aqua_state_t *GetAquaWarnById(u8 id);
+aqua_state_t *GetAquaWarnByAddr(u8 id);
 aqua_state_t *GetAquaWarn(void);
 aqua_recipe* GetAquaRecipe(u32 uuid, u8 no);
 aqua_set* GetAquaSetByUUID(u32 uuid);

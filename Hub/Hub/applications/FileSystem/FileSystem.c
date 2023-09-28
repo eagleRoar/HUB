@@ -24,6 +24,8 @@ static u8 fileSystemState = NO;
 extern u8 saveModuleFlag;
 u8 saveAquaInfoFlag = NO;
 
+extern sys_set_extern *GetSysSetExtern(void);
+
 char            new_dev_file[]          = "/main/informations/module.bin";
 char            new_sysset_file[]       = "/main/informations/sys_set.bin";
 char            new_recipe_file[]       = "/main/informations/recipe.bin";
@@ -32,6 +34,7 @@ char            new_struct_ver_file[]   = "/main/informations/ver.bin";
 char            new_mqtt_url_file[]     = "/main/informations/mqtt_url.bin";
 char            new_aqua_info_file[]    = "/main/informations/aqua_info.bin";
 char            new_aqua_set_file[]     = "/main/informations/aqua_set.bin";
+char            new_sysset_ex_file[]     = "/main/informations/sys_set_ex.bin";
 
 char            backup_dev_file[]       = "/backup/informations/module.bin";
 char            backup_sysset_file[]    = "/backup/informations/sys_set.bin";
@@ -390,6 +393,38 @@ static void SaveSysSetToFile(sys_set_t *set, char *fileName)
     }
 }
 
+static void GetSysSetExFromFile(sys_set_extern *set, char *fileName)
+{
+    static u8       FileHeadSpace       = 5;
+    u16             length              = 0;
+    length = FileHeadSpace;
+    if(RT_EOK == ReadFileData(fileName, (u8 *)set, length, sizeof(sys_set_extern)))
+    {
+        rt_kprintf("-----------------Get sysSetEx data OK\r\n");
+    }
+    else
+    {
+        rt_kprintf("-----------------Get sysSetEx data Fail\r\n");
+    }
+}
+
+static void SaveSysSetExToFile(sys_set_extern *set, char *fileName)
+{
+    static u8       FileHeadSpace       = 5;
+    u16             length              = 0;
+
+    length = FileHeadSpace;
+    RemoveFileDirectory(fileName);
+    if(RT_EOK == WriteFileData(fileName, (u8 *)set, length, sizeof(sys_set_extern)))
+    {
+        rt_kprintf("save sysSetEx data OK\r\n");
+    }
+    else
+    {
+        rt_kprintf("save sysSetEx data Fail\r\n");
+    }
+}
+
 #if(HUB_ENVIRENMENT == HUB_SELECT)
 static void GetRecipeListFromFile(sys_recipe_t *list, char *fileName)
 {
@@ -627,6 +662,11 @@ void DataImport(void)
 #endif
 }
 
+void RestoreFactorySettings(void)
+{
+    dfs_mkfs("elm", FLASH_MEMORY_NAME);
+}
+
 void FileSystemEntry(void* parameter)
 {
     static      u8              Timer1sTouch    = OFF;
@@ -646,6 +686,7 @@ void FileSystemEntry(void* parameter)
 #if(HUB_SELECT == HUB_IRRIGSTION)
     aquaSize = GetMonitor()->aqua_size;
 #endif
+    sys_set_extern *sys_set_ex = GetSysSetExtern();
 
     while(1)
     {
@@ -696,6 +737,12 @@ void FileSystemEntry(void* parameter)
         //10s 任务
         if(ON == Timer30sTouch)
         {
+            if(YES == sys_set_ex->saveFlag)
+            {
+                SaveSysSetExToFile(GetSysSetExtern(), new_sysset_ex_file);
+                sys_set_ex->saveFlag = NO;
+            }
+
             if(YES == GetSysSet()->saveFlag)
             {
                 SaveSysSetToFile(GetSysSet(), new_sysset_file);
@@ -799,6 +846,12 @@ void FileSystemInit(void)
         else
         {
             GetSysSetFromFile(GetSysSet(), new_sysset_file);
+        }
+
+        if(GetFileLength(new_sysset_ex_file))
+        {
+            GetSysSetExFromFile(GetSysSetExtern(), new_sysset_ex_file);
+            rt_kprintf("------------------------------GetSysSetExFromFile\n");//Justin
         }
 #if(HUB_ENVIRENMENT == HUB_SELECT)
         GetRecipeListFromFile(GetSysRecipt(), new_recipe_file);

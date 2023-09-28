@@ -1200,13 +1200,14 @@ static void RecvListHandle(void)
                                 {
                                     LOG_E("info is null, aqua->uuid = %x",aqua->uuid);//Justin 有问题
                                 }
-                                LOG_W("recv addr = %d", tail->keyData.dataSegment.data[0]);//Justin
-                                for(int i = 0; i < 4; i++)
-                                {
-                                    LOG_I("i = %d, uuid = %x",i, GetAquaInfoList()[i].uuid);
-                                }
 
-                                if(RT_NULL == GetAquaWarnById(tail->keyData.dataSegment.data[0]))
+                                LOG_W("recv addr = %d", tail->keyData.dataSegment.data[0]);//Justin
+//                                for(int i = 0; i < 4; i++)
+//                                {
+//                                    LOG_I("i = %d, uuid = %x",i, GetAquaInfoList()[i].uuid);
+//                                }
+
+                                if(RT_NULL == GetAquaWarnByAddr(tail->keyData.dataSegment.data[0]))
                                 {
                                     AddAquaWarn(tail->keyData.dataSegment.data[0]);
                                 }
@@ -1217,13 +1218,13 @@ static void RecvListHandle(void)
                                     switch (ask->askType) {
                                         case ASK_STATE:
 
-                                            if(RT_NULL == GetAquaWarnById(tail->keyData.dataSegment.data[0]))
+                                            if(RT_NULL == GetAquaWarnByAddr(tail->keyData.dataSegment.data[0]))
                                             {
                                                 state = &newState;
                                             }
                                             else
                                             {
-                                                state = GetAquaWarnById(tail->keyData.dataSegment.data[0]);
+                                                state = GetAquaWarnByAddr(tail->keyData.dataSegment.data[0]);
                                             }
 
                                             state->id = tail->keyData.dataSegment.data[0];
@@ -1237,7 +1238,7 @@ static void RecvListHandle(void)
 
                                             aqua->pumpSize = state->pumpSize;
                                             rt_kprintf("收到uuid = %x, addr = %d 的STATE信息\n",info->uuid, aqua->addr);//Justin debug
-                                            if(RT_NULL == GetAquaWarnById(tail->keyData.dataSegment.data[0]))
+                                            if(RT_NULL == GetAquaWarnByAddr(tail->keyData.dataSegment.data[0]))
                                             {
                                                 if(5 == state->id)//Justin debug
                                                 {
@@ -1255,13 +1256,13 @@ static void RecvListHandle(void)
                                             break;
                                         case ASK_VER:
 
-                                            if(RT_NULL == GetAquaWarnById(tail->keyData.dataSegment.data[0]))
+                                            if(RT_NULL == GetAquaWarnByAddr(tail->keyData.dataSegment.data[0]))
                                             {
                                                 state = &newState;
                                             }
                                             else
                                             {
-                                                state = GetAquaWarnById(tail->keyData.dataSegment.data[0]);
+                                                state = GetAquaWarnByAddr(tail->keyData.dataSegment.data[0]);
                                             }
 
                                             state->id = tail->keyData.dataSegment.data[0];
@@ -1269,7 +1270,7 @@ static void RecvListHandle(void)
                                             state->aqua_hmi_ver = (tail->keyData.dataSegment.data[5] << 8) | tail->keyData.dataSegment.data[6];
                                             state->aqua_firm_ver = (tail->keyData.dataSegment.data[7] << 8) | tail->keyData.dataSegment.data[8];
                                             rt_kprintf("收到uuid = %x, addr = %d 的VERSION信息\n",info->uuid, aqua->addr);//Justin debug
-                                            if(RT_NULL == GetAquaWarnById(tail->keyData.dataSegment.data[0]))
+                                            if(RT_NULL == GetAquaWarnByAddr(tail->keyData.dataSegment.data[0]))
                                             {
                                                 SetAquaWarn(state);
                                             }
@@ -1279,6 +1280,11 @@ static void RecvListHandle(void)
                                             recipe = &info->list[0];
                                             //Justin debug
                                             rt_kprintf("收到uuid = %x, addr = %d 的第%d个配方信息\n",info->uuid, aqua->addr, ask->askType - 1);//Justin debug
+//                                            for(int i = 0; i < tail->keyData.dataSegment.len; i++)
+//                                            {
+//                                                rt_kprintf("%02x ",tail->keyData.dataSegment.data[i]);
+//                                            }
+//                                            rt_kprintf("\n");//Justin
 //                                            printAquaRecipt(recipe);
                                             break;
                                         case ASK_RECIPE_1:
@@ -1392,6 +1398,7 @@ static void RecvListHandle(void)
                                     }
                                 }
                                 else {
+
                                     addNewAquaSetAndInfo(aqua->uuid);
                                     saveAquaInfoFlag = YES;
                                     rt_kprintf("info 加入失败, aqua uuid = %x\n",aqua->uuid);//Justin debug

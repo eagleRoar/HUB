@@ -241,9 +241,9 @@ static void pageSetting(u8 page)
             break;
         case SETTING_PAGE:
 #if(HUB_SELECT == HUB_ENVIRENMENT)
-            pageSelectSet(YES, 1, 9);
+            pageSelectSet(YES, 1, 12);
 #elif(HUB_SELECT == HUB_IRRIGSTION)
-            pageSelectSet(YES, 1, 8);
+            pageSelectSet(YES, 1, 11);
 #endif
             break;
         case FACTORY_PAGE:
@@ -303,6 +303,14 @@ static void pageSetting(u8 page)
             pageSelectSet(NO, 1, 2);
             break;
 
+        case HUB_INFO:
+            pageSelectSet(NO, 1, 1);
+            break;
+
+        case IP_INFO:
+            pageSelectSet(NO, 1, 1);
+            break;
+
         case FA_SENSOR_PAGE:
             pageSelectSet(NO, 0, 0);
             break;
@@ -338,6 +346,11 @@ static void pageSetting(u8 page)
             }
             pageSelectSet(NO, temp, 8);
             break;
+
+        case RESTORE_SETTINGS:
+            pageSelectSet(NO, 1, 2);
+            break;
+
         default:
             break;
     }
@@ -422,6 +435,21 @@ static void pageProgram(u8 page)
                     pageInfor <<= 8;
                     pageInfor |= SERVER_URL;
                 }
+                else if(10 == pageSelect.cusor)
+                {
+                    pageInfor <<= 8;
+                    pageInfor |= HUB_INFO;
+                }
+                else if(11 == pageSelect.cusor)
+                {
+                    pageInfor <<= 8;
+                    pageInfor |= IP_INFO;
+                }
+                else if(12 == pageSelect.cusor)
+                {
+                    pageInfor <<= 8;
+                    pageInfor |= RESTORE_SETTINGS;
+                }
 #elif (HUB_SELECT == HUB_IRRIGSTION)
 
                 if(1 == pageSelect.cusor)
@@ -463,6 +491,21 @@ static void pageProgram(u8 page)
                 {
                     pageInfor <<= 8;
                     pageInfor |= SERVER_URL;
+                }
+                else if(9 == pageSelect.cusor)
+                {
+                    pageInfor <<= 8;
+                    pageInfor |= HUB_INFO;
+                }
+                else if(10 == pageSelect.cusor)
+                {
+                    pageInfor <<= 8;
+                    pageInfor |= IP_INFO;
+                }
+                else if(11 == pageSelect.cusor)
+                {
+                    pageInfor <<= 8;
+                    pageInfor |= RESTORE_SETTINGS;
                 }
 #endif
                 pageSelect.select = OFF;
@@ -662,6 +705,38 @@ static void pageProgram(u8 page)
                 pageSelect.select = OFF;
             }
             break;
+
+        case HUB_INFO:
+            hubInfoPage(&pageSelect);
+            if(ON == pageSelect.select)
+            {
+                pageSelect.select = OFF;
+            }
+            break;
+
+        case IP_INFO:
+            ipInfoPage(&pageSelect);
+            if(ON == pageSelect.select)
+            {
+                pageSelect.select = OFF;
+            }
+            break;
+
+        case RESTORE_SETTINGS:
+            restoreSettingsPage(&pageSelect);
+            if(ON == pageSelect.select)
+            {
+                if(1 == pageSelect.cusor) {
+                    pageInfor >>= 8;
+                } else if(2 == pageSelect.cusor) {
+                    RestoreFactorySettings();
+                    rt_hw_cpu_reset();
+                }
+
+                pageSelect.select = OFF;
+            }
+            break;
+
         default:
             break;
     }
@@ -751,7 +826,9 @@ void OledTaskEntry(void* parameter)
                (FA_TEST_PAGE == nowPage) ||
                (PH_CALIBRATE_PAGE == nowPage) ||
                (EC_CALIBRATE_PAGE == nowPage) ||
-               (SERVER_URL == nowPage))
+               (SERVER_URL == nowPage) ||
+               (HUB_INFO == nowPage) ||
+               (IP_INFO == nowPage))
             {
                 //需要刷新
                 reflash_flag = ON;

@@ -50,6 +50,7 @@ static void InitParameter(void)
     initCloudProtocol();
     GetSnName(GetSysSet()->hub_info.name, 13);
     InitMqttUrlUse();
+    initSysSetExtern();
 }
 extern void changeBigToLittle(u16 src, u8 *data);
 int main(void)
@@ -264,6 +265,13 @@ int main(void)
 #endif
 
             //LOG_W("*********************device size = %d",GetMonitor()->device_size);
+//            struct netdev *ethDev = RT_NULL;
+//            ethDev = netdev_get_first_by_flags(NETDEV_FLAG_INTERNET_UP);
+//            if(ethDev)
+//            {
+//                LOG_D("local ip is:%d.%d.%d.%d", ((( ethDev->ip_addr.addr) >> 0) & 0xFF), ((( ethDev->ip_addr.addr) >> 8) & 0xFF),
+//                        ((( ethDev->ip_addr.addr) >> 16) & 0xFF), ((( ethDev->ip_addr.addr) >> 24) & 0xFF));
+//            }
         }
 
         //60s 主动发送给云服务

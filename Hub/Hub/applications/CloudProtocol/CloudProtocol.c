@@ -30,6 +30,7 @@ sys_tank_t      sys_tank;
 cloudcmd_t      cloudCmd;
 u8 sys_warn[WARN_MAX];
 u8 saveModuleFlag = NO;
+sys_set_extern sys_set_ex;
 
 extern struct ethDeviceStruct *eth;
 extern int tcp_sock;
@@ -310,7 +311,7 @@ void printAquaWarn(void)
     }
 }
 
-aqua_state_t *GetAquaWarnById(u8 id)
+aqua_state_t *GetAquaWarnByAddr(u8 id)
 {
     int i = 0;
 
@@ -612,8 +613,20 @@ void initCloudProtocol(void)
     rt_memset(&sys_set.dimmingCurve, 0, sizeof(dimmingCurve_t));
 
     sys_set.sensorMainType = SENSOR_CTRL_AVE;
+//    sys_set.line_4_by_power = 100;//Justin
 
     initHubinfo();
+}
+
+void initSysSetExtern(void)
+{
+    sys_set_ex.line_4_by_power = 100;
+    sys_set_ex.saveFlag = NO;
+}
+
+sys_set_extern *GetSysSetExtern(void)
+{
+    return &sys_set_ex;
 }
 
 //清除ph校准参数
@@ -1310,6 +1323,7 @@ void analyzeCloudData(char *data, u8 cloudFlg)
             {
                 CmdSetLine(data, &sys_set.line1Set, &sys_set.line1_4Set, &cloudCmd);
                 GetSysSet()->saveFlag = YES;
+                GetSysSetExtern()->saveFlag = YES;
                 setCloudCmd(cmd->valuestring, ON, cloudFlg);
             }
             else if(0 == rt_memcmp(CMD_SET_LIGHT_RECIPE, cmd->valuestring, strlen(CMD_SET_LIGHT_RECIPE)))

@@ -952,6 +952,8 @@ void deletePumpValveGroup(type_monitor_t *monitor, u8 addr, u8 port)
 //删除
 void DeleteModule(type_monitor_t *monitor, u32 uuid)
 {
+    u8 addr = 0;
+
     for(int i = 0; i < monitor->sensor_size; i++)
     {
         if(uuid == monitor->sensor[i].uuid)
@@ -1030,6 +1032,7 @@ void DeleteModule(type_monitor_t *monitor, u32 uuid)
     {
         if(uuid == monitor->aqua[i].uuid)
         {
+            addr = monitor->aqua[i].addr;
             monitor->allocateStr.address[monitor->aqua[i].addr] = 0;
             rt_memset((u8 *)&monitor->aqua[i], 0, sizeof(aqua_t));
 
@@ -1055,7 +1058,7 @@ void DeleteModule(type_monitor_t *monitor, u32 uuid)
         saveAquaInfoFlag = YES;
     }
 
-    aqua_state_t *state = GetAquaWarnById(uuid);
+    aqua_state_t *state = GetAquaWarnByAddr(addr);
     if(state)
     {
         rt_memset(state, 0, sizeof(aqua_state_t));

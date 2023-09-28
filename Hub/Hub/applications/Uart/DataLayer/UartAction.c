@@ -1612,7 +1612,7 @@ void AquaMixProgram(sys_tank_t *list, type_monitor_t *monitor)
 
         if(RT_NULL != aqua)
         {
-            aquaRunFlg = GetAquaWarnById(aqua->addr)->isAquaRunning;
+            aquaRunFlg = GetAquaWarnByAddr(aqua->addr)->isAquaRunning;
 
             if(device->special_data.mix_fertilizing & (1 << port))//是否跟随aqua配方
             {
@@ -2361,6 +2361,8 @@ void line_4Program(line_t *line, type_uart_class lineUart)
     int             temperature                 = GetSensorMainValue(GetMonitor(), F_S_TEMP);
     static u8       lineDimmingFlag             = NO;
     static u8       lineOffDimmingFlag          = NO;
+    u8              prohibitSunRise             = YES;
+    sys_set_extern  *set_ex                     = GetSysSetExtern();
 
     //1.获取灯光设置
     GetNowSysSet(RT_NULL, RT_NULL, RT_NULL, RT_NULL, &line_4set, RT_NULL, RT_NULL);
@@ -2371,32 +2373,67 @@ void line_4Program(line_t *line, type_uart_class lineUart)
 
     if(LINE_BY_TIMER == line_4set.mode)
     {
+        int i = 0;
+        u8 timerGroupNum = 0;
+
+        //3.0 如果在timer的组内的开始和结束不要日升日落，只有在最开始的第一组
+        //和结束的最后一组才日升日落
+        for(i = LINE_4_TIMER_MAX - 1; i > 0; i--)
+        {
+            if(!((0 == line_4set.timerList[i].on) && (0 == line_4set.timerList[i].off) && (0 == line_4set.timerList[i].en)))
+            {
+                timerGroupNum = i + 1;
+                break;
+            }
+        }
+
         //3.1 选中定时器设置
-        for(int i = 0; i < LINE_4_TIMER_MAX; i++)
+        for(i = 0; i < LINE_4_TIMER_MAX; i++)
         {
             u16 onTime = line_4set.timerList[i].on;
             u16 offTime = line_4set.timerList[i].off;
 
-            //判断是否是跨天
-            if(offTime > onTime)
+            if(onTime > 0 || offTime > 0 || line_4set.timerList[i].en)
             {
-                if(now_time >= onTime * 60 &&
-                   now_time < offTime * 60)
+                //判断是否是跨天
+                if(offTime > onTime)
                 {
-                    nowTimerSet = &line_4set.timerList[i];
-                    break;
+                    if(now_time >= onTime * 60 &&
+                       now_time < offTime * 60)
+                    {
+                        nowTimerSet = &line_4set.timerList[i];
+                        break;
+                    }
                 }
-            }
-            else
-            {
-                if((now_time >= onTime * 60 && now_time <= 24 * 60 * 60) ||
-                   (now_time < offTime * 60))
+                else
                 {
-                    nowTimerSet = &line_4set.timerList[i];
-                    break;
+                    if((now_time >= onTime * 60 && now_time <= 24 * 60 * 60) ||
+                       (now_time < offTime * 60))
+                    {
+                        nowTimerSet = &line_4set.timerList[i];
+                        break;
+                    }
                 }
             }
         }
+
+
+        if(timerGroupNum > 1)
+        {
+            if(i > 0 && i < LINE_4_TIMER_MAX) {
+                if((now_time >= line_4set.timerList[0].on * 60 &&
+                    now_time < line_4set.timerList[0].on * 60 + + line_4set.sunriseSunSet * 60) ||
+                   (now_time +  line_4set.sunriseSunSet * 60 >= line_4set.timerList[timerGroupNum - 1].off * 60 &&
+                    now_time < line_4set.timerList[timerGroupNum - 1].off * 60)) {
+                    prohibitSunRise = NO;
+                }
+            }
+        }
+
+//        rt_kprintf("prohibitSunRise = %d, now = %d, on = %d, off = %d\n",
+//                prohibitSunRise, now_time, line_4set.timerList[0].on * 60, line_4set.timerList[timerGroupNum - 1].off * 60);//Justin
+
+//        rt_kprintf("by power = %d\n",GetSysSet()->line_4_by_power);//Justin debug
 
         //3.1.1
         if(nowTimerSet)
@@ -2487,7 +2524,7 @@ void line_4Program(line_t *line, type_uart_class lineUart)
         else if(LINE_MODE_BY_POWER == line_4set.brightMode)
         {
             //日升日落
-            if(0 == line_4set.sunriseSunSet)
+            if(0 == line_4set.sunriseSunSet || YES == prohibitSunRise)
             {
                 state = ON;
                 stage[0] = sys_set->lineRecipeList[lineRecipeNo].output1;
@@ -2543,6 +2580,12 @@ void line_4Program(line_t *line, type_uart_class lineUart)
             {
                 stage[port] /= 2;
             }
+        }
+
+        //增加整体调光
+        for(int port = 0; port < LINE_PORT_MAX; port++)
+        {
+            stage[port] = stage[port] * set_ex->line_4_by_power / 100;
         }
     }
     else
