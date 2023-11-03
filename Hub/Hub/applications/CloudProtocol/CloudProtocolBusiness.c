@@ -579,6 +579,21 @@ void CmdSetPortSet(char *data, cloudcmd_t *cmd)
                 device->special_data._hvac.nightPoint = setPoint / 10;
                 GetValueByU8(temp, "fanNormallyOpen", &device->special_data._hvac.fanNormallyOpen);//复用为结束时间
             }
+            else if(PRO_HUMI_TEMP_TYPE == device->port[port].type)//Justin debug 未测试
+            {
+                u8 htMode = 0;
+                GetValueByU8(temp, "mode", &htMode);
+                if(device->port[port].ht.mode != htMode)
+                {
+                    device->port[port].ht.mode = htMode;
+                    //Justin debug 需要在这个位置上发送设置mode
+                    GetDeviceObject()->SendHtMode(device, htMode);
+                }
+                GetValueByU16(temp, "dayHumidSetpoint", &device->port[port].ht.dayHumidSetpoint);
+                GetValueByU16(temp, "nightHumidSetpoint", &device->port[port].ht.nightHumidSetpoint);
+                GetValueByU16(temp, "dayTempSetpoint", &device->port[port].ht.dayTempSetpoint);
+                GetValueByU16(temp, "nightTempSetpoint", &device->port[port].ht.nightTempSetpoint);
+            }
         }
 #if (HUB_SELECT == HUB_ENVIRENMENT)
         else if(line != RT_NULL)
@@ -2605,6 +2620,7 @@ char *SendHubReport(char *cmd, sys_set_t *set)
 #if(HUB_SELECT == HUB_IRRIGSTION)
     cJSON           *list           = RT_NULL;
     cJSON           *tank           = RT_NULL;
+    aqua_t          *aqua           = RT_NULL;
     int             valueTemp[10]    = {VALUE_NULL,VALUE_NULL,VALUE_NULL,VALUE_NULL,VALUE_NULL,VALUE_NULL,VALUE_NULL,VALUE_NULL,VALUE_NULL,VALUE_NULL};
 #endif
 
@@ -2777,12 +2793,30 @@ char *SendHubReport(char *cmd, sys_set_t *set)
                             }
                         }
                     }
+                    aqua = GetAquaByAddr(GetMonitor(), GetSysTank()->tank[no].aquaId);
+                    if(aqua) {
+                        aqua_state_t *state = GetAquaWarnByAddr(aqua->addr);
+
+                        if(CON_SUCCESS == aqua->conn_state)
+                        {
+                            cJSON_AddNumberToObject(tank, "tankEc",state->ec);
+                            cJSON_AddNumberToObject(tank, "tankPh",state->ph);
+                            cJSON_AddNumberToObject(tank, "tankWt",state->wt);
+                        } else {
+                            cJSON_AddNumberToObject(tank, "tankEc",VALUE_NULL);
+                            cJSON_AddNumberToObject(tank, "tankPh",VALUE_NULL);
+                            cJSON_AddNumberToObject(tank, "tankWt",VALUE_NULL);
+                        }
+
+                    } else {
+                        cJSON_AddNumberToObject(tank, "tankEc",valueTemp[0]);
+                        cJSON_AddNumberToObject(tank, "tankPh",valueTemp[2]);
+                        cJSON_AddNumberToObject(tank, "tankWt",valueTemp[4]);
+                    }
+
                     cJSON_AddStringToObject(tank, "name",GetSysTank()->tank[no].name);
-                    cJSON_AddNumberToObject(tank, "tankEc",valueTemp[0]);
                     cJSON_AddNumberToObject(tank, "inlineEc",valueTemp[1]);
-                    cJSON_AddNumberToObject(tank, "tankPh",valueTemp[2]);
                     cJSON_AddNumberToObject(tank, "inlinePh",valueTemp[3]);
-                    cJSON_AddNumberToObject(tank, "tankWt",valueTemp[4]);
                     cJSON_AddNumberToObject(tank, "inlineWt",valueTemp[5]);
                     cJSON_AddNumberToObject(tank, "wl",valueTemp[6]);
                     cJSON_AddNumberToObject(tank, "mm",valueTemp[7]);
@@ -3461,6 +3495,7 @@ char *ReplyGetTank(char *cmd, cloudcmd_t cloud)
             cJSON_AddStringToObject(json, "name", tank->name);
             cJSON_AddNumberToObject(json, "color", tank->color);
             cJSON_AddNumberToObject(json, "autoFillValveId", tank->autoFillValveId);
+            cJSON_AddNumberToObject(json, "ver", 1);//ver >= 1时 补水采用补水类型
             cJSON_AddNumberToObject(json, "autoFillHeight", tank->autoFillHeight);
             cJSON_AddNumberToObject(json, "autoFillFulfilHeight", tank->autoFillFulfilHeight);
             cJSON_AddNumberToObject(json, "highEcProtection", tank->highEcProtection);
@@ -4562,12 +4597,7 @@ char *ReplyTest(char *cmd, cloudcmd_t cloud)
     {
         cJSON_AddStringToObject(json, "cmd", cmd);
 
-        /*for(u16 i = 0; i < 1000; i++)
-        {
-            char test[10] = " ";
-            sprintf(test, "c%d", i);
-            cJSON_AddNumberToObject(json, test, i);
-        }*/
+        cJSON_AddNumberToObject(json, "Hvac sendCnt", cloud.hvac_sendCnt);//Justin debug 回复hvac 没有回复的次数
 
         str = cJSON_PrintUnformatted(json);
 
@@ -4614,6 +4644,7 @@ char *ReplyGetHubState(char *cmd, cloudcmd_t cloud)
     u16             length      = 0;
     cJSON           *tank       = RT_NULL;
     int             valueTemp[10]    = {VALUE_NULL,VALUE_NULL,VALUE_NULL,VALUE_NULL,VALUE_NULL,VALUE_NULL,VALUE_NULL,VALUE_NULL,VALUE_NULL,VALUE_NULL};
+    aqua_t          *aqua       = RT_NULL;
 #endif
     cJSON           *list       = RT_NULL;
 
@@ -4847,11 +4878,34 @@ char *ReplyGetHubState(char *cmd, cloudcmd_t cloud)
                     }
                 }
                 cJSON_AddStringToObject(tank, "name",GetSysTank()->tank[no].name);
-                cJSON_AddNumberToObject(tank, "tankEc",valueTemp[0]);
+                //1.如果该池有接入aqua那么显示aqua 的sensor
+                aqua = GetAquaByAddr(GetMonitor(), GetSysTank()->tank[no].aquaId);
+
+                if(aqua) {
+                    aqua_state_t *state = GetAquaWarnByAddr(aqua->addr);
+
+                    if(CON_SUCCESS == aqua->conn_state)
+                    {
+                        cJSON_AddNumberToObject(tank, "tankEc",state->ec);
+                        cJSON_AddNumberToObject(tank, "tankPh",state->ph);
+                        cJSON_AddNumberToObject(tank, "tankWt",state->wt);
+                    } else {
+                        cJSON_AddNumberToObject(tank, "tankEc",VALUE_NULL);
+                        cJSON_AddNumberToObject(tank, "tankPh",VALUE_NULL);
+                        cJSON_AddNumberToObject(tank, "tankWt",VALUE_NULL);
+                    }
+
+                } else {
+                    cJSON_AddNumberToObject(tank, "tankEc",valueTemp[0]);
+                    cJSON_AddNumberToObject(tank, "tankPh",valueTemp[2]);
+                    cJSON_AddNumberToObject(tank, "tankWt",valueTemp[4]);
+
+                    if(0 == no) {
+                        LOG_E("aqua is null, addr = %d",GetMonitor(), GetSysTank()->tank[no].aquaId);//Justin
+                    }
+                }
                 cJSON_AddNumberToObject(tank, "inlineEc",valueTemp[1]);
-                cJSON_AddNumberToObject(tank, "tankPh",valueTemp[2]);
                 cJSON_AddNumberToObject(tank, "inlinePh",valueTemp[3]);
-                cJSON_AddNumberToObject(tank, "tankWt",valueTemp[4]);
                 cJSON_AddNumberToObject(tank, "inlineWt",valueTemp[5]);
                 cJSON_AddNumberToObject(tank, "wl",valueTemp[6]);
                 cJSON_AddNumberToObject(tank, "mm",valueTemp[7]);
@@ -5228,6 +5282,22 @@ char *ReplyGetPortSet(char *cmd, cloudcmd_t cloud)
                     cJSON_AddNumberToObject(json, "dayTempSetpoint", module->special_data._hvac.dayPoint * 10);//白天point
                     cJSON_AddNumberToObject(json, "nightTempSetpoint", module->special_data._hvac.nightPoint * 10);//黑夜point
                     cJSON_AddNumberToObject(json, "fanNormallyOpen", module->special_data._hvac.fanNormallyOpen);//风扇常开
+                }
+                else if(PRO_HUMI_TEMP_TYPE == module->port[port].type)//Justin debug 未测试
+                {
+                    cJSON_AddNumberToObject(json, "mode", module->port[port].ht.mode);
+                    cJSON_AddNumberToObject(json, "dayHumidSetpoint", module->port[port].ht.dayHumidSetpoint);
+                    cJSON_AddNumberToObject(json, "nightHumidSetpoint", module->port[port].ht.nightHumidSetpoint);
+                    cJSON_AddNumberToObject(json, "dayTempSetpoint", module->port[port].ht.dayTempSetpoint);
+                    cJSON_AddNumberToObject(json, "nightTempSetpoint", module->port[port].ht.nightTempSetpoint);
+                }
+
+                //Justin debug 如果主设备是四路干接点 四路智能排查 12路干接点 的话 支持修改成补水设备
+                if(module->type == AC_4_TYPE ||
+                        module->type == IO_12_TYPE ||
+                        module->type == IO_4_TYPE)
+                {
+                    cJSON_AddNumberToObject(json, "ver", 1);
                 }
 
                 for(u8 tank_no = 0; tank_no < GetSysTank()->tank_size; tank_no++)
@@ -7069,8 +7139,6 @@ char *ReplyGetAquaRecipe(cloudcmd_t *cmd)
                 if(info)
                 {
                     u8 no = cmd->getAquaRecipeNo <= AQUA_RECIPE_MX ? cmd->getAquaRecipeNo : AQUA_RECIPE_MX;
-
-                    rt_kprintf("uuid = %x, recipe = %d\n", info->uuid, no);//Justin
 
                     if(no > 0)
                     {

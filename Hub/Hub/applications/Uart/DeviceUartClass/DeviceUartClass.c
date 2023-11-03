@@ -23,6 +23,8 @@ type_uart_class uart2Object;
 static time_t timerRun;
 static uart_send_monitor sendMoni[DEVICE_MAX]; //优化设备发送
 
+extern cloudcmd_t      cloudCmd;
+
 //模拟软件定时器//ms
 time_t getTimerRun(void)
 {
@@ -119,6 +121,35 @@ static void GenerateChangeType(device_t *device, u8 port, u8 type, u8 *data)
 
 #if(HUB_ENVIRENMENT == HUB_SELECT)
 
+//恒温恒湿模块
+static void GenerateHTData(device_t *device, u8 state, u16 *res)
+{
+    u8 humiPoint = 0;
+    u8 tempPoint = 0;
+
+    if(DAY_TIME == GetSysSet()->dayOrNight)
+    {
+        humiPoint = device->port[0].ht.dayHumidSetpoint / 10;
+        tempPoint = device->port[0].ht.dayTempSetpoint/ 10;
+    }
+    else
+    {
+        humiPoint = device->port[0].ht.nightHumidSetpoint/ 10;
+        tempPoint = device->port[0].ht.nightTempSetpoint/ 10;
+    }
+
+    *res = 0;
+    if(ON == state)
+    {
+        *res = 0x8000 | (humiPoint << 8) | tempPoint;
+    }
+    else if(OFF == state)
+    {
+        *res = (humiPoint << 8) | tempPoint;
+    }
+}
+
+
 static void GenerateHvacData(device_t *device, u8 state, u16 *res)
 {
     u8 point = 0;
@@ -161,10 +192,10 @@ static void GenerateIrAirCtrlData(u8 state, u16 *res)
             temp = tempSet.nightCoolingTarget;
         }
 
-        if(temp > tempSet.tempDeadband)
-        {
-            temp -= tempSet.tempDeadband;
-        }
+//        if(temp > tempSet.tempDeadband)
+//        {
+//            temp -= tempSet.tempDeadband;
+//        }//Justin
         changeIrAirCode(temp, res);
     }
     else
@@ -269,6 +300,10 @@ static void GenerateVuleBySingleCtrl(device_t device, u8 port, u8 state, u16 *va
             {
                 GenerateHvacData(&device, ON, value);
             }
+            else if(PRO_HUMI_TEMP_TYPE == device.type)
+            {
+                GenerateHTData(&device, ON, value);//Justin debug 测试
+            }
             else
 #endif
             {
@@ -293,6 +328,10 @@ static void GenerateVuleBySingleCtrl(device_t device, u8 port, u8 state, u16 *va
             else if(HVAC_6_TYPE == device.type)
             {
                 GenerateHvacData(&device, OFF, value);
+            }
+            else if(PRO_HUMI_TEMP_TYPE == device.type)
+            {
+                GenerateHTData(&device, OFF, value);//Justin debug 测试
             }
             else
 #endif
@@ -345,11 +384,14 @@ static void GenerateVuleBySingleCtrl(device_t device, u8 port, u8 state, u16 *va
                 }
             }
 
-            //Justin debug
 #if(HUB_ENVIRENMENT == HUB_SELECT)
             if(HVAC_6_TYPE == device.type)
             {
                 GenerateHvacData(&device, ON, value);
+            }
+            else if(PRO_HUMI_TEMP_TYPE == device.type)
+            {
+                GenerateHTData(&device, ON, value);
             }
 #endif
         }
@@ -392,139 +434,6 @@ static void GenerateVuleBySingleCtrl(device_t device, u8 port, u8 state, u16 *va
     if(ON == maintain)
     {
         *value = 0x0000;
-    }
-}
-
-static void GenerateVuleByCtrl(device_t device, u8 func, u8 state, u16 *value)
-{
-
-    if (1 == device.storage_size)//一个寄存器
-    {
-        if(func == device.port[0].func)
-        {
-            //1.如果是非手动模式
-            if(MANUAL_HAND_ON == device.port[0].manual.manual)
-            {
-#if(HUB_ENVIRENMENT == HUB_SELECT)
-                if(IR_AIR_TYPE == device.type)
-                {
-                    GenerateIrAirCtrlData(ON, value);
-                }
-                else if(PRO_DEHUMI_TYPE == device.type)
-                {
-                    GenerateProDehumiCtrlData(ON, value);
-                }
-                else if(PRO_HUMI_TYPE == device.type)
-                {
-                    GenerateProHumiCtrlData(ON, value);
-                }
-                else
-#endif
-                {
-                    *value = 0x0100;//开启
-                }
-            }
-            else if(MANUAL_HAND_OFF == device.port[0].manual.manual)
-            {
-#if(HUB_ENVIRENMENT == HUB_SELECT)
-                if(IR_AIR_TYPE == device.type)
-                {
-                    GenerateIrAirCtrlData(OFF, value);
-                }
-                else if(PRO_DEHUMI_TYPE == device.type)
-                {
-                    GenerateProDehumiCtrlData(OFF, value);
-                }
-                else if(PRO_HUMI_TYPE == device.type)
-                {
-                    GenerateProHumiCtrlData(OFF, value);
-                }
-                else
-#endif
-                {
-                    *value = 0x0000;
-                }
-            }
-            else
-            {
-                if(ON == state)
-                {
-#if(HUB_ENVIRENMENT == HUB_SELECT)
-                    if(IR_AIR_TYPE == device.type)
-                    {
-                        GenerateIrAirCtrlData(ON, value);
-                    }
-                    else if(PRO_DEHUMI_TYPE == device.type)
-                    {
-                        GenerateProDehumiCtrlData(ON, value);
-                    }
-                    else if(PRO_HUMI_TYPE == device.type)
-                    {
-                        GenerateProHumiCtrlData(ON, value);
-                    }
-                    else
-#endif
-                    {
-                        *value = 0x0100;//开启
-                    }
-                }
-                else if(OFF == state)
-                {
-#if(HUB_ENVIRENMENT == HUB_SELECT)
-                    if(IR_AIR_TYPE == device.type)
-                    {
-                        GenerateIrAirCtrlData(OFF, value);
-                    }
-                    else if(PRO_DEHUMI_TYPE == device.type)
-                    {
-                        GenerateProDehumiCtrlData(OFF, value);
-                    }
-                    else if(PRO_HUMI_TYPE == device.type)
-                    {
-                        GenerateProHumiCtrlData(OFF, value);
-                    }
-                    else
-#endif
-                    {
-                        *value = 0x0000;
-                    }
-                }
-            }
-        }
-    }
-    else//多个寄存器
-    {
-        for(u8 port = 0; port < device.storage_size; port++)
-        {
-            //如果先前是开着的就制1
-            if(MANUAL_HAND_ON == device.port[port].manual.manual)
-            {
-                *value |= (1 << port);
-            }
-            else if(MANUAL_HAND_OFF == device.port[port].manual.manual)
-            {
-                *value &= ~(1 << port);
-            }
-            else
-            {
-                if(ON == device.port[port].ctrl.d_state)
-                {
-                    *value |= (1 << port);
-                }
-
-                if(func == device.port[port].func)
-                {
-                    if(ON == state)
-                    {
-                        *value |= (1 << port);
-                    }
-                    else if(OFF == state)
-                    {
-                        *value &= ~(1 << port);
-                    }
-                }
-            }
-        }
     }
 }
 
@@ -651,6 +560,11 @@ static u8 IsNeedSendCtrToConnect(u8 addr, u16 *ctrl)
     u8 ret = NO;
 
     //2.如果控制内容发送变化
+    if(0 == addr)
+    {
+        return ret;
+    }
+
     for(u8 i = 0; i < DEVICE_MAX; i++)
     {
         if(addr == sendMoni[i].addr)
@@ -808,66 +722,38 @@ static void ConfigureUart2(rt_device_t *dev)
     uart2Object.dev = dev;
 }
 
-/**传入参数
- *
- * @param addr      设备485地址
- *        reg_addr  寄存器地址
- *        reg_data  寄存器实际值
- *        reg_size  控制的寄存器值的数量
- */
-static void DeviceCtrl(type_monitor_t *monitor, u8 func, u8 state)
+static void SendHtMode(device_t *device, u8 mode)
 {
     u8          data[8];
-    u16         value       = 0;
     KV          keyValue;
     seq_key_t   seq_key;
-    device_t    device;
 
-//    PrintNode(&uart2Object.taskList.list);
+    data[0] = device->addr;
+    data[1] = WRITE_SINGLE;
+    data[2] = 0x01;
+    data[3] = 0x01;
+    data[4] = 0x00;
+    data[5] = mode;
+    data[6] = usModbusRTU_CRC(data, 6);
+    data[7] = usModbusRTU_CRC(data, 6) >> 8;
 
-    if(RT_NULL == uart2Object.dev)
+    seq_key.addr = device->addr;
+    seq_key.regH = 0x01;
+    seq_key.regL = 0x01;
+    seq_key.regSize = device->storage_size;
+    keyValue.key = SeqKeyToLong(seq_key);
+    keyValue.dataSegment.len = 8;
+    keyValue.dataSegment.data = rt_malloc(keyValue.dataSegment.len);
+    if(keyValue.dataSegment.data)
     {
-        return;
-    }
+        //5.复制实际数据
+        rt_memcpy(keyValue.dataSegment.data, data, keyValue.dataSegment.len);
 
-    //1.遍历当前设备列表 控制设备
-    for(u8 i = 0; i < monitor->device_size; i++)
-    {
-        //2.组合发送的数据
-        value = 0x0000;
-        device = GetMonitor()->device[i];
+        uart2Object.taskList.AddToList(keyValue, NO);
 
-        GenerateVuleByCtrl(device, func, state, &value);
-
-        //3.加入到发送列表
-        GenerateSendData(monitor->device[i], value, data);
-
-        if(YES == IsCtrlChange(monitor->device[i].addr, value))
-        {
-            //4.0 判断是否是需要控制的
-            if(YES == IsExistFunc(monitor, monitor->device[i].addr, func))
-            {
-                //4.添加到taskList 之后会在统一接口中实现数据的发送
-                seq_key.addr = monitor->device[i].addr;
-                seq_key.regH = monitor->device[i].ctrl_addr >> 8;
-                seq_key.regL = monitor->device[i].ctrl_addr;
-                seq_key.regSize = monitor->device[i].storage_size;
-                keyValue.key = SeqKeyToLong(seq_key);
-                keyValue.dataSegment.len = 8;
-                keyValue.dataSegment.data = rt_malloc(keyValue.dataSegment.len);
-                if(keyValue.dataSegment.data)
-                {
-                    //5.复制实际数据
-                    rt_memcpy(keyValue.dataSegment.data, data, keyValue.dataSegment.len);
-
-                    uart2Object.taskList.AddToList(keyValue, NO);
-
-                    //6.回收空间
-                    rt_free(keyValue.dataSegment.data);
-                    keyValue.dataSegment.data = RT_NULL;
-                }
-            }
-        }
+        //6.回收空间
+        rt_free(keyValue.dataSegment.data);
+        keyValue.dataSegment.data = RT_NULL;
     }
 }
 
@@ -1121,15 +1007,15 @@ static void SendCmd(void)
 
     }
 
-//    {
-//        LOG_I("///////////////////////////device sendCmd : ");
-//        for(int i = 0; i < first->keyData.dataSegment.len; i++)
-//        {
-//            rt_kprintf(" %x",first->keyData.dataSegment.data[i]);
-//
-//        }
-//        rt_kprintf("\r\n");//Justin
-//    }
+    {
+        rt_kprintf("----------------------------device sendCmd : ");
+        for(int i = 0; i < first->keyData.dataSegment.len; i++)
+        {
+            rt_kprintf(" %x",first->keyData.dataSegment.data[i]);
+
+        }
+        rt_kprintf("\r\n");//Justin
+    }
 
     //5.将这个任务从任务列表中移出去
     uart2Object.taskList.DeleteToList(first->keyData);
@@ -1314,6 +1200,17 @@ static void RecvListHandle(void)
                                     device->port[0].ctrl.d_state = OFF;
                                 }
                             }
+                            else if(PRO_HUMI_TEMP_TYPE == device->type)
+                            {
+                                if(tail->keyData.dataSegment.data[4] & 0x80)
+                                {
+                                    device->port[0].ctrl.d_state = ON;
+                                }
+                                else
+                                {
+                                    device->port[0].ctrl.d_state = OFF;
+                                }
+                            }
                             else
                             {
                                 device->port[0].ctrl.d_state = tail->keyData.dataSegment.data[4];
@@ -1406,6 +1303,18 @@ static void RecvListHandle(void)
                 LOG_W("-----------addr = %d reconnect, sendTimes = %d", sendMoni[i].addr,sendMoni[i].SendCnt);
             }
         }
+
+        if(GetDeviceByAddr(monitor, sendMoni[i].addr))
+        {
+            if(HVAC_6_TYPE == GetDeviceByAddr(monitor, sendMoni[i].addr)->type)
+            {
+                cloudCmd.hvac_sendCnt = sendMoni[i].SendCnt;
+                if(sendMoni[i].SendCnt > 0)
+                {
+                    LOG_I("-----------addr = %d reconnect, sendTimes = %d", sendMoni[i].addr,sendMoni[i].SendCnt);//Justin debug
+                }
+            }
+        }
     }
 }
 
@@ -1423,8 +1332,9 @@ void InitUart2Object(void)
 
     //3.实例化相关接口
     uart2Object.ConfigureUart = ConfigureUart2;
-    uart2Object.DeviceCtrl = DeviceCtrl;
+    uart2Object.DeviceCtrl = RT_NULL;
     uart2Object.DeviceCtrlSingle = DeviceCtrlSingle;
+    uart2Object.SendHtMode = SendHtMode;
     uart2Object.DeviceChgType = DeviceChgType;
     uart2Object.AskDevice = UartAsk;
     uart2Object.SendCmd = SendCmd;

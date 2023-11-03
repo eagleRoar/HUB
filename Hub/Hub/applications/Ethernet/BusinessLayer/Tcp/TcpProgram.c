@@ -174,7 +174,7 @@ void analyzeTcpData(char *data, u16 size)
     //标识后面如果还有数据的话需要解决
     if(start + 4 != size)//start + 3 == size - 1
     {
-        LOG_E("%.*s",size - start,data + start);
+//        LOG_E("%.*s",size - start,data + start);
         splitJointData(data + start, size - start);
     }
 }

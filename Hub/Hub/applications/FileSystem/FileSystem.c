@@ -564,11 +564,10 @@ static void GetSysAquaInfoFromFile(aqua_info_t *list, char *fileName)
     {
         LOG_I("Get AquaInfo data OK");
 
-        //Justin debug
-        for(int i = 0; i < 4; i++)
-        {
-            rt_kprintf("--------------------------------------------i = %d, uuid = %x\r\n",i, list[i].uuid);//Justin
-        }
+//        for(int i = 0; i < 4; i++)
+//        {
+//            rt_kprintf("--------------------------------------------i = %d, uuid = %x\r\n",i, list[i].uuid);
+//        }
     }
     else
     {
@@ -851,7 +850,6 @@ void FileSystemInit(void)
         if(GetFileLength(new_sysset_ex_file))
         {
             GetSysSetExFromFile(GetSysSetExtern(), new_sysset_ex_file);
-            rt_kprintf("------------------------------GetSysSetExFromFile\n");//Justin
         }
 #if(HUB_ENVIRENMENT == HUB_SELECT)
         GetRecipeListFromFile(GetSysRecipt(), new_recipe_file);

@@ -55,7 +55,7 @@ sensor_t *GetMainSensorByAddr(type_monitor_t *monitor, u8 type);
 int GetSensorMainValue(type_monitor_t *monitor, u8 func);
 #if (HUB_IRRIGSTION == HUB_SELECT)
 void deletePumpValveGroup(type_monitor_t *monitor, u8 addr, u8 port);
-void PHEC_Correction(void);
+//void PHEC_Correction(void);
 #endif
 aqua_t *GetAquaByAddr(type_monitor_t *monitor, u8 addr);
 rt_err_t CheckAquaCorrect(type_monitor_t *monitor, u32 uuid, u8 addr);

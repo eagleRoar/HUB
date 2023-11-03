@@ -115,6 +115,7 @@ struct cloudCmd{
     u8              getAquaSetId;
     u8              set_tankcolor_no;
     u8              set_tankcolor_color;
+    u8              hvac_sendCnt;//为了打印hvac 发送的次数
 };
 
 //cmd : getTempSetting

@@ -182,6 +182,15 @@ struct line{
     u8              lineNo;                                 //指定该路灯是第几路
 };
 
+//恒温恒湿特有类型
+typedef struct humiAndTemp{
+    u8 mode;
+    u16 dayTempSetpoint;//白天温度设定点
+    u16 nightTempSetpoint;//夜晚温度设定点
+    u16 dayHumidSetpoint;//白天湿度设定点
+    u16 nightHumidSetpoint;//夜晚湿度设定点
+}type_ht_t;
+
 struct device{
     u16             crc;
     u32             uuid;
@@ -204,7 +213,10 @@ struct device{
         u8      mode;                                       // 模式 1-By Schedule 2-By Recycle
         u8      func;
         //timer
-        type_timmer_t timer[TIMER_GROUP];
+        union{
+            type_timmer_t timer[TIMER_GROUP];
+            type_ht_t ht;   //恒温恒湿特有类型
+        };
         type_cycle_t cycle;
         type_cycle_t cycle1;//灌溉泵有白天黑夜的cycle模式
         type_manual_t manual;
@@ -493,6 +505,7 @@ typedef struct aquaInfo{
 
 typedef struct aquaWarn{
     u8 id;
+    u16 reciptChange;
     u8 pumpSize;
     u16 ec;
     u16 ph;
@@ -561,6 +574,7 @@ typedef     void (*FAC_FUNC)(type_monitor_t *);
 #define     MIX_TYPE            0x4C
 #define     PRO_DEHUMI_TYPE     0xB8        //协议转换模块-除湿
 #define     PRO_HUMI_TYPE       0xB9        //协议转换模块-加湿
+#define     PRO_HUMI_TEMP_TYPE  0xBA        //协议转换模块-恒温恒湿
 /**************************************从机 End*******************************************/
 
 /************************************** 功能码定义 **************************************/
@@ -627,7 +641,8 @@ enum{
     /*****************************device 类型功能*/
     F_MIX,
     F_AUTO_WATER,
-    F_HVAC
+    F_HVAC,
+    F_HUMI_TEMP,//恒温恒湿
 };
 
 /*设备工作状态 0-Off 1-On 2-PPM UP 3-FUZZY LOGIC

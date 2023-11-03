@@ -59,5 +59,6 @@ aqua_recipe* GetAquaRecipe(u32 uuid, u8 no);
 aqua_set* GetAquaSetByUUID(u32 uuid);
 aqua_info_t *GetAquaInfoByUUID(u32 uuid);
 void initTankWarnState(void);
+void InitAquaWarn(void);
 #endif
 #endif /* APPLICATIONS_CLOUDPROTOCOL_CLOUDPROTOCOL_H_ */

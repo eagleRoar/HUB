@@ -12,6 +12,7 @@
  */
 
 #include "SeqList.h"
+#include "AquaUartClass.h"
 
 static void FreeNodeMemory(Node* node)
 {
@@ -154,6 +155,26 @@ void DeleteNode(Node *head, KV keyData)
             return;
         }
     }
+}
+
+Node *GetNodeStateOK(Node *head, monitor_ask *ask) {
+
+    Node *p;
+    u8 addr = 0;
+
+    LOG_I("-----------------------------GetNodeStateOK");
+
+    p = head;
+    while (p) {
+        addr = p->keyData.dataSegment.data[0];
+        if(YES == isAskStateWait(addr) && 0xFA != addr) {
+            p = p->next;
+        } else {
+            return p;
+        }
+    }
+
+    return RT_NULL;
 }
 
 void PrintNode(Node *head)

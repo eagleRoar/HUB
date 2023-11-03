@@ -122,6 +122,9 @@ char *GetModelByType(u8 type, char *name, u8 len)
         case PRO_HUMI_TYPE:
             strncpy(name, "BRC-H", len);
             break;
+        case PRO_HUMI_TEMP_TYPE:
+            strncpy(name, "BRC-HT", len);//Justin 这个名称待定 需要黄工确定
+            break;
         case COOL_TYPE:
             strncpy(name, "BTS-C", len);
             break;
@@ -200,6 +203,9 @@ u8 GetFuncByType(u8 type)
         case HUMI_TYPE:
         case PRO_HUMI_TYPE:
             ret = F_HUMI;
+            break;
+        case PRO_HUMI_TEMP_TYPE:
+            ret = F_HUMI_TEMP;
             break;
         case DEHUMI_TYPE:
         case PRO_DEHUMI_TYPE:
@@ -349,6 +355,9 @@ char *GetFunNameByType(u8 type, char *name, u8 len)
         case PRO_HUMI_TYPE:
             strncpy(name, "Humi", len);
             break;
+        case PRO_HUMI_TEMP_TYPE:
+            strncpy(name, "HT", len);//Justin 该名称暂定
+            break;
         case DEHUMI_TYPE:
         case PRO_DEHUMI_TYPE:
             strncpy(name, "DeHumi", len);
@@ -370,6 +379,9 @@ char *GetFunNameByType(u8 type, char *name, u8 len)
             break;
         case MIX_TYPE:
             strncpy(name, "mix", len);
+            break;
+        case AUTO_WATER_TYPE:
+            strncpy(name, "water", len);
             break;
         default:
             break;
@@ -484,6 +496,7 @@ u8 TypeSupported(u8 type)
         case DEHUMI_TYPE:
         case PRO_DEHUMI_TYPE:
         case PRO_HUMI_TYPE:
+        case PRO_HUMI_TEMP_TYPE:
         case COOL_TYPE:
         case MIX_TYPE:
         case HVAC_6_TYPE:

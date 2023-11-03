@@ -243,11 +243,14 @@ void addNewAquaSetAndInfo(u32 uuid)
                     strcpy(aquaInfo[i].list[j].formName, name);
                 }
                 aquaInfo[i].uuid = uuid;
-                LOG_E("------------------------------------------------ addNewAquaSetAndInfo 增加新info");//Justin
                 break;
             }
         }
     }
+}
+
+void InitAquaWarn(void) {
+    rt_memset((u8 *)aquaInfo, 0, sizeof(aqua_info_t) * TANK_LIST_MAX);
 }
 
 void AddAquaWarn(u8 addr)
@@ -301,7 +304,6 @@ void SetAquaWarn(aqua_state_t *aqua_state)
     }
 }
 
-//Justin
 void printAquaWarn(void)
 {
     rt_kprintf("printAquaWarn------------------------------\n");
@@ -613,7 +615,6 @@ void initCloudProtocol(void)
     rt_memset(&sys_set.dimmingCurve, 0, sizeof(dimmingCurve_t));
 
     sys_set.sensorMainType = SENSOR_CTRL_AVE;
-//    sys_set.line_4_by_power = 100;//Justin
 
     initHubinfo();
 }
@@ -1229,6 +1230,10 @@ rt_err_t SendDataToCloud(mqtt_client *client, char *cmd, u8 warn_no, u16 value, 
     else if(0 == rt_memcmp(CMD_HUB_REPORT_WARN, cmd, sizeof(CMD_HUB_REPORT_WARN)))//主动上报报警
     {
         str = SendHubReportWarn(CMD_HUB_REPORT_WARN, GetSysSet(), warn_no, value, offline_no, deviceOrNo);
+    }
+    else if(0 == rt_memcmp(TEST_CMD, cmd, sizeof(TEST_CMD)))
+    {
+        str = ReplyTest(TEST_CMD, cloudCmd);//Justin debug 仅仅测试
     }
 
     if(RT_NULL != str)

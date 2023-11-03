@@ -68,36 +68,36 @@ phec_sensor_t* getPhEcList(type_monitor_t *monitor, u8 isOnline)
 
     return &phec_sensor;
 }
-#if (HUB_IRRIGSTION == HUB_SELECT)
-void PHEC_Correction(void)
-{
-    //phec 校准
-    for(u8 phec_i = 0; phec_i < getPhEcList(GetMonitor(), YES)->num; phec_i++)
-    {
-        ph_cal_t *ph = RT_NULL;
-        ph = getPhCalByuuid(GetSensorByAddr(GetMonitor(), getPhEcList(GetMonitor(), YES)->addr[phec_i])->uuid);
-        if(RT_NULL != ph)
-        {
-            if((CAL_INCAL == ph->cal_7_flag) || (CAL_INCAL == ph->cal_4_flag))
-            {
-                phCalibrate1(GetSensorByAddr(GetMonitor(), getPhEcList(GetMonitor(), YES)->addr[phec_i]),
-                        GetMonitor(),ph, GetSysSet());
-            }
-        }
-
-        ec_cal_t *ec = RT_NULL;
-        ec = getEcCalByuuid(GetSensorByAddr(GetMonitor(), getPhEcList(GetMonitor(), YES)->addr[phec_i])->uuid);
-        if(RT_NULL != ec)
-        {
-            if((CAL_INCAL == ec->cal_0_flag) || (CAL_INCAL == ec->cal_141_flag))
-            {
-                ecCalibrate1(GetSensorByAddr(GetMonitor(), getPhEcList(GetMonitor(), YES)->addr[phec_i]),
-                        GetMonitor(),ec, GetSysSet());
-            }
-        }
-    }
-}
-#endif
+//#if (HUB_IRRIGSTION == HUB_SELECT)
+//void PHEC_Correction(void)
+//{
+//    //phec 校准
+//    for(u8 phec_i = 0; phec_i < getPhEcList(GetMonitor(), YES)->num; phec_i++)
+//    {
+//        ph_cal_t *ph = RT_NULL;
+//        ph = getPhCalByuuid(GetSensorByAddr(GetMonitor(), getPhEcList(GetMonitor(), YES)->addr[phec_i])->uuid);
+//        if(RT_NULL != ph)
+//        {
+//            if((CAL_INCAL == ph->cal_7_flag) || (CAL_INCAL == ph->cal_4_flag))
+//            {
+//                phCalibrate1(GetSensorByAddr(GetMonitor(), getPhEcList(GetMonitor(), YES)->addr[phec_i]),
+//                        GetMonitor(),ph, GetSysSet());
+//            }
+//        }
+//
+//        ec_cal_t *ec = RT_NULL;
+//        ec = getEcCalByuuid(GetSensorByAddr(GetMonitor(), getPhEcList(GetMonitor(), YES)->addr[phec_i])->uuid);
+//        if(RT_NULL != ec)
+//        {
+//            if((CAL_INCAL == ec->cal_0_flag) || (CAL_INCAL == ec->cal_141_flag))
+//            {
+//                ecCalibrate1(GetSensorByAddr(GetMonitor(), getPhEcList(GetMonitor(), YES)->addr[phec_i]),
+//                        GetMonitor(),ec, GetSysSet());
+//            }
+//        }
+//    }
+//}
+//#endif
 
 void changeDeviceType(type_monitor_t *monitor, u8 addr, u8 port, u8 type)
 {
@@ -703,13 +703,18 @@ int getSensorSizeByFunc(type_monitor_t *monitor, u8 func)
 //如果30 度 那么temp = 300
 void changeIrAirCode(u16 temp, u16 *ret)
 {
+    u8 value = 0;
     *ret |= 0xE010;
 
     //以下操作按照红外协议
-    if(temp / 10 >= 16)
-    {
-        *ret |= (((temp / 10) - 16) << 8);
+
+    if(temp / 10 < 16){
+        value = 16;
+    }else if(temp / 10 > 30){
+        value = 30;
     }
+
+    *ret |= ((value - 16) << 8);
 }
 
 //检查模块是否存在
@@ -1243,6 +1248,11 @@ rt_err_t SetDeviceDefault(type_monitor_t *monitor, u32 uuid, u8 type, u8 addr)
                     case PRO_HUMI_TYPE:
                         setDeviceDefaultPara(device, "BRC-H", 0x0100, S_HUMI, device->type, 1);
                         setDeviceDefaultStora(device, 0 , "Humi", F_HUMI, device->type, addr , MANUAL_NO_HAND, 0);
+                        ret = RT_EOK;
+                        break;
+                    case PRO_HUMI_TEMP_TYPE:
+                        setDeviceDefaultPara(device, "BRC-HT", 0x0100, S_TEMP, device->type, 1);//Justin 这个英文需要黄工确定
+                        setDeviceDefaultStora(device, 0 , "HT", F_HUMI_TEMP, device->type, addr , MANUAL_NO_HAND, 0);
                         ret = RT_EOK;
                         break;
                     case COOL_TYPE:

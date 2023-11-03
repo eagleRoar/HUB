@@ -50,6 +50,7 @@ typedef struct uartClass{
     void(*ConfigureUart)(rt_device_t*);                         //注册实际的串口
     void(*DeviceCtrl)(type_monitor_t *monitor, u8 func, u8 state);                //发送串口数据
     void(*DeviceCtrlSingle)(device_t *device, u8 port, u8 state);
+    void(*SendHtMode)(device_t *device, u8 mode);
     void(*DeviceChgType)(type_monitor_t *, u16 id, u8 type);       //发送设置端口type
     void (*LineCtrl)(line_t *line, u8 port, u8 state, u8 value);
     void (*Line4Ctrl)(line_t *line, u16 *value);
@@ -66,7 +67,7 @@ typedef struct uartClass{
     void(*AquaCtrl)(aqua_t *aqua, u8 state, u8 recipe_i);
     void(*AquaSendMonitor)(aqua_t *aqua, u8 monitor);
     void(*aquaSendInfo)(aqua_t *aqua, aqua_info_t *info, u8 recipe_no);
-    void(*AskAquaState)(void);
+    void(*AskAquaState)(u8 period);
 #endif
 } type_uart_class;
 
@@ -104,9 +105,10 @@ typedef struct uartCacheData{
 #endif
 
 typedef struct monitorAskData{
-    u8 length;
-    u8 askType;
-    u8 flag;
+    struct aquaState{
+        u8 flag;
+        time_t lastTime;
+    }state[TANK_LIST_MAX];
 }monitor_ask;
 
 enum{

@@ -77,7 +77,6 @@ void TcpRecvTaskEntry(void* parameter)
         //1.文件系统还没有准备好,或者tcp断开
         if((YES != GetFileSystemState()) || (GetTcpSocket() < 0))
         {
-//            LOG_E("--------------TcpRecvTaskEntry err");
             rt_thread_mdelay(1000);
             continue;
         }
@@ -91,8 +90,6 @@ void TcpRecvTaskEntry(void* parameter)
         }
         else
         {
-//            LOG_E("--------------TcpRecvTaskEntry err 1, tcp_sock = %d, state = %d",
-//                    tcp_sock, eth->tcp.GetConnectStatus());
             closeTcpSocket();
         }
 

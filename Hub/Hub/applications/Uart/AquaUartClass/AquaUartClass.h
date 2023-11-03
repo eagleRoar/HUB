@@ -15,6 +15,7 @@
 #include "UartEventType.h"
 #include "DeviceUartClass.h"
 
+#define     AQUA_RECIPE_CHANGE      0x00FE      //显示pump的数量类型 按照这个数量返回配方的pumplist数量
 #define     AQUA_PUMPMAX_ADDR       0x00FF      //显示pump的数量类型 按照这个数量返回配方的pumplist数量
 #define     AQUA_EC_ADDR            0x0100      //ec值
 #define     AQUA_PH_ADDR            0x0101      //ph值
@@ -40,7 +41,6 @@
 #define     AQUA_FIRM_VER_ADDR      0x0089      //aqua屏幕版本号
 #define     AQUA_HIM_VER_ADDR       0x008A      //aqua软件版本号
 
-void setAskStateOK(void);
 monitor_ask *GetAquaAskState(void);
 type_uart_class *GetAquaObject(void);
 void InitAquaObject(void);

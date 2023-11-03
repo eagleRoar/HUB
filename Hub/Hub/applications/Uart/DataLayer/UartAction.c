@@ -2431,9 +2431,9 @@ void line_4Program(line_t *line, type_uart_class lineUart)
         }
 
 //        rt_kprintf("prohibitSunRise = %d, now = %d, on = %d, off = %d\n",
-//                prohibitSunRise, now_time, line_4set.timerList[0].on * 60, line_4set.timerList[timerGroupNum - 1].off * 60);//Justin
+//                prohibitSunRise, now_time, line_4set.timerList[0].on * 60, line_4set.timerList[timerGroupNum - 1].off * 60);
 
-//        rt_kprintf("by power = %d\n",GetSysSet()->line_4_by_power);//Justin debug
+//        rt_kprintf("by power = %d\n",GetSysSet()->line_4_by_power);
 
         //3.1.1
         if(nowTimerSet)
@@ -3469,6 +3469,7 @@ void pumpProgram(type_monitor_t *monitor, sys_tank_t *tank_list, type_uart_class
     u8          type                    = 0;
     u8          port1                   = 0;
     device_t    *device                 = RT_NULL;
+    aqua_t      *aqua                   = RT_NULL;
     static u8   waterState[TANK_LIST_MAX] = {NO_ADD_WATER,NO_ADD_WATER,NO_ADD_WATER,NO_ADD_WATER};
 
     for(tank = 0; tank < tank_list->tank_size; tank++)
@@ -3570,6 +3571,25 @@ void pumpProgram(type_monitor_t *monitor, sys_tank_t *tank_list, type_uart_class
             }
         }
 
+        //如果增加了aqua,那么aqua的ec ph 代替本机的ec ph
+        if(tank_list->tank[tank].aquaId) {
+            aqua = GetAquaByAddr(monitor, tank_list->tank[tank].aquaId);
+
+            if(CON_SUCCESS == aqua->conn_state) {
+                aqua_state_t *aqua_state = GetAquaWarnByAddr(aqua->addr);
+                if(aqua_state) {
+                    ec = aqua_state->ec;
+                    ph = aqua_state->ph;
+                } else {
+                    ph = VALUE_NULL;
+                    ec = VALUE_NULL;
+                }
+            } else {
+                ph = VALUE_NULL;
+                ec = VALUE_NULL;
+            }
+        }
+
         if((wl < tank_list->tank[tank].autoFillHeight) &&
            (wl != VALUE_NULL))
         {
@@ -3627,11 +3647,11 @@ void pumpProgram(type_monitor_t *monitor, sys_tank_t *tank_list, type_uart_class
 
                 state = pumpDoing(addr, port);
 
-                if(((wl < tank_list->tank[tank].autoFillHeight) && (ON != tank_list->tank[tank].wlMonitorOnly)) ||
-                   ((ph < tank_list->tank[tank].lowPhProtection) && (ON != tank_list->tank[tank].phMonitorOnly)) ||
-                   ((ph > tank_list->tank[tank].highPhProtection) && (ON != tank_list->tank[tank].phMonitorOnly)) ||
-                   ((ec > tank_list->tank[tank].highEcProtection) && (ON != tank_list->tank[tank].ecMonitorOnly)) ||
-                   ((sw > tank_list->tank[tank].highMmProtection) && (ON != tank_list->tank[tank].mmMonitorOnly)))
+                if(((wl < tank_list->tank[tank].autoFillHeight) && (ON != tank_list->tank[tank].wlMonitorOnly) && (wl != VALUE_NULL)) ||
+                   ((ph < tank_list->tank[tank].lowPhProtection) && (ON != tank_list->tank[tank].phMonitorOnly) && (ph != VALUE_NULL)) ||
+                   ((ph > tank_list->tank[tank].highPhProtection) && (ON != tank_list->tank[tank].phMonitorOnly) && (ph != VALUE_NULL)) ||
+                   ((ec > tank_list->tank[tank].highEcProtection) && (ON != tank_list->tank[tank].ecMonitorOnly) && (ec != VALUE_NULL)) ||
+                   ((sw > tank_list->tank[tank].highMmProtection) && (ON != tank_list->tank[tank].mmMonitorOnly) && (sw != VALUE_NULL)))
                 {
                     state = OFF;
                     TankCannotRun[tank] = YES;//禁止跑
@@ -3667,11 +3687,11 @@ void pumpProgram(type_monitor_t *monitor, sys_tank_t *tank_list, type_uart_class
 
             state = pumpDoing(addr, port);
 
-            if(((wl < tank_list->tank[tank].autoFillHeight) && (ON != tank_list->tank[tank].wlMonitorOnly)) ||
-               ((ph < tank_list->tank[tank].lowPhProtection) && (ON != tank_list->tank[tank].phMonitorOnly)) ||
-               ((ph > tank_list->tank[tank].highPhProtection) && (ON != tank_list->tank[tank].phMonitorOnly)) ||
-               ((ec > tank_list->tank[tank].highEcProtection) && (ON != tank_list->tank[tank].ecMonitorOnly)) ||
-               ((sw > tank_list->tank[tank].highMmProtection) && (ON != tank_list->tank[tank].mmMonitorOnly)))
+            if(((wl < tank_list->tank[tank].autoFillHeight) && (ON != tank_list->tank[tank].wlMonitorOnly) && (wl != VALUE_NULL)) ||
+               ((ph < tank_list->tank[tank].lowPhProtection) && (ON != tank_list->tank[tank].phMonitorOnly) && (ph != VALUE_NULL)) ||
+               ((ph > tank_list->tank[tank].highPhProtection) && (ON != tank_list->tank[tank].phMonitorOnly) && (ph != VALUE_NULL)) ||
+               ((ec > tank_list->tank[tank].highEcProtection) && (ON != tank_list->tank[tank].ecMonitorOnly) && (ec != VALUE_NULL)) ||
+               ((sw > tank_list->tank[tank].highMmProtection) && (ON != tank_list->tank[tank].mmMonitorOnly) && (sw != VALUE_NULL)))
             {
                 state = OFF;
                 TankCannotRun[tank] = YES;//禁止跑
@@ -3751,11 +3771,11 @@ void pumpProgram(type_monitor_t *monitor, sys_tank_t *tank_list, type_uart_class
 
                 state = pumpDoing(addr, port);
 
-                if(((wl < tank_list->tank[tank].autoFillHeight) && (ON != tank_list->tank[tank].wlMonitorOnly)) ||
-                   ((ph < tank_list->tank[tank].lowPhProtection) && (ON != tank_list->tank[tank].phMonitorOnly)) ||
-                   ((ph > tank_list->tank[tank].highPhProtection) && (ON != tank_list->tank[tank].phMonitorOnly)) ||
-                   ((ec > tank_list->tank[tank].highEcProtection) && (ON != tank_list->tank[tank].ecMonitorOnly)) ||
-                   ((sw > tank_list->tank[tank].highMmProtection) && (ON != tank_list->tank[tank].mmMonitorOnly)))
+                if(((wl < tank_list->tank[tank].autoFillHeight) && (ON != tank_list->tank[tank].wlMonitorOnly) && (wl != VALUE_NULL)) ||
+                   ((ph < tank_list->tank[tank].lowPhProtection) && (ON != tank_list->tank[tank].phMonitorOnly) && (ph != VALUE_NULL)) ||
+                   ((ph > tank_list->tank[tank].highPhProtection) && (ON != tank_list->tank[tank].phMonitorOnly) && (ph != VALUE_NULL)) ||
+                   ((ec > tank_list->tank[tank].highEcProtection) && (ON != tank_list->tank[tank].ecMonitorOnly) && (ec != VALUE_NULL)) ||
+                   ((sw > tank_list->tank[tank].highMmProtection) && (ON != tank_list->tank[tank].mmMonitorOnly) && (sw != VALUE_NULL)))
                 {
                     state = OFF;
                     TankCannotRun[tank] = YES;//禁止跑

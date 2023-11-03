@@ -35,6 +35,7 @@ extern rt_uint8_t GetEthDriverLinkStatus(void);            //获取网口连接�
 extern cloudcmd_t      cloudCmd;
 extern u8              saveMqttUrlFile;
 
+extern cloudcmd_t      cloudCmd;
 //初始化一些必要的参数
 static void InitParameter(void)
 {
@@ -44,6 +45,7 @@ static void InitParameter(void)
 #elif(HUB_SELECT == HUB_IRRIGSTION)
     initAquaSetAndInfo();
     initTankWarnState();
+    InitAquaWarn();
 #endif
     initSysTank();
     initSysSet();
@@ -171,7 +173,7 @@ int main(void)
             {
                 sendOfflinewarnning(GetMonitor());      //发送离线报警
 #if(HUB_SELECT == HUB_ENVIRENMENT)
-                sendwarnningInfo();                     //该报警函数写的很乱，需要优化 Justin debug
+                sendwarnningInfo();                     //该报警函数写的很乱，需要优化
 #endif
             }
         }
@@ -225,7 +227,7 @@ int main(void)
             closeUnUseDevice(GetMonitor(), deviceObj);
             pumpProgram(GetMonitor(), GetSysTank(), *deviceObj);
             //PHEC校准
-            PHEC_Correction();
+//            PHEC_Correction();
             //Aqua 混合装置工作
             AquaMixProgram(GetSysTank(), GetMonitor());
 #endif
@@ -247,10 +249,17 @@ int main(void)
 
             //发送实际发送的数据
             sendReadDeviceCtrlToList(GetMonitor(), deviceObj);
-#if(HUB_IRRIGSTION == HUB_SELECT)
-            sendRealAquaCtrlToList(GetMonitor(), aquaObj);
-#endif
 
+            //Justin 仅仅测试
+//            if(cloudCmd.hvac_sendCnt > 0 && cloudCmd.hvac_sendCnt <= 4)//Justin debug仅仅测试
+//            {
+//                if(YES == GetMqttStartFlg())
+//                {
+//                    SendDataToCloud(GetMqttClient(), TEST_CMD, 0 , 0, RT_NULL, RT_NULL, YES, 0, NO);
+//                }
+//
+//                cloudCmd.hvac_sendCnt = 0;
+//            }
         }
 
         //10s
@@ -260,18 +269,13 @@ int main(void)
             {
                 sendReportToApp();
             }
+#if(HUB_IRRIGSTION == HUB_SELECT)
+            sendRealAquaCtrlToList(GetMonitor(), aquaObj);
+#endif
 #if(HUB_SELECT == HUB_ENVIRENMENT)
             startProgram = YES;
 #endif
 
-            //LOG_W("*********************device size = %d",GetMonitor()->device_size);
-//            struct netdev *ethDev = RT_NULL;
-//            ethDev = netdev_get_first_by_flags(NETDEV_FLAG_INTERNET_UP);
-//            if(ethDev)
-//            {
-//                LOG_D("local ip is:%d.%d.%d.%d", ((( ethDev->ip_addr.addr) >> 0) & 0xFF), ((( ethDev->ip_addr.addr) >> 8) & 0xFF),
-//                        ((( ethDev->ip_addr.addr) >> 16) & 0xFF), ((( ethDev->ip_addr.addr) >> 24) & 0xFF));
-//            }
         }
 
         //60s 主动发送给云服务
