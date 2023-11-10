@@ -760,7 +760,11 @@ void SensorList(u64 *pageInfo, type_page_t *page,type_monitor_t *monitor)
                 if(index <= page->cusor_max)
                 {
                     ST7567_GotoXY(8, 16 * (index - show_home));
-                    sprintf(show, "%8s   #%d",sensor->name, sensor->addr);
+                    if(CON_SUCCESS == sensor->conn_state) {
+                        sprintf(show, "%8s   #%d",sensor->name, sensor->addr);
+                    } else {
+                        sprintf(show, "%8s   #%d!",sensor->name, sensor->addr);
+                    }
 
                     ST7567_Puts(show, &Font_7x10, index == page->cusor ? 0 : 1);
                 }
@@ -2216,6 +2220,7 @@ void openDevices_Fa(type_monitor_t *monitor)
         {
             device->port[port].manual.manual = MANUAL_HAND_ON;
             device->port[port].manual.manual_on_time = 65535;
+            device->port[port].manual.manual_on_time_save = getTimeStamp();
         }
     }
 }

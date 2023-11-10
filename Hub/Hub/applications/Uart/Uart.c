@@ -314,12 +314,14 @@ void SensorUart2TaskEntry(void* parameter)
     static      u8              Timer1sTouch    = OFF;
     static      u8              Timer2sTouch    = OFF;
     static      u8              Timer10sTouch   = OFF;
+    static      u8              Timer1mTouch   = OFF;
     static      u8              Timer10mTouch   = OFF;
     static      u16             time300mS = 0;
     static      u16             time500mS = 0;
     static      u16             time1S = 0;
     static      u16             time2S = 0;
     static      u16             time10S = 0;
+    static      u16             time1M = 0;
     static      u16             time10M = 0;
     static      u8              deviceSize = NO;
     type_uart_class             *deviceObj          = GetDeviceObject();
@@ -354,9 +356,10 @@ void SensorUart2TaskEntry(void* parameter)
     {
         time1S = TimerTask(&time1S, 1000/UART_PERIOD, &Timer1sTouch);                       //1s定时任务
         time300mS = TimerTask(&time300mS, 300/UART_PERIOD, &Timer300msTouch);               //300ms定时任务
-        time500mS = TimerTask(&time500mS, /*500*/1000/UART_PERIOD, &Timer500msTouch);               //500ms定时任务//Justin debug 仅仅测试
+        time500mS = TimerTask(&time500mS, /*500*/1000/UART_PERIOD, &Timer500msTouch);               //500ms定时任务
         time2S = TimerTask(&time2S, 4000/UART_PERIOD, &Timer2sTouch);                       //3s定时任务
         time10S = TimerTask(&time10S, 10000/UART_PERIOD, &Timer10sTouch);                   //10s定时任务
+        time1M = TimerTask(&time1M, 60000/UART_PERIOD, &Timer1mTouch);                      //1m定时任务
         time10M = TimerTask(&time10M, 600000/UART_PERIOD, &Timer10mTouch);                  //10m定时任务
 
         //1.文件系统如果没有准备好
@@ -407,14 +410,18 @@ void SensorUart2TaskEntry(void* parameter)
 
                 uart2_msg.messageFlag = OFF;
 
-                {
-                    rt_kprintf("print device data : ");
-                    for(int i = 0; i < uart2_msg.size; i++)
-                    {
-                        rt_kprintf(" %x", uart2_msg.data[i]);
-                    }
-                    rt_kprintf("\r\n");
-                }
+//                {
+////                    if(HVAC_6_TYPE == GetDeviceByAddr(GetMonitor(), uart2_msg.data[0])->type  ||
+////                            0xFA == uart2_msg.data[0])
+//                    {
+//                        rt_kprintf("print device data : ");
+//                        for(int i = 0; i < uart2_msg.size; i++)
+//                        {
+//                            rt_kprintf(" %x", uart2_msg.data[i]);
+//                        }
+//                        rt_kprintf("\r\n");
+//                    }
+//                }
             }
             else
             {
@@ -522,6 +529,10 @@ void SensorUart2TaskEntry(void* parameter)
                 }
             }
 
+        }
+
+        if(ON == Timer1mTouch)
+        {
             //广播传感器数据
             GenerateBroadcastSensorValue(deviceObj);
         }

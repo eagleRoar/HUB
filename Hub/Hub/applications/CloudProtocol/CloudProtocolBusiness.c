@@ -579,14 +579,14 @@ void CmdSetPortSet(char *data, cloudcmd_t *cmd)
                 device->special_data._hvac.nightPoint = setPoint / 10;
                 GetValueByU8(temp, "fanNormallyOpen", &device->special_data._hvac.fanNormallyOpen);//复用为结束时间
             }
-            else if(PRO_HUMI_TEMP_TYPE == device->port[port].type)//Justin debug 未测试
+            else if(PRO_HUMI_TEMP_TYPE == device->port[port].type)
             {
                 u8 htMode = 0;
                 GetValueByU8(temp, "mode", &htMode);
                 if(device->port[port].ht.mode != htMode)
                 {
                     device->port[port].ht.mode = htMode;
-                    //Justin debug 需要在这个位置上发送设置mode
+
                     GetDeviceObject()->SendHtMode(device, htMode);
                 }
                 GetValueByU16(temp, "dayHumidSetpoint", &device->port[port].ht.dayHumidSetpoint);
@@ -4597,7 +4597,7 @@ char *ReplyTest(char *cmd, cloudcmd_t cloud)
     {
         cJSON_AddStringToObject(json, "cmd", cmd);
 
-        cJSON_AddNumberToObject(json, "Hvac sendCnt", cloud.hvac_sendCnt);//Justin debug 回复hvac 没有回复的次数
+        cJSON_AddNumberToObject(json, "Hvac sendCnt", cloud.hvac_sendCnt);//回复hvac 没有回复的次数
 
         str = cJSON_PrintUnformatted(json);
 
@@ -4900,9 +4900,6 @@ char *ReplyGetHubState(char *cmd, cloudcmd_t cloud)
                     cJSON_AddNumberToObject(tank, "tankPh",valueTemp[2]);
                     cJSON_AddNumberToObject(tank, "tankWt",valueTemp[4]);
 
-                    if(0 == no) {
-                        LOG_E("aqua is null, addr = %d",GetMonitor(), GetSysTank()->tank[no].aquaId);//Justin
-                    }
                 }
                 cJSON_AddNumberToObject(tank, "inlineEc",valueTemp[1]);
                 cJSON_AddNumberToObject(tank, "inlinePh",valueTemp[3]);
@@ -5283,7 +5280,7 @@ char *ReplyGetPortSet(char *cmd, cloudcmd_t cloud)
                     cJSON_AddNumberToObject(json, "nightTempSetpoint", module->special_data._hvac.nightPoint * 10);//黑夜point
                     cJSON_AddNumberToObject(json, "fanNormallyOpen", module->special_data._hvac.fanNormallyOpen);//风扇常开
                 }
-                else if(PRO_HUMI_TEMP_TYPE == module->port[port].type)//Justin debug 未测试
+                else if(PRO_HUMI_TEMP_TYPE == module->port[port].type)
                 {
                     cJSON_AddNumberToObject(json, "mode", module->port[port].ht.mode);
                     cJSON_AddNumberToObject(json, "dayHumidSetpoint", module->port[port].ht.dayHumidSetpoint);
@@ -5292,7 +5289,7 @@ char *ReplyGetPortSet(char *cmd, cloudcmd_t cloud)
                     cJSON_AddNumberToObject(json, "nightTempSetpoint", module->port[port].ht.nightTempSetpoint);
                 }
 
-                //Justin debug 如果主设备是四路干接点 四路智能排查 12路干接点 的话 支持修改成补水设备
+                //如果主设备是四路干接点 四路智能排查 12路干接点 的话 支持修改成补水设备
                 if(module->type == AC_4_TYPE ||
                         module->type == IO_12_TYPE ||
                         module->type == IO_4_TYPE)
@@ -6293,6 +6290,8 @@ char *ReplyGetLightList(cloudcmd_t *cmd)
         device = GetDeviceByAddr(GetMonitor(), addr);
         if(device)
         {
+            cJSON_AddStringToObject(json, "name", device->name);
+
             for(int port = 0; port < DEVICE_PORT_MAX; port++)
             {
                 cJSON *item = cJSON_CreateObject();
@@ -6820,6 +6819,7 @@ char *ReplyGetDeviceList_new(char *cmd, char *msgid, u8 deviceType, u8 no)
                     else {
                         cJSON_AddNumberToObject(item, "workingStatus", 0);
                     }
+                    cJSON_AddNumberToObject(item, "manual", line.port[0]._manual.manual);//Justin
                 }
             }
 #elif(HUB_SELECT == HUB_IRRIGSTION)

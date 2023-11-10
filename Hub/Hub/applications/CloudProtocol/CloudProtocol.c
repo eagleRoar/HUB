@@ -1233,7 +1233,7 @@ rt_err_t SendDataToCloud(mqtt_client *client, char *cmd, u8 warn_no, u16 value, 
     }
     else if(0 == rt_memcmp(TEST_CMD, cmd, sizeof(TEST_CMD)))
     {
-        str = ReplyTest(TEST_CMD, cloudCmd);//Justin debug 仅仅测试
+        str = ReplyTest(TEST_CMD, cloudCmd);
     }
 
     if(RT_NULL != str)

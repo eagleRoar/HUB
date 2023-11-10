@@ -712,6 +712,8 @@ void changeIrAirCode(u16 temp, u16 *ret)
         value = 16;
     }else if(temp / 10 > 30){
         value = 30;
+    } else {
+        value = temp / 10;
     }
 
     *ret |= ((value - 16) << 8);
@@ -1251,7 +1253,7 @@ rt_err_t SetDeviceDefault(type_monitor_t *monitor, u32 uuid, u8 type, u8 addr)
                         ret = RT_EOK;
                         break;
                     case PRO_HUMI_TEMP_TYPE:
-                        setDeviceDefaultPara(device, "BRC-HT", 0x0100, S_TEMP, device->type, 1);//Justin 这个英文需要黄工确定
+                        setDeviceDefaultPara(device, "BRC-HT", 0x0100, S_TEMP, device->type, 1);
                         setDeviceDefaultStora(device, 0 , "HT", F_HUMI_TEMP, device->type, addr , MANUAL_NO_HAND, 0);
                         ret = RT_EOK;
                         break;

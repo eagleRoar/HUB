@@ -192,10 +192,6 @@ static void GenerateIrAirCtrlData(u8 state, u16 *res)
             temp = tempSet.nightCoolingTarget;
         }
 
-//        if(temp > tempSet.tempDeadband)
-//        {
-//            temp -= tempSet.tempDeadband;
-//        }//Justin
         changeIrAirCode(temp, res);
     }
     else
@@ -302,7 +298,7 @@ static void GenerateVuleBySingleCtrl(device_t device, u8 port, u8 state, u16 *va
             }
             else if(PRO_HUMI_TEMP_TYPE == device.type)
             {
-                GenerateHTData(&device, ON, value);//Justin debug 测试
+                GenerateHTData(&device, ON, value);
             }
             else
 #endif
@@ -331,7 +327,7 @@ static void GenerateVuleBySingleCtrl(device_t device, u8 port, u8 state, u16 *va
             }
             else if(PRO_HUMI_TEMP_TYPE == device.type)
             {
-                GenerateHTData(&device, OFF, value);//Justin debug 测试
+                GenerateHTData(&device, OFF, value);
             }
             else
 #endif
@@ -1007,15 +1003,19 @@ static void SendCmd(void)
 
     }
 
-    {
-        rt_kprintf("----------------------------device sendCmd : ");
-        for(int i = 0; i < first->keyData.dataSegment.len; i++)
-        {
-            rt_kprintf(" %x",first->keyData.dataSegment.data[i]);
-
-        }
-        rt_kprintf("\r\n");//Justin
-    }
+//    {
+////        if(HVAC_6_TYPE == GetDeviceByAddr(GetMonitor(), first->keyData.dataSegment.data[0])->type ||
+////                0xFA == first->keyData.dataSegment.data[0])
+//        {
+//            rt_kprintf("----------------------------device sendCmd : ");
+//            for(int i = 0; i < first->keyData.dataSegment.len; i++)
+//            {
+//                rt_kprintf(" %x",first->keyData.dataSegment.data[i]);
+//
+//            }
+//            rt_kprintf("\r\n");
+//        }
+//    }
 
     //5.将这个任务从任务列表中移出去
     uart2Object.taskList.DeleteToList(first->keyData);
@@ -1309,10 +1309,10 @@ static void RecvListHandle(void)
             if(HVAC_6_TYPE == GetDeviceByAddr(monitor, sendMoni[i].addr)->type)
             {
                 cloudCmd.hvac_sendCnt = sendMoni[i].SendCnt;
-                if(sendMoni[i].SendCnt > 0)
-                {
-                    LOG_I("-----------addr = %d reconnect, sendTimes = %d", sendMoni[i].addr,sendMoni[i].SendCnt);//Justin debug
-                }
+//                if(sendMoni[i].SendCnt > 0)
+//                {
+//                    LOG_I("-----------addr = %d reconnect, sendTimes = %d", sendMoni[i].addr,sendMoni[i].SendCnt);
+//                }
             }
         }
     }

@@ -123,7 +123,7 @@ char *GetModelByType(u8 type, char *name, u8 len)
             strncpy(name, "BRC-H", len);
             break;
         case PRO_HUMI_TEMP_TYPE:
-            strncpy(name, "BRC-HT", len);//Justin 这个名称待定 需要黄工确定
+            strncpy(name, "BRC-HT", len);
             break;
         case COOL_TYPE:
             strncpy(name, "BTS-C", len);
@@ -356,7 +356,7 @@ char *GetFunNameByType(u8 type, char *name, u8 len)
             strncpy(name, "Humi", len);
             break;
         case PRO_HUMI_TEMP_TYPE:
-            strncpy(name, "HT", len);//Justin 该名称暂定
+            strncpy(name, "HT", len);
             break;
         case DEHUMI_TYPE:
         case PRO_DEHUMI_TYPE:
@@ -382,6 +382,9 @@ char *GetFunNameByType(u8 type, char *name, u8 len)
             break;
         case AUTO_WATER_TYPE:
             strncpy(name, "water", len);
+            break;
+        case IR_AIR_TYPE:
+            strncpy(name, "BTS-AR", len);
             break;
         default:
             break;

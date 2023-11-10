@@ -294,6 +294,20 @@ static void GenerateSendAqueRecipeData(u8 addr,aqua_info_t *info, u8 recipe_no, 
     }
 }
 
+static void GenerateSetAskRecipt(aqua_t *aqua, u16 reg, u8 *data, u16 value)
+{
+    rt_memset(data, 0, 8);
+
+    data[0] = aqua->addr;
+    data[1] = WRITE_SINGLE;
+    data[2] = reg >> 8;
+    data[3] = reg;
+    data[4] = value >> 8;
+    data[5] = value;
+    data[6] = usModbusRTU_CRC(data, 6);
+    data[7] = usModbusRTU_CRC(data, 6) >> 8;
+}
+
 static void GenerateAskStateData(aqua_t *aqua, u16 reg, u8 *data, u8 regLen)
 {
     rt_memset(data, 0, 8);
@@ -782,13 +796,14 @@ void AskAquaState(u8 period)
     static      u16             time2S = 0;
     u8                          askStateIndex   = 0;
     aqua_state_t                *aqua_state     = RT_NULL;
+    static u16                  setReciptChg[TANK_LIST_MAX] = {0x1FF,0x1FF,0x1FF,0x1FF};
 
     if((RT_NULL == aquaObject.dev) || (aquaSize < 1))
     {
         return;
     }
 
-    time2S = TimerTask(&time2S, 2000/period, &Timer2sTouch);//Justin debug
+    time2S = TimerTask(&time2S, 2000/period, &Timer2sTouch);
 
     //1.1s 任务
     if(ON == Timer2sTouch)
@@ -798,67 +813,72 @@ void AskAquaState(u8 period)
         {
             aqua = &GetMonitor()->aqua[askStateIndex];
 
-            //1.询问状态
-            regLen = 9;
-            GenerateAskStateData(aqua, AQUA_RECIPE_CHANGE, data, regLen);
-            dataLen = 8;
-            seq_key.regH = ASK_STATE >> 8;
-            seq_key.regL = ASK_STATE;
-            AddDataToList(seq_key, keyValue, aqua->addr, dataLen, data);
+                //1.询问状态
+                regLen = 9;
+                GenerateAskStateData(aqua, AQUA_RECIPE_CHANGE, data, regLen);
+                dataLen = 8;
+                seq_key.regH = ASK_STATE >> 8;
+                seq_key.regL = ASK_STATE;
+                AddDataToList(seq_key, keyValue, aqua->addr, dataLen, data);
 
-            //2.询问版本号
-            regLen = 3;
-            GenerateAskStateData(aqua, AQUA_RUNNING_ADDR, data, regLen);
-            dataLen = 8;
-            seq_key.regH = ASK_VER >> 8;
-            seq_key.regL = ASK_VER;
-            AddDataToList(seq_key, keyValue, aqua->addr, dataLen, data);
+                //2.询问版本号
+                regLen = 3;
+                GenerateAskStateData(aqua, AQUA_RUNNING_ADDR, data, regLen);
+                dataLen = 8;
+                seq_key.regH = ASK_VER >> 8;
+                seq_key.regL = ASK_VER;
+                AddDataToList(seq_key, keyValue, aqua->addr, dataLen, data);
 
-            //3.配方变化
-            aqua_state = GetAquaWarnByAddr(aqua->addr);
-            if(aqua_state) {
-                for(int i = 0; i < AQUA_RECIPE_MX; i++){
-                    if(aqua_state->reciptChange >> i & 0x0001){
-                        regLen = 37;
-                        switch (i) {
-                            case 0:
-                                GenerateAskStateData(aqua, AQUA_RECIPE0_ADDR, data, regLen);
-                                break;
-                            case 1:
-                                GenerateAskStateData(aqua, AQUA_RECIPE1_ADDR, data, regLen);
-                                break;
-                            case 2:
-                                GenerateAskStateData(aqua, AQUA_RECIPE2_ADDR, data, regLen);
-                                break;
-                            case 3:
-                                GenerateAskStateData(aqua, AQUA_RECIPE3_ADDR, data, regLen);
-                                break;
-                            case 4:
-                                GenerateAskStateData(aqua, AQUA_RECIPE4_ADDR, data, regLen);
-                                break;
-                            case 5:
-                                GenerateAskStateData(aqua, AQUA_RECIPE5_ADDR, data, regLen);
-                                break;
-                            case 6:
-                                GenerateAskStateData(aqua, AQUA_RECIPE6_ADDR, data, regLen);
-                                break;
-                            case 7:
-                                GenerateAskStateData(aqua, AQUA_RECIPE7_ADDR, data, regLen);
-                                break;
-                            case 8:
-                                GenerateAskStateData(aqua, AQUA_RECIPE8_ADDR, data, regLen);
-                                break;
-                            default:
-                                break;
+                //3.配方变化
+                aqua_state = GetAquaWarnByAddr(aqua->addr);
+                if(aqua_state) {
+                    for(int i = 0; i < AQUA_RECIPE_MX; i++){
+                        //Justin debug
+                        if((aqua_state->reciptChange >> i & 0x0001) ||
+                                (setReciptChg[askStateIndex] >> i & 0x0001)){
+
+                            setReciptChg[askStateIndex] &= ~(1 << i);
+
+                            regLen = 37;
+                            switch (i) {
+                                case 0:
+                                    GenerateAskStateData(aqua, AQUA_RECIPE0_ADDR, data, regLen);
+                                    break;
+                                case 1:
+                                    GenerateAskStateData(aqua, AQUA_RECIPE1_ADDR, data, regLen);
+                                    break;
+                                case 2:
+                                    GenerateAskStateData(aqua, AQUA_RECIPE2_ADDR, data, regLen);
+                                    break;
+                                case 3:
+                                    GenerateAskStateData(aqua, AQUA_RECIPE3_ADDR, data, regLen);
+                                    break;
+                                case 4:
+                                    GenerateAskStateData(aqua, AQUA_RECIPE4_ADDR, data, regLen);
+                                    break;
+                                case 5:
+                                    GenerateAskStateData(aqua, AQUA_RECIPE5_ADDR, data, regLen);
+                                    break;
+                                case 6:
+                                    GenerateAskStateData(aqua, AQUA_RECIPE6_ADDR, data, regLen);
+                                    break;
+                                case 7:
+                                    GenerateAskStateData(aqua, AQUA_RECIPE7_ADDR, data, regLen);
+                                    break;
+                                case 8:
+                                    GenerateAskStateData(aqua, AQUA_RECIPE8_ADDR, data, regLen);
+                                    break;
+                                default:
+                                    break;
+                            }
+
+                            dataLen = 8;
+                            seq_key.regH = AQUA_RECIPE0_ADDR + 0x30 * i >> 8;
+                            seq_key.regL = AQUA_RECIPE0_ADDR + 0x30 * i;
+                            AddDataToList(seq_key, keyValue, aqua->addr, dataLen, data);
                         }
-
-                        dataLen = 8;
-                        seq_key.regH = AQUA_RECIPE0_ADDR + 0x30 * i >> 8;
-                        seq_key.regL = AQUA_RECIPE0_ADDR + 0x30 * i;
-                        AddDataToList(seq_key, keyValue, aqua->addr, dataLen, data);
                     }
                 }
-            }
         }
     }
 
@@ -948,20 +968,20 @@ static void SendCmd(void)
     //如果传输数据标志超时清除
     for(int i = 0; i < TANK_LIST_MAX; i++) {
         if(YES == ask->state[i].flag) {
-            //超时时间为1秒//Justin debug
+            //超时时间为1秒
             if(getTimeStamp() > ask->state[i].lastTime + /*1*/2) {
                 ask->state[i].flag = NO;
             }
         }
     }
 
-//    first = aquaObject.taskList.list.next;//Justin
+
     first = GetNodeStateOK(aquaObject.taskList.list.next, ask);
 
     if(RT_NULL == first)
     {
 //        for(int i = 0; i < TANK_LIST_MAX; i++) {
-//            LOG_D("no %d, flag = %d, time = %d",i,ask->state[i].flag,ask->state[i].lastTime);//Justin
+//            LOG_D("no %d, flag = %d, time = %d",i,ask->state[i].flag,ask->state[i].lastTime);
 //        }
         return;
     }
@@ -972,7 +992,7 @@ static void SendCmd(void)
                     first->keyData.dataSegment.data,
                     first->keyData.dataSegment.len);
 
-    setAskStateWait(LongToSeqKey(first->keyData.key).addr);//Justin
+    setAskStateWait(LongToSeqKey(first->keyData.key).addr);
 
     //4.标记已经发送
     aqua = GetAquaByAddr(GetMonitor(), LongToSeqKey(first->keyData.key).addr);
@@ -1293,7 +1313,7 @@ static void RecvListHandle(void)
                                     saveAquaInfoFlag = YES;
                                 }
 
-                                setAskStateOK(aqua->addr);//Justin
+                                setAskStateOK(aqua->addr);
                             }
                         }
                     }

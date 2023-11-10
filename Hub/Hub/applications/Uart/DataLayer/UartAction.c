@@ -1759,6 +1759,10 @@ void timmerProgram(type_monitor_t *monitor, type_uart_class deviceUart)
                        //判断是否允许今日使能
                        time_t nowTime = getTimeStamp();
                        u8 today = getTimeStampByDate(&nowTime)->tm_wday;
+                       if(0 == today)
+                       {
+                           today = 7;//星期日显示0
+                       }
                        int day = 0;
                        for(day = 0; day < 7; day++)
                        {
@@ -3168,6 +3172,10 @@ void Light12Program(type_monitor_t *monitor, type_uart_class deviceUart)
                 //判断是否允许今日使能
                 time_t nowTime = getTimeStamp();
                 u8 today = getTimeStampByDate(&nowTime)->tm_wday;
+                if(0 == today)
+                {
+                    today = 7;//星期日显示0
+                }
                 int day = 0;
                 for(day = 0; day < 7; day++)
                 {
@@ -3423,6 +3431,11 @@ u8 pumpDoing(u8 addr, u8 port)
                 {
                     time_t nowTime = getTimeStamp();
                     u8 today = getTimeStampByDate(&nowTime)->tm_wday;
+                    if(0 == today)
+                    {
+                        today = 7;//星期日显示0
+                    }
+
                     int day = 0;
                     for(day = 0; day < 7; day++)
                     {

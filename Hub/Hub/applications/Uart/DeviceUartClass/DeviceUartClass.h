@@ -16,7 +16,7 @@
 
 #define     UART_FINDLOCATION_REG   0x0000
 #define     UART_DISCON_TIME        2   * 1000  //如果失联时候维持通讯的周期
-#define     UART_LONG_CONN_TIME     10  * 1000  //维持长时间通讯不掉线的时间
+#define     UART_LONG_CONN_TIME     /*10*/4  * 1000  //维持长时间通讯不掉线的时间
 #define     UART_TIME_OUT           5 * 1000  //UART_TIME_OUT >= 1*1000
 
 #pragma pack(1)
@@ -124,6 +124,7 @@ enum{
     ASK_RECIPE_7,
     ASK_RECIPE_8,
     ASK_MONITOR,
+    SET_RECIPT_CHG
 };
 
 void InitUart2Object(void);

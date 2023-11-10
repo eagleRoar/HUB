@@ -162,8 +162,6 @@ Node *GetNodeStateOK(Node *head, monitor_ask *ask) {
     Node *p;
     u8 addr = 0;
 
-    LOG_I("-----------------------------GetNodeStateOK");
-
     p = head;
     while (p) {
         addr = p->keyData.dataSegment.data[0];

@@ -250,8 +250,8 @@ int main(void)
             //发送实际发送的数据
             sendReadDeviceCtrlToList(GetMonitor(), deviceObj);
 
-            //Justin 仅仅测试
-//            if(cloudCmd.hvac_sendCnt > 0 && cloudCmd.hvac_sendCnt <= 4)//Justin debug仅仅测试
+            //Justin 仅仅测试 发送hvac未回复次数
+//            if(cloudCmd.hvac_sendCnt > 0 && cloudCmd.hvac_sendCnt <= 4)
 //            {
 //                if(YES == GetMqttStartFlg())
 //                {
@@ -275,7 +275,6 @@ int main(void)
 #if(HUB_SELECT == HUB_ENVIRENMENT)
             startProgram = YES;
 #endif
-
         }
 
         //60s 主动发送给云服务
