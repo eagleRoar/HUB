@@ -6990,6 +6990,8 @@ char *ReplyGetAquaState(cloudcmd_t *cmd)
                 aqua_state_t *state = GetAquaWarn();
                 if(aqua->addr == state[i].id)
                 {
+                    state = &state[i];
+                    //LOG_E("/////////////////////----------------addr = %d, id = %d",aqua->addr,state[i].id);//Justin
                     cJSON_AddStringToObject(json, "name", aqua->name);
                     u8 day;
                     u8 stage;

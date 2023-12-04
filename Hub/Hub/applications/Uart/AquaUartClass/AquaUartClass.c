@@ -833,7 +833,7 @@ void AskAquaState(u8 period)
                 aqua_state = GetAquaWarnByAddr(aqua->addr);
                 if(aqua_state) {
                     for(int i = 0; i < AQUA_RECIPE_MX; i++){
-                        //Justin debug
+
                         if((aqua_state->reciptChange >> i & 0x0001) ||
                                 (setReciptChg[askStateIndex] >> i & 0x0001)){
 
@@ -1193,6 +1193,7 @@ static void RecvListHandle(void)
                     monitor_ask *ask = GetAquaAskState();
                     aqua_info_t *info = RT_NULL;
                     aqua_recipe *recipe = RT_NULL;
+
 //                    if(YES == ask->flag)
                     {
                         if(tail->keyData.dataSegment.len > 5)
@@ -1232,7 +1233,12 @@ static void RecvListHandle(void)
                                         state->wt = (tail->keyData.dataSegment.data[11] << 8) | tail->keyData.dataSegment.data[12];
                                         state->pumpState = (tail->keyData.dataSegment.data[13] << 8) | tail->keyData.dataSegment.data[14];
                                         state->warn = (tail->keyData.dataSegment.data[15] << 8) | tail->keyData.dataSegment.data[16];
-                                        state->work = (tail->keyData.dataSegment.data[17] << 8) | tail->keyData.dataSegment.data[18];
+                                        if(GetAquaSetByUUID(aqua->uuid))
+                                        {
+                                            GetAquaSetByUUID(aqua->uuid)->monitor = (tail->keyData.dataSegment.data[17] << 8) |
+                                                    tail->keyData.dataSegment.data[18];
+                                        }
+                                        state->work = (tail->keyData.dataSegment.data[19] << 8) | tail->keyData.dataSegment.data[20];
 
                                         aqua->pumpSize = state->pumpSize;
                                         //rt_kprintf("收到uuid = %x, addr = %d 的STATE信息\n",info->uuid, aqua->addr);

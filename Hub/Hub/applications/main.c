@@ -180,6 +180,7 @@ int main(void)
 
         if(Timer1sTouch)
         {
+
             //分辨白天黑夜
             monitorDayAndNight();
 
@@ -226,8 +227,7 @@ int main(void)
             //水泵的工作
             closeUnUseDevice(GetMonitor(), deviceObj);
             pumpProgram(GetMonitor(), GetSysTank(), *deviceObj);
-            //PHEC校准
-//            PHEC_Correction();
+
             //Aqua 混合装置工作
             AquaMixProgram(GetSysTank(), GetMonitor());
 #endif
@@ -275,6 +275,18 @@ int main(void)
 #if(HUB_SELECT == HUB_ENVIRENMENT)
             startProgram = YES;
 #endif
+
+            //Jusatin debug 打印
+//            aqua_state_t *stateTest = GetAquaWarn();
+//            LOG_W("----------------------------------------------------");
+//            for(int i = 0; i < 4; i++)
+//            {
+//                LOG_E("id = %d",stateTest[i].id);
+//                LOG_E("ec = %d",stateTest[i].ec);
+//                LOG_E("ph = %d",stateTest[i].ph);
+//                LOG_E("wt = %d",stateTest[i].wt);
+//                LOG_D("//////////////////////////////////////");
+//            }
         }
 
         //60s 主动发送给云服务

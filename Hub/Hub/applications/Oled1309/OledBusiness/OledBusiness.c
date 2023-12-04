@@ -509,18 +509,18 @@ void HomePage(type_page_t *page, type_monitor_t *monitor)
                 if(VALUE_NULL != data[5])
                 {
                     ST7567_GotoXY(68, 32);
-                    rt_memcpy(value, "   ", 3);
-                    if(data[5] > 10)
-                    {
-                        sprintf(value, "%3d", data[5]);
-                    }
-                    else
-                    {
-                        sprintf(value, " %02d", data[5]);
-                    }
-                    value[3] = '\0';
+                    rt_memcpy(value, "   ", 4);
+//                    if(data[5] > 10)
+//                    {
+                        sprintf(value, "%01.2f", (float)data[5]/100);
+//                    }
+//                    else
+//                    {
+//                        sprintf(value, " %02d", (float)data[5]/10);
+//                    }
+                    value[4] = '\0';
                     ST7567_Puts(value, &Font_11x18, 1);
-                    ST7567_DrawRectangle(89, 46, 1, 1, 1);
+//                    ST7567_DrawRectangle(89, 46, 1, 1, 1);
                 }
                 else
                 {
@@ -2219,7 +2219,7 @@ void openDevices_Fa(type_monitor_t *monitor)
         for(port = 0; port < device->storage_size; port++)
         {
             device->port[port].manual.manual = MANUAL_HAND_ON;
-            device->port[port].manual.manual_on_time = 65535;
+            device->port[port].manual.manual_on_time = 1000;
             device->port[port].manual.manual_on_time_save = getTimeStamp();
         }
     }

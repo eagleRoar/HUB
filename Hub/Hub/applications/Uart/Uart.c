@@ -393,6 +393,26 @@ void SensorUart2TaskEntry(void* parameter)
         {
             TimerRunning(UART_PERIOD);
 
+            {
+                //询问端口类型
+                if(deviceSize != GetMonitor()->device_size)
+                {
+                    deviceSize = GetMonitor()->device_size;
+                    for(int i = 0; i < deviceSize; i++)
+                    {
+                        device = &GetMonitor()->device[i];
+                        if((AC_4_TYPE == device->type) ||
+                           (IO_4_TYPE == device->type) ||
+                           (IO_12_TYPE == device->type))
+                        {
+                            u16 reg = 0;
+                            GetReadRegAddrByType(device->type, &reg);
+                            deviceObj->AskDevice(device, reg);
+                        }
+                    }
+                }
+            }
+
             if(ON == uart1_msg.messageFlag)
             {
                 sensorObj->RecvCmd(uart1_msg.data, uart1_msg.size);
@@ -512,22 +532,6 @@ void SensorUart2TaskEntry(void* parameter)
         //10s
         if(ON == Timer10sTouch)
         {
-            //询问端口类型
-            if(deviceSize != GetMonitor()->device_size)
-            {
-                deviceSize = GetMonitor()->device_size;
-                for(int i = 0; i < deviceSize; i++)
-                {
-                    device = &GetMonitor()->device[i];
-                    if((AC_4_TYPE == device->type) ||
-                       (IO_4_TYPE == device->type))
-                    {
-                        u16 reg = 0;
-                        GetReadRegAddrByType(device->type, &reg);
-                        deviceObj->AskDevice(device, reg);
-                    }
-                }
-            }
 
         }
 
