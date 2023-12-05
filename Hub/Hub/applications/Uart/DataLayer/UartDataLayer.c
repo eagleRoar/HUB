@@ -96,37 +96,84 @@ char *GetModelByType(u8 type, char *name, u8 len)
 #endif
             break;
         case BHS_TYPE:
-            strncpy(name, "BLS-4", len);
+            if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+                strncpy(name, "XAe-09", len);
+            } else {
+
+                strncpy(name, "BLS-4", len);
+            }
         break;
         case PAR_TYPE:
-            strncpy(name, "BLS-PAR", len);
+            if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+                strncpy(name, "XAe-08", len);
+            } else {
+                strncpy(name, "BLS-PAR", len);
+            }
         break;
         case CO2_UP_TYPE:
-            strncpy(name, "BCS-PU", len);
+            if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+                strncpy(name, "XAe-06", len);
+            } else {
+
+                strncpy(name, "BCS-PU", len);
+            }
             break;
         case CO2_DOWN_TYPE:
-            strncpy(name, "BCS-PD", len);
+            if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+                strncpy(name, "XAe-06", len);
+            } else {
+
+                strncpy(name, "BCS-PD", len);
+            }
             break;
         case HEAT_TYPE:
-            strncpy(name, "BTS-H", len);
+            if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+                strncpy(name, "XAe-06", len);
+            } else {
+                strncpy(name, "BTS-H", len);
+            }
             break;
         case HUMI_TYPE:
-            strncpy(name, "BHS-H", len);
+            if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+                strncpy(name, "XAe-06", len);
+            } else {
+                strncpy(name, "BHS-H", len);
+            }
             break;
         case DEHUMI_TYPE:
-            strncpy(name, "BHS-D", len);
+            if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+                strncpy(name, "XAe-06", len);
+            } else {
+                strncpy(name, "BHS-D", len);
+            }
             break;
         case PRO_DEHUMI_TYPE:
-            strncpy(name, "BRC-DH", len);
+            if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+                strncpy(name, "XAe-06", len);
+            } else {
+                strncpy(name, "BRC-DH", len);
+            }
             break;
         case PRO_HUMI_TYPE:
-            strncpy(name, "BRC-H", len);
+            if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+                strncpy(name, "XAe-06", len);
+            } else {
+                strncpy(name, "BRC-H", len);
+            }
             break;
         case PRO_HUMI_TEMP_TYPE:
-            strncpy(name, "BRC-HT", len);
+            if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+                strncpy(name, "XAe-05", len);
+            } else {
+                strncpy(name, "BRC-HT", len);
+            }
             break;
         case COOL_TYPE:
-            strncpy(name, "BTS-C", len);
+            if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+                strncpy(name, "XAe-06", len);
+            } else {
+                strncpy(name, "BTS-C", len);
+            }
             break;
         case MIX_TYPE:
             strncpy(name, "BDS-MIX", len);
@@ -140,7 +187,11 @@ char *GetModelByType(u8 type, char *name, u8 len)
         case LINE_TYPE:
         case LINE1_TYPE:
         case LINE2_TYPE:
-            strncpy(name, "LDA", len);
+            if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+                strncpy(name, "XAe-07", len);
+            } else {
+                strncpy(name, "LDA", len);
+            }
             break;
         case LINE_4_TYPE:
             strncpy(name, "LDA-SPE", len);
@@ -152,19 +203,52 @@ char *GetModelByType(u8 type, char *name, u8 len)
             strncpy(name, "BIS-V", len);
             break;
         case AC_4_TYPE:
-            strncpy(name, "BSS-4", len);
+            if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+#if (HUB_SELECT == HUB_ENVIRENMENT)
+                strncpy(name, "XAe-02", len);
+#elif (HUB_SELECT == HUB_IRRIGSTION)
+                strncpy(name, "XAi-02", len);
+#endif
+            } else {
+                strncpy(name, "BSS-4", len);
+            }
             break;
         case IO_12_TYPE:
-            strncpy(name, "BDC-12", len);
+
+            if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+#if (HUB_SELECT == HUB_IRRIGSTION)
+                strncpy(name, "XAi-04", len);
+#endif
+            } else {
+
+                strncpy(name, "BDC-12", len);
+            }
             break;
         case IO_4_TYPE:
-            strncpy(name, "BDC-4", len);
+            if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+#if (HUB_SELECT == HUB_ENVIRENMENT)
+                strncpy(name, "XAe-03", len);
+#endif
+            } else {
+
+                strncpy(name, "BDC-4", len);
+            }
             break;
         case IR_AIR_TYPE:
-            strncpy(name, "BTS-AR", len);
+            if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+                strncpy(name, "XAe-04", len);
+            } else {
+
+                strncpy(name, "BTS-AR", len);
+            }
             break;
         case SOIL_T_H_TYPE:
-            strncpy(name, "BLS-MM", len);
+            if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+                strncpy(name, "XAi-07", len);
+            } else {
+
+                strncpy(name, "BLS-MM", len);
+            }
             break;
         case SMOG_TYPE:
             strncpy(name, "BLS-SD", len);
@@ -177,7 +261,12 @@ char *GetModelByType(u8 type, char *name, u8 len)
             break;
         case PHEC_NEW_TYPE:
         case PHEC_TYPE:
-            strncpy(name, "BSB-I", len);
+            if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+                strncpy(name, "XAi-03", len);
+            } else {
+                strncpy(name, "BSB-I", len);
+            }
+
             break;
         default:
             break;

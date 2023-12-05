@@ -16,13 +16,20 @@
 //#define FACTORY_MODE                  //是否支持工厂模式
 
 #define DEBUG_MODE                      0//1                    //1.如果是debug mode 的话不需要偏移位置，否则偏移位置SD卡升级 2.修改link.lds
-#define HUB_SELECT                      HUB_IRRIGSTION          //HUB_ENVIRENMENT         //
+#define HUB_SELECT                      HUB_ENVIRENMENT         //HUB_IRRIGSTION          //
 
 /* 软件号的 第一个分配为:
     0 : HUB_ENVIRENMENT
     1 : HUB_IRRIGSTION
     软件版本(环控 0.1.6，灌溉1.1.8)开始之后就增加软件看门狗
 */
+/**
+ * 0.2.22
+ * 1.2.24
+ **增加:1.识别客人信息定制化客人的模块名称
+ **增加:2.增加定时上传数据
+ **增加:3.增加sensor定位
+ */
 #if(HUB_ENVIRENMENT == HUB_SELECT)
 #define FIRMWAREVISION                  "0.2.21"
 #elif(HUB_IRRIGSTION == HUB_SELECT)

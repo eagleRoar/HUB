@@ -68,36 +68,6 @@ phec_sensor_t* getPhEcList(type_monitor_t *monitor, u8 isOnline)
 
     return &phec_sensor;
 }
-//#if (HUB_IRRIGSTION == HUB_SELECT)
-//void PHEC_Correction(void)
-//{
-//    //phec 校准
-//    for(u8 phec_i = 0; phec_i < getPhEcList(GetMonitor(), YES)->num; phec_i++)
-//    {
-//        ph_cal_t *ph = RT_NULL;
-//        ph = getPhCalByuuid(GetSensorByAddr(GetMonitor(), getPhEcList(GetMonitor(), YES)->addr[phec_i])->uuid);
-//        if(RT_NULL != ph)
-//        {
-//            if((CAL_INCAL == ph->cal_7_flag) || (CAL_INCAL == ph->cal_4_flag))
-//            {
-//                phCalibrate1(GetSensorByAddr(GetMonitor(), getPhEcList(GetMonitor(), YES)->addr[phec_i]),
-//                        GetMonitor(),ph, GetSysSet());
-//            }
-//        }
-//
-//        ec_cal_t *ec = RT_NULL;
-//        ec = getEcCalByuuid(GetSensorByAddr(GetMonitor(), getPhEcList(GetMonitor(), YES)->addr[phec_i])->uuid);
-//        if(RT_NULL != ec)
-//        {
-//            if((CAL_INCAL == ec->cal_0_flag) || (CAL_INCAL == ec->cal_141_flag))
-//            {
-//                ecCalibrate1(GetSensorByAddr(GetMonitor(), getPhEcList(GetMonitor(), YES)->addr[phec_i]),
-//                        GetMonitor(),ec, GetSysSet());
-//            }
-//        }
-//    }
-//}
-//#endif
 
 void changeDeviceType(type_monitor_t *monitor, u8 addr, u8 port, u8 type)
 {
@@ -1218,27 +1188,47 @@ rt_err_t SetDeviceDefault(type_monitor_t *monitor, u32 uuid, u8 type, u8 addr)
                 switch (device->type) {
 
                     case CO2_UP_TYPE:
-                        setDeviceDefaultPara(device, "BCS-PU", 0x0040, S_CO2, device->type, 1);
+                        if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+                            setDeviceDefaultPara(device, "XAe-06", 0x0040, S_CO2, device->type, 1);
+                        } else {
+                            setDeviceDefaultPara(device, "BCS-PU", 0x0040, S_CO2, device->type, 1);
+                        }
                         setDeviceDefaultStora(device, 0 ,"Co2_U", F_Co2_UP, device->type, addr , MANUAL_NO_HAND, 0);
                         ret = RT_EOK;
                         break;
                     case CO2_DOWN_TYPE:
-                        setDeviceDefaultPara(device, "BCS-PD", 0x0040, S_CO2, device->type, 1);
+                        if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+                            setDeviceDefaultPara(device, "XAe-06", 0x0040, S_CO2, device->type, 1);
+                        } else {
+                            setDeviceDefaultPara(device, "BCS-PD", 0x0040, S_CO2, device->type, 1);
+                        }
                         setDeviceDefaultStora(device, 0 ,"Co2_D", F_Co2_DOWN, device->type, addr , MANUAL_NO_HAND, 0);
                         ret = RT_EOK;
                         break;
                     case HEAT_TYPE:
-                        setDeviceDefaultPara(device, "BTS-H", 0x0040, S_TEMP, device->type, 1);
+                        if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+                            setDeviceDefaultPara(device, "XAe-06", 0x0040, S_TEMP, device->type, 1);
+                        } else {
+                            setDeviceDefaultPara(device, "BTS-H", 0x0040, S_TEMP, device->type, 1);
+                        }
                         setDeviceDefaultStora(device, 0 ,"Heat", F_HEAT, device->type, addr , MANUAL_NO_HAND, 0);
                         ret = RT_EOK;
                         break;
                     case HUMI_TYPE:
-                        setDeviceDefaultPara(device, "BHS-H", 0x0040, S_HUMI, device->type, 1);
+                        if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+                            setDeviceDefaultPara(device, "XAe-06", 0x0040, S_HUMI, device->type, 1);
+                        } else {
+                            setDeviceDefaultPara(device, "BHS-H", 0x0040, S_HUMI, device->type, 1);
+                        }
                         setDeviceDefaultStora(device, 0 , "Humi", F_HUMI, device->type, addr , MANUAL_NO_HAND, 0);
                         ret = RT_EOK;
                         break;
                     case DEHUMI_TYPE:
-                        setDeviceDefaultPara(device, "BHS-D", 0x0040, S_HUMI, device->type, 1);
+                        if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+                            setDeviceDefaultPara(device, "XAe-06", 0x0040, S_HUMI, device->type, 1);
+                        } else {
+                            setDeviceDefaultPara(device, "BHS-D", 0x0040, S_HUMI, device->type, 1);
+                        }
                         setDeviceDefaultStora(device, 0 , "Dehumi", F_DEHUMI, device->type, addr , MANUAL_NO_HAND, 0);
                         ret = RT_EOK;
                         break;
@@ -1253,12 +1243,21 @@ rt_err_t SetDeviceDefault(type_monitor_t *monitor, u32 uuid, u8 type, u8 addr)
                         ret = RT_EOK;
                         break;
                     case PRO_HUMI_TEMP_TYPE:
-                        setDeviceDefaultPara(device, "BRC-HT", 0x0100, S_TEMP, device->type, 1);
+
+                        if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+                            setDeviceDefaultPara(device, "XAe-05", 0x0100, S_TEMP, device->type, 1);
+                        } else {
+                            setDeviceDefaultPara(device, "BRC-HT", 0x0100, S_TEMP, device->type, 1);
+                        }
                         setDeviceDefaultStora(device, 0 , "HT", F_HUMI_TEMP, device->type, addr , MANUAL_NO_HAND, 0);
                         ret = RT_EOK;
                         break;
                     case COOL_TYPE:
-                        setDeviceDefaultPara(device, "BTS-C", 0x0040, S_TEMP, device->type, 1);
+                        if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+                            setDeviceDefaultPara(device, "XAe-06", 0x0040, S_TEMP, device->type, 1);
+                        } else {
+                            setDeviceDefaultPara(device, "BTS-C", 0x0040, S_TEMP, device->type, 1);
+                        }
                         setDeviceDefaultStora(device, 0 , "Cool", F_COOL, device->type, addr , MANUAL_NO_HAND, 0);
                         ret = RT_EOK;
                         break;
@@ -1273,13 +1272,28 @@ rt_err_t SetDeviceDefault(type_monitor_t *monitor, u32 uuid, u8 type, u8 addr)
                         ret = RT_EOK;
                         break;
                     case TIMER_TYPE:
-                        setDeviceDefaultPara(device, "BPS", 0x0040, S_TIMER, device->type, 1);
+                        if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+#if (HUB_SELECT == HUB_ENVIRENMENT)
+                            setDeviceDefaultPara(device, "XAe-06", 0x0040, S_TIMER, device->type, 1);
+#endif
+                        } else {
+                            setDeviceDefaultPara(device, "BPS", 0x0040, S_TIMER, device->type, 1);
+                        }
                         setDeviceDefaultStora(device, 0 , "Timer", F_TIMER, device->type, addr , MANUAL_NO_HAND, 0);
                         device->port[0].mode = BY_SCHEDULE;
                         ret = RT_EOK;
                         break;
                     case AC_4_TYPE:
-                        setDeviceDefaultPara(device, "BSS-4", 0x0401, S_AC_4, device->type, 4);
+
+                        if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+#if (HUB_SELECT == HUB_ENVIRENMENT)
+                            setDeviceDefaultPara(device, "XAe-02", 0x0401, S_AC_4, device->type, 4);
+#elif (HUB_SELECT == HUB_IRRIGSTION)
+                            setDeviceDefaultPara(device, "XAi-02", 0x0401, S_AC_4, device->type, 4);
+#endif
+                        } else {
+                            setDeviceDefaultPara(device, "BSS-4", 0x0401, S_AC_4, device->type, 4);
+                        }
                         for(u8 index = 0; index < device->storage_size; index++)
                         {
                             strcpy(name," ");
@@ -1310,7 +1324,13 @@ rt_err_t SetDeviceDefault(type_monitor_t *monitor, u32 uuid, u8 type, u8 addr)
                         ret = RT_EOK;
                         break;
                     case IO_12_TYPE:
-                        setDeviceDefaultPara(device, "BCB-12", 0x0401, S_IO_12, device->type, 12);
+                        if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+#if (HUB_SELECT == HUB_IRRIGSTION)
+                            setDeviceDefaultPara(device, "XAi-04", 0x0401, S_IO_12, device->type, 12);
+#endif
+                        } else {
+                            setDeviceDefaultPara(device, "BCB-12", 0x0401, S_IO_12, device->type, 12);
+                        }
                         for(u8 index = 0; index < device->storage_size; index++)
                         {
                             device->port[index].type = VALVE_TYPE;//目前暂定都是阀
@@ -1340,7 +1360,13 @@ rt_err_t SetDeviceDefault(type_monitor_t *monitor, u32 uuid, u8 type, u8 addr)
                         ret = RT_EOK;
                         break;
                     case IO_4_TYPE:
-                        setDeviceDefaultPara(device, "BDC-4", 0x0401, S_IO_4, device->type, 4);
+                        if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+#if (HUB_SELECT == HUB_ENVIRENMENT)
+                            setDeviceDefaultPara(device, "XAe-03", 0x0401, S_IO_4, device->type, 4);
+#endif
+                        } else {
+                            setDeviceDefaultPara(device, "BDC-4", 0x0401, S_IO_4, device->type, 4);
+                        }
                         for(u8 index = 0; index < device->storage_size; index++)
                         {
                             device->port[index].type = VALVE_TYPE;//目前暂定都是阀
@@ -1355,7 +1381,11 @@ rt_err_t SetDeviceDefault(type_monitor_t *monitor, u32 uuid, u8 type, u8 addr)
                         ret = RT_EOK;
                         break;
                     case IR_AIR_TYPE:
-                        setDeviceDefaultPara(device, "BTS-AR", 0x0100, S_TEMP, device->type, 1);
+                        if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+                            setDeviceDefaultPara(device, "XAe-04", 0x0100, S_TEMP, device->type, 1);
+                        } else {
+                            setDeviceDefaultPara(device, "BTS-AR", 0x0100, S_TEMP, device->type, 1);
+                        }
                         setDeviceDefaultStora(device, 0 , "IR_AIR", F_COOL, device->type, addr , MANUAL_NO_HAND, 0);
                         ret = RT_EOK;
                         break;
@@ -1405,7 +1435,11 @@ rt_err_t SetSensorDefault(type_monitor_t *monitor, u32 uuid, u8 type, u8 addr)
             switch (sensor.type)
             {
                 case BHS_TYPE:
-                    setSensorDefaultPara(&sensor, "BLS-4", 0x0010, sensor.type, 4);
+                    if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+                        setSensorDefaultPara(&sensor, "XAe-09", 0x0010, sensor.type, 4);
+                    } else {
+                        setSensorDefaultPara(&sensor, "BLS-4", 0x0010, sensor.type, 4);
+                    }
                     strncpy(sen_stora[0].name, "Co2", STORAGE_NAMESZ);
                     strncpy(sen_stora[1].name, "Humi", STORAGE_NAMESZ);
                     strncpy(sen_stora[2].name, "Temp", STORAGE_NAMESZ);
@@ -1421,13 +1455,21 @@ rt_err_t SetSensorDefault(type_monitor_t *monitor, u32 uuid, u8 type, u8 addr)
                     setSensorDefuleStora(&sensor, sen_stora[0], sen_stora[1], sen_stora[2], sen_stora[3]);
                     break;
                 case PAR_TYPE:
-                    setSensorDefaultPara(&sensor, "BLS-PAR", 0x0000, sensor.type, 1);
+                    if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+                        setSensorDefaultPara(&sensor, "XAe-08", 0x0000, sensor.type, 1);
+                    } else {
+                        setSensorDefaultPara(&sensor, "BLS-PAR", 0x0000, sensor.type, 1);
+                    }
                     strncpy(sensor.__stora[0].name, "Par", STORAGE_NAMESZ);
                     sensor.__stora[0].value = 0;
                     sensor.__stora[0].func = F_S_PAR;
                     break;
                 case PHEC_TYPE:
-                    setSensorDefaultPara(&sensor, "BSB-I", 0x0000, sensor.type, 3);
+                    if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+                        setSensorDefaultPara(&sensor, "XAi-03", 0x0000, sensor.type, 3);
+                    } else {
+                        setSensorDefaultPara(&sensor, "BSB-I", 0x0000, sensor.type, 3);
+                    }
                     strncpy(sensor.__stora[0].name, "Ec", STORAGE_NAMESZ);
                     strncpy(sensor.__stora[1].name, "Ph", STORAGE_NAMESZ);
                     strncpy(sensor.__stora[2].name, "Wt", STORAGE_NAMESZ);
@@ -1439,7 +1481,11 @@ rt_err_t SetSensorDefault(type_monitor_t *monitor, u32 uuid, u8 type, u8 addr)
                     sensor.__stora[2].func = F_S_WT;
                     break;
                 case PHEC_NEW_TYPE:
-                    setSensorDefaultPara(&sensor, "BSB-I", 0x0100, sensor.type, 3);
+                    if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+                        setSensorDefaultPara(&sensor, "XAi-03", 0x0100, sensor.type, 3);
+                    } else {
+                        setSensorDefaultPara(&sensor, "BSB-I", 0x0100, sensor.type, 3);
+                    }
                     strncpy(sensor.__stora[0].name, "Ec", STORAGE_NAMESZ);
                     strncpy(sensor.__stora[1].name, "Ph", STORAGE_NAMESZ);
                     strncpy(sensor.__stora[2].name, "Wt", STORAGE_NAMESZ);
@@ -1451,13 +1497,21 @@ rt_err_t SetSensorDefault(type_monitor_t *monitor, u32 uuid, u8 type, u8 addr)
                     sensor.__stora[2].func = F_S_WT;
                     break;
                 case WATERlEVEL_TYPE:
-                    setSensorDefaultPara(&sensor, "BLS-WL", 0x0004, sensor.type, 1);
+                    if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+                        setSensorDefaultPara(&sensor, "XAi-06", 0x0004, sensor.type, 1);
+                    } else {
+                        setSensorDefaultPara(&sensor, "BLS-WL", 0x0004, sensor.type, 1);
+                    }
                     strncpy(sensor.__stora[0].name, "Wl", STORAGE_NAMESZ);
                     sensor.__stora[0].value = 0;
                     sensor.__stora[0].func = F_S_WL;
                     break;
                 case SOIL_T_H_TYPE:     //土壤温湿度
-                    setSensorDefaultPara(&sensor, "BLS-MM", 0x0000, sensor.type, 3);
+                    if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+                        setSensorDefaultPara(&sensor, "XAi-07", 0x0000, sensor.type, 3);
+                    } else {
+                        setSensorDefaultPara(&sensor, "BLS-MM", 0x0000, sensor.type, 3);
+                    }
                     strncpy(sensor.__stora[0].name, "Soil_W", STORAGE_NAMESZ);
                     sensor.__stora[0].value = 0;
                     sensor.__stora[0].func = F_S_SW;
@@ -1525,7 +1579,11 @@ rt_err_t SetLineDefault(type_monitor_t *monitor, u32 uuid, u8 type, u8 addr)
                 line.uuid = uuid;
                 line.type = type;
                 line.addr = addr;
-                strncpy(line.name, "line", MODULE_NAMESZ);
+                if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+                    strncpy(line.name, "XAe-07", MODULE_NAMESZ);
+                } else {
+                    strncpy(line.name, "line", MODULE_NAMESZ);
+                }
                 line.ctrl_addr = 0x0060;
                 line.port[0].ctrl.d_state = 0;
                 line.port[0].ctrl.d_value = 0;
@@ -1639,7 +1697,11 @@ rt_err_t SetAquaDefault(type_monitor_t *monitor, u32 uuid, u8 type, u8 addr)
             aqua.uuid = uuid;
             aqua.type = type;
             aqua.addr = addr;
-            strncpy(aqua.name, "Aqua", MODULE_NAMESZ);
+            if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+                strncpy(aqua.name, "XAn-01", MODULE_NAMESZ);
+            } else {
+                strncpy(aqua.name, "Aqua", MODULE_NAMESZ);
+            }
             aqua.ctrl_addr = AQUA_WORK_ADDR;
             aqua.main_type = S_AQUA;
             aqua.storage_size = 1;
@@ -1736,5 +1798,14 @@ int GetSensorMainValue(type_monitor_t *monitor, u8 func)
     return value;
 }
 
+u8 GetSpecialVersion(void)
+{
+    return specialVersion;
+}
+
+void SetSpecialVersion(u8 version)
+{
+    specialVersion = version;
+}
 
 #endif /* APPLICATIONS_INFORMATIONMANAGE_MODULE_MODULE_C_ */

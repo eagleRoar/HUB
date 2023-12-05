@@ -1159,8 +1159,9 @@ rt_err_t ReplyDataToCloud(mqtt_client *client, int *sock, u8 sendCloudFlg)
         {
             str = ReplySetMainSensor(CMD_SET_MAIN_SENSOR, cloudCmd.setMainSensorId, cloudCmd.msgid);
         }
-        else
+        else if(0 == rt_memcmp(CMD_REPORT_SENSOR, cloudCmd.cmd, sizeof(CMD_REPORT_SENSOR)))
         {
+            str = SendReportSensor(CMD_REPORT_SENSOR);
         }
 
         if(RT_NULL != str)

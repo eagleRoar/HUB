@@ -250,7 +250,7 @@ int main(void)
             //发送实际发送的数据
             sendReadDeviceCtrlToList(GetMonitor(), deviceObj);
 
-            //Justin 仅仅测试 发送hvac未回复次数
+            //仅仅测试 发送hvac未回复次数
 //            if(cloudCmd.hvac_sendCnt > 0 && cloudCmd.hvac_sendCnt <= 4)
 //            {
 //                if(YES == GetMqttStartFlg())

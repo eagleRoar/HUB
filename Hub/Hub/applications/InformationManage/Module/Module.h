@@ -60,4 +60,6 @@ void deletePumpValveGroup(type_monitor_t *monitor, u8 addr, u8 port);
 aqua_t *GetAquaByAddr(type_monitor_t *monitor, u8 addr);
 rt_err_t CheckAquaCorrect(type_monitor_t *monitor, u32 uuid, u8 addr);
 rt_err_t SetAquaDefault(type_monitor_t *monitor, u32 uuid, u8 addr, u8 type);
+u8 GetSpecialVersion(void);
+void SetSpecialVersion(u8 version);
 #endif /* APPLICATIONS_INFORMATIONMANAGE_MODULE_MODULE_H_ */

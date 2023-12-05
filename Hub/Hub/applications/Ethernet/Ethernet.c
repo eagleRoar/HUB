@@ -131,7 +131,6 @@ rt_err_t TcpRecvTaskInit(void)
  */
 void UdpTaskEntry(void* parameter)
 {
-    u8          Timer10sTouch       = OFF;
     int         broadcastSock       = 0x00;
     int         bytes_read          = 0x00;
     rt_err_t    ret                 = RT_EOK;
@@ -139,7 +138,10 @@ void UdpTaskEntry(void* parameter)
 
     struct sockaddr_in      broadcastSerAddr;
     struct sockaddr_in      broadcastRecvSerAddr;
-    static u16  time10S             = 0;
+    static u8       Timer2MinTouch  = OFF;
+    static u16      time2Min        = 0;
+    static u8       Timer2MinTouch_1  = OFF;
+    static u16      time2Min_1        = 0;
     static u8       Timer60sTouch   = OFF;
     static u16      time60S         = 0;
     static u8       connectNewFlag  = NO;
@@ -166,8 +168,9 @@ void UdpTaskEntry(void* parameter)
     while (1)
     {
         /* 启用定时器 */
-        time10S = TimerTask(&time10S, 200, &Timer10sTouch);           //1秒任务定时器
-        time60S = TimerTask(&time60S, 1200, &Timer60sTouch);          //60秒任务定时器
+        time2Min = TimerTask(&time2Min, 120000/50, &Timer2MinTouch);           //1秒任务定时器
+        time2Min_1 = TimerTask(&time2Min_1, 122000/50, &Timer2MinTouch_1);           //1秒任务定时器
+        time60S = TimerTask(&time60S, 60000/50, &Timer60sTouch);          //60秒任务定时器
 
         //文件系统还没有准备好
         if(YES != GetFileSystemState())
@@ -276,10 +279,23 @@ void UdpTaskEntry(void* parameter)
         }
 
         /* 10s 定时任务 */
-        if(ON == Timer10sTouch)
+        if(ON == Timer2MinTouch)
         {
 //            LOG_I("ip = %s, port = %d, sock = %d, getsockState = %d",
 //                    eth->GetIp(), eth->GetPort(), tcp_sock, getSockState(tcp_sock));
+
+            //app 发送sensor list
+            cloudCmd.recv_flag = ON;
+            cloudCmd.recv_app_flag = YES;
+            strcpy(cloudCmd.cmd, CMD_REPORT_SENSOR);
+//            LOG_E("发送 report sensor");
+        }
+
+        if(ON == Timer2MinTouch_1)
+        {
+            //mqtt 发送sensor list
+            SetRecvMqttFlg(ON);
+            strcpy(cloudCmd.cmd, CMD_REPORT_SENSOR);
         }
 
         /* 线程休眠一段时间 */

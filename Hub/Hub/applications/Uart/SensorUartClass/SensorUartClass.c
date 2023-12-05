@@ -25,8 +25,13 @@ static void GenerateAskData(sensor_t sensor, u16 reg, u8 *data)
     data[1] = READ_MUTI;
     data[2] = reg >> 8;
     data[3] = reg;
-    data[4] = sensor.storage_size >> 8;
-    data[5] = sensor.storage_size;
+    if(UART_FINDLOCATION_REG == reg) {
+        data[4] = 0;
+        data[5] = 1;
+    } else {
+        data[4] = sensor.storage_size >> 8;
+        data[5] = sensor.storage_size;
+    }
     data[6] = usModbusRTU_CRC(data, 6);
     data[7] = usModbusRTU_CRC(data, 6) >> 8;
 }

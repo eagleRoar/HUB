@@ -80,6 +80,15 @@ typedef     struct eth_heart                eth_heart_t;
 #define     HVAC_DAY_POINT                  25
 #define     HVAC_NIGHT_POINT                25
 
+//特殊版本
+#define     SPECIAL_VER_AGRICOVA            1
+
+/**
+ ** 默认 0
+ ** 版本 1 夏春客人(agricova)定制版本
+ */
+u8 specialVersion;//特殊版本
+
 //如果修改了结构体要修改相应的结构体的版本号
 #pragma pack(1)
 

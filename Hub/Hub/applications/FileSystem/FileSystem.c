@@ -35,12 +35,14 @@ char            new_mqtt_url_file[]     = "/main/informations/mqtt_url.bin";
 char            new_aqua_info_file[]    = "/main/informations/aqua_info.bin";
 char            new_aqua_set_file[]     = "/main/informations/aqua_set.bin";
 char            new_sysset_ex_file[]     = "/main/informations/sys_set_ex.bin";
+char            new_special_version_file[]  = "/main/informations/special_version.txt";
 
 char            backup_dev_file[]       = "/backup/informations/module.bin";
 char            backup_sysset_file[]    = "/backup/informations/sys_set.bin";
 char            backup_recipe_file[]    = "/backup/informations/recipe.bin";
 char            backup_tank_file[]      = "/backup/informations/tank.bin";
 char            backup_ulog[]           = "/backup/console.txt";
+char            backup_special_version_file[]  = "/backup/special_version.txt";
 u8              saveMqttUrlFile         = NO;
 
 sys_ver_t   sys_ver;
@@ -374,6 +376,76 @@ static void GetSysSetFromFile(sys_set_t *set, char *fileName)
     {
         rt_kprintf("-----------------Get sysSet data Fail\r\n");
     }
+}
+
+static void GetSpecialVersionFromFile(void)
+{
+    cJSON   *json   = RT_NULL;
+    int     length  = 0;
+    char    *data   = RT_NULL;
+    //1.首先从flash查找是否存在
+    if(0 == GetFileLength(new_special_version_file) &&
+       0 == GetFileLength(backup_special_version_file)) {
+        SetSpecialVersion(0);
+    } else {
+        //2.读取SD中的数据
+        length = GetFileLength(backup_special_version_file);
+        if(length) {
+            data = rt_malloc(length);
+
+            if(data) {
+                if(RT_EOK == ReadFileData(backup_special_version_file, data, 0, length)) {
+                    json = cJSON_Parse(data);
+
+                    if(json) {
+                        u8 version = 0;
+                        GetValueByU8(json, "specialVersion", &version);
+                        SetSpecialVersion(version);
+
+                        //3.将Sd卡的数据写进片上flash中
+                        WriteFileData(new_special_version_file, data, 0, length);
+
+                    } else {
+                        SetSpecialVersion(0);
+                    }
+                } else {
+                    SetSpecialVersion(0);
+                }
+
+                rt_free(data);
+            }
+        } else {
+            //4.如果sd卡不存在 则读取片上flash
+            length = GetFileLength(new_special_version_file);
+
+            if(length) {
+                data = rt_malloc(length);
+                if(data)
+                {
+                    if(RT_EOK == ReadFileData(new_special_version_file, data, 0, length)) {
+                        json = cJSON_Parse(data);
+
+                        if(json) {
+                            u8 version = 0;
+                            GetValueByU8(json, "specialVersion", &version);
+                            SetSpecialVersion(version);
+                            //3.将片上flash的数据写进Sd卡中
+                            WriteFileData(backup_special_version_file, data, 0, length);
+
+                        } else {
+                            SetSpecialVersion(0);
+                        }
+                    } else {
+                        SetSpecialVersion(0);
+                    }
+
+                    rt_free(data);
+                }
+            }
+        }
+    }
+
+//    LOG_E("------------------------特殊版本 = %d",GetSpecialVersion());
 }
 
 static void SaveSysSetToFile(sys_set_t *set, char *fileName)
@@ -859,6 +931,7 @@ void FileSystemInit(void)
         GetSysAquaSetFromFile(GetAquaSetList(), new_aqua_set_file);
 #endif
         GetMqttUrlFile(getMqttUrlUse(), new_mqtt_url_file);
+        GetSpecialVersionFromFile();
     }
 
     //4.标记文件系统准备完成

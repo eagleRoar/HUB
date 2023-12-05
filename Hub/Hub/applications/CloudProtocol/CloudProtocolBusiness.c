@@ -16,6 +16,7 @@
 #include "deviceUartClass.h"
 #include "lightUartClass.h"
 #include "AquaUartClass.h"
+#include "SensorUartClass.h"
 #include "UartAction.h"
 
 extern  sys_set_t       sys_set;
@@ -361,6 +362,7 @@ void CmdFindLocation(char *data, cloudcmd_t *cmd)
     cJSON       *temp       = RT_NULL;
     u8          addr        = 0;
     device_t    *device;
+    sensor_t    *sensor;
 #if(HUB_SELECT == HUB_ENVIRENMENT)
     line_t      *line;
 #endif
@@ -385,6 +387,11 @@ void CmdFindLocation(char *data, cloudcmd_t *cmd)
         {
             device = GetDeviceByAddr(GetMonitor(), addr);
             GetDeviceObject()->AskDevice(device, UART_FINDLOCATION_REG);
+        }
+        else if(GetSensorByAddr(GetMonitor(), addr))
+        {
+            sensor = GetSensorByAddr(GetMonitor(), addr);
+            GetSensorObject()->AskSensor(*sensor, UART_FINDLOCATION_REG);
         }
 #if(HUB_SELECT == HUB_ENVIRENMENT)
         else if(GetLineByAddr(GetMonitor(), addr))
@@ -2910,6 +2917,244 @@ char *SendHubReport(char *cmd, sys_set_t *set)
     }
 
     return str;
+}
+
+
+char *SendReportSensor(char *cmd)
+{
+    cJSON           *json       = cJSON_CreateObject();
+    char            *str        = RT_NULL;
+    char            *lastStr    = RT_NULL;
+    char            name[15]    = "";
+    static u16      length      = 0;
+
+    if(json)
+    {
+        cJSON_AddStringToObject(json, "cmd", cmd);
+        cJSON_AddStringToObject(json, "sn", GetSnName(name, 12));
+        cJSON *senlist = cJSON_CreateArray();
+        if(senlist)
+        {
+            for(int i = 0; i < GetMonitor()->sensor_size; i++)
+            {
+                if(CON_SUCCESS == GetMonitor()->sensor[i].conn_state)
+                {
+                    sprintf(name,"%s%d", "sensorPort", i);
+                    cJSON_AddItemToArray(senlist, cJSON_CreateString(name));
+                }
+            }
+
+            cJSON_AddItemToObject(json, "sensorList", senlist);
+        }
+
+        cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
+
+        str = cJSON_PrintUnformatted(json);
+        cJSON_Delete(json);
+
+        lastStr = rt_malloc(strlen(str));
+        if(lastStr)
+        {
+            length = strlen(str);
+            rt_memset(lastStr, 0, length);
+            strncpy(lastStr, str, length);
+            rt_free(str);
+
+            for(int i = 0; i < GetMonitor()->sensor_size; i++)
+            {
+                char *str1 = RT_NULL;
+                sensor_t *sensor = &GetMonitor()->sensor[i];
+                if(CON_SUCCESS == sensor->conn_state)
+                {
+                    cJSON *item = cJSON_CreateObject();
+                    if(item)
+                    {
+                        cJSON_AddNumberToObject(item, "id", sensor->addr);
+                        cJSON_AddStringToObject(item, "name", sensor->name);
+
+                        cJSON *itemList = cJSON_CreateArray();
+                        if(itemList)
+                        {
+                            for(int port = 0; port < sensor->storage_size; port++)
+                            {
+                                cJSON *portItem = cJSON_CreateObject();
+                                if(portItem)
+                                {
+                                    u8 type = 0;
+                                    // 1-co2 2-temp 3-humid 4-ph 5-ec 6-wt 7-wl 8-mm基质湿度  9-me基质 EC 10-mt基质温度
+                                    //11-光敏 12-par 13-烟感(1:报警 0:正常) 14-漏水(1:报警 0:正常) 15-O2
+                                    switch(sensor->__stora[port].func)
+                                    {
+                                        case F_S_CO2:
+                                            type = 1;
+                                            break;
+                                        case F_S_TEMP:
+                                            type = 2;
+                                            break;
+                                        case F_S_HUMI:
+                                            type = 3;
+                                            break;
+                                        case F_S_PH:
+                                            type = 4;
+                                            break;
+                                        case F_S_EC:
+                                            type = 5;
+                                            break;
+                                        case F_S_WT:
+                                            type = 6;
+                                            break;
+                                        case F_S_WL:
+                                            type = 7;
+                                            break;
+                                        case F_S_SW:
+                                            type = 8;
+                                            break;
+                                        case F_S_SEC:
+                                            type = 9;
+                                            break;
+                                        case F_S_ST:
+                                            type = 10;
+                                            break;
+                                        case F_S_LIGHT:
+                                            type = 11;
+                                            break;
+                                        case F_S_PAR:
+                                            type = 12;
+                                            break;
+                                        case F_S_SM:
+                                            type = 13;
+                                            break;
+                                        case F_S_LK:
+                                            type = 14;
+                                            break;
+                                        case F_S_O2:
+                                            type = 15;
+                                            break;
+                                        default:break;
+                                    }
+                                    cJSON_AddNumberToObject(portItem, "type", type);
+                                    if(F_S_WL == sensor->__stora[port].func)
+                                    {
+                                        cJSON_AddNumberToObject(portItem, "value", sensor->__stora[port].value / 10);
+                                    }
+                                    else
+                                    {
+                                        cJSON_AddNumberToObject(portItem, "value", sensor->__stora[port].value);
+                                    }
+
+                                    cJSON_AddItemToArray(itemList, portItem);
+                                }
+                            }
+
+                            cJSON_AddItemToObject(item, "list", itemList);
+                        }
+
+                        str1 = cJSON_PrintUnformatted(item);
+                        cJSON_Delete(item);
+
+                        length += strlen(str1);
+
+                        char *newStr = RT_NULL;
+                        newStr = rt_realloc(lastStr, length);
+
+                        if(newStr)
+                        {
+                            lastStr = newStr;
+                            if(0 == i)
+                            {
+                                str_replace1(lastStr, "\"sensorPort0\"", str1, length);
+                            }
+                            else if(1 == i)
+                            {
+                                str_replace1(lastStr, "\"sensorPort1\"", str1, length);
+                            }
+                            else if(2 == i)
+                            {
+                                str_replace1(lastStr, "\"sensorPort2\"", str1, length);
+                            }
+                            else if(3 == i)
+                            {
+                                str_replace1(lastStr, "\"sensorPort3\"", str1, length);
+                            }
+                            else if(4 == i)
+                            {
+                                str_replace1(lastStr, "\"sensorPort4\"", str1, length);
+                            }
+                            else if(5 == i)
+                            {
+                                str_replace1(lastStr, "\"sensorPort5\"", str1, length);
+                            }
+                            else if(6 == i)
+                            {
+                                str_replace1(lastStr, "\"sensorPort6\"", str1, length);
+                            }
+                            else if(7 == i)
+                            {
+                                str_replace1(lastStr, "\"sensorPort7\"", str1, length);
+                            }
+                            else if(8 == i)
+                            {
+                                str_replace1(lastStr, "\"sensorPort8\"", str1, length);
+                            }
+                            else if(9 == i)
+                            {
+                                str_replace1(lastStr, "\"sensorPort9\"", str1, length);
+                            }
+                            else if(10 == i)
+                            {
+                                str_replace1(lastStr, "\"sensorPort10\"", str1, length);
+                            }
+                            else if(11 == i)
+                            {
+                                str_replace1(lastStr, "\"sensorPort11\"", str1, length);
+                            }
+                            else if(12 == i)
+                            {
+                                str_replace1(lastStr, "\"sensorPort12\"", str1, length);
+                            }
+                            else if(13 == i)
+                            {
+                                str_replace1(lastStr, "\"sensorPort13\"", str1, length);
+                            }
+                            else if(14 == i)
+                            {
+                                str_replace1(lastStr, "\"sensorPort14\"", str1, length);
+                            }
+                            else if(15 == i)
+                            {
+                                str_replace1(lastStr, "\"sensorPort15\"", str1, length);
+                            }
+                            else if(16 == i)
+                            {
+                                str_replace1(lastStr, "\"sensorPort16\"", str1, length);
+                            }
+                            else if(17 == i)
+                            {
+                                str_replace1(lastStr, "\"sensorPort17\"", str1, length);
+                            }
+                            else if(18 == i)
+                            {
+                                str_replace1(lastStr, "\"sensorPort18\"", str1, length);
+                            }
+                            else if(19 == i)
+                            {
+                                str_replace1(lastStr, "\"sensorPort19\"", str1, length);
+                            }
+                        }
+                        rt_free(str1);
+                    }
+                }
+
+            }
+        }
+        else
+        {
+            rt_free(str);
+        }
+
+    }
+
+    return lastStr;
 }
 
 char *ReplyGetTempValue(char *cmd, cloudcmd_t cloud)
@@ -5862,6 +6107,11 @@ char *ReplyGetSensorEList(char *cmd, char *msgid)
                         online = 1;
                     }
                     cJSON_AddNumberToObject(item, "online", online);
+                    if(BHS_TYPE == sensor->type ||
+                       PHEC_NEW_TYPE == sensor->type)
+                    {
+                        cJSON_AddNumberToObject(item, "canFind", 1);
+                    }
                     cJSON *itemList = cJSON_CreateArray();
                     if(itemList)
                     {
@@ -6819,7 +7069,7 @@ char *ReplyGetDeviceList_new(char *cmd, char *msgid, u8 deviceType, u8 no)
                     else {
                         cJSON_AddNumberToObject(item, "workingStatus", 0);
                     }
-                    cJSON_AddNumberToObject(item, "manual", line.port[0]._manual.manual);//Justin
+                    cJSON_AddNumberToObject(item, "manual", line.port[0]._manual.manual);
                 }
             }
 #elif(HUB_SELECT == HUB_IRRIGSTION)
@@ -6991,7 +7241,7 @@ char *ReplyGetAquaState(cloudcmd_t *cmd)
                 if(aqua->addr == state[i].id)
                 {
                     state = &state[i];
-                    //LOG_E("/////////////////////----------------addr = %d, id = %d",aqua->addr,state[i].id);//Justin
+                    //LOG_E("/////////////////////----------------addr = %d, id = %d",aqua->addr,state[i].id);
                     cJSON_AddStringToObject(json, "name", aqua->name);
                     u8 day;
                     u8 stage;
@@ -7032,7 +7282,11 @@ char *ReplyGetAquaState(cloudcmd_t *cmd)
                     sprintf(name, "AQU%s",name1);
                     char *testName = strupr(name);
                     cJSON_AddStringToObject(json, "aquaSn", testName);
-                    cJSON_AddStringToObject(json, "model", "Aqua-Pro");
+                    if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+                        cJSON_AddStringToObject(json, "model", "XAn-01");
+                    } else {
+                        cJSON_AddStringToObject(json, "model", "Aqua-Pro");
+                    }
                     sprintf(name, "v%d.%03d", state->aqua_firm_ver / 1000, state->aqua_firm_ver % 1000);
                     cJSON_AddStringToObject(json, "firmwareVer", name);
                     sprintf(name, "v%d.%03d", state->aqua_hmi_ver / 1000, state->aqua_hmi_ver % 1000);

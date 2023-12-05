@@ -458,6 +458,7 @@ enum{
 #define         TEST_CMD                "test"                  //Hub 主动上报
 #define         CMD_HUB_REPORT_WARN     "reportWarning"         //Hub 主动上报
 #define         CMD_HUB_REPORT          "report"                //Hub 定时上报实时值
+#define         CMD_REPORT_SENSOR       "reportSensor"          //主动上报传感器
 #define         CMD_GET_HUB_STATE       "state"                 //获取hub信息
 #define         CMD_SET_HUB_NAME        "setName"               //设置hub名称
 #define         CMD_GET_ALARM_SET       "getAlarmSetting"       //获取报警
@@ -653,4 +654,5 @@ void PumPAndValveChangeType(u16 id, u8 pre_type, u8 now_type);
 char *ReplyGetLightList(cloudcmd_t *cmd);
 void CmdGetLightList(char *data, cloudcmd_t *cmd);
 void CmdSetLightList(char *data, cloudcmd_t *cmd);
+char *SendReportSensor(char *cmd);
 #endif /* APPLICATIONS_CLOUDPROTOCOL_CLOUDPROTOCOLBUSINESS_H_ */
