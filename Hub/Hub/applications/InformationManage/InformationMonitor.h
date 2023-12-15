@@ -117,6 +117,14 @@ struct system_time
     u8  second;
 };
 
+typedef struct reportWarnPara{
+    u8      warn_no;
+    u16     value;
+    u8      offline_no;
+    u8      deviceOrNo;
+    char    info[20];
+}type_warn_para;
+
 enum{
     WORK_NO = 0,
     WORK_DOWN,

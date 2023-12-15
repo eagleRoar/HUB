@@ -28,7 +28,7 @@ rt_err_t GetIPAddress(u8 *ip)
     ip[1] = ipAddress >> 16;
     ip[0] = ipAddress >> 24;
 
-    LOG_D("ip address = %d.%d.%d.%d",ip[3],ip[2],ip[1],ip[0]);
+//    LOG_D("ip address = %d.%d.%d.%d",ip[3],ip[2],ip[1],ip[0]);
 
     return RT_EOK;
 }

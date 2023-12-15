@@ -36,7 +36,7 @@ eccal_data_t ecdataTemp[SENSOR_MAX];
 extern struct ethDeviceStruct *eth;
 extern const u8    HEAD_CODE[4];
 extern int tcp_sock;
-
+extern  tankWarnState_t* GetTankWarnState(void);
 u8 TankCannotRun[TANK_LIST_MAX] = {0,0,0,0};
 
 #if(HUB_ENVIRENMENT == HUB_SELECT)
@@ -225,8 +225,9 @@ void monitorTankSensorWarn(sys_tank_t *list, sys_set_t *set)
                         default:
                             break;
                     }
-                    //LOG_W("monitorTankSensorWarn tank no = %d, temp = %d",index,temp);
-                    SendWarnToCloudAndApp(GetMqttClient(), CMD_HUB_REPORT_WARN, 62500 + temp - 1, value, RT_NULL);
+
+//                    SendWarnToCloudAndApp(GetMqttClient(), CMD_HUB_REPORT_WARN, 62500 + temp - 1, value, RT_NULL);
+                    sendWarnReport(62500 + temp - 1, value, 0, NO, RT_NULL);
                 }
 
                 tankStatePre[index][bit] = warnFlag;
@@ -394,11 +395,11 @@ void monitorTankSensorWarn(sys_tank_t *list, sys_set_t *set)
 
                                             if(2 == state)
                                             {
-                                                SendWarnToCloudAndApp(GetMqttClient(), CMD_HUB_REPORT_WARN, warnLow, sensorData, info);
+                                                sendWarnReport(warnLow, sensorData, 0, NO, info);
                                             }
                                             else if(1 == state)
                                             {
-                                                SendWarnToCloudAndApp(GetMqttClient(), CMD_HUB_REPORT_WARN, warnHigh, sensorData, info);
+                                                sendWarnReport(warnHigh, sensorData, 0, NO, info);
                                             }
                                         }
                                     }
@@ -505,7 +506,7 @@ void monitorTankTimeOutWarn(sys_tank_t *list, sys_set_t *set)
                 preState[index] = state[index];
 
                 //发送补水超时
-                SendWarnToCloudAndApp(GetMqttClient(), CMD_HUB_REPORT_WARN, warnLow, 0, tank->name);
+                sendWarnReport(warnLow, 0, 0, NO, tank->name);
             }
         }
     }
@@ -4339,42 +4340,6 @@ void monitorDayAndNight(void)
                 GetSysSet()->dayOrNight = NIGHT_TIME;
             }
         }
-    }
-}
-
-//发送report
-void sendReportToApp(void)
-{
-    u8              *buf                = RT_NULL;
-    u16             length              = 0;
-
-    if(GetTcpSocket() > 0)
-    {
-        //申请内存
-        buf = rt_malloc(1024 * 2);
-        if(RT_NULL != buf)
-        {
-            rt_memcpy(buf, HEAD_CODE, 4);
-            if(RT_EOK == SendDataToCloud(RT_NULL, CMD_HUB_REPORT, 0 , 0, buf + sizeof(eth_page_head), &length, NO, 0, NO))
-            {
-                if(length > 0)
-                {
-                    rt_memcpy(buf + 4, &length, 2);
-                    if (RT_EOK != TcpSendMsg(&tcp_sock, buf, length + sizeof(eth_page_head)))
-                    {
-                        closeTcpSocket();
-                    }
-                }
-            }
-        }
-
-        //释放内存
-        if(RT_NULL != buf)
-        {
-            rt_free(buf);
-            buf = RT_NULL;
-        }
-
     }
 }
 

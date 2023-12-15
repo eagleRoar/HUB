@@ -49,4 +49,5 @@ void ServerUrlPage(type_btn_event *event, u64 *info);
 void hubInfoPage(type_page_t *page);
 void ipInfoPage(type_page_t *page);
 void restoreSettingsPage(type_page_t *page);
+void memoryInfoPage(type_page_t *page);
 #endif /* APPLICATIONS_OLED1309_OLEDBUSINESS_OLEDBUSINESS_H_ */

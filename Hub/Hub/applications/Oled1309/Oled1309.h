@@ -70,6 +70,7 @@ SERVER_URL,             //选择服务器网址
 HUB_INFO,
 IP_INFO,
 RESTORE_SETTINGS,       //恢复出厂设置
+MEMORY_INFO,            //内存使用情况
 //工厂版本
 FA_SENSOR_PAGE,
 FA_DEVICE_PAGE,

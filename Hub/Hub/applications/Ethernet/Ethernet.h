@@ -52,12 +52,13 @@ struct masterBroadInfo
     u32 time;
     u32 version;
 };
-
+#pragma pack(1)
 struct eth_heart
 {
     u8      connect;
     time_t  last_connet_time;
 };
+#pragma pack()
 
 enum
 {
@@ -83,4 +84,9 @@ void UdpTaskEntry(void* parameter);
 void EthernetTaskInit(void);
 eth_heart_t *getEthHeart(void);
 int getSockState(int);
+int GetTcpSocket(void);
+eth_heart_t *getEthHeart(void);
+void SetSendWarnFlag(u8 flag);
+u8 GetSendWarnFlag(void);
+void closeTcpSocket(void);
 #endif /* APPLICATIONS_ETHERNET_H_ */

@@ -979,7 +979,6 @@ rt_err_t ReplyDataToCloud(mqtt_client *client, int *sock, u8 sendCloudFlg)
         }
         else if(0 == rt_memcmp(CMD_GET_RECIPE_ALL, cloudCmd.cmd, sizeof(CMD_GET_RECIPE_ALL)))//获取配方列表all
         {
-            //LOG_D(" recv cmd CMD_GET_RECIPE_ALL");
             str = ReplyGetRecipeListAll(CMD_GET_RECIPE_ALL, cloudCmd, GetSysRecipt());
         }
         else if((0 == rt_memcmp(CMD_GET_DIMMING_CURVE, cloudCmd.cmd, sizeof(CMD_GET_DIMMING_CURVE))) ||
@@ -1163,6 +1162,16 @@ rt_err_t ReplyDataToCloud(mqtt_client *client, int *sock, u8 sendCloudFlg)
         {
             str = SendReportSensor(CMD_REPORT_SENSOR);
         }
+        else if(0 == rt_memcmp(CMD_HUB_REPORT, cloudCmd.cmd, sizeof(CMD_HUB_REPORT)))//主动上报实时值
+        {
+            str = SendHubReport(CMD_HUB_REPORT, GetSysSet());
+        }
+        else if(0 == rt_memcmp(CMD_HUB_REPORT_WARN, cloudCmd.cmd, sizeof(CMD_HUB_REPORT_WARN)))//主动上报报警
+        {
+            str = SendHubReportWarn(CMD_HUB_REPORT_WARN, GetSysSet(), GetWarnPara().warn_no,
+                    GetWarnPara().value, GetWarnPara().offline_no, GetWarnPara().deviceOrNo,
+                    GetWarnPara().info);
+        }
 
         if(RT_NULL != str)
         {
@@ -1218,58 +1227,6 @@ rt_err_t ReplyDataToCloud(mqtt_client *client, int *sock, u8 sendCloudFlg)
     return ret;
 }
 
-rt_err_t SendDataToCloud(mqtt_client *client, char *cmd, u8 warn_no, u16 value, u8 *buf, u16 *length, u8 cloudFlg, u8 offline_no, u8 deviceOrNo)
-{
-    rt_err_t    ret     = RT_ERROR;
-    char name[20];
-    char *str = RT_NULL;
-
-    if(0 == rt_memcmp(CMD_HUB_REPORT, cmd, sizeof(CMD_HUB_REPORT)))//主动上报实时值
-    {
-        str = SendHubReport(CMD_HUB_REPORT, GetSysSet());
-    }
-    else if(0 == rt_memcmp(CMD_HUB_REPORT_WARN, cmd, sizeof(CMD_HUB_REPORT_WARN)))//主动上报报警
-    {
-        str = SendHubReportWarn(CMD_HUB_REPORT_WARN, GetSysSet(), warn_no, value, offline_no, deviceOrNo);
-    }
-    else if(0 == rt_memcmp(TEST_CMD, cmd, sizeof(TEST_CMD)))
-    {
-        str = ReplyTest(TEST_CMD, cloudCmd);
-    }
-
-    if(RT_NULL != str)
-    {
-        rt_memset(name, ' ', 20);
-        GetSnName(name, 12);
-        strcpy(name + 11, "/reply");
-        name[19] = '\0';
-
-        //是否是云端
-        if(NO == cloudFlg)
-        {
-            *length = strlen(str);
-            if(*length < SEND_ETH_BUFFSZ)
-            {
-                rt_memcpy(buf, (u8 *)str, *length);
-            }
-            else
-            {
-                LOG_E("SendDataToCloud length too long");
-            }
-        }
-        else if(YES == cloudFlg)
-        {
-            paho_mqtt_publish(client, QOS1, name, str, strlen(str));
-        }
-
-        //获取数据完之后需要free否知数据泄露
-        cJSON_free(str);
-        str = RT_NULL;
-        ret = RT_EOK;
-    }
-
-    return ret;
-}
 
 /**
  * 解析云数据包，订阅数据解析
@@ -1687,42 +1644,8 @@ void analyzeCloudData(char *data, u8 cloudFlg)
 time_t ReplyTimeStamp(void)
 {
     time_t      now_time;
-    struct tm   *time       = RT_NULL;
-    int         zone;
-    char        ntpzone[9];
-    char        delim[]     = ":";
-    char *p         = RT_NULL;
 
     now_time = getTimeStamp();
-//    time = getTimeStampByDate(&now_time);
-//    strcpy(ntpzone, GetSysSet()->sysPara.ntpzone);
-//    ntpzone[8] = '\0';
-//    p = strtok(ntpzone, delim);
-//    if(RT_NULL != p)
-//    {
-//        zone = atoi(p);
-//        if(zone > 0)
-//        {
-//            time->tm_hour -= zone;
-//            p = strtok(NULL, delim);
-//            if(RT_NULL != p)
-//            {
-//                time->tm_min -= atoi(p);
-//            }
-//        }
-//        else
-//        {
-//            time->tm_hour += zone;
-//            p = strtok(NULL, delim);
-//            if(RT_NULL != p)
-//            {
-//                time->tm_min += atoi(p);
-//            }
-//        }
-//
-//    }
-//
-//    now_time = changeTmTotimet(time);
 
     return now_time;
 }
@@ -1854,8 +1777,6 @@ void co2Calibrate(type_monitor_t *monitor, int *data, u8 *do_cal_flg, u8 *saveFl
 void sendOfflinewarnning(type_monitor_t *monitor)
 {
     u8          index               = 0;
-    u8          *buf                = RT_NULL;
-    u16         length              = 0;
     sys_set_t   *set                = GetSysSet();
     static u8   offline[DEVICE_MAX] = {NO};
 #if (HUB_SELECT == HUB_IRRIGSTION)
@@ -1893,31 +1814,7 @@ void sendOfflinewarnning(type_monitor_t *monitor)
 
             if(YES == offline[index])
             {
-                //发送给云服务器
-                SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT_WARN, WARN_OFFLINE - 1, VALUE_NULL, RT_NULL, RT_NULL, YES, index, YES);
-                //发送给app
-                buf = rt_malloc(1024 * 2);
-                if(RT_NULL != buf)
-                {
-                    rt_memcpy(buf, HEAD_CODE, 4);
-
-                    if(RT_EOK == SendDataToCloud(RT_NULL, CMD_HUB_REPORT_WARN, WARN_OFFLINE - 1,
-                            VALUE_NULL, (u8 *)buf + sizeof(eth_page_head), &length, NO, index, YES))
-                    {
-                        if(length > 0)
-                        {
-                            rt_memcpy(buf + 4, &length, 2);
-                            if (RT_EOK != TcpSendMsg(&tcp_sock, buf, length + sizeof(eth_page_head)))
-                            {
-                                closeTcpSocket();
-                            }
-                        }
-                    }
-
-                    //回收内存 避免内存泄露
-                    rt_free(buf);
-                    buf = RT_NULL;
-                }
+                sendWarnReport(WARN_OFFLINE - 1, VALUE_NULL, index, YES, RT_NULL);
             }
         }
     }
@@ -1932,32 +1829,7 @@ void sendOfflinewarnning(type_monitor_t *monitor)
 
             if(CON_FAIL == offlineAqua[index])
             {
-
-                //发送给云服务器
-                SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT_WARN, WARN_OFFLINE - 1, VALUE_NULL, RT_NULL, RT_NULL, YES, index, NO);
-                //发送给app
-                buf = rt_malloc(1024 * 2);
-                if(RT_NULL != buf)
-                {
-                    rt_memcpy(buf, HEAD_CODE, 4);
-
-                    if(RT_EOK == SendDataToCloud(RT_NULL, CMD_HUB_REPORT_WARN, WARN_OFFLINE - 1,
-                            VALUE_NULL, (u8 *)buf + sizeof(eth_page_head), &length, NO, index, NO))
-                    {
-                        if(length > 0)
-                        {
-                            rt_memcpy(buf + 4, &length, 2);
-                            if (RT_EOK != TcpSendMsg(&tcp_sock, buf, length + sizeof(eth_page_head)))
-                            {
-                                closeTcpSocket();
-                            }
-                        }
-                    }
-
-                    //回收内存 避免内存泄露
-                    rt_free(buf);
-                    buf = RT_NULL;
-                }
+                sendWarnReport(WARN_OFFLINE - 1, VALUE_NULL, index, NO, RT_NULL);
             }
         }
     }
@@ -1966,8 +1838,6 @@ void sendOfflinewarnning(type_monitor_t *monitor)
 
 void sendwarnningInfo(void)
 {
-    u8              *buf                = RT_NULL;
-    u16             length              = 0;
     static u8       warn[WARN_MAX];
 
     for(u8 item = 0; item < WARN_MAX; item++)
@@ -1978,142 +1848,50 @@ void sendwarnningInfo(void)
 
             if(ON == GetSysSet()->warn[item])
             {
-                //发送给云平台
-                if(YES == GetMqttStartFlg())
-                {
 #if(HUB_SELECT == HUB_ENVIRENMENT)
-                        if(((item + 1) == WARN_TEMP_HIGHT) ||
-                            ((item + 1) == WARN_TEMP_LOW)||
-                            ((item + 1) == WARN_HUMI_HIGHT)||
-                            ((item + 1) == WARN_HUMI_LOW)||
-                            ((item + 1) == WARN_CO2_HIGHT)||
-                            ((item + 1) == WARN_CO2_LOW)||
-                            ((item + 1) == WARN_VPD_HIGHT)||
-                            ((item + 1) == WARN_VPD_LOW)||
-                            ((item + 1) == WARN_PAR_HIGHT)||
-                            ((item + 1) == WARN_PAR_LOW)||
-                            ((item + 1) == WARN_LINE_STATE)||
-                            ((item + 1) == WARN_LINE_AUTO_T)||
-                            ((item + 1) == WARN_LINE_AUTO_OFF)||
-                            ((item + 1) == WARN_CO2_TIMEOUT)||
-                            ((item + 1) == WARN_TEMP_TIMEOUT)||
-                            ((item + 1) == WARN_HUMI_TIMEOUT)||
-                            ((item + 1) == WARN_SMOKE) ||
-                            ((item + 1) == WARN_WATER))
-                        {
-                            SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT_WARN, item, GetSysSet()->warn_value[item], RT_NULL, RT_NULL, YES, 0, NO);
-                        }
-#elif (HUB_SELECT == HUB_IRRIGSTION)
-                        if(((item + 1) == WARN_PH_HIGHT) ||
-                            ((item + 1) == WARN_PH_LOW)||
-                            ((item + 1) == WARN_EC_HIGHT)||
-                            ((item + 1) == WARN_EC_LOW)||
-                            ((item + 1) == WARN_WT_HIGHT)||
-                            ((item + 1) == WARN_WT_LOW)||
-                            ((item + 1) == WARN_WL_HIGHT)||
-                            ((item + 1) == WARN_WL_LOW)||
-                            ((item + 1) == WARN_SMOKE) ||
-                            ((item + 1) == WARN_WATER)||
-                            ((item + 1) == WARN_AUTOFILL_TIMEOUT) ||
-                            ((item + 1) == WARN_SOIL_W_HIGHT) ||
-                            ((item + 1) == WARN_SOIL_W_LOW)||
-                            ((item + 1) == WARN_SOIL_T_HIGHT) ||
-                            ((item + 1) == WARN_SOIL_T_LOW)||
-                            ((item + 1) == WARN_SOIL_EC_HIGHT) ||
-                            ((item + 1) == WARN_SOIL_EC_LOW))
-                        {
-                            SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT_WARN, item, GetSysSet()->warn_value[item], RT_NULL, RT_NULL, YES, 0, NO);
-                        }
-#endif
-                }
-
-                //发送给app
-                if(GetTcpSocket() > 0)
-                {
-                    //申请内存
-                    buf = rt_malloc(1024 * 2);
-                    if(RT_NULL != buf)
+                    if(((item + 1) == WARN_TEMP_HIGHT) ||
+                        ((item + 1) == WARN_TEMP_LOW)||
+                        ((item + 1) == WARN_HUMI_HIGHT)||
+                        ((item + 1) == WARN_HUMI_LOW)||
+                        ((item + 1) == WARN_CO2_HIGHT)||
+                        ((item + 1) == WARN_CO2_LOW)||
+                        ((item + 1) == WARN_VPD_HIGHT)||
+                        ((item + 1) == WARN_VPD_LOW)||
+                        ((item + 1) == WARN_PAR_HIGHT)||
+                        ((item + 1) == WARN_PAR_LOW)||
+                        ((item + 1) == WARN_LINE_STATE)||
+                        ((item + 1) == WARN_LINE_AUTO_T)||
+                        ((item + 1) == WARN_LINE_AUTO_OFF)||
+                        ((item + 1) == WARN_CO2_TIMEOUT)||
+                        ((item + 1) == WARN_TEMP_TIMEOUT)||
+                        ((item + 1) == WARN_HUMI_TIMEOUT)||
+                        ((item + 1) == WARN_SMOKE) ||
+                        ((item + 1) == WARN_WATER))
                     {
-                        rt_memcpy(buf, HEAD_CODE, 4);
-#if(HUB_SELECT == HUB_ENVIRENMENT)
-                            if(((item + 1) == WARN_TEMP_HIGHT) ||
-                                ((item + 1) == WARN_TEMP_LOW)||
-                                ((item + 1) == WARN_HUMI_HIGHT)||
-                                ((item + 1) == WARN_HUMI_LOW)||
-                                ((item + 1) == WARN_CO2_HIGHT)||
-                                ((item + 1) == WARN_CO2_LOW)||
-                                ((item + 1) == WARN_VPD_HIGHT)||
-                                ((item + 1) == WARN_VPD_LOW)||
-                                ((item + 1) == WARN_PAR_HIGHT)||
-                                ((item + 1) == WARN_PAR_LOW)||
-                                ((item + 1) == WARN_LINE_STATE)||
-                                ((item + 1) == WARN_LINE_AUTO_T)||
-                                ((item + 1) == WARN_LINE_AUTO_OFF)||
-                                ((item + 1) == WARN_CO2_TIMEOUT)||
-                                ((item + 1) == WARN_TEMP_TIMEOUT)||
-                                ((item + 1) == WARN_HUMI_TIMEOUT)||
-                                ((item + 1) == WARN_SMOKE)||
-                                ((item + 1) == WARN_WATER))
-                            {
-                                if(RT_EOK == SendDataToCloud(RT_NULL, CMD_HUB_REPORT_WARN, item,
-                                        GetSysSet()->warn_value[item], (u8 *)buf + sizeof(eth_page_head), &length, NO, 0, NO))
-                                {
-                                    if(length > 0)
-                                    {
-
-                                        rt_memcpy(buf + 4, &length, 2);
-                                        if (RT_EOK != TcpSendMsg(&tcp_sock, buf, length + sizeof(eth_page_head)))
-                                        {
-                                            closeTcpSocket();
-                                        }
-                                        LOG_W("send to app: %.*s",length,buf + sizeof(eth_page_head));
-                                    }
-                                }
-                            }
+                        sendWarnReport(item, GetSysSet()->warn_value[item], 0, NO, RT_NULL);
+                    }
 #elif (HUB_SELECT == HUB_IRRIGSTION)
-
-                            if(((item + 1) == WARN_PH_HIGHT) ||
-                                ((item + 1) == WARN_PH_LOW)||
-                                ((item + 1) == WARN_EC_HIGHT)||
-                                ((item + 1) == WARN_EC_LOW)||
-                                ((item + 1) == WARN_WT_HIGHT)||
-                                ((item + 1) == WARN_WT_LOW)||
-                                ((item + 1) == WARN_WL_HIGHT)||
-                                ((item + 1) == WARN_WL_LOW)||
-                                ((item + 1) == WARN_SMOKE) ||
-                                ((item + 1) == WARN_WATER)||
-                                ((item + 1) == WARN_AUTOFILL_TIMEOUT)||
-                                ((item + 1) == WARN_SOIL_W_HIGHT) ||
-                                ((item + 1) == WARN_SOIL_W_LOW)||
-                                ((item + 1) == WARN_SOIL_T_HIGHT) ||
-                                ((item + 1) == WARN_SOIL_T_LOW)||
-                                ((item + 1) == WARN_SOIL_EC_HIGHT) ||
-                                ((item + 1) == WARN_SOIL_EC_LOW))
-                            {
-                                //rt_memset(package.data, ' ', SEND_ETH_BUFFSZ);
-                                if(RT_EOK == SendDataToCloud(RT_NULL, CMD_HUB_REPORT_WARN, item,
-                                        GetSysSet()->warn_value[item], buf + sizeof(eth_page_head), &length, NO, 0, NO))
-                                {
-                                    if(length > 0)
-                                    {
-                                        rt_memcpy(buf + 4, &length, 2);
-                                        if (RT_EOK != TcpSendMsg(&tcp_sock, buf, length + sizeof(eth_page_head)))
-                                        {
-                                            closeTcpSocket();
-                                        }
-                                    }
-                                }
-                            }
-#endif
-                    }
-
-                    //释放内存
-                    if(RT_NULL != buf)
+                    if(((item + 1) == WARN_PH_HIGHT) ||
+                        ((item + 1) == WARN_PH_LOW)||
+                        ((item + 1) == WARN_EC_HIGHT)||
+                        ((item + 1) == WARN_EC_LOW)||
+                        ((item + 1) == WARN_WT_HIGHT)||
+                        ((item + 1) == WARN_WT_LOW)||
+                        ((item + 1) == WARN_WL_HIGHT)||
+                        ((item + 1) == WARN_WL_LOW)||
+                        ((item + 1) == WARN_SMOKE) ||
+                        ((item + 1) == WARN_WATER)||
+                        ((item + 1) == WARN_AUTOFILL_TIMEOUT) ||
+                        ((item + 1) == WARN_SOIL_W_HIGHT) ||
+                        ((item + 1) == WARN_SOIL_W_LOW)||
+                        ((item + 1) == WARN_SOIL_T_HIGHT) ||
+                        ((item + 1) == WARN_SOIL_T_LOW)||
+                        ((item + 1) == WARN_SOIL_EC_HIGHT) ||
+                        ((item + 1) == WARN_SOIL_EC_LOW))
                     {
-                        rt_free(buf);
-                        buf = RT_NULL;
+                        sendWarnReport(item, GetSysSet()->warn_value[item], 0, NO, RT_NULL);
                     }
-                }
+#endif
             }
         }
     }

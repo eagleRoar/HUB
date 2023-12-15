@@ -31,6 +31,8 @@ extern  cloudcmd_t              cloudCmd;
 extern  int                     tcp_sock;
 extern  const u8                HEAD_CODE[4];
 
+type_warn_para warnPara;
+
 rt_err_t GetValueU8(cJSON *temp, type_kv_u8 *data)
 {
     rt_err_t ret = RT_ERROR;
@@ -198,7 +200,6 @@ rt_err_t GetValueByC16(cJSON *temp, char *name, char *value, u8 length)
 
     return ret;
 }
-
 
 void CmdSetTempValue(char *data, cloudcmd_t *cmd)
 {
@@ -2439,7 +2440,7 @@ void CmdSetLine(char *data, proLine_t *line, proLine_4_t *line_4, cloudcmd_t *cm
     }
 }
 
-char *SendHubReportWarn(char *cmd, sys_set_t *set, u8 warn_no, u16 value, u8 offline_no, u8 deviceOrNo)
+char *SendHubReportWarn(char *cmd, sys_set_t *set, u8 warn_no, u16 value, u8 offline_no, u8 deviceOrNo, char *info)
 {
     char            *str        = RT_NULL;
     char            name[12];
@@ -2478,6 +2479,9 @@ char *SendHubReportWarn(char *cmd, sys_set_t *set, u8 warn_no, u16 value, u8 off
         }
         else
         {
+            if(RT_NULL != info){
+                cJSON_AddStringToObject(json, "name", info);
+            }
             cJSON_AddNumberToObject(json, "value", value);
         }
         cJSON_AddStringToObject(json, "ntpzone", "+00:00");//唐工要求固定返回+00:00
@@ -2490,67 +2494,26 @@ char *SendHubReportWarn(char *cmd, sys_set_t *set, u8 warn_no, u16 value, u8 off
     return str;
 }
 
-void SendWarnToCloudAndApp(mqtt_client *client, char *cmd, u16 warn_no, u16 value, char *info)
+type_warn_para GetWarnPara(void)
 {
-    char            name[100];
-    char            *str        = RT_NULL;
-    u16             warn        = warn_no + 1;
-    u8              type        = 0;
-    cJSON           *json       = cJSON_CreateObject();
-    u8              *page       = RT_NULL;
-    u16             len;
+    return warnPara;
+}
 
-    if(RT_NULL != json)
-    {
-        cJSON_AddStringToObject(json, "cmd", cmd);
-        cJSON_AddStringToObject(json, "sn", GetSnName(name, 12));
+void SetWarnPara(u8 warn_no, u16 value, u8 offline_no, u8 deviceOrNo, char *info)
+{
+    warnPara.warn_no = warn_no;
+    warnPara.value = value;
+    warnPara.offline_no = offline_no;
+    warnPara.deviceOrNo = deviceOrNo;
+//    warnPara.info = info;
+    strncpy(warnPara.info, info, 20);
+    warnPara.info[19] = '\0';
+}
 
-        type = GetReportType(warn);
-
-        cJSON_AddNumberToObject(json, "type", type);
-        cJSON_AddNumberToObject(json, "warning", warn);
-        if(RT_NULL != info)
-        {
-            cJSON_AddStringToObject(json, "name", info);
-        }
-        cJSON_AddNumberToObject(json, "value", value);
-        cJSON_AddStringToObject(json, "ntpzone", "+00:00");
-        cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
-
-        str = cJSON_PrintUnformatted(json);
-        cJSON_Delete(json);
-    }
-    //发送完之后需要释放str
-    if(str)
-    {
-        //1.发送给cloud
-        rt_memset(name, ' ', 20);
-        GetSnName(name, 12);
-        strcpy(name + 11, "/reply");
-        name[19] = '\0';
-
-        paho_mqtt_publish(client, QOS1, name, str, strlen(str));
-
-        //2.发送给app
-        len = strlen(str);
-        page = rt_malloc(sizeof(eth_page_head) + len);
-        if(RT_NULL != page)
-        {
-            rt_memcpy(page, HEAD_CODE, 4);
-            rt_memcpy(page + 4, (u8 *)&len, 2);
-            rt_memcpy(page + sizeof(eth_page_head), str, len);
-
-            if(RT_EOK != TcpSendMsg(&tcp_sock, page, len + sizeof(eth_page_head)))
-            {
-                closeTcpSocket();
-            }
-            rt_free(page);
-        }
-
-        //3.释放
-        cJSON_free(str);
-        str = RT_NULL;
-    }
+void sendWarnReport(u8 warn_no, u16 value, u8 offline_no, u8 deviceOrNo, char *info)
+{
+    SetSendWarnFlag(YES);
+    SetWarnPara(warn_no, value, offline_no, deviceOrNo, info);
 }
 
 #define NormalState     0
@@ -2630,6 +2593,8 @@ char *SendHubReport(char *cmd, sys_set_t *set)
     aqua_t          *aqua           = RT_NULL;
     int             valueTemp[10]    = {VALUE_NULL,VALUE_NULL,VALUE_NULL,VALUE_NULL,VALUE_NULL,VALUE_NULL,VALUE_NULL,VALUE_NULL,VALUE_NULL,VALUE_NULL};
 #endif
+
+    rt_err_t        result          = RT_EOK;
 
     if(RT_NULL != json)
     {
@@ -2900,10 +2865,31 @@ char *SendHubReport(char *cmd, sys_set_t *set)
 //                        cJSON_AddItemToObject(tank, "workingList", workingList);
 //                    }
 
-                    cJSON_AddItemToArray(list, tank);
+                    //如果申请失败需要将之前已经申请的空间释放，否则导致内存泄漏
+
+                    if(RT_FALSE == cJSON_AddItemToArray(list, tank))
+                    {
+                        cJSON_Delete(tank);
+                        tank = RT_NULL;
+                        cJSON_Delete(list);
+                        list = RT_NULL;
+                        result = RT_ERROR;
+                    }
+                } else {
+                    //如果申请失败需要将之前已经申请的空间释放，否则导致内存泄漏
+                    cJSON_Delete(list);
+                    list = RT_NULL;
+                    result = RT_ERROR;
                 }
             }
-            cJSON_AddItemToObject(json, "pool", list);
+            if(RT_FALSE == cJSON_AddItemToObject(json, "pool", list))
+            {
+                cJSON_Delete(list);
+                list = RT_NULL;
+                result = RT_ERROR;
+            }
+        } else {
+            result = RT_ERROR;
         }
 #endif
 
@@ -2912,8 +2898,12 @@ char *SendHubReport(char *cmd, sys_set_t *set)
         cJSON_AddStringToObject(json, "ntpzone", "+00:00");
         cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
 
-        str = cJSON_PrintUnformatted(json);
-        cJSON_Delete(json);
+        if(RT_ERROR == result) {
+            cJSON_Delete(json);
+        } else {
+            str = cJSON_PrintUnformatted(json);
+            cJSON_Delete(json);
+        }
     }
 
     return str;
@@ -2927,7 +2917,7 @@ char *SendReportSensor(char *cmd)
     char            *lastStr    = RT_NULL;
     char            name[15]    = "";
     static u16      length      = 0;
-
+    rt_err_t        result      = RT_EOK;
     if(json)
     {
         cJSON_AddStringToObject(json, "cmd", cmd);
@@ -2940,11 +2930,26 @@ char *SendReportSensor(char *cmd)
                 if(CON_SUCCESS == GetMonitor()->sensor[i].conn_state)
                 {
                     sprintf(name,"%s%d", "sensorPort", i);
-                    cJSON_AddItemToArray(senlist, cJSON_CreateString(name));
+                    cJSON *sen_item = cJSON_CreateString(name);
+                    if(RT_FALSE == cJSON_AddItemToArray(senlist, sen_item)) {
+                        cJSON_Delete(sen_item);
+                        sen_item = RT_NULL;
+                        cJSON_Delete(senlist);
+                        senlist = RT_NULL;
+                        result = RT_ERROR;
+                    }
                 }
             }
 
-            cJSON_AddItemToObject(json, "sensorList", senlist);
+            if(RT_FALSE == cJSON_AddItemToObject(json, "sensorList", senlist)) {
+                cJSON_Delete(senlist);
+                senlist = RT_NULL;
+                result = RT_ERROR;
+            }
+        } else {
+            result = RT_ERROR;
+            cJSON_Delete(json);
+            return lastStr;
         }
 
         cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
@@ -3042,11 +3047,32 @@ char *SendReportSensor(char *cmd)
                                         cJSON_AddNumberToObject(portItem, "value", sensor->__stora[port].value);
                                     }
 
-                                    cJSON_AddItemToArray(itemList, portItem);
+                                    if(RT_FALSE == cJSON_AddItemToArray(itemList, portItem))
+                                    {
+                                        cJSON_Delete(portItem);
+                                        portItem = RT_NULL;
+                                        cJSON_Delete(itemList);
+                                        itemList = RT_NULL;
+                                        result = RT_ERROR;
+                                    }
+                                } else {
+                                    //释放空间
+                                    cJSON_Delete(item);
+                                    item = RT_NULL;
+                                    result = RT_ERROR;
                                 }
                             }
 
-                            cJSON_AddItemToObject(item, "list", itemList);
+                            if(RT_FALSE == cJSON_AddItemToObject(item, "list", itemList)) {
+
+                                cJSON_Delete(itemList);
+                                itemList = RT_NULL;
+                                cJSON_Delete(item);
+                                item = RT_NULL;
+                                result = RT_ERROR;
+                            }
+                        } else {
+                            result = RT_ERROR;
                         }
 
                         str1 = cJSON_PrintUnformatted(item);
@@ -3142,6 +3168,7 @@ char *SendReportSensor(char *cmd)
                             }
                         }
                         rt_free(str1);
+                    } else {
                     }
                 }
 
@@ -3152,6 +3179,12 @@ char *SendReportSensor(char *cmd)
             rt_free(str);
         }
 
+    }
+
+    if(RT_ERROR == result)
+    {
+        cJSON_free(lastStr);
+        lastStr = RT_NULL;
     }
 
     return lastStr;
@@ -3272,13 +3305,14 @@ char *ReplySetLightRecipe(char *cmd, line_4_recipe_t *recipe, cloudcmd_t cloud)
 #if(HUB_SELECT == HUB_ENVIRENMENT)
 char *ReplyGetLine(u8 lineNo, char *cmd, char *msgid, proLine_t line, proLine_4_t line_4, line_4_recipe_t *recipe,cloudcmd_t cloud)
 {
-    char    firstStartAt[15]    = "";
-    char    name[12];
-    char    *str                = RT_NULL;
-    u8      lineType            = 0;
-    cJSON   *json               = cJSON_CreateObject();
-    type_sys_time format_time;
-    sys_set_extern *set_ex      = GetSysSetExtern();
+    char            firstStartAt[15]    = "";
+    char            name[12];
+    char            *str                = RT_NULL;
+    u8              lineType            = 0;
+    cJSON           *json               = cJSON_CreateObject();
+    type_sys_time   format_time;
+    sys_set_extern  *set_ex             = GetSysSetExtern();
+    rt_err_t        result              = RT_EOK;
 
     if(RT_NULL != json)
     {
@@ -3344,11 +3378,21 @@ char *ReplyGetLine(u8 lineNo, char *cmd, char *msgid, proLine_t line, proLine_4_
                         cJSON_AddItemToArray(item, cJSON_CreateNumber(recipe[i].output3));
                         cJSON_AddItemToArray(item, cJSON_CreateNumber(recipe[i].output4));
 
-                        cJSON_AddItemToArray(recipeList, item);
+                        if(RT_FALSE == cJSON_AddItemToArray(recipeList, item)) {
+                            cJSON_Delete(item);
+                            item = RT_NULL;
+                            cJSON_Delete(recipeList);
+                            recipeList = RT_NULL;
+                            result = RT_ERROR;
+                        }
                     }
                 }
 
-                cJSON_AddItemToObject(json, "recipeList", recipeList);
+                if(RT_FALSE == cJSON_AddItemToObject(json, "recipeList", recipeList)) {
+                    cJSON_Delete(recipeList);
+                    recipeList = RT_NULL;
+                    result = RT_ERROR;
+                }
             }
 
             cJSON_AddNumberToObject(json, "mode", line_4.mode);
@@ -3372,12 +3416,22 @@ char *ReplyGetLine(u8 lineNo, char *cmd, char *msgid, proLine_t line, proLine_4_
                                 cJSON_AddNumberToObject(item, "en", line_4.timerList[i].en);
                                 cJSON_AddNumberToObject(item, "no", line_4.timerList[i].no);
 
-                                cJSON_AddItemToArray(timeList, item);
+                                if(RT_FALSE == cJSON_AddItemToArray(timeList, item)) {
+                                    cJSON_Delete(item);
+                                    item = RT_NULL;
+                                    cJSON_Delete(timeList);
+                                    timeList = RT_NULL;
+                                    result = RT_ERROR;
+                                }
                             }
                         }
                     }
 
-                    cJSON_AddItemToObject(json, "timerList", timeList);
+                    if(RT_FALSE == cJSON_AddItemToObject(json, "timerList", timeList)) {
+                        cJSON_Delete(timeList);
+                        timeList = RT_NULL;
+                        result = RT_ERROR;
+                    }
                 }
 //            }
 //            else if(LINE_BY_CYCLE == line_4.mode)
@@ -3396,12 +3450,23 @@ char *ReplyGetLine(u8 lineNo, char *cmd, char *msgid, proLine_t line, proLine_4_
                             {
                                 cJSON_AddNumberToObject(item, "duration", line_4.cycleList[i].duration);
                                 cJSON_AddNumberToObject(item, "no", line_4.cycleList[i].no);
-                                cJSON_AddItemToArray(cycleList, item);
+
+                                if(RT_FALSE == cJSON_AddItemToArray(cycleList, item)) {
+                                    cJSON_Delete(item);
+                                    item = RT_NULL;
+                                    cJSON_Delete(cycleList);
+                                    cycleList = RT_NULL;
+                                    result = RT_ERROR;
+                                }
                             }
                         }
                     }
 
-                    cJSON_AddItemToObject(json, "cycleList", cycleList);
+                    if(RT_FALSE == cJSON_AddItemToObject(json, "cycleList", cycleList)) {
+                        cJSON_Delete(cycleList);
+                        cycleList = RT_NULL;
+                        result = RT_ERROR;
+                    }
                 }
                 cJSON_AddNumberToObject(json, "pauseTime", line_4.pauseTime);
 //            }
@@ -3414,9 +3479,12 @@ char *ReplyGetLine(u8 lineNo, char *cmd, char *msgid, proLine_t line, proLine_4_
 
         cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
 
-        str = cJSON_PrintUnformatted(json);
-
-        cJSON_Delete(json);
+        if(RT_ERROR == result) {
+            cJSON_Delete(json);
+        } else {
+            str = cJSON_PrintUnformatted(json);
+            cJSON_Delete(json);
+        }
     }
 
     return str;
@@ -3542,11 +3610,12 @@ char *ReplyDeleteDevice(char *cmd, cloudcmd_t cloud)
 
 char *ReplySetSchedule(char *cmd, cloudcmd_t cloud)
 {
-    u8      index       = 0;
-    char    *str        = RT_NULL;
-    cJSON   *json       = cJSON_CreateObject();
-    cJSON   *list       = RT_NULL;
-    cJSON   *item       = RT_NULL;
+    u8          index       = 0;
+    char        *str        = RT_NULL;
+    cJSON       *json       = cJSON_CreateObject();
+    cJSON       *list       = RT_NULL;
+    cJSON       *item       = RT_NULL;
+    rt_err_t    result      = RT_EOK;
 
     if(RT_NULL != json)
     {
@@ -3570,18 +3639,33 @@ char *ReplySetSchedule(char *cmd, cloudcmd_t cloud)
                         cJSON_AddNumberToObject(item, "recipeId", sys_set.stageSet._list[index].recipeId);
                         cJSON_AddNumberToObject(item, "duration", sys_set.stageSet._list[index].duration_day);
 
-                        cJSON_AddItemToArray(list, item);
+                        if(RT_FALSE == cJSON_AddItemToArray(list, item)) {
+                            cJSON_Delete(item);
+                            item = RT_NULL;
+                            cJSON_Delete(list);
+                            list = RT_NULL;
+                            result = RT_ERROR;
+                        }
                     }
                 }
-                cJSON_AddItemToObject(json, "list", list);
+                if(RT_FALSE == cJSON_AddItemToObject(json, "list", list)) {
+
+                    cJSON_Delete(list);
+                    list = RT_NULL;
+                    result = RT_ERROR;
+                }
             }
         }
 
         cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
 
-        str = cJSON_PrintUnformatted(json);
+        if(RT_ERROR == result) {
+            cJSON_Delete(json);
+        } else {
+            str = cJSON_PrintUnformatted(json);
+            cJSON_Delete(json);
+        }
 
-        cJSON_Delete(json);
     }
 
     return str;
@@ -3723,6 +3807,7 @@ char *ReplyGetTank(char *cmd, cloudcmd_t cloud)
     cJSON           *sen_item   = RT_NULL;
     tank_t          *tank       = RT_NULL;
     device_t        *device     = RT_NULL;
+    rt_err_t        result      = RT_EOK;
 
     if(RT_NULL != json)
     {
@@ -3787,13 +3872,23 @@ char *ReplyGetTank(char *cmd, cloudcmd_t cloud)
                                 cJSON_AddStringToObject(sen_item, "sensorType",
                                         GetTankSensorSByType(GetSensorByAddr(GetMonitor(), tank->sensorId[0][item])->__stora[stora].func));
 
-                                cJSON_AddItemToArray(list, sen_item);
+                                if(RT_FALSE == cJSON_AddItemToArray(list, sen_item)) {
+                                    cJSON_Delete(sen_item);
+                                    sen_item = RT_NULL;
+                                    cJSON_Delete(list);
+                                    list = RT_NULL;
+                                    result = RT_ERROR;
+                                }
                             }
                         }
                     }
                 }
 
-                cJSON_AddItemToObject(json, "tankSensor", list);
+                if(RT_FALSE == cJSON_AddItemToObject(json, "tankSensor", list)) {
+                    cJSON_Delete(list);
+                    list = RT_NULL;
+                    result = RT_ERROR;
+                }
             }
 
             list = cJSON_CreateArray();
@@ -3824,13 +3919,23 @@ char *ReplyGetTank(char *cmd, cloudcmd_t cloud)
                                 cJSON_AddStringToObject(sen_item, "sensorType",
                                         GetTankSensorSByType(GetSensorByAddr(GetMonitor(), tank->sensorId[1][item])->__stora[stora].func));
 
-                                cJSON_AddItemToArray(list, sen_item);
+                                if(RT_FALSE == cJSON_AddItemToArray(list, sen_item)) {
+                                    cJSON_Delete(sen_item);
+                                    sen_item = RT_NULL;
+                                    cJSON_Delete(list);
+                                    list = RT_NULL;
+                                    result = RT_ERROR;
+                                }
                             }
                         }
                     }
                 }
 
-                cJSON_AddItemToObject(json, "inlineSensor", list);
+                if(RT_FALSE == cJSON_AddItemToObject(json, "inlineSensor", list)) {
+                    cJSON_Delete(list);
+                    list = RT_NULL;
+                    result = RT_ERROR;
+                }
             }
         }
         else
@@ -3838,13 +3943,22 @@ char *ReplyGetTank(char *cmd, cloudcmd_t cloud)
             LOG_E("ReplySetTank, get tank err");
         }
         cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
-        str = cJSON_PrintUnformatted(json);
-        cJSON_Delete(json);
+
+        if(RT_ERROR == result) {
+            cJSON_Delete(json);
+
+            return str;
+        } else {
+            str = cJSON_PrintUnformatted(json);
+            cJSON_Delete(json);
+        }
+
     }
 
     json = cJSON_CreateArray();
     if(json)
     {
+        result = RT_EOK;
         if(0 != tank->pumpId)
         {
             cJSON *pumpItem = cJSON_CreateObject();
@@ -3889,17 +4003,41 @@ char *ReplyGetTank(char *cmd, cloudcmd_t cloud)
                    {
                        if(0 != tank->valve[i])
                        {
-                           cJSON_AddItemToArray(valveI, cJSON_CreateNumber(tank->valve[i]));
+                           cJSON *valveItem = cJSON_CreateNumber(tank->valve[i]);
+                           if(RT_FALSE == cJSON_AddItemToArray(valveI, valveItem)) {
+                               cJSON_Delete(valveItem);
+                               valveItem = RT_NULL;
+                               cJSON_Delete(valveI);
+                               valveI = RT_NULL;
+                               result = RT_ERROR;
+                           }
                        }
                    }
-                   cJSON_AddItemToObject(pumpItem, "valve", valveI);
+
+                   if(RT_FALSE == cJSON_AddItemToObject(pumpItem, "valve", valveI)) {
+                       cJSON_Delete(valveI);
+                       valveI = RT_NULL;
+                       cJSON_Delete(pumpItem);
+                       pumpItem = RT_NULL;
+                       result = RT_ERROR;
+                   }
                }
 
-               cJSON_AddItemToArray(json, pumpItem);
+               if(RT_FALSE == cJSON_AddItemToArray(json, pumpItem)) {
+                   cJSON_Delete(pumpItem);
+                   pumpItem = RT_NULL;
+                   result = RT_ERROR;
+               }
             }
         }
-        str1 = cJSON_PrintUnformatted(json);
-        cJSON_Delete(json);
+
+        if(RT_ERROR == result) {
+            str1 = RT_NULL;
+            cJSON_Delete(json);
+        } else {
+            str1 = cJSON_PrintUnformatted(json);
+            cJSON_Delete(json);
+        }
     }
 
     LastStr = rt_malloc(2048);
@@ -3914,13 +4052,18 @@ char *ReplyGetTank(char *cmd, cloudcmd_t cloud)
             LOG_E("ReplyGetTank str size too large = %d",strlen(str));
         }
     }
-    cJSON_free(str);
+    if(str) {
+        cJSON_free(str);
+    }
 
     if(LastStr)
     {
         str_replace(LastStr, "\"pumpList_replace\"", str1);
     }
-    cJSON_free(str1);
+
+    if(str1) {
+        cJSON_free(str1);
+    }
 
    json = cJSON_CreateArray();
    if(json)
@@ -3972,7 +4115,9 @@ char *ReplyGetTank(char *cmd, cloudcmd_t cloud)
    {
        str_replace(LastStr, "\"valveList_replace\"", str1);
    }
-   cJSON_free(str1);
+   if(str1) {
+       cJSON_free(str1);
+   }
 
    if(strlen(LastStr) >= 2048)
    {
@@ -3992,6 +4137,8 @@ char *ReplySetWarn(char *cmd, cloudcmd_t cloud, sys_warn_t warn)
     cJSON           *pool       = RT_NULL;
     cJSON           *item       = RT_NULL;
 #endif
+
+    rt_err_t        result      = RT_EOK;
 
     if(RT_NULL != json)
     {
@@ -4063,16 +4210,33 @@ char *ReplySetWarn(char *cmd, cloudcmd_t cloud, sys_warn_t warn)
             for(index = 0; index < GetSysTank()->tank_size; index++)
             {
                 item = cJSON_CreateObject();
+
                 if(RT_NULL != item)
                 {
                     cJSON_AddNumberToObject(item, "no", index + 1);
                     cJSON_AddNumberToObject(item, "timeout", GetSysTank()->tank[index].poolTimeout);
 
-                    cJSON_AddItemToArray(pool, item);
+
+                    if(RT_FALSE == cJSON_AddItemToArray(pool, item)) {
+                        cJSON_Delete(item);
+                        item = RT_NULL;
+                        cJSON_Delete(pool);
+                        pool = RT_NULL;
+                        result = RT_ERROR;
+                    }
+
+                } else {
+                    result = RT_ERROR;
                 }
             }
 
-            cJSON_AddItemToObject(json, "poolTimeout", pool);
+            if(RT_FALSE == cJSON_AddItemToObject(json, "poolTimeout", pool)) {
+                cJSON_Delete(pool);
+                pool = RT_NULL;
+                result = RT_ERROR;
+            }
+        } else {
+            result = RT_ERROR;
         }
 #endif
 
@@ -4081,8 +4245,13 @@ char *ReplySetWarn(char *cmd, cloudcmd_t cloud, sys_warn_t warn)
         cJSON_AddNumberToObject(json, "offlineEn",warn.offlineEn);
 
         cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
-        str = cJSON_PrintUnformatted(json);
-        cJSON_Delete(json);
+
+        if(RT_ERROR == result) {
+            cJSON_Delete(json);
+        } else {
+            str = cJSON_PrintUnformatted(json);
+            cJSON_Delete(json);
+        }
     }
 
     return str;
@@ -4094,6 +4263,7 @@ char *ReplyGetRecipeList(char *cmd, cloudcmd_t cloud, sys_recipe_t *list)
     cJSON           *json       = cJSON_CreateObject();
     cJSON           *j_list     = cJSON_CreateArray();
     cJSON           *item       = RT_NULL;
+    rt_err_t        result      = RT_EOK;
 
     if(RT_NULL != json)
     {
@@ -4114,7 +4284,13 @@ char *ReplyGetRecipeList(char *cmd, cloudcmd_t cloud, sys_recipe_t *list)
                         cJSON_AddStringToObject(item, "name", list->recipe[index].name);
                         cJSON_AddNumberToObject(item, "color", list->recipe[index].color);
 
-                        cJSON_AddItemToArray(j_list, item);
+                        if(RT_FALSE == cJSON_AddItemToArray(j_list, item)) {
+                            cJSON_Delete(item);
+                            item = RT_NULL;
+                            cJSON_Delete(j_list);
+                            j_list = RT_NULL;
+                            result = RT_ERROR;
+                        }
                     }
                     else
                     {
@@ -4123,12 +4299,23 @@ char *ReplyGetRecipeList(char *cmd, cloudcmd_t cloud, sys_recipe_t *list)
                 }
             }
 
-            cJSON_AddItemToObject(json, "list", j_list);
+            if(RT_FALSE == cJSON_AddItemToObject(json, "list", j_list)) {
+
+                cJSON_Delete(j_list);
+                j_list = RT_NULL;
+                result = RT_ERROR;
+            }
         }
 
         cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
-        str = cJSON_PrintUnformatted(json);
-        cJSON_Delete(json);
+
+        if(RT_ERROR == result) {
+            cJSON_Delete(json);
+        } else {
+            str = cJSON_PrintUnformatted(json);
+            cJSON_Delete(json);
+        }
+
     }
 
     return str;
@@ -4234,6 +4421,7 @@ char *ReplyAddPumpValue(char *cmd, cloudcmd_t cloud, sys_tank_t *tank_list)
     char            *str        = RT_NULL;
     cJSON           *json       = cJSON_CreateObject();
     cJSON           *list       = cJSON_CreateArray();
+    rt_err_t        result      = RT_EOK;
 
     if(RT_NULL != json)
     {
@@ -4249,16 +4437,33 @@ char *ReplyAddPumpValue(char *cmd, cloudcmd_t cloud, sys_tank_t *tank_list)
                 {
                     if(0 != tank_list->tank[cloud.pump_no - 1].valve[item])
                     {
-                        cJSON_AddItemToArray(list, cJSON_CreateNumber(tank_list->tank[cloud.pump_no - 1].valve[item]));
+                        cJSON *temp = cJSON_CreateNumber(tank_list->tank[cloud.pump_no - 1].valve[item]);
+                        if(RT_FALSE == cJSON_AddItemToArray(list, temp)) {
+                            cJSON_Delete(temp);
+                            temp = RT_NULL;
+                            cJSON_Delete(list);
+                            list = RT_NULL;
+                            result = RT_ERROR;
+                        }
                     }
                 }
             }
-            cJSON_AddItemToObject(json, "valve", list);
+            if(RT_FALSE == cJSON_AddItemToObject(json, "valve", list)) {
+                cJSON_Delete(list);
+                list = RT_NULL;
+                result = RT_ERROR;
+            }
         }
 
         cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
-        str = cJSON_PrintUnformatted(json);
-        cJSON_Delete(json);
+
+        if(RT_ERROR == result) {
+            cJSON_Delete(json);
+        } else {
+            str = cJSON_PrintUnformatted(json);
+            cJSON_Delete(json);
+        }
+
     }
     else
     {
@@ -4406,6 +4611,7 @@ char *ReplyGetPumpSensorList(char *cmd, cloudcmd_t cloud)
     cJSON           *item       = RT_NULL;
     cJSON           *list       = RT_NULL;
     sensor_t        sensor;
+    rt_err_t        result      = RT_EOK;
 
     if(RT_NULL != json)
     {
@@ -4444,18 +4650,34 @@ char *ReplyGetPumpSensorList(char *cmd, cloudcmd_t cloud)
                                 //生成标记
                                 char flagName[20] = " ";
                                 sprintf(flagName, "sen%dreg%d",index,sen_no);
-                                cJSON_AddItemToArray(list, cJSON_CreateString(flagName));
+                                cJSON *flagTemp = cJSON_CreateString(flagName);
+                                if(RT_FALSE == cJSON_AddItemToArray(list, flagTemp)) {
+                                    cJSON_Delete(flagTemp);
+                                    flagTemp = RT_NULL;
+                                    cJSON_Delete(list);
+                                    list = RT_NULL;
+                                    result = RT_ERROR;
+                                }
                             }
                         }
                     }
                 }
             }
-            cJSON_AddItemToObject(json, "list", list);
+            if(RT_FALSE == cJSON_AddItemToObject(json, "list", list)) {
+                cJSON_Delete(list);
+                list = RT_NULL;
+                result = RT_ERROR;
+            }
         }
 
         cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
-        str = cJSON_PrintUnformatted(json);
-        cJSON_Delete(json);
+
+        if(RT_ERROR == result) {
+            cJSON_Delete(json);
+        } else {
+            str = cJSON_PrintUnformatted(json);
+            cJSON_Delete(json);
+        }
 
         //替换
         u16 length = strlen(str);
@@ -4599,6 +4821,8 @@ char *ReplyGetPoolAlarm(char *cmd, cloudcmd_t cloud)
     cJSON           *list       = RT_NULL;
     cJSON           *tank       = RT_NULL;
 
+    rt_err_t        result      = RT_EOK;
+
     if(RT_NULL != json)
     {
         cJSON_AddStringToObject(json, "cmd", cmd);
@@ -4614,25 +4838,51 @@ char *ReplyGetPoolAlarm(char *cmd, cloudcmd_t cloud)
             {
                 for(u8 item = 0; item < TANK_WARN_ITEM_MAX; item++)
                 {
+//                    LOG_D("no %d item %d, %d === %d",tank_no,
+//                            item, cloud.add_pool_func, GetSysSet()->tankWarnSet[tank_no][item].func);
                     if(cloud.add_pool_func == GetSysSet()->tankWarnSet[tank_no][item].func)
                     {
                         tank = cJSON_CreateObject();
+
                         if(RT_NULL != tank)
                         {
                             cJSON_AddNumberToObject(tank, "no", tank_no + 1);
                             cJSON_AddNumberToObject(tank, "min", GetSysSet()->tankWarnSet[tank_no][item].min);
                             cJSON_AddNumberToObject(tank, "max", GetSysSet()->tankWarnSet[tank_no][item].max);
-                            cJSON_AddItemToArray(list, tank);
+
+
+                            if(RT_FALSE == cJSON_AddItemToArray(list, tank)) {
+                                cJSON_Delete(tank);
+                                tank = RT_NULL;
+                                cJSON_Delete(list);
+                                list = RT_NULL;
+                                result = RT_ERROR;
+                            }
+                        } else {
+                            result = RT_ERROR;
+
                         }
                     }
                 }
             }
-            cJSON_AddItemToObject(json, "pool", list);
+
+            if(RT_FALSE == cJSON_AddItemToObject(json, "pool", list)) {
+                cJSON_Delete(list);
+                list = RT_NULL;
+                result = RT_ERROR;
+            }
+        } else {
+
         }
 
         cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
-        str = cJSON_PrintUnformatted(json);
-        cJSON_Delete(json);
+
+        if(RT_ERROR == result) {
+            cJSON_Delete(json);
+        } else {
+            str = cJSON_PrintUnformatted(json);
+            cJSON_Delete(json);
+        }
     }
     else
     {
@@ -4694,9 +4944,10 @@ char *ReplyGetSysPara(char *cmd, cloudcmd_t cloud, sys_para_t para)
 {
     char            *str        = RT_NULL;
     char            time[15]    = "";
-    char            name[12];
+    char            name[20];
     cJSON           *json       = cJSON_CreateObject();
     type_sys_time   sys_time;
+
 
     if(RT_NULL != json)
     {
@@ -4730,6 +4981,7 @@ char *ReplyGetSysPara(char *cmd, cloudcmd_t cloud, sys_para_t para)
         cJSON_AddStringToObject(json, "time", time);
         cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
         str = cJSON_PrintUnformatted(json);
+
         cJSON_Delete(json);
     }
 
@@ -4873,6 +5125,7 @@ char *ReplySetHubName(char *cmd, cloudcmd_t cloud)
     return str;
 }
 
+
 char *ReplyGetHubState(char *cmd, cloudcmd_t cloud)
 {
 
@@ -4892,6 +5145,8 @@ char *ReplyGetHubState(char *cmd, cloudcmd_t cloud)
     aqua_t          *aqua       = RT_NULL;
 #endif
     cJSON           *list       = RT_NULL;
+
+    rt_err_t        result      = RT_EOK;
 
     if(RT_NULL != json)
     {
@@ -5021,7 +5276,11 @@ char *ReplyGetHubState(char *cmd, cloudcmd_t cloud)
                 cJSON_AddStringToObject(list, "day", day);
             }
 
-            cJSON_AddItemToObject(json, "calendar", list);
+            if(RT_FALSE == cJSON_AddItemToObject(json, "calendar", list)) {
+                cJSON_Delete(list);
+                list = RT_NULL;
+                result = RT_ERROR;
+            }
         }
 
         //灌溉
@@ -5032,9 +5291,18 @@ char *ReplyGetHubState(char *cmd, cloudcmd_t cloud)
             for(u8 no = 0; no < GetSysTank()->tank_size; no++)
             {
                 sprintf(name, "TankRep%d", no);
-                cJSON_AddItemToArray(list, cJSON_CreateString(name));
+                if(RT_FALSE == cJSON_AddItemToArray(list, cJSON_CreateString(name))) {
+                    result = RT_ERROR;
+                }
             }
-            cJSON_AddItemToObject(json, "pool", list);
+
+            if(RT_FALSE == cJSON_AddItemToObject(json, "pool", list)) {
+                cJSON_Delete(list);
+                list = RT_NULL;
+                result = RT_ERROR;
+            }
+        } else {
+            result = RT_ERROR;
         }
 #endif
 
@@ -5042,8 +5310,12 @@ char *ReplyGetHubState(char *cmd, cloudcmd_t cloud)
 
         cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
 
-        str = cJSON_PrintUnformatted(json);
-        cJSON_Delete(json);
+        if(RT_ERROR == result) {
+            cJSON_Delete(json);
+        } else {
+            str = cJSON_PrintUnformatted(json);
+            cJSON_Delete(json);
+        }
 
 #if(HUB_SELECT == HUB_IRRIGSTION)
         length = strlen(str);
@@ -5300,6 +5572,8 @@ char *ReplyGetPortSet(char *cmd, cloudcmd_t cloud)
     aqua_t          *aqua       = RT_NULL;
 #endif
     char            firstStartAt[15] = "";
+    rt_err_t        result      = RT_EOK;
+
     //默认
     strncpy(fun_name, "port", STORAGE_NAMESZ - 1);
     fun_name[14] = '\0';
@@ -5436,12 +5710,23 @@ char *ReplyGetPortSet(char *cmd, cloudcmd_t cloud)
                                     cJSON_AddNumberToObject(timer, "duration", module->port[port].timer[group].duration);
                                     cJSON_AddNumberToObject(timer, "en", module->port[port].timer[group].en);
 
-                                    cJSON_AddItemToArray(timerList, timer);
+                                    if(RT_FALSE == cJSON_AddItemToArray(timerList, timer)) {
+                                        cJSON_Delete(timer);
+                                        timer = RT_NULL;
+                                        cJSON_Delete(timerList);
+                                        timerList = RT_NULL;
+                                        result = RT_ERROR;
+                                    }
                                 }
                             }
                         }
 
-                        cJSON_AddItemToObject(json, "list", timerList);
+                        if(RT_FALSE == cJSON_AddItemToObject(json, "list", timerList)) {
+
+                            cJSON_Delete(timerList);
+                            timerList = RT_NULL;
+                            result = RT_ERROR;
+                        }
                     }
                     else
                     {
@@ -5562,7 +5847,11 @@ char *ReplyGetPortSet(char *cmd, cloudcmd_t cloud)
                                 }
                             }
 
-                            cJSON_AddItemToObject(json, "valve", valveList);
+                            if(RT_FALSE == cJSON_AddItemToObject(json, "valve", valveList)) {
+                                cJSON_Delete(valveList);
+                                valveList = RT_NULL;
+                                result = RT_ERROR;
+                            }
                             break;
                         }
                     }
@@ -5606,7 +5895,9 @@ char *ReplyGetPortSet(char *cmd, cloudcmd_t cloud)
                 cJSON_AddNumberToObject(json, "manualOnLeftTime", leftTime);
             }
 
-            str = cJSON_PrintUnformatted(json);
+            if(RT_ERROR != result) {
+                str = cJSON_PrintUnformatted(json);
+            }
 
             if(str == RT_NULL)
             {
@@ -5623,13 +5914,11 @@ char *ReplyGetPortSet(char *cmd, cloudcmd_t cloud)
             cJSON_AddNumberToObject(json, "manual", aqua->manual.manual);
             cJSON_AddNumberToObject(json, "manualOnTime", aqua->manual.manual_on_time);
 
-            str = cJSON_PrintUnformatted(json);
+            if(RT_ERROR != result) {
+                str = cJSON_PrintUnformatted(json);
+            }
         }
 #endif
-        else
-        {
-            LOG_E("ReplyGetPortSet err2");
-        }
 
         cJSON_Delete(json);
     }
@@ -5650,6 +5939,7 @@ char *ReplySetRecipe(char *cmd, cloudcmd_t cloud)
     recipe_t        *recipe             = RT_NULL;
     cJSON           *json               = cJSON_CreateObject();
     cJSON           *line               = RT_NULL;
+    rt_err_t        result              = RT_EOK;
 
     if(RT_NULL != json)
     {
@@ -5741,12 +6031,24 @@ char *ReplySetRecipe(char *cmd, cloudcmd_t cloud)
                                             cJSON_AddNumberToObject(item, "en", recipe->line_4.timerList[i].en);
                                             cJSON_AddNumberToObject(item, "no", recipe->line_4.timerList[i].no);
 
-                                            cJSON_AddItemToArray(timeList, item);
+                                            if(RT_FALSE == cJSON_AddItemToArray(timeList, item)) {
+                                                cJSON_Delete(item);
+                                                item = RT_NULL;
+                                                cJSON_Delete(timeList);
+                                                timeList = RT_NULL;
+                                                result = RT_ERROR;
+                                            }
                                         }
                                     }
                                 }
 
-                                cJSON_AddItemToObject(line, "timerList", timeList);
+                                if(RT_FALSE == cJSON_AddItemToObject(line, "timerList", timeList)) {
+                                    cJSON_Delete(timeList);
+                                    timeList = RT_NULL;
+                                    cJSON_Delete(line);
+                                    line = RT_NULL;
+                                    result = RT_ERROR;
+                                }
                             }
                             cJSON_AddStringToObject(line, "firstStartAt", recipe->line_4.firstStartAt);
                             cJSON *cycleList = cJSON_CreateArray();
@@ -5764,12 +6066,24 @@ char *ReplySetRecipe(char *cmd, cloudcmd_t cloud)
                                             cJSON_AddNumberToObject(item, "duration", recipe->line_4.cycleList[i].duration);
                                             cJSON_AddNumberToObject(item, "no", recipe->line_4.cycleList[i].no);
 
-                                            cJSON_AddItemToArray(cycleList, item);
+                                            if(RT_FALSE == cJSON_AddItemToArray(cycleList, item)) {
+                                                cJSON_Delete(item);
+                                                item = RT_NULL;
+                                                cJSON_Delete(cycleList);
+                                                cycleList = RT_NULL;
+                                                result = RT_ERROR;
+                                            }
                                         }
                                     }
                                 }
 
-                                cJSON_AddItemToObject(line, "cycleList", cycleList);
+                                if(RT_FALSE == cJSON_AddItemToObject(line, "cycleList", cycleList)) {
+                                    cJSON_Delete(cycleList);
+                                    cycleList = RT_NULL;
+                                    cJSON_Delete(line);
+                                    line = RT_NULL;
+                                    result = RT_ERROR;
+                                }
                             }
                             cJSON_AddNumberToObject(line, "pauseTime", recipe->line_4.pauseTime);
 //                            cJSON_AddNumberToObject(line, "tempStartDimming", recipe->line_4.tempStartDimming);
@@ -5779,11 +6093,19 @@ char *ReplySetRecipe(char *cmd, cloudcmd_t cloud)
 
                         if(0 == index)
                         {
-                            cJSON_AddItemToObject(json, "line1", line);
+                            if(RT_FALSE == cJSON_AddItemToObject(json, "line1", line)) {
+                                cJSON_Delete(line);
+                                line = RT_NULL;
+                                result = RT_ERROR;
+                            }
                         }
                         else if(1 == index)
                         {
-                            cJSON_AddItemToObject(json, "line2", line);
+                            if(RT_FALSE == cJSON_AddItemToObject(json, "line2", line)) {
+                                cJSON_Delete(line);
+                                line = RT_NULL;
+                                result = RT_ERROR;
+                            }
                         }
                     }
                 }
@@ -5798,8 +6120,14 @@ char *ReplySetRecipe(char *cmd, cloudcmd_t cloud)
         }
 
         cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
-        str = cJSON_PrintUnformatted(json);
-        cJSON_Delete(json);
+
+        if(RT_ERROR == result) {
+            cJSON_Delete(json);
+        } else {
+            str = cJSON_PrintUnformatted(json);
+            cJSON_Delete(json);
+        }
+
     }
 
     return str;
@@ -5824,6 +6152,7 @@ char *ReplyGetSchedule(char *cmd, cloudcmd_t cloud)
     char        temp[5];
     char        start_time[16] = "";
     type_sys_time   sys_time;
+    rt_err_t    result      = RT_EOK;
 
     if(RT_NULL != json)
     {
@@ -5954,7 +6283,13 @@ char *ReplyGetSchedule(char *cmd, cloudcmd_t cloud)
 
                     if(0 != sys_set.stageSet._list[index].duration_day)
                     {
-                        cJSON_AddItemToArray(list, list_item);
+                        if(RT_FALSE == cJSON_AddItemToArray(list, list_item)) {
+                            cJSON_Delete(list_item);
+                            list_item = RT_NULL;
+                            cJSON_Delete(list);
+                            list = RT_NULL;
+                            result = RT_ERROR;
+                        }
                     }
                     else
                     {
@@ -5962,7 +6297,12 @@ char *ReplyGetSchedule(char *cmd, cloudcmd_t cloud)
                     }
                 }
             }
-            cJSON_AddItemToObject(json, "list", list);
+
+            if(RT_FALSE == cJSON_AddItemToObject(json, "list", list)) {
+                cJSON_Delete(list);
+                list = RT_NULL;
+                result = RT_ERROR;
+            }
         }
         else
         {
@@ -5970,9 +6310,14 @@ char *ReplyGetSchedule(char *cmd, cloudcmd_t cloud)
         }
 
         cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
-        str = cJSON_PrintUnformatted(json);
 
-        cJSON_Delete(json);
+        if(RT_ERROR == result) {
+            cJSON_Delete(json);
+        } else {
+            str = cJSON_PrintUnformatted(json);
+            cJSON_Delete(json);
+        }
+
     }
 
     return str;
@@ -6045,6 +6390,7 @@ char *ReplyGetSensorEList(char *cmd, char *msgid)
     char            *lastStr    = RT_NULL;
     char            name[15]    = "";
     static u16      length      = 0;
+    rt_err_t        result      = RT_EOK;
 
     if(json)
     {
@@ -6060,14 +6406,23 @@ char *ReplyGetSensorEList(char *cmd, char *msgid)
                 cJSON_AddItemToArray(senlist, cJSON_CreateString(name));
             }
 
-            cJSON_AddItemToObject(json, "list", senlist);
+            if(RT_FALSE == cJSON_AddItemToObject(json, "list", senlist)) {
+                cJSON_Delete(senlist);
+                senlist = RT_NULL;
+                result = RT_ERROR;
+            }
         }
 
         cJSON_AddNumberToObject(json, "showType", GetSysSet()->sensorMainType);
         cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
 
-        str = cJSON_PrintUnformatted(json);
-        cJSON_Delete(json);
+        if(RT_ERROR == result) {
+            cJSON_Delete(json);
+            return str;
+        } else {
+            str = cJSON_PrintUnformatted(json);
+            cJSON_Delete(json);
+        }
 
         lastStr = rt_malloc(strlen(str));
         if(lastStr)
@@ -6182,15 +6537,30 @@ char *ReplyGetSensorEList(char *cmd, char *msgid)
                                     cJSON_AddNumberToObject(portItem, "value", sensor->__stora[port].value);
                                 }
 
-                                cJSON_AddItemToArray(itemList, portItem);
+                                if(RT_FALSE == cJSON_AddItemToArray(itemList, portItem)) {
+                                    cJSON_Delete(portItem);
+                                    portItem = RT_NULL;
+                                    cJSON_Delete(itemList);
+                                    itemList = RT_NULL;
+                                    result = RT_ERROR;
+                                }
                             }
                         }
 
-                        cJSON_AddItemToObject(item, "list", itemList);
+                        if(RT_FALSE == cJSON_AddItemToObject(item, "list", itemList)) {
+                            cJSON_Delete(itemList);
+                            itemList = RT_NULL;
+                            result = RT_ERROR;
+                        }
                     }
 
-                    str1 = cJSON_PrintUnformatted(item);
-                    cJSON_Delete(item);
+                    if(RT_ERROR == result) {
+                        cJSON_Delete(item);
+                        str1 = RT_NULL;
+                    } else {
+                        str1 = cJSON_PrintUnformatted(item);
+                        cJSON_Delete(item);
+                    }
 
                     length += strlen(str1);
 
@@ -6281,14 +6651,19 @@ char *ReplyGetSensorEList(char *cmd, char *msgid)
                             str_replace1(lastStr, "\"sensorPort19\"", str1, length);
                         }
                     }
-                    rt_free(str1);
+
+                    if(str1) {
+                        rt_free(str1);
+                    }
                 }
 
             }
         }
         else
         {
-            rt_free(str);
+            if(str) {
+                rt_free(str);
+            }
         }
 
     }
@@ -6388,6 +6763,7 @@ char *ReplySetTankPV(cloudcmd_t *cmd)
     u8      no          = 0;
     u16     id          = 0;
     device_t *device    = RT_NULL;
+    rt_err_t result     = RT_EOK;
 
     if(json)
     {
@@ -6448,13 +6824,30 @@ char *ReplySetTankPV(cloudcmd_t *cmd)
                                cJSON_AddItemToArray(valveI, cJSON_CreateNumber(tank->valve[i]));
                            }
                        }
-                       cJSON_AddItemToObject(pumpItem, "valve", valveI);
+                       if(RT_FALSE == cJSON_AddItemToObject(pumpItem, "valve", valveI)) {
+                           cJSON_Delete(valveI);
+                           valveI = RT_NULL;
+                           cJSON_Delete(pumpItem);
+                           pumpItem = RT_NULL;
+                           result = RT_ERROR;
+                       }
                    }
 
-                   cJSON_AddItemToArray(pumpList, pumpItem);
+                   if(RT_FALSE == cJSON_AddItemToArray(pumpList, pumpItem)) {
+                       cJSON_Delete(pumpItem);
+                       pumpItem = RT_NULL;
+                       cJSON_Delete(pumpList);
+                       pumpList = RT_NULL;
+                       result = RT_ERROR;
+                   }
                }
 
-               cJSON_AddItemToObject(json, "pumpList", pumpList);
+               if(RT_FALSE == cJSON_AddItemToObject(json, "pumpList", pumpList)) {
+
+                   cJSON_Delete(pumpList);
+                   pumpList = RT_NULL;
+                   result = RT_ERROR;
+               }
             }
 
             cJSON *valveList = cJSON_CreateArray();
@@ -6485,17 +6878,33 @@ char *ReplySetTankPV(cloudcmd_t *cmd)
                            cJSON_AddNumberToObject(valveItem, "id", tank->nopump_valve[i]);
                            cJSON_AddStringToObject(valveItem, "name", device->port[port].name);
 
-                           cJSON_AddItemToArray(valveList, valveItem);
+                           if(RT_FALSE == cJSON_AddItemToArray(valveList, valveItem)) {
+                               cJSON_Delete(valveItem);
+                               valveItem = RT_NULL;
+                               cJSON_Delete(valveList);
+                               valveList = RT_NULL;
+                               result = RT_ERROR;
+                           }
                        }
                    }
                }
 
-               cJSON_AddItemToObject(json, "valveList", valveList);
+               if(RT_FALSE == cJSON_AddItemToObject(json, "valveList", valveList))
+               {
+                   cJSON_Delete(valveList);
+                   valveList = RT_NULL;
+                   result = RT_ERROR;
+               }
             }
         }
 
-        str = cJSON_PrintUnformatted(json);
-        cJSON_Delete(json);
+        if(RT_ERROR == result) {
+            cJSON_Delete(json);
+        } else {
+            str = cJSON_PrintUnformatted(json);
+            cJSON_Delete(json);
+        }
+
     }
 
     return str;
@@ -6529,6 +6938,7 @@ char *ReplyGetLightList(cloudcmd_t *cmd)
     u8          addr            = 0;
     char        charTemp[15]    = "";
     type_sys_time       format_time;
+    rt_err_t    result          = RT_EOK;
 
     if(json)
     {
@@ -6589,13 +6999,22 @@ char *ReplyGetLightList(cloudcmd_t *cmd)
                     cJSON_AddStringToObject(item, "weekdayList", charTemp);
 
                     sprintf(charTemp, "%s%d", "port", port + 1);
-                    cJSON_AddItemToObject(json, charTemp, item);
+                    if(RT_FALSE == cJSON_AddItemToObject(json, charTemp, item)) {
+                        cJSON_Delete(item);
+                        item = RT_NULL;
+                        result = RT_ERROR;
+                    }
                 }
             }
         }
 
-        str = cJSON_PrintUnformatted(json);
-        cJSON_Delete(json);
+        if(RT_ERROR == result) {
+            cJSON_Delete(json);
+        } else {
+            str = cJSON_PrintUnformatted(json);
+            cJSON_Delete(json);
+        }
+
     }
 
     return str;
@@ -6731,6 +7150,7 @@ char *ReplyGetDeviceList_new(char *cmd, char *msgid, u8 deviceType, u8 no)
     cJSON           *json       = cJSON_CreateObject();
     cJSON           *valveList  = RT_NULL;
     u8              lastPackage = NO;
+    rt_err_t        result      = RT_EOK;
 
     //判断是否是最后一包,如果line的数量没有则只发送device数量
     if(DEVICE_TYPE == deviceType)
@@ -6876,7 +7296,13 @@ char *ReplyGetDeviceList_new(char *cmd, char *msgid, u8 deviceType, u8 no)
                                     }
                                 }
                             }
-                            cJSON_AddItemToObject(item, "valve", valveList);
+                            if(RT_FALSE == cJSON_AddItemToObject(item, "valve", valveList)) {
+                                cJSON_Delete(valveList);
+                                valveList = RT_NULL;
+                                cJSON_Delete(item);
+                                item = RT_NULL;
+                                result = RT_ERROR;
+                            }
                         }
                     }
                     else if(VALVE_TYPE == module->type)
@@ -6963,7 +7389,13 @@ char *ReplyGetDeviceList_new(char *cmd, char *msgid, u8 deviceType, u8 no)
                                                 }
                                             }
                                         }
-                                        cJSON_AddItemToObject(port, "valve", valveList);
+                                        if(RT_FALSE == cJSON_AddItemToObject(port, "valve", valveList)) {
+                                            cJSON_Delete(valveList);
+                                            valveList = RT_NULL;
+                                            cJSON_Delete(port);
+                                            port = RT_NULL;
+                                            result = RT_ERROR;
+                                        }
                                     }
                                 }
                                 else if(VALVE_TYPE == module->port[storage].type)
@@ -6994,10 +7426,25 @@ char *ReplyGetDeviceList_new(char *cmd, char *msgid, u8 deviceType, u8 no)
                                     }
                                 }
 
-                                cJSON_AddItemToArray(portList, port);
+                                if(RT_FALSE == cJSON_AddItemToArray(portList, port)) {
+                                    //port 加入到portList不成功
+                                    cJSON_Delete(port);
+                                    port = RT_NULL;
+                                    cJSON_Delete(portList);
+                                    portList = RT_NULL;
+                                    result = RT_ERROR;
+                                }
                             }
                         }
-                        cJSON_AddItemToObject(item, "port", portList);
+                        if(RT_FALSE == cJSON_AddItemToObject(item, "port", portList)) {
+                            //portList 加入到 item 不成功
+                            cJSON_Delete(portList);
+                            portList = RT_NULL;
+                            cJSON_Delete(item);
+                            item = RT_NULL;
+                            result = RT_ERROR;
+                        }
+
                     }
                 }
             }
@@ -7056,7 +7503,13 @@ char *ReplyGetDeviceList_new(char *cmd, char *msgid, u8 deviceType, u8 no)
                         cJSON_AddItemToArray(out, cJSON_CreateNumber(line.port[2].ctrl.d_value));
                         cJSON_AddItemToArray(out, cJSON_CreateNumber(line.port[3].ctrl.d_value));
 
-                        cJSON_AddItemToObject(item, "outputRatio", out);
+                        if(RT_FALSE == cJSON_AddItemToObject(item, "outputRatio", out)) {
+                            cJSON_Delete(out);
+                            out = RT_NULL;
+                            cJSON_Delete(item);
+                            item = RT_NULL;
+                            result = RT_ERROR;
+                        }
                     }
 
                     if(line.port[0].ctrl.d_value ||
@@ -7097,17 +7550,25 @@ char *ReplyGetDeviceList_new(char *cmd, char *msgid, u8 deviceType, u8 no)
                 cJSON_AddNumberToObject(item, "aquaTankNo", tankNo);
             }
 #endif
-            cJSON_AddItemToObject(json, "data", item);
+            if(RT_FALSE == cJSON_AddItemToObject(json, "data", item)) {
+                cJSON_Delete(item);
+                item = RT_NULL;
+                result = RT_ERROR;
+            }
         }
 
         if(RT_NULL != json)
         {
             cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
-            str = cJSON_PrintUnformatted(json);
-            //LOG_I("str = %d",strlen(str));
 
-            cJSON_Delete(json);
-            json = RT_NULL;
+            if(RT_ERROR == result) {
+                cJSON_Delete(json);
+                json = RT_NULL;
+            } else {
+                str = cJSON_PrintUnformatted(json);
+                cJSON_Delete(json);
+                json = RT_NULL;
+            }
         }
     }
     else
@@ -7378,6 +7839,7 @@ char *ReplyGetAquaRecipe(cloudcmd_t *cmd)
     cJSON   *json       = cJSON_CreateObject();
     char    *str        = RT_NULL;
     char    name[12]     = " ";
+    rt_err_t    result  = RT_EOK;
 
     if(json)
     {
@@ -7387,7 +7849,6 @@ char *ReplyGetAquaRecipe(cloudcmd_t *cmd)
 
 //        for(int i = 0; i < TANK_LIST_MAX; i++)
 //        {
-            aqua_info_t *info = RT_NULL;
             aqua_t *aqua = GetAquaByAddr(GetMonitor(), cmd->getAquaRecipeId);
             if(aqua)
             {
@@ -7436,11 +7897,21 @@ char *ReplyGetAquaRecipe(cloudcmd_t *cmd)
                                     cJSON_AddNumberToObject(item, "type", recipe->pumpList[j].type);
                                     cJSON_AddNumberToObject(item, "ratio", recipe->pumpList[j].ratio);
 
-                                    cJSON_AddItemToArray(list, item);
+                                    if(RT_FALSE == cJSON_AddItemToArray(list, item)) {
+                                        cJSON_Delete(item);
+                                        item = RT_NULL;
+                                        cJSON_Delete(list);
+                                        list = RT_NULL;
+                                        result = RT_ERROR;
+                                    }
                                 }
                             }
 
-                            cJSON_AddItemToObject(json, "pumpList", list);
+                            if(RT_FALSE == cJSON_AddItemToObject(json, "pumpList", list)) {
+                                cJSON_Delete(list);
+                                list = RT_NULL;
+                                result = RT_ERROR;
+                            }
                         }
                     }
 
@@ -7449,8 +7920,13 @@ char *ReplyGetAquaRecipe(cloudcmd_t *cmd)
             }
 //        }
 
-        str = cJSON_PrintUnformatted(json);
-        cJSON_Delete(json);
+        if(RT_ERROR == result) {
+            cJSON_Delete(json);
+        } else {
+            str = cJSON_PrintUnformatted(json);
+            cJSON_Delete(json);
+        }
+
     }
 
     return str;
@@ -7553,6 +8029,7 @@ char *ReplyGetAquaSet(cloudcmd_t *cmd)
 {
     cJSON   *json       = cJSON_CreateObject();
     char    *str        = RT_NULL;
+    rt_err_t result     = RT_EOK;
 
     if(json)
     {
@@ -7585,7 +8062,11 @@ char *ReplyGetAquaSet(cloudcmd_t *cmd)
                             cJSON_AddItemToArray(list, cJSON_CreateNumber(set[i].scheduleStart[j]));
                         }
 
-                        cJSON_AddItemToObject(json, "scheduleStart", list);
+                        if(RT_FALSE == cJSON_AddItemToObject(json, "scheduleStart", list)) {
+                            cJSON_Delete(list);
+                            list = RT_NULL;
+                            result = RT_ERROR;
+                        }
                     }
                     list =  cJSON_CreateArray();
 
@@ -7611,7 +8092,11 @@ char *ReplyGetAquaSet(cloudcmd_t *cmd)
                         cJSON_AddItemToArray(list, cJSON_CreateNumber(test->tm_mon + 1));
                         cJSON_AddItemToArray(list, cJSON_CreateNumber(test->tm_mday));
 
-                        cJSON_AddItemToObject(json, "scheduleEnd", list);
+                        if(RT_FALSE == cJSON_AddItemToObject(json, "scheduleEnd", list)) {
+                            cJSON_Delete(list);
+                            list = RT_NULL;
+                            result = RT_ERROR;
+                        }
                     }
                     cJSON_AddNumberToObject(json, "scheduleRunFormula", set[i].scheduleRunFormula);
 
@@ -7628,9 +8113,19 @@ char *ReplyGetAquaSet(cloudcmd_t *cmd)
                                 cJSON_AddNumberToObject(item, "days", set[i].scheduleList[j].days);
                                 cJSON_AddNumberToObject(item, "form", set[i].scheduleList[j].form);
                             }
-                            cJSON_AddItemToArray(list, item);
+                            if(RT_FALSE == cJSON_AddItemToArray(list, item)) {
+                                cJSON_Delete(item);
+                                item = RT_NULL;
+                                cJSON_Delete(list);
+                                list = RT_NULL;
+                                result = RT_ERROR;
+                            }
                         }
-                        cJSON_AddItemToObject(json, "scheduleList", list);
+                        if(RT_FALSE == cJSON_AddItemToObject(json, "scheduleList", list)) {
+                            cJSON_Delete(list);
+                            list = RT_NULL;
+                            result = RT_ERROR;
+                        }
                     }
 
                     break;
@@ -7638,8 +8133,13 @@ char *ReplyGetAquaSet(cloudcmd_t *cmd)
             }
         }
 
-        str = cJSON_PrintUnformatted(json);
-        cJSON_Delete(json);
+        if(RT_ERROR == result) {
+            cJSON_Delete(json);
+        } else {
+            str = cJSON_PrintUnformatted(json);
+            cJSON_Delete(json);
+        }
+
     }
 
     return str;

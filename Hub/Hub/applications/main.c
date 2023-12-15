@@ -36,6 +36,7 @@ extern cloudcmd_t      cloudCmd;
 extern u8              saveMqttUrlFile;
 
 extern cloudcmd_t      cloudCmd;
+
 //初始化一些必要的参数
 static void InitParameter(void)
 {
@@ -53,6 +54,24 @@ static void InitParameter(void)
     GetSnName(GetSysSet()->hub_info.name, 13);
     InitMqttUrlUse();
     initSysSetExtern();
+}
+
+void list_mem(void)
+{
+    rt_uint32_t total;
+    rt_uint32_t used;
+    rt_uint32_t max_used;
+    rt_memory_info(&total, &used, &max_used);
+    rt_kprintf("total memory: %d\n", total);
+    rt_kprintf("used memory : %d\n", used);
+    rt_kprintf("maximum allocated memory: %d\n", max_used);
+
+    //如果可以用的内存不足1000 则重启
+    if(used + 1000 >= total)
+    {
+        LOG_E("--------------------------------内存不足，重启");
+        rt_hw_cpu_reset();
+    }
 }
 extern void changeBigToLittle(u16 src, u8 *data);
 int main(void)
@@ -250,56 +269,31 @@ int main(void)
             //发送实际发送的数据
             sendReadDeviceCtrlToList(GetMonitor(), deviceObj);
 
-            //仅仅测试 发送hvac未回复次数
-//            if(cloudCmd.hvac_sendCnt > 0 && cloudCmd.hvac_sendCnt <= 4)
-//            {
-//                if(YES == GetMqttStartFlg())
-//                {
-//                    SendDataToCloud(GetMqttClient(), TEST_CMD, 0 , 0, RT_NULL, RT_NULL, YES, 0, NO);
-//                }
-//
-//                cloudCmd.hvac_sendCnt = 0;
-//            }
+//            LOG_E("now %d, last time %d",getTimeStamp(),getEthHeart()->last_connet_time);
         }
 
         //10s
         if(ON == Timer10sTouch)
         {
-            if(GetTcpSocket() > 0)
-            {
-                sendReportToApp();
-            }
+
 #if(HUB_IRRIGSTION == HUB_SELECT)
             sendRealAquaCtrlToList(GetMonitor(), aquaObj);
 #endif
 #if(HUB_SELECT == HUB_ENVIRENMENT)
             startProgram = YES;
 #endif
-
-            //Jusatin debug 打印
-//            aqua_state_t *stateTest = GetAquaWarn();
-//            LOG_W("----------------------------------------------------");
-//            for(int i = 0; i < 4; i++)
-//            {
-//                LOG_E("id = %d",stateTest[i].id);
-//                LOG_E("ec = %d",stateTest[i].ec);
-//                LOG_E("ph = %d",stateTest[i].ph);
-//                LOG_E("wt = %d",stateTest[i].wt);
-//                LOG_D("//////////////////////////////////////");
-//            }
         }
 
         //60s 主动发送给云服务
         if(ON == Timer60sTouch)
         {
             start_warn_flg = YES;
-            if(YES == GetMqttStartFlg())
-            {
-                SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT, 0 , 0, RT_NULL, RT_NULL, YES, 0, NO);
-            }
+
 #if(HUB_SELECT == HUB_IRRIGSTION)
             sendWarnFlag = YES;
 #endif
+
+            list_mem();
         }
 
         rt_thread_mdelay(MAIN_PERIOD);
@@ -307,7 +301,6 @@ int main(void)
 
     return RT_EOK;
 }
-
 
 void ReadUniqueId(u32 *id)
 {

@@ -20,6 +20,8 @@
 #include "SDCard.h"
 #include "UartAction.h"
 #include "FileSystem.h"
+#include "Ethernet.h"
+#include "Udp.h"
 
 char    data[80];
 u32     now_phec_uuid = 0;
@@ -28,6 +30,8 @@ extern u8      next_flag;
 extern void GetUpdataFileFromWeb(u8 *ret);
 extern  __attribute__((section(".ccmbss"))) struct sdCardState      sdCard;
 extern type_page_t     pageSelect;
+extern int                 tcp_sock ;
+extern  void getAppVersion(char *);
 
 void cleanHomePage(void)
 {
@@ -57,6 +61,7 @@ void HomePage(type_page_t *page, type_monitor_t *monitor)
     static u8           tankSizePre = 0;
     static u8           pagePart    = 0;
     static u8           pagePartPre = 0;
+    aqua_t              *aqua       = RT_NULL;
 #endif
     char                value[5]    = "";
     type_sys_time       time_for;
@@ -235,17 +240,16 @@ void HomePage(type_page_t *page, type_monitor_t *monitor)
             }
 
             tank = &GetSysTank()->tank[tank_index];
+            aqua = GetAquaByAddr(GetMonitor(), tank->aquaId);
 
             //显示泵名
             if(tank->pumpId > 0xFF)
             {
                 addr = tank->pumpId >> 8;
-//                port = tank->pumpId;
             }
             else
             {
                 addr = tank->pumpId;
-//                port = 0;
             }
             sprintf(time," %02d:%02d:%02d%12s",time_for.hour,time_for.minute,time_for.second,
                     tank->name);
@@ -375,6 +379,23 @@ void HomePage(type_page_t *page, type_monitor_t *monitor)
                         ST7567_Puts("--", &Font_8x16, 1);
                         ST7567_GotoXY(98, 28);
                         ST7567_Puts("--", &Font_8x16, 1);
+                    }
+                }
+            }
+
+            //如果该桶有aqua 那么显示aqua 数据
+            if(0 == pagePart)
+            {
+                if(aqua) {
+                    aqua_state_t *state = GetAquaWarnByAddr(aqua->addr);
+                    if(CON_SUCCESS == aqua->conn_state) {
+                        data[0] = state->ph;
+                        data[1] = state->ec;
+                        data[2] = state->wt;
+                    } else {
+                        data[0] = VALUE_NULL;
+                        data[1] = VALUE_NULL;
+                        data[2] = VALUE_NULL;
                     }
                 }
             }
@@ -570,11 +591,13 @@ void SettingPage(type_page_t page, u8 canShow)
     char                temp1[4];
     type_sys_time       time_for;
 #if(HUB_SELECT == HUB_ENVIRENMENT)
-    char                show[12][16] = {"Sensor List", "Device List", "Light List", "QR Code", "Update Firmware", "CO2 Calibration",
-                                       "Data Export", "Data Import", "Server Url", "Verson Info", "Ip Info", "Restore Settings"};
+    char                show[13][16] = {"Sensor List", "Device List", "Light List", "QR Code", "Update Firmware", "CO2 Calibration",
+                                       "Data Export", "Data Import", "Server Url", "Verson Info", "Ip Info", "Restore Settings",
+                                       "Memory Info"};
 #elif (HUB_SELECT == HUB_IRRIGSTION)
-    char                show[11][16] = {"Sensor List", "Device List", "QR Code", "Update Firmware", "Sensor Calibrate",
-                                       "Data Export", "Data Import", "Server Url", "Verson Info", "Ip Info", "Restore Settings"};
+    char                show[12][16] = {"Sensor List", "Device List", "QR Code", "Update Firmware", "Sensor Calibrate",
+                                       "Data Export", "Data Import", "Server Url", "Verson Info", "Ip Info", "Restore Settings",
+                                       "Memory Info"};
 #endif
     type_sys_time       sys_time;
     u8                  line        = LINE_HIGHT;
@@ -2814,8 +2837,8 @@ void ipInfoPage(type_page_t *page)
     u8              line        = 0;
     u8              column      = 0;
     u8              ip[4];
+    int             tcpState    = 0;
     char            data[20]    = " ";
-    char            res[6]      = " ";
     struct netdev   *ethDev     = RT_NULL;
 
     //1.显示ip
@@ -2828,10 +2851,51 @@ void ipInfoPage(type_page_t *page)
     ethDev = netdev_get_first_by_flags(NETDEV_FLAG_INTERNET_UP);
     column += 16;
     if(ethDev){
-        sprintf(data, "network:OK");
+        sprintf(data, "network:  OK");
     } else {
         sprintf(data, "network:Fail");
     }
+    ST7567_GotoXY(line, column);
+    ST7567_Puts(data, &Font_8x16, 1);
+
+    //3.显示和app的连接
+    column += 16;
+
+    tcpState = getSockState(tcp_sock);
+    if(tcpState < 0){
+        sprintf(data, "%s", "app :Fail");
+    } else {
+        sprintf(data, "%s", "app :  OK");
+    }
+
+    ST7567_GotoXY(line, column);
+    ST7567_Puts(data, &Font_8x16, 1);
+
+    ST7567_UpdateScreen();
+}
+
+void memoryInfoPage(type_page_t *page)
+{
+    u8              line        = 0;
+    u8              column      = 0;
+    char            data[20]    = " ";
+    rt_uint32_t     total;
+    rt_uint32_t     used;
+    rt_uint32_t     max_used;
+
+    rt_memory_info(&total, &used, &max_used);
+
+    sprintf(data, "total %5d", total);
+    ST7567_GotoXY(line, column);
+    ST7567_Puts(data, &Font_8x16, 1);
+
+    column += 16;
+    sprintf(data, "used %5d", used);
+    ST7567_GotoXY(line, column);
+    ST7567_Puts(data, &Font_8x16, 1);
+
+    column += 16;
+    sprintf(data, "max used %5d", max_used);
     ST7567_GotoXY(line, column);
     ST7567_Puts(data, &Font_8x16, 1);
 

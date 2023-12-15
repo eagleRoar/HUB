@@ -26,7 +26,6 @@ void initCloudProtocol(void);
 char *GetSnName(char *,u8);
 void analyzeCloudData(char *,u8 );
 hub_t *GetHub(void);
-rt_err_t SendDataToCloud(mqtt_client *, char *, u8 , u16 , u8 *, u16 *, u8, u8, u8);
 time_t ReplyTimeStamp(void);
 u16 getVpd(void);
 void initSysTank(void);

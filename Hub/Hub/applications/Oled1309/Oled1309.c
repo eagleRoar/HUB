@@ -24,6 +24,7 @@ extern "C" {
 #include "qrcode.h"
 #include "Module.h"
 #include "UartAction.h"
+#include "FileSystem.h"
 
 #define  GO_RIGHT  1
 #define  GO_LEFT   2
@@ -241,9 +242,9 @@ static void pageSetting(u8 page)
             break;
         case SETTING_PAGE:
 #if(HUB_SELECT == HUB_ENVIRENMENT)
-            pageSelectSet(YES, 1, 12);
+            pageSelectSet(YES, 1, 13);
 #elif(HUB_SELECT == HUB_IRRIGSTION)
-            pageSelectSet(YES, 1, 11);
+            pageSelectSet(YES, 1, 12);
 #endif
             break;
         case FACTORY_PAGE:
@@ -308,6 +309,10 @@ static void pageSetting(u8 page)
             break;
 
         case IP_INFO:
+            pageSelectSet(NO, 1, 1);
+            break;
+
+        case MEMORY_INFO:
             pageSelectSet(NO, 1, 1);
             break;
 
@@ -450,6 +455,11 @@ static void pageProgram(u8 page)
                     pageInfor <<= 8;
                     pageInfor |= RESTORE_SETTINGS;
                 }
+                else if(13 == pageSelect.cusor)
+                {
+                    pageInfor <<= 8;
+                    pageInfor |= MEMORY_INFO;
+                }
 #elif (HUB_SELECT == HUB_IRRIGSTION)
 
                 if(1 == pageSelect.cusor)
@@ -506,6 +516,11 @@ static void pageProgram(u8 page)
                 {
                     pageInfor <<= 8;
                     pageInfor |= RESTORE_SETTINGS;
+                }
+                else if(12 == pageSelect.cusor)
+                {
+                    pageInfor <<= 8;
+                    pageInfor |= MEMORY_INFO;
                 }
 #endif
                 pageSelect.select = OFF;
@@ -737,6 +752,14 @@ static void pageProgram(u8 page)
             }
             break;
 
+        case MEMORY_INFO:
+            memoryInfoPage(&pageSelect);
+            if(ON == pageSelect.select)
+            {
+                pageSelect.select = OFF;
+            }
+            break;
+
         default:
             break;
     }
@@ -828,7 +851,8 @@ void OledTaskEntry(void* parameter)
                (EC_CALIBRATE_PAGE == nowPage) ||
                (SERVER_URL == nowPage) ||
                (HUB_INFO == nowPage) ||
-               (IP_INFO == nowPage))
+               (IP_INFO == nowPage) ||
+               (MEMORY_INFO == nowPage))
             {
                 //需要刷新
                 reflash_flag = ON;

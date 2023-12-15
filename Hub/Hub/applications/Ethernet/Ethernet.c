@@ -28,14 +28,24 @@ rt_mutex_t eth_dynamic_mutex = RT_NULL;
 struct ethDeviceStruct  *eth = RT_NULL;          //申请ethernet实例化对象
 eth_heart_t             eth_heart;
 
-int linkState = 1;
-
+int                 linkState = 1;
+u8                  sendWarnFlag = NO;
 u8                  tcp_recv_flag           = NO;
 int                 tcp_sock                = -1;
 u8                  udpSendBuffer[30];
 
 extern rt_uint8_t GetEthDriverLinkStatus(void);             //获取网口连接状态
 extern      cloudcmd_t      cloudCmd;
+
+void SetSendWarnFlag(u8 flag)
+{
+    sendWarnFlag = flag;
+}
+
+u8 GetSendWarnFlag(void)
+{
+    return sendWarnFlag;
+}
 
 int getSockState(int sock)
 {
@@ -131,20 +141,26 @@ rt_err_t TcpRecvTaskInit(void)
  */
 void UdpTaskEntry(void* parameter)
 {
-    int         broadcastSock       = 0x00;
-    int         bytes_read          = 0x00;
-    rt_err_t    ret                 = RT_EOK;
-    socklen_t   addr_len;
+    int                     broadcastSock       = 0x00;
+    int                     bytes_read          = 0x00;
+    rt_err_t                ret                 = RT_EOK;
+    socklen_t               addr_len;
 
     struct sockaddr_in      broadcastSerAddr;
     struct sockaddr_in      broadcastRecvSerAddr;
-    static u8       Timer2MinTouch  = OFF;
-    static u16      time2Min        = 0;
-    static u8       Timer2MinTouch_1  = OFF;
-    static u16      time2Min_1        = 0;
-    static u8       Timer60sTouch   = OFF;
-    static u16      time60S         = 0;
-    static u8       connectNewFlag  = NO;
+    static u8               Timer1sTouch        = OFF;
+    static u16              time1S              = 0;
+    static u8               Timer10sTouch       = OFF;
+    static u16              time10S             = 0;
+    static u8               Timer1MinTouch      = OFF;
+    static u16              time1Min            = 0;
+    static u8               Timer2MinTouch      = OFF;
+    static u16              time2Min            = 0;
+    static u8               Timer2MinTouch_1    = OFF;
+    static u16              time2Min_1          = 0;
+    static u8               connectNewFlag      = NO;
+    static u8               sendWarnCnt         = 2;
+    static u8               sendWarnFlagLast    = NO;
 
     eth->SetethLinkStatus(GetEthDriverLinkStatus());
     if(LINKUP == eth->GetethLinkStatus())    //检查网口是否有连接
@@ -168,9 +184,11 @@ void UdpTaskEntry(void* parameter)
     while (1)
     {
         /* 启用定时器 */
-        time2Min = TimerTask(&time2Min, 120000/50, &Timer2MinTouch);           //1秒任务定时器
-        time2Min_1 = TimerTask(&time2Min_1, 122000/50, &Timer2MinTouch_1);           //1秒任务定时器
-        time60S = TimerTask(&time60S, 60000/50, &Timer60sTouch);          //60秒任务定时器
+        time1S = TimerTask(&time1S, 1000/50, &Timer1sTouch);                            //10 秒任务定时器
+        time10S = TimerTask(&time10S, 10000/50, &Timer10sTouch);                        //10 秒任务定时器
+        time1Min = TimerTask(&time1Min, 60000/50, &Timer1MinTouch);                     //1  分钟任务定时器
+        time2Min = TimerTask(&time2Min, 120000/50, &Timer2MinTouch);                    //2  分钟任务定时器
+        time2Min_1 = TimerTask(&time2Min_1, 122000/50, &Timer2MinTouch_1);              //2  分钟任务定时器
 
         //文件系统还没有准备好
         if(YES != GetFileSystemState())
@@ -240,6 +258,7 @@ void UdpTaskEntry(void* parameter)
             else
             {
                 closeTcpSocket();
+
             }
         }
         else
@@ -278,25 +297,83 @@ void UdpTaskEntry(void* parameter)
             }
         }
 
-        /* 10s 定时任务 */
+        /* 1秒定时任务*/
+        if(ON == Timer1sTouch) {
+            //发送报警信息
+            if(sendWarnFlagLast != GetSendWarnFlag()) {
+                sendWarnFlagLast = GetSendWarnFlag();
+                if(YES == sendWarnFlagLast) {
+                    sendWarnCnt = 0;
+                }
+            }
+
+            if(0 == sendWarnCnt) {
+                //发送给云服务器
+                if(YES == GetMqttStartFlg()) {
+                    cloudCmd.recv_flag = ON;
+                    SetRecvMqttFlg(ON);
+                    strcpy(cloudCmd.cmd, CMD_HUB_REPORT_WARN);
+                }
+            } else if(1 == sendWarnCnt) {
+
+                //发送给app
+                if(GetTcpSocket() > 0) {
+                    cloudCmd.recv_flag = ON;
+                    cloudCmd.recv_app_flag = YES;
+                    strcpy(cloudCmd.cmd, CMD_HUB_REPORT_WARN);
+                }
+            }
+
+            if(sendWarnCnt < 2)
+            {
+                sendWarnCnt ++;
+            } else {
+                SetSendWarnFlag(NO);
+            }
+        }
+
+        /* 10秒定时任务*/
+        if(ON == Timer10sTouch) {
+            //1.发送给app report
+            if(GetTcpSocket() > 0) {
+                cloudCmd.recv_flag = ON;
+                cloudCmd.recv_app_flag = YES;
+                strcpy(cloudCmd.cmd, CMD_HUB_REPORT);
+            }
+        }
+
+        /* 1min 定时任务 */
+        if(ON == Timer1MinTouch)
+        {
+            //发送mqtt report
+            if(YES == GetMqttStartFlg()) {
+                cloudCmd.recv_flag = ON;
+                SetRecvMqttFlg(ON);
+                strcpy(cloudCmd.cmd, CMD_HUB_REPORT);
+            }
+        }
+
+        /* 2min 定时任务 */
         if(ON == Timer2MinTouch)
         {
-//            LOG_I("ip = %s, port = %d, sock = %d, getsockState = %d",
-//                    eth->GetIp(), eth->GetPort(), tcp_sock, getSockState(tcp_sock));
-
-            //app 发送sensor list
-            cloudCmd.recv_flag = ON;
-            cloudCmd.recv_app_flag = YES;
-            strcpy(cloudCmd.cmd, CMD_REPORT_SENSOR);
-//            LOG_E("发送 report sensor");
+            //1.发送app sensor list
+            if(GetTcpSocket() > 0) {
+                cloudCmd.recv_flag = ON;
+                cloudCmd.recv_app_flag = YES;
+                strcpy(cloudCmd.cmd, CMD_REPORT_SENSOR);
+            }
         }
 
         if(ON == Timer2MinTouch_1)
         {
-            //mqtt 发送sensor list
-            SetRecvMqttFlg(ON);
-            strcpy(cloudCmd.cmd, CMD_REPORT_SENSOR);
+            //发送mqtt sensor list
+            if(YES == GetMqttStartFlg()) {
+                cloudCmd.recv_flag = ON;
+                SetRecvMqttFlg(ON);
+                strcpy(cloudCmd.cmd, CMD_REPORT_SENSOR);
+            }
         }
+
 
         /* 线程休眠一段时间 */
         rt_thread_mdelay(50);
