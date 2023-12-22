@@ -165,11 +165,19 @@ static void GenerateHvacData(device_t *device, u8 state, u16 *res)
 
     if(ON == state)
     {
-        *res = 0x80 << 8 | point;
+        if(ON == device->special_data._hvac.fanNormallyOpen) {
+            *res = 0xC0 << 8 | point;
+        } else {
+            *res = 0x80 << 8 | point;
+        }
     }
     else if(OFF == state)
     {
-        *res = 0x00 << 8 | point;
+        if(ON == device->special_data._hvac.fanNormallyOpen) {
+            *res = 0x40 << 8 | point;
+        } else {
+            *res = 0x00 << 8 | point;
+        }
     }
 }
 

@@ -36,10 +36,15 @@
  *
  *
  */
+/**
+ * 0.2.24
+ * 1.2.29
+ **解决内存泄漏问题
+ */
 #if(HUB_ENVIRENMENT == HUB_SELECT)
-#define FIRMWAREVISION                  "0.2.23"
+#define FIRMWAREVISION                  "0.2.24"
 #elif(HUB_IRRIGSTION == HUB_SELECT)
-#define FIRMWAREVISION                  "1.2.27"
+#define FIRMWAREVISION                  "1.2.29"
 #endif
 #define FIRMWARE_VERSION_NUM            2
 #define BOOTLOADVISION                  "0.0.1"
@@ -57,7 +62,7 @@
 
 /* 线程优先级管理 */
 #define FILE_SYS_PRIORITY               12
-#define SPI_PRIORITY                    12
+//#define SPI_PRIORITY                    12
 #define SDCARD_PRIORITY                 16
 #define UART_PRIORITY                   21
 #define BUTTON_PRIORITY                 22

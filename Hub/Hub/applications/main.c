@@ -282,6 +282,11 @@ int main(void)
 #if(HUB_SELECT == HUB_ENVIRENMENT)
             startProgram = YES;
 #endif
+
+//            printSensor(module);
+//            for(int i = 0; i < GetMonitor()->sensor_size; i++) {
+//                printSensor(GetMonitor()->sensor[i]);
+//            }
         }
 
         //60s 主动发送给云服务

@@ -185,13 +185,6 @@ void addNewAquaSetAndInfo(u32 uuid)
     {
         if(uuid == aquaSet[i].uuid)
         {
-            rt_memset((u8 *)&aquaSet[i], 0, sizeof(aqua_set));
-            aquaSet[i].runModeTime = getTimeStamp();
-            aquaSet[i].uuid = uuid;
-            getRealTimeForMat(&time);
-            aquaSet[i].scheduleStart[0] = time.year;
-            aquaSet[i].scheduleStart[1] = time.month;
-            aquaSet[i].scheduleStart[2] = time.day;
             break;
         }
     }
@@ -219,13 +212,6 @@ void addNewAquaSetAndInfo(u32 uuid)
     {
         if(uuid == aquaInfo[i].uuid)
         {
-            rt_memset((u8 *)&aquaInfo[i], 0, sizeof(aqua_info_t));
-            for(int j = 0; j < AQUA_RECIPE_MX; j++)
-            {
-                sprintf(name, "recipe%d", j + 1);
-                strcpy(aquaInfo[i].list[j].formName, name);
-            }
-            aquaInfo[i].uuid = uuid;
             break;
         }
     }
@@ -914,7 +900,7 @@ rt_err_t ReplyDataToCloud(mqtt_client *client, int *sock, u8 sendCloudFlg)
 
     if(ON == cloudCmd.recv_flag)
     {
-        //LOG_D("-------------reply cmd %s",cloudCmd.cmd);
+//        LOG_D("-------------reply cmd %s",cloudCmd.cmd);
         if(0 == rt_memcmp(CMD_FIND_LOCATION, cloudCmd.cmd, sizeof(CMD_FIND_LOCATION)))//设备定位
         {
             str = ReplyFindLocation(CMD_FIND_LOCATION, cloudCmd);
@@ -1164,7 +1150,8 @@ rt_err_t ReplyDataToCloud(mqtt_client *client, int *sock, u8 sendCloudFlg)
         }
         else if(0 == rt_memcmp(CMD_HUB_REPORT, cloudCmd.cmd, sizeof(CMD_HUB_REPORT)))//主动上报实时值
         {
-            str = SendHubReport(CMD_HUB_REPORT, GetSysSet());
+//            str = SendHubReport(CMD_HUB_REPORT, GetSysSet());
+            str = ReplyGetHubState(CMD_HUB_REPORT, cloudCmd);
         }
         else if(0 == rt_memcmp(CMD_HUB_REPORT_WARN, cloudCmd.cmd, sizeof(CMD_HUB_REPORT_WARN)))//主动上报报警
         {
@@ -1177,6 +1164,7 @@ rt_err_t ReplyDataToCloud(mqtt_client *client, int *sock, u8 sendCloudFlg)
         {
             if(YES == sendCloudFlg)
             {
+//                LOG_W("send to cloud len = %d", strlen(str));
                 rt_memset(name, ' ', 20);
                 GetSnName(name, 12);
                 strcpy(name + 11, "/reply");
@@ -1187,6 +1175,7 @@ rt_err_t ReplyDataToCloud(mqtt_client *client, int *sock, u8 sendCloudFlg)
             else
             {
                 len = strlen(str);
+//                LOG_W("send to app len = %d",strlen(str));
                 page = rt_malloc(sizeof(eth_page_head) + len);
                 if(RT_NULL != page)
                 {
@@ -1498,6 +1487,7 @@ void analyzeCloudData(char *data, u8 cloudFlg)
                 CmdSetAquaSet(data, &cloudCmd);
                 setCloudCmd(cmd->valuestring, ON, cloudFlg);
                 saveAquaInfoFlag = YES;
+                saveModuleFlag = YES;
             }
 #endif
             else if(0 == rt_memcmp(CMD_FIND_LOCATION, cmd->valuestring, strlen(CMD_FIND_LOCATION)))

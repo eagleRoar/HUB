@@ -855,7 +855,7 @@ rt_err_t CheckAquaCorrect(type_monitor_t *monitor, u32 uuid, u8 addr)
             }
             else
             {
-                ret = RT_ERROR;
+                ret = RT_EINVAL;
             }
         }
     }
@@ -1029,9 +1029,15 @@ void DeleteModule(type_monitor_t *monitor, u32 uuid)
     }
 
     aqua_info_t *info = GetAquaInfoByUUID(uuid);
+    aqua_set *aquaSet = GetAquaSetByUUID(uuid);
     if(info)
     {
         rt_memset((u8 *)info, 0, sizeof(aqua_info_t));
+    }
+
+    if(aquaSet)
+    {
+        rt_memset((u8 *)aquaSet, 0, sizeof(aqua_set));
         saveAquaInfoFlag = YES;
     }
 

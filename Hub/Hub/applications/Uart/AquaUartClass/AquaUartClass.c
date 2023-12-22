@@ -1112,7 +1112,7 @@ static void RecvListHandle(void)
                     //4.通过type 设置对应的默认值
                     addr = getAllocateAddress(GetMonitor());
                     rt_err_t ret = SetAquaDefault(monitor, uuid, tail->keyData.dataSegment.data[8], addr);
-                    //LOG_E("--------------------------------- RecvListHandle 1");
+//                    LOG_E("--------------------------------- RecvListHandle 1");
                     if(RT_EOK == ret)
                     {
                         //5.发送重新分配的地址给模块
@@ -1123,6 +1123,12 @@ static void RecvListHandle(void)
                     {
                         monitor->allocateStr.address[addr] = 0;
                     }
+                }
+                //addr 被重新设置了
+                else if(RT_EINVAL == CheckAquaCorrect(monitor, uuid, tail->keyData.dataSegment.data[7]))
+                {
+                    //1.发送重新分配的地址给模块
+                    SendReplyRegister(uuid, addr);
                 }
                 else
                 {
@@ -1142,7 +1148,7 @@ static void RecvListHandle(void)
                 //7.之前没有注册过的直接注册
                 addr = getAllocateAddress(GetMonitor());
                 rt_err_t ret = SetAquaDefault(monitor, uuid, tail->keyData.dataSegment.data[8], addr);
-                //LOG_E("--------------------------------- RecvListHandle 2, ret = %d",ret);
+//                LOG_E("--------------------------------- RecvListHandle 2, ret = %d",ret);
                 if(RT_EOK == ret)
                 {
                     //8.发送重新分配的地址

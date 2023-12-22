@@ -97,6 +97,7 @@ void TcpRecvTaskEntry(void* parameter)
         {
             //2.1解析数据
             analyzeTcpData(tcpRecvBuffer, length);
+            //LOG_E("TcpRecvTaskEntry len = %d",length);
         }
         else
         {

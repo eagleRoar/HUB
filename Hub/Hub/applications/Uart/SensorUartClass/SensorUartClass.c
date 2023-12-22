@@ -26,8 +26,15 @@ static void GenerateAskData(sensor_t sensor, u16 reg, u8 *data)
     data[2] = reg >> 8;
     data[3] = reg;
     if(UART_FINDLOCATION_REG == reg) {
-        data[4] = 0;
-        data[5] = 1;
+        if(BHS_TYPE == sensor.type ||
+           PHEC_NEW_TYPE == sensor.type ||
+           PHEC_TYPE == sensor.type) {
+            data[4] = 0;
+            data[5] = 1;
+        } else {
+            data[4] = sensor.storage_size >> 8;
+            data[5] = sensor.storage_size;
+        }
     } else {
         data[4] = sensor.storage_size >> 8;
         data[5] = sensor.storage_size;
@@ -199,6 +206,12 @@ static void SendCmd(void)
     //4.标记已经发送
     SignSensorSendFlag(LongToSeqKey(first->keyData.key).addr);
     AddLastCtrl(LongToSeqKey(first->keyData.key).addr);
+
+//    rt_kprintf("send sensor --------------------------\n");
+//    for(int i = 0; i < first->keyData.dataSegment.len; i++) {
+//        rt_kprintf("%x ",first->keyData.dataSegment.data[i]);
+//    }
+//    rt_kprintf("\n");
 
     //5.将这个任务从任务列表中移出去
     SensorObject.taskList.DeleteToList(first->keyData);
