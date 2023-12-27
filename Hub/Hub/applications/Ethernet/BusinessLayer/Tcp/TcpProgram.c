@@ -104,15 +104,16 @@ rt_err_t TcpSendMsg(int *sock, u8 *buff, u16 size)//此处失败要增加全部�
     state = getSockState(*sock);
 //    if(state >= 0)
     {
+//        LOG_I("TcpSendMsg send....");
         len = send(*sock, buff, size, 0);
         if(len < 0)
         {
             ret = RT_ERROR;
-            LOG_W("1 TcpSendMsg close sock, sock state = %d",state);
+            LOG_E("TcpSendMsg close sock, sock state = %d",state);
         }
         else
         {
-//            LOG_W("--------------------TcpSendMsg, result = %d",len);
+            LOG_W("--------------------TcpSendMsg, result = %d",len);
         }
     }
 

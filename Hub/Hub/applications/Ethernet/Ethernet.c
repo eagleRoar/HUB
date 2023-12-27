@@ -214,7 +214,7 @@ void UdpTaskEntry(void* parameter)
         {
             /* 判断主机的ip或者port为新,更新 */
             /* 通知TCP和UDP需要更改socket,以监听新的网络 */
-            if(GetTcpSocket() < 0)//未连接上tcp
+            if((GetTcpSocket() < 0) && (0 == strcmp((char *)udpSendBuffer, "Beleaf")))
             {
                 SetIpAndPort(inet_ntoa(broadcastRecvSerAddr.sin_addr), ntohs(broadcastRecvSerAddr.sin_port), eth);
                 /* 更新网络以及申请TCP */
@@ -286,16 +286,16 @@ void UdpTaskEntry(void* parameter)
                 }
             }
 
-            //心跳包检测,如果超时2分钟,断掉连接
-            if(GetTcpSocket() > 0)
-            {
-                if(getTimeStamp() > getEthHeart()->last_connet_time + CONNECT_TIME_OUT)
-                {
-                    //断开连接
-                    LOG_E("over 2 min have not recv ack, sock close, sock = %d",tcp_sock);
-                    closeTcpSocket();
-                }
-            }
+//            //心跳包检测,如果超时2分钟,断掉连接
+//            if(GetTcpSocket() > 0)
+//            {
+//                if(getTimeStamp() > getEthHeart()->last_connet_time + CONNECT_TIME_OUT)
+//                {
+//                    //断开连接
+//                    LOG_E("over 2 min have not recv ack, sock close, sock = %d",tcp_sock);
+//                    closeTcpSocket();
+//                }
+//            }
         }
 
         /* 1秒定时任务*/
@@ -352,6 +352,13 @@ void UdpTaskEntry(void* parameter)
                 SetRecvMqttFlg(ON);
                 strcpy(cloudCmd.cmd, CMD_HUB_REPORT);
             }
+
+            //发送连接时间信息
+//            if(getTimeStamp() < getEthHeart()->last_connet_time) {
+//                LOG_W("have not connect app");
+//            } else {
+//                LOG_E("last time connect goes %d s",getTimeStamp() - getEthHeart()->last_connet_time);
+//            }
         }
 
         /* 2min 定时任务 */

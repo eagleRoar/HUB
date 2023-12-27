@@ -477,6 +477,7 @@ enum{
 #define         CMD_SET_L2              "setLine2"
 #define         CMD_SET_LIGHT_RECIPE    "setLightRecipe"
 #define         CMD_GET_DEVICELIST      "getDeviceList"         //获取设备列表
+#define         CMD_GET_DEVICEITEM      "getDeviceListItem"     //获取设备列表 //自定义的拆分
 #define         CMD_GET_PORT_SET        "getDeviceSetting"      //获取设备端口设置
 #define         CMD_SET_PORT_SET        "setDeviceSetting"      //设置设备端口设置
 #define         CMD_SET_PORTNAME        "setDeviceName"         //设置设备端口名称

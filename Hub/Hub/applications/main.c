@@ -67,11 +67,11 @@ void list_mem(void)
     rt_kprintf("maximum allocated memory: %d\n", max_used);
 
     //如果可以用的内存不足1000 则重启
-    if(used + 1000 >= total)
-    {
-        LOG_E("--------------------------------内存不足，重启");
-        rt_hw_cpu_reset();
-    }
+//    if(used + 1000 >= total)
+//    {
+//        LOG_E("--------------------------------内存不足，重启");
+//        rt_hw_cpu_reset();
+//    }
 }
 extern void changeBigToLittle(u16 src, u8 *data);
 int main(void)
@@ -275,6 +275,17 @@ int main(void)
         //10s
         if(ON == Timer10sTouch)
         {
+
+            //心跳包检测,如果超时2分钟,断掉连接(原本放在UDP线程，后来该线程有问题)
+            if(GetTcpSocket() > 0)
+            {
+                if(getTimeStamp() > getEthHeart()->last_connet_time + CONNECT_TIME_OUT)
+                {
+                    //重启
+                    LOG_E("超过2min没响应重启");//超过2min没响应重启
+                    rt_hw_cpu_reset();
+                }
+            }
 
 #if(HUB_IRRIGSTION == HUB_SELECT)
             sendRealAquaCtrlToList(GetMonitor(), aquaObj);

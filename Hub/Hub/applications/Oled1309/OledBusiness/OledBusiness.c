@@ -32,6 +32,7 @@ extern  __attribute__((section(".ccmbss"))) struct sdCardState      sdCard;
 extern type_page_t     pageSelect;
 extern int                 tcp_sock ;
 extern  void getAppVersion(char *);
+extern struct ethDeviceStruct  *eth;
 
 void cleanHomePage(void)
 {
@@ -2864,12 +2865,25 @@ void ipInfoPage(type_page_t *page)
     tcpState = getSockState(tcp_sock);
     if(tcpState < 0){
         sprintf(data, "%s", "app :Fail");
+        ST7567_GotoXY(line, column);
+        ST7567_Puts(data, &Font_8x16, 1);
+        sprintf(data, " ");
     } else {
-        sprintf(data, "%s", "app :  OK");
+        if(eth) {
+            sprintf(data, "%s", "app :     ");
+            ST7567_GotoXY(line, column);
+            ST7567_Puts(data, &Font_8x16, 1);
+            sprintf(data, eth->GetIp());
+        } else {
+            sprintf(data, "%s", "app : Fail");
+            ST7567_GotoXY(line, column);
+            ST7567_Puts(data, &Font_8x16, 1);
+            sprintf(data, " ");
+        }
+        column += 16;
+        ST7567_GotoXY(line, column);
+        ST7567_Puts(data, &Font_8x16, 1);
     }
-
-    ST7567_GotoXY(line, column);
-    ST7567_Puts(data, &Font_8x16, 1);
 
     ST7567_UpdateScreen();
 }

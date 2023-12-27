@@ -41,10 +41,14 @@
  * 1.2.29
  **解决内存泄漏问题
  */
+/**
+ * 1.2.31
+ **增加tcp没响应重启
+ */
 #if(HUB_ENVIRENMENT == HUB_SELECT)
 #define FIRMWAREVISION                  "0.2.24"
 #elif(HUB_IRRIGSTION == HUB_SELECT)
-#define FIRMWAREVISION                  "1.2.29"
+#define FIRMWAREVISION                  "1.2.31"
 #endif
 #define FIRMWARE_VERSION_NUM            2
 #define BOOTLOADVISION                  "0.0.1"

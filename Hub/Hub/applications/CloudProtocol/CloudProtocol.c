@@ -963,10 +963,10 @@ rt_err_t ReplyDataToCloud(mqtt_client *client, int *sock, u8 sendCloudFlg)
         {
             str = ReplyGetRecipeList(CMD_GET_RECIPE, cloudCmd, GetSysRecipt());
         }
-        else if(0 == rt_memcmp(CMD_GET_RECIPE_ALL, cloudCmd.cmd, sizeof(CMD_GET_RECIPE_ALL)))//获取配方列表all
-        {
-            str = ReplyGetRecipeListAll(CMD_GET_RECIPE_ALL, cloudCmd, GetSysRecipt());
-        }
+//        else if(0 == rt_memcmp(CMD_GET_RECIPE_ALL, cloudCmd.cmd, sizeof(CMD_GET_RECIPE_ALL)))//获取配方列表all
+//        {
+//            str = ReplyGetRecipeListAll(CMD_GET_RECIPE_ALL, cloudCmd, GetSysRecipt());
+//        }
         else if((0 == rt_memcmp(CMD_GET_DIMMING_CURVE, cloudCmd.cmd, sizeof(CMD_GET_DIMMING_CURVE))) ||
                 (0 == rt_memcmp(CMD_SET_DIMMING_CURVE, cloudCmd.cmd, sizeof(CMD_SET_DIMMING_CURVE))) )
         {
@@ -1159,6 +1159,10 @@ rt_err_t ReplyDataToCloud(mqtt_client *client, int *sock, u8 sendCloudFlg)
                     GetWarnPara().value, GetWarnPara().offline_no, GetWarnPara().deviceOrNo,
                     GetWarnPara().info);
         }
+//        else if(0 == rt_memcmp(CMD_GET_DEVICEITEM, cloudCmd.cmd, sizeof(CMD_GET_DEVICEITEM)))//发送deviceList
+//        {
+//
+//        }
 
         if(RT_NULL != str)
         {
@@ -1344,11 +1348,11 @@ void analyzeCloudData(char *data, u8 cloudFlg)
                 CmdGetRecipeList(data, &cloudCmd);
                 setCloudCmd(cmd->valuestring, ON, cloudFlg);
             }
-            else if(0 == rt_memcmp(CMD_GET_RECIPE_ALL, cmd->valuestring, strlen(CMD_GET_RECIPE_ALL)))
-            {
-                CmdGetRecipeListAll(data, &cloudCmd);
-                setCloudCmd(cmd->valuestring, ON, cloudFlg);
-            }
+//            else if(0 == rt_memcmp(CMD_GET_RECIPE_ALL, cmd->valuestring, strlen(CMD_GET_RECIPE_ALL)))
+//            {
+//                CmdGetRecipeListAll(data, &cloudCmd);
+//                setCloudCmd(cmd->valuestring, ON, cloudFlg);
+//            }
             else if(0 == rt_memcmp(CMD_GET_DIMMING_CURVE, cmd->valuestring, strlen(CMD_GET_DIMMING_CURVE)))
             {
                 CmdGetDimmingCurve(data, &cloudCmd);
