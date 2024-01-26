@@ -237,6 +237,14 @@
 /* CYW43012 WiFi */
 
 /* end of CYW43012 WiFi */
+
+/* BL808 WiFi */
+
+/* end of BL808 WiFi */
+
+/* CYW43439 WiFi */
+
+/* end of CYW43439 WiFi */
 /* end of Wi-Fi */
 
 /* IoT Cloud */

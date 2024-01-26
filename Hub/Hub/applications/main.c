@@ -237,10 +237,10 @@ int main(void)
             }
 
             //co2 校准
-            if(YES == GetSysSet()->startCalFlg)
-            {
-                co2Calibrate1(GetMonitor(), GetSysSet()->co2Cal, &GetSysSet()->startCalFlg, &GetSysSet()->saveFlag, co2CalibraterResPage);
-            }
+//            if(YES == GetSysSet()->startCalFlg)
+//            {
+//                co2Calibrate1(GetMonitor(), GetSysSet()->co2Cal, &GetSysSet()->startCalFlg, &GetSysSet()->saveFlag, co2CalibraterResPage);
+//            }
 #elif(HUB_SELECT == HUB_IRRIGSTION)
 
             //水泵的工作

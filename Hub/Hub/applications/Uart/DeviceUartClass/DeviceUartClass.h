@@ -62,6 +62,7 @@ typedef struct uartClass{
     void(*RecvCmd)(u8*, u8);                                    //接收串口数据
     void(*SendCmd)(void);                                       //实际发送数据
     void(*RecvListHandle)(void);
+    void(*CalibrateCo2)(void);
 #if(HUB_SELECT == HUB_IRRIGSTION)
     /*aqua部分的*/
     void(*AquaCtrl)(aqua_t *aqua, u8 state, u8 recipe_i);

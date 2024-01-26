@@ -671,10 +671,28 @@ int getSensorSizeByFunc(type_monitor_t *monitor, u8 func)
 }
 
 //如果30 度 那么temp = 300
-void changeIrAirCode(u16 temp, u16 *ret)
+void changeIrAirCoolCode(u16 temp, u16 *ret)
 {
     u8 value = 0;
     *ret |= 0xE010;
+
+    //以下操作按照红外协议
+
+    if(temp / 10 < 16){
+        value = 16;
+    }else if(temp / 10 > 30){
+        value = 30;
+    } else {
+        value = temp / 10;
+    }
+
+    *ret |= ((value - 16) << 8);
+}
+
+void changeIrAirHeatCode(u16 temp, u16 *ret)
+{
+    u8 value = 0;
+    *ret |= 0xE040;
 
     //以下操作按照红外协议
 
@@ -1392,7 +1410,7 @@ rt_err_t SetDeviceDefault(type_monitor_t *monitor, u32 uuid, u8 type, u8 addr)
                         } else {
                             setDeviceDefaultPara(device, "BTS-AR", 0x0100, S_TEMP, device->type, 1);
                         }
-                        setDeviceDefaultStora(device, 0 , "IR_AIR", F_COOL, device->type, addr , MANUAL_NO_HAND, 0);
+                        setDeviceDefaultStora(device, 0 , "IR_AIR", F_COOL_HEAT, device->type, addr , MANUAL_NO_HAND, 0);
                         ret = RT_EOK;
                         break;
                     default:

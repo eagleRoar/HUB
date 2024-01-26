@@ -45,10 +45,22 @@
  * 1.2.31
  **增加tcp没响应重启
  */
+/**
+ * 0.2.25
+ **四合一增加定标功能(原先定标为在hub上面定标，现在修改为在传感器上面定标)
+ */
+/**
+ * 0.2.26
+ **增加制热也启动红外空调
+ */
+/**
+ * 1.2.32
+ **报警增加过滤时间
+ */
 #if(HUB_ENVIRENMENT == HUB_SELECT)
-#define FIRMWAREVISION                  "0.2.24"
+#define FIRMWAREVISION                  "0.2.26"
 #elif(HUB_IRRIGSTION == HUB_SELECT)
-#define FIRMWAREVISION                  "1.2.31"
+#define FIRMWAREVISION                  "1.2.32"
 #endif
 #define FIRMWARE_VERSION_NUM            2
 #define BOOTLOADVISION                  "0.0.1"

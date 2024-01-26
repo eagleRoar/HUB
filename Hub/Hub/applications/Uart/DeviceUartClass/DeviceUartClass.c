@@ -184,23 +184,65 @@ static void GenerateHvacData(device_t *device, u8 state, u16 *res)
 //获取红外空调命令
 static void GenerateIrAirCtrlData(u8 state, u16 *res)
 {
-    u16         temp        = 0;
+//    u16         temp                = 0;
+    int         tempNow             = GetSensorMainValue(GetMonitor(), F_S_TEMP);
+    u16         coolTarge           = 0;
+    u16         HeatTarge           = 0;
+    u8          coolEn              = OFF;
+    u8          heatEn              = OFF;
 
     proTempSet_t    tempSet;
     GetNowSysSet(&tempSet, RT_NULL, RT_NULL, RT_NULL, RT_NULL, RT_NULL, RT_NULL);
 
-    if(ON == state)
+    if(VALUE_NULL != tempNow)
     {
         if(DAY_TIME == GetSysSet()->dayOrNight)
         {
-            temp = tempSet.dayCoolingTarget;
+            coolTarge = tempSet.dayCoolingTarget;
+            HeatTarge = tempSet.dayHeatingTarget;
         }
         else if(NIGHT_TIME == GetSysSet()->dayOrNight)
         {
-            temp = tempSet.nightCoolingTarget;
+            coolTarge = tempSet.nightCoolingTarget;
+            HeatTarge = tempSet.nightHeatingTarget;
         }
+    }
 
-        changeIrAirCode(temp, res);
+    if(tempNow >= coolTarge) {
+        coolEn = ON;
+    }
+    else if(tempNow <= (coolTarge - tempSet.tempDeadband)) {
+        coolEn = OFF;
+    }
+
+    if(tempNow <= HeatTarge) {
+
+        heatEn = ON;
+    }
+    else if(tempNow >= HeatTarge + tempSet.tempDeadband) {
+
+        heatEn = OFF;
+    }
+
+    if(ON == state)
+    {
+//        if(DAY_TIME == GetSysSet()->dayOrNight)
+//        {
+//            temp = tempSet.dayCoolingTarget;
+//        }
+//        else if(NIGHT_TIME == GetSysSet()->dayOrNight)
+//        {
+//            temp = tempSet.nightCoolingTarget;
+//        }
+
+//        changeIrAirCoolCode(temp, res);
+        if(ON == coolEn) {
+            changeIrAirCoolCode(coolTarge, res);
+        } else if(ON == heatEn) {
+            changeIrAirHeatCode(HeatTarge, res);
+        } else {
+            *res = 0x6000;
+        }
     }
     else
     {

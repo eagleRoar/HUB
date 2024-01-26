@@ -25,6 +25,7 @@
 #define TEST_PORT                 9897
 #define MASTER_PORT               9898
 #define UDP_BROADCAST_PORT        TEST_PORT
+#define UDP_SEND_BROADCAST_PORT   10001
 #define RCV_ETH_BUFFSZ            1024 * 2
 #define SEND_ETH_BUFFSZ           1024 * 8
 #define CONNECT_TIME_OUT          120

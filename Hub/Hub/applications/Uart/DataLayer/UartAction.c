@@ -140,35 +140,28 @@ rt_err_t GetTankWarnData(sys_set_t *set, u8 index, u8 func, tankSensorData_t *da
 }
 
 #if(HUB_SELECT == HUB_IRRIGSTION)
-//监控桶传感器报警
-void monitorTankSensorWarn(sys_tank_t *list, sys_set_t *set)
+
+/**
+ * 桶传感器报警 报警原则为持续一段时间高于或者低于某个值
+ * @param list
+ * @param set
+ */
+void monitorTankAquaWarn(sys_tank_t *list, sys_set_t *set)
 {
-    tank_t              *tank       = RT_NULL;
-    tankSensorData_t    warnSet;
-    char                info[50]    = " ";
-    u8                  state       = 0;
-    sensor_t            *sensor     = RT_NULL;
-    u8                  en          = NO;
-    u8                  warnLow     = 0;
-    u8                  warnHigh    = 0;
-    u8                  *preStateP  = RT_NULL;
-    static u8           preState[TANK_SINGLE_GROUD][TANK_WARN_ITEM_MAX];
-    tankWarnState_t     *tankState  = RT_NULL;
+    tankWarnState_t     *tankState  = GetTankWarnState();
+    u8                  temp        = 0;
+    u16                 value       = 0;
     static u8           tankStatePre[TANK_LIST_MAX][16];
 
     for(int index = 0; index < list->tank_size; index++)
     {
-        tank = &list->tank[index];
-        tankState = GetTankWarnState();
         //清除报警
         rt_memset((u8 *)&tankState[index], 0, sizeof(tankWarnState_t));
         //遍历单个桶下的所有sensor
         aqua_state_t *aquaWarnState = GetAquaWarn();
         for(u8 bit = 0; bit < 16; bit++)
         {
-            u8 temp = 0;
-            u16 value = 0;
-            //判断是否已经发送过
+            //aqua 报警判断是否已经发送过
             u8 warnFlag = (aquaWarnState[index].warn & (1 << bit)) > 0 ? 1 : 0;
             if(warnFlag != tankStatePre[index][bit])
             {
@@ -226,15 +219,35 @@ void monitorTankSensorWarn(sys_tank_t *list, sys_set_t *set)
                             break;
                     }
 
-//                    SendWarnToCloudAndApp(GetMqttClient(), CMD_HUB_REPORT_WARN, 62500 + temp - 1, value, RT_NULL);
                     sendWarnReport(62500 + temp - 1, value, 0, NO, RT_NULL);
                 }
 
                 tankStatePre[index][bit] = warnFlag;
             }
         }
+    }
+}
 
-        for(int i = 0; i < TANK_SINGLE_GROUD; i++)//
+//Justin debug 仅仅测试未完待续
+void monitorTankSensorWarn(sys_tank_t *list, sys_set_t *set)
+{
+    tank_t              *tank       = RT_NULL;
+    tankSensorData_t    warnSet;
+    char                info[50]    = " ";
+    u8                  state       = 0;
+    sensor_t            *sensor     = RT_NULL;
+    u8                  en          = NO;
+    u8                  warnLow     = 0;
+    u8                  warnHigh    = 0;
+    static u8           statePre[TANK_LIST_MAX][TANK_WARN_ITEM_MAX]; //该数组保存数值
+    static u8           cnt[TANK_LIST_MAX][TANK_WARN_ITEM_MAX]; //该数组保存超限制数值计数
+    u8                  timeOut     = 60;
+
+    for(int index = 0; index < list->tank_size; index++)
+    {
+        tank = &list->tank[index];
+
+        for(int i = 0; i < TANK_SINGLE_GROUD; i++)
         {
             for(int j = 0; j < TANK_SENSOR_MAX; j++)
             {
@@ -245,52 +258,54 @@ void monitorTankSensorWarn(sys_tank_t *list, sys_set_t *set)
                     if(sensor)
                     {
                         //1.遍历该sensor 的端口
+                        u8 k = 0;
                         for(int port = 0; port < sensor->storage_size; port++)
                         {
                             if(RT_EOK == GetTankWarnData(set, index, sensor->__stora[port].func, &warnSet))
                             {
+                                //2.获取该值的最高最低限制值
                                 switch (sensor->__stora[port].func) {
                                     case F_S_EC:
                                         en = set->sysWarn.ecEn;
                                         warnLow = WARN_EC_LOW - 1;
                                         warnHigh = WARN_EC_HIGHT - 1;
-                                        preStateP = &preState[i][0];
+                                        k = 0;
+                                        timeOut = 60;
                                         break;
                                     case F_S_PH:
                                         en = set->sysWarn.phEn;
                                         warnLow = WARN_PH_LOW - 1;
                                         warnHigh = WARN_PH_HIGHT - 1;
-                                        preStateP = &preState[i][1];
+                                        k = 1;
+                                        timeOut = 70;
                                         break;
                                     case F_S_WT:
                                         en = set->sysWarn.wtEn;
                                         warnLow = WARN_WT_LOW - 1;
                                         warnHigh = WARN_WT_HIGHT - 1;
-                                        preStateP = &preState[i][2];
+                                        k = 2;
+                                        timeOut = 80;
                                         break;
                                     case F_S_WL:
                                         en = set->sysWarn.wlEn;
                                         warnLow = WARN_WL_LOW - 1;
                                         warnHigh = WARN_WL_HIGHT - 1;
-                                        preStateP = &preState[i][3];
+                                        k = 3;
+                                        timeOut = 90;
                                         break;
                                     case F_S_SW:
                                         en = set->sysWarn.mmEn;
                                         warnLow = WARN_SOIL_W_LOW - 1;
                                         warnHigh = WARN_SOIL_W_HIGHT - 1;
-                                        preStateP = &preState[i][4];
-                                        break;
-                                    case F_S_SEC:
-                                        en = set->sysWarn.meEn;
-                                        warnLow = WARN_SOIL_EC_LOW - 1;
-                                        warnHigh = WARN_SOIL_EC_HIGHT - 1;
-                                        preStateP = &preState[i][5];
+                                        k = 4;
+                                        timeOut = 100;
                                         break;
                                     case F_S_ST:
                                         en = set->sysWarn.mtEn;
                                         warnLow = WARN_SOIL_T_LOW - 1;
                                         warnHigh = WARN_SOIL_T_HIGHT - 1;
-                                        preStateP = &preState[i][6];
+                                        k = 6;
+                                        timeOut = 70;
                                         break;
                                     default:
                                         break;
@@ -302,26 +317,41 @@ void monitorTankSensorWarn(sys_tank_t *list, sys_set_t *set)
                                 {
                                     sensorData = GetSingleSensorDataByFunc(GetMonitor(), tank->sensorId[i][j], sensor->__stora[port].func);
 
-                                    if(F_S_WL == sensor->__stora[port].func)
-                                    {
-                                        sensorData /= 10;
-                                    }
-
                                     if(VALUE_NULL != sensorData)
                                     {
+                                        if(F_S_WL == sensor->__stora[port].func)
+                                        {
+                                            sensorData /= 10;
+                                        }
+
+                                        state = statePre[index][k];
                                         if(CON_FAIL != sensor->conn_state)
                                         {
-                                            if(YES == GetTankMinWarn(sensorData, warnSet.min))
-                                            {
-                                                state = 2;
+                                            if(cnt[index][k] < timeOut) {
+                                                if(sensorData > warnSet.max) {
+                                                    cnt[index][k]++;
+                                                } else if(sensorData < warnSet.min) {
+                                                    cnt[index][k]++;
+                                                } else {
+                                                    cnt[index][k] = 0;
+                                                }
+                                            } else {
+                                                if(sensorData > warnSet.max) {
+                                                    state = 1;
+                                                    cnt[index][k] = 0;
+                                                } else if(sensorData < warnSet.min) {
+                                                    state = 2;
+                                                    cnt[index][k] = 0;
+                                                } else {
+                                                    state = 0;
+                                                }
+
                                             }
-                                            else if(YES == GetTankMaxWarn(sensorData, warnSet.max))
-                                            {
-                                                state = 1;
-                                            }
-                                            else
-                                            {
-                                                state = 0;
+
+                                            //Justin
+                                            if(0 == index && 0 == k) {
+                                                LOG_I("cnt = %d, data = %d, min = %d, max = %d, id = %d, %d",
+                                                        cnt[index][k], sensorData, warnSet.min, warnSet.max, sensor->addr, statePre[index][k]);
                                             }
                                         }
                                         else
@@ -329,60 +359,9 @@ void monitorTankSensorWarn(sys_tank_t *list, sys_set_t *set)
                                             state = 0;
                                         }
 
-                                        switch(sensor->__stora[port].func)
+                                        if(statePre[index][k] != state)
                                         {
-                                            case F_S_EC:
-                                                if(0 == i)
-                                                {
-                                                    tankState[index].tank_ec = state;
-                                                }
-                                                else
-                                                {
-                                                    tankState[index].inline_ec = state;
-                                                }
-                                                break;
-                                            case F_S_PH:
-                                                if(0 == i)
-                                                {
-                                                    tankState[index].tank_ph = state;
-                                                }
-                                                else
-                                                {
-                                                    tankState[index].inline_ph = state;
-                                                }
-                                                break;
-                                            case F_S_WT:
-                                                if(0 == i)
-                                                {
-                                                    tankState[index].tank_wt = state;
-                                                }
-                                                else
-                                                {
-                                                    tankState[index].inline_wt = state;
-                                                }
-                                                break;
-
-                                            case F_S_WL:
-                                                tankState[index].wl = state;
-                                                break;
-
-                                            case F_S_SW:
-                                                tankState[index].sw = state;
-                                                break;
-
-                                            case F_S_SEC:
-                                                tankState[index].sec = state;
-                                                break;
-
-                                            case F_S_ST:
-                                                tankState[index].st = state;
-                                                break;
-                                            default : break;
-                                        }
-
-                                        if(*preStateP != state)
-                                        {
-                                            *preStateP = state;
+                                            statePre[index][k] = state;
 
                                             if(0 == i)
                                             {
@@ -396,34 +375,314 @@ void monitorTankSensorWarn(sys_tank_t *list, sys_set_t *set)
                                             if(2 == state)
                                             {
                                                 sendWarnReport(warnLow, sensorData, 0, NO, info);
+                                                LOG_E("warnLow = %d",warnLow);//Justin
                                             }
                                             else if(1 == state)
                                             {
                                                 sendWarnReport(warnHigh, sensorData, 0, NO, info);
+                                                LOG_E("warnHigh = %d",warnHigh);//Justin
                                             }
                                         }
                                     }
                                 }
                                 else
                                 {
-                                    if(RT_NULL != preStateP)
-                                    {
-                                        *preStateP = 0;
-                                    }
+                                    statePre[index][k] = 0;
+                                    cnt[index][k] = 0;
                                 }
                             }
                         }
                     }
-                    else
-                    {
-
-                    }
-
                 }
             }
         }
     }
+
+
 }
+
+//void monitorTankSensorWarn(sys_tank_t *list, sys_set_t *set)
+//{
+//    tank_t              *tank       = RT_NULL;
+//    tankSensorData_t    warnSet;
+//    char                info[50]    = " ";
+//    u8                  state       = 0;
+//    sensor_t            *sensor     = RT_NULL;
+//    u8                  en          = NO;
+//    u8                  warnLow     = 0;
+//    u8                  warnHigh    = 0;
+//    u8                  *preStateP  = RT_NULL;
+//    static u8           preState[TANK_SINGLE_GROUD][TANK_WARN_ITEM_MAX];
+//    tankWarnState_t     *tankState  = RT_NULL;
+//    static u8           tankStatePre[TANK_LIST_MAX][16];
+//
+//    for(int index = 0; index < list->tank_size; index++)
+//    {
+//        tank = &list->tank[index];
+//        tankState = GetTankWarnState();
+//        //清除报警
+//        rt_memset((u8 *)&tankState[index], 0, sizeof(tankWarnState_t));
+//        //遍历单个桶下的所有sensor
+//        aqua_state_t *aquaWarnState = GetAquaWarn();
+//        for(u8 bit = 0; bit < 16; bit++)
+//        {
+//            u8 temp = 0;
+//            u16 value = 0;
+//            //aqua 报警判断是否已经发送过
+//            u8 warnFlag = (aquaWarnState[index].warn & (1 << bit)) > 0 ? 1 : 0;
+//            if(warnFlag != tankStatePre[index][bit])
+//            {
+//                if(warnFlag)
+//                {
+//                    switch (bit)
+//                    {
+//                        case 0:
+//                            //EC 高报警
+//                            temp = 10;
+//                            value = aquaWarnState[index].ec;
+//                            break;
+//                        case 1:
+//                            //EC 低报警
+//                            temp = 11;
+//                            value = aquaWarnState[index].ec;
+//                            break;
+//                        case 2:
+//                            //PH 高报警
+//                            temp = 8;
+//                            value = aquaWarnState[index].ph;
+//                            break;
+//                        case 3:
+//                            //PH 低报警
+//                            temp = 9;
+//                            value = aquaWarnState[index].ph;
+//                            break;
+//                        case 4:
+//                            //水温高
+//                            temp = 12;
+//                            value = aquaWarnState[index].wt;
+//                            break;
+//                        case 5:
+//                            //水温低
+//                            temp = 13;
+//                            value = aquaWarnState[index].wt;
+//                            break;
+//                        case 6:
+//                            //EC 掉线
+//                            temp = 24;
+//                            break;
+//                        case 7:
+//                            //PH 掉线
+//                            temp = 25;
+//                            break;
+//                        case 8:
+//                            //EC 配肥时间超时
+//                            temp = 4;
+//                            break;
+//                        case 9:
+//                            //PH 配肥时间超时
+//                            temp = 5;
+//                            break;
+//                        default:
+//                            break;
+//                    }
+//
+//                    sendWarnReport(62500 + temp - 1, value, 0, NO, RT_NULL);
+//                }
+//
+//                tankStatePre[index][bit] = warnFlag;
+//            }
+//        }
+//
+//        for(int i = 0; i < TANK_SINGLE_GROUD; i++)//
+//        {
+//            for(int j = 0; j < TANK_SENSOR_MAX; j++)
+//            {
+//                if(0 != tank->sensorId[i][j])
+//                {
+//                    sensor = GetSensorByAddr(GetMonitor(), tank->sensorId[i][j]);
+//
+//                    if(sensor)
+//                    {
+//                        //1.遍历该sensor 的端口
+//                        for(int port = 0; port < sensor->storage_size; port++)
+//                        {
+//                            if(RT_EOK == GetTankWarnData(set, index, sensor->__stora[port].func, &warnSet))
+//                            {
+//                                switch (sensor->__stora[port].func) {
+//                                    case F_S_EC:
+//                                        en = set->sysWarn.ecEn;
+//                                        warnLow = WARN_EC_LOW - 1;
+//                                        warnHigh = WARN_EC_HIGHT - 1;
+//                                        preStateP = &preState[i][0];
+//                                        break;
+//                                    case F_S_PH:
+//                                        en = set->sysWarn.phEn;
+//                                        warnLow = WARN_PH_LOW - 1;
+//                                        warnHigh = WARN_PH_HIGHT - 1;
+//                                        preStateP = &preState[i][1];
+//                                        break;
+//                                    case F_S_WT:
+//                                        en = set->sysWarn.wtEn;
+//                                        warnLow = WARN_WT_LOW - 1;
+//                                        warnHigh = WARN_WT_HIGHT - 1;
+//                                        preStateP = &preState[i][2];
+//                                        break;
+//                                    case F_S_WL:
+//                                        en = set->sysWarn.wlEn;
+//                                        warnLow = WARN_WL_LOW - 1;
+//                                        warnHigh = WARN_WL_HIGHT - 1;
+//                                        preStateP = &preState[i][3];
+//                                        break;
+//                                    case F_S_SW:
+//                                        en = set->sysWarn.mmEn;
+//                                        warnLow = WARN_SOIL_W_LOW - 1;
+//                                        warnHigh = WARN_SOIL_W_HIGHT - 1;
+//                                        preStateP = &preState[i][4];
+//                                        break;
+//                                    case F_S_SEC:
+//                                        en = set->sysWarn.meEn;
+//                                        warnLow = WARN_SOIL_EC_LOW - 1;
+//                                        warnHigh = WARN_SOIL_EC_HIGHT - 1;
+//                                        preStateP = &preState[i][5];
+//                                        break;
+//                                    case F_S_ST:
+//                                        en = set->sysWarn.mtEn;
+//                                        warnLow = WARN_SOIL_T_LOW - 1;
+//                                        warnHigh = WARN_SOIL_T_HIGHT - 1;
+//                                        preStateP = &preState[i][6];
+//                                        break;
+//                                    default:
+//                                        break;
+//                                }
+//
+//                                int sensorData = 0;
+//
+//                                if(ON == en)
+//                                {
+//                                    sensorData = GetSingleSensorDataByFunc(GetMonitor(), tank->sensorId[i][j], sensor->__stora[port].func);
+//
+//                                    if(F_S_WL == sensor->__stora[port].func)
+//                                    {
+//                                        sensorData /= 10;
+//                                    }
+//
+//                                    if(VALUE_NULL != sensorData)
+//                                    {
+//                                        if(CON_FAIL != sensor->conn_state)
+//                                        {
+//                                            if(YES == GetTankMinWarn(sensorData, warnSet.min))
+//                                            {
+//                                                state = 2;
+//                                            }
+//                                            else if(YES == GetTankMaxWarn(sensorData, warnSet.max))
+//                                            {
+//                                                state = 1;
+//                                            }
+//                                            else
+//                                            {
+//                                                state = 0;
+//                                            }
+//                                        }
+//                                        else
+//                                        {
+//                                            state = 0;
+//                                        }
+//
+//                                        switch(sensor->__stora[port].func)
+//                                        {
+//                                            case F_S_EC:
+//                                                if(0 == i)
+//                                                {
+//                                                    tankState[index].tank_ec = state;
+//                                                }
+//                                                else
+//                                                {
+//                                                    tankState[index].inline_ec = state;
+//                                                }
+//                                                break;
+//                                            case F_S_PH:
+//                                                if(0 == i)
+//                                                {
+//                                                    tankState[index].tank_ph = state;
+//                                                }
+//                                                else
+//                                                {
+//                                                    tankState[index].inline_ph = state;
+//                                                }
+//                                                break;
+//                                            case F_S_WT:
+//                                                if(0 == i)
+//                                                {
+//                                                    tankState[index].tank_wt = state;
+//                                                }
+//                                                else
+//                                                {
+//                                                    tankState[index].inline_wt = state;
+//                                                }
+//                                                break;
+//
+//                                            case F_S_WL:
+//                                                tankState[index].wl = state;
+//                                                break;
+//
+//                                            case F_S_SW:
+//                                                tankState[index].sw = state;
+//                                                break;
+//
+//                                            case F_S_SEC:
+//                                                tankState[index].sec = state;
+//                                                break;
+//
+//                                            case F_S_ST:
+//                                                tankState[index].st = state;
+//                                                break;
+//                                            default : break;
+//                                        }
+//
+//                                        if(*preStateP != state)
+//                                        {
+//                                            *preStateP = state;
+//
+//                                            if(0 == i)
+//                                            {
+//                                                sprintf(info, "%s %s",GetSysTank()->tank[index].name, "tank");
+//                                            }
+//                                            else if(1 == i)
+//                                            {
+//                                                sprintf(info, "%s %s",GetSysTank()->tank[index].name, "inline");
+//                                            }
+//
+//                                            if(2 == state)
+//                                            {
+//                                                sendWarnReport(warnLow, sensorData, 0, NO, info);
+//                                            }
+//                                            else if(1 == state)
+//                                            {
+//                                                sendWarnReport(warnHigh, sensorData, 0, NO, info);
+//                                            }
+//                                        }
+//                                    }
+//                                }
+//                                else
+//                                {
+//                                    if(RT_NULL != preStateP)
+//                                    {
+//                                        *preStateP = 0;
+//                                    }
+//                                }
+//                            }
+//                        }
+//                    }
+//                    else
+//                    {
+//
+//                    }
+//
+//                }
+//            }
+//        }
+//    }
+//}
 
 //监听
 void monitorTankTimeOutWarn(sys_tank_t *list, sys_set_t *set)
@@ -1335,7 +1594,7 @@ void warnProgram(type_monitor_t *monitor, sys_set_t *set)
         }
     }
 #elif(HUB_SELECT == HUB_IRRIGSTION)
-
+    monitorTankAquaWarn(GetSysTank(), GetSysSet());
     monitorTankSensorWarn(GetSysTank(), GetSysSet());
     monitorTankTimeOutWarn(GetSysTank(), GetSysSet());
 #endif
@@ -2196,6 +2455,7 @@ void TempAndHumiProgram(type_monitor_t *monitor, type_uart_class uart)
     if(tempNow <= HeatTarge)
     {
         CtrlAllDeviceByFunc(monitor, F_HEAT, ON, 0);
+        CtrlAllDeviceByFunc(monitor, F_COOL_HEAT, ON, 0);
     }
     else if(tempNow >= HeatTarge + tempSet.tempDeadband)
     {
@@ -2229,6 +2489,7 @@ void TempAndHumiProgram(type_monitor_t *monitor, type_uart_class uart)
     {
         //打开所以制冷功能设备
         CtrlAllDeviceByFunc(monitor, F_COOL, ON, 0);
+        CtrlAllDeviceByFunc(monitor, F_COOL_HEAT, ON, 0);
         if(ON == lock)
         {
             CtrlAllDeviceByType(monitor, DEHUMI_TYPE, ON, 0);

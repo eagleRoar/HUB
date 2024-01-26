@@ -16,6 +16,19 @@
 type_uart_class SensorObject;
 static uart_send_monitor sendMoni[SENSOR_MAX]; //优化设备发送
 
+static void GenerateCalibrateCo2(sensor_t *sensor, u16 reg, u8 *data)
+{
+    rt_memset(data, 0, 8);
+
+    data[0] = sensor->addr;
+    data[1] = WRITE_SINGLE;
+    data[2] = reg >> 8;
+    data[3] = reg;
+    data[4] = 0x5190 >> 8;
+    data[5] = 0x5190;
+    data[6] = usModbusRTU_CRC(data, 6);
+    data[7] = usModbusRTU_CRC(data, 6) >> 8;
+}
 
 static void GenerateAskData(sensor_t sensor, u16 reg, u8 *data)
 {
@@ -547,6 +560,46 @@ static void KeepConnect(type_monitor_t *monitor)
     }
 }
 
+void CalibrateCo2(void)
+{
+    u8          data[8];
+    KV          keyValue;
+    seq_key_t   seq_key;
+    sensor_t    *sensor;
+    u16         reg = 0x002A;
+    //发送数据给四合一传感器
+    for(int i = 0; i < GetMonitor()->sensor_size; i++)
+    {
+        sensor = &GetMonitor()->sensor[i];
+
+        if(BHS_TYPE == sensor->type && CON_SUCCESS == sensor->conn_state)
+        {
+            //1.生成数据
+            GenerateCalibrateCo2(sensor, reg, data);
+
+            //2.
+            seq_key.addr = sensor->addr;
+            seq_key.regH = reg >> 8;
+            seq_key.regL = reg;
+            seq_key.regSize = sensor->storage_size;
+
+            keyValue.key = SeqKeyToLong(seq_key);
+            keyValue.dataSegment.len = 8;
+            keyValue.dataSegment.data = rt_malloc(keyValue.dataSegment.len);
+            if(keyValue.dataSegment.data)
+            {
+                //3.复制实际数据
+                rt_memcpy(keyValue.dataSegment.data, data, keyValue.dataSegment.len);
+
+                SensorObject.taskList.AddToList(keyValue, NO);
+
+                //4.回收空间
+                rt_free(keyValue.dataSegment.data);
+            }
+        }
+    }
+}
+
 void InitSensorObject(void)
 {
     //1.初始化记录发送情况
@@ -569,6 +622,7 @@ void InitSensorObject(void)
     SensorObject.RecvListHandle = RecvListHandle;
     SensorObject.KeepConnect = KeepConnect;
     SensorObject.Optimization = Optimization;
+    SensorObject.CalibrateCo2 = CalibrateCo2;
 
     SensorObject.recvList.GetList = GetRecvList;       //获取核对关注列表
     SensorObject.recvList.AddToList = AddToRecvList;   //添加到关注列表中,数据接收的时候就

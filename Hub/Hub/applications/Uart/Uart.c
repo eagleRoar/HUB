@@ -499,6 +499,15 @@ void SensorUart2TaskEntry(void* parameter)
             lineObj->RecvListHandle();
             //数据发送优化 减少设备的一直发送
             lineObj->Optimization(GetMonitor());
+
+            //co2定标
+            if(YES == GetSysSet()->startCalFlg)
+            {
+                sensorObj->CalibrateCo2();
+
+                GetSysSet()->startCalFlg = NO;
+                co2CalibraterResPage(YES);
+            }
 #elif(HUB_SELECT == HUB_IRRIGSTION)
             //4.数据处理,包括设备注册以及设备开关状态接收
             aquaObj->RecvListHandle();
