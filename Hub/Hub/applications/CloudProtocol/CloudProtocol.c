@@ -599,6 +599,18 @@ void initCloudProtocol(void)
         sys_set.lineRecipeList[index].no = index + 1;
     }
     rt_memset(&sys_set.dimmingCurve, 0, sizeof(dimmingCurve_t));
+    sys_set.dimmingCurve.onOutput1 = 10;
+    sys_set.dimmingCurve.onOutput2 = 10;
+    sys_set.dimmingCurve.onOutput3 = 10;
+    sys_set.dimmingCurve.onOutput4 = 10;
+    sys_set.dimmingCurve.onVoltage1 = 10;
+    sys_set.dimmingCurve.onVoltage2 = 10;
+    sys_set.dimmingCurve.onVoltage3 = 10;
+    sys_set.dimmingCurve.onVoltage4 = 10;
+    sys_set.dimmingCurve.fullVoltage1 = 100;
+    sys_set.dimmingCurve.fullVoltage2 = 100;
+    sys_set.dimmingCurve.fullVoltage3 = 100;
+    sys_set.dimmingCurve.fullVoltage4 = 100;
 
     sys_set.sensorMainType = SENSOR_CTRL_AVE;
 
