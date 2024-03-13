@@ -61,8 +61,12 @@
  * 1.2.27
  **默认四路灯光的实际配置
  */
+/**
+ * 1.2.28
+ **广播温度等
+ */
 #if(HUB_ENVIRENMENT == HUB_SELECT)
-#define FIRMWAREVISION                  "0.2.27"
+#define FIRMWAREVISION                  "0.2.28"
 #elif(HUB_IRRIGSTION == HUB_SELECT)
 #define FIRMWAREVISION                  "1.2.32"
 #endif

@@ -387,6 +387,7 @@ static void GetSpecialVersionFromFile(void)
     if(0 == GetFileLength(new_special_version_file) &&
        0 == GetFileLength(backup_special_version_file)) {
         SetSpecialVersion(0);
+        LOG_I("GetSpecialVersionFromFile --------- 1,GetFileLength(backup_special_version_file) = %d",GetFileLength(backup_special_version_file));//Justin debug
     } else {
         //2.读取SD中的数据
         length = GetFileLength(backup_special_version_file);
@@ -404,6 +405,7 @@ static void GetSpecialVersionFromFile(void)
 
                         //3.将Sd卡的数据写进片上flash中
                         WriteFileData(new_special_version_file, data, 0, length);
+                        LOG_I("GetSpecialVersionFromFile --------- 2version = %d",version);//Justin debug
 
                     } else {
                         SetSpecialVersion(0);
@@ -431,6 +433,7 @@ static void GetSpecialVersionFromFile(void)
                             SetSpecialVersion(version);
                             //3.将片上flash的数据写进Sd卡中
                             WriteFileData(backup_special_version_file, data, 0, length);
+                            LOG_I("GetSpecialVersionFromFile --------- 3version = %d",version);//Justin debug
 
                         } else {
                             SetSpecialVersion(0);

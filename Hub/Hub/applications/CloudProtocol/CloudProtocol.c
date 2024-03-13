@@ -899,6 +899,40 @@ rt_err_t ReplyDeviceListDataToCloud(mqtt_client *client, int *sock, u8 sendCloud
     return ret;
 }
 
+void SendBroadcastData(int sock, struct sockaddr_in addr)
+{
+    char            *str        = RT_NULL;
+    char            name[12]    = "";
+    cJSON           *json       = cJSON_CreateObject();
+
+    if(RT_NULL != json)
+    {
+        cJSON_AddStringToObject(json, "cmd", "hubReport");
+        cJSON_AddStringToObject(json, "sn", GetSnName(name, 12));
+        cJSON_AddStringToObject(json, "name", GetHub()->name);
+        cJSON_AddNumberToObject(json, "co2", GetSensorMainValue(GetMonitor(), F_S_CO2));
+        cJSON_AddNumberToObject(json, "temp", GetSensorMainValue(GetMonitor(), F_S_TEMP));
+        cJSON_AddNumberToObject(json, "humid", GetSensorMainValue(GetMonitor(), F_S_HUMI));
+        cJSON_AddNumberToObject(json, "ppfd", getSensorDataByFunc(GetMonitor(), F_S_PAR));
+        if(0 == getVpd())
+        {
+            cJSON_AddNumberToObject(json, "vpd", VALUE_NULL);
+        }
+        else
+        {
+            cJSON_AddNumberToObject(json, "vpd", getVpd());
+        }
+
+        str = cJSON_PrintUnformatted(json);
+        cJSON_Delete(json);
+    }
+
+    sendto(sock, str, strlen(str), 0,
+           (struct sockaddr *)&addr, sizeof(struct sockaddr));
+
+    cJSON_free(str);
+}
+
 /**
  * 发布数据(回复云服务器)
  */

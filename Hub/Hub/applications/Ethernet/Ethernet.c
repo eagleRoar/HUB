@@ -153,6 +153,8 @@ void UdpTaskEntry(void* parameter)
     static u16              time1S              = 0;
     static u8               Timer10sTouch       = OFF;
     static u16              time10S             = 0;
+    static u8               Timer30sTouch       = OFF;
+    static u16              time30S             = 0;
     static u8               Timer1MinTouch      = OFF;
     static u16              time1Min            = 0;
     static u8               Timer2MinTouch      = OFF;
@@ -162,6 +164,9 @@ void UdpTaskEntry(void* parameter)
     static u8               connectNewFlag      = NO;
     static u8               sendWarnCnt         = 2;
     static u8               sendWarnFlagLast    = NO;
+
+    int testSock;
+    struct sockaddr_in      testBroadcastAddr;
 
     eth->SetethLinkStatus(GetEthDriverLinkStatus());
     if(LINKUP == eth->GetethLinkStatus())    //检查网口是否有连接
@@ -182,11 +187,14 @@ void UdpTaskEntry(void* parameter)
     }
 
     addr_len = sizeof(struct sockaddr);
+
+    UdpSetingInit1(&testSock, &testBroadcastAddr);
     while (1)
     {
         /* 启用定时器 */
         time1S = TimerTask(&time1S, 1000/50, &Timer1sTouch);                            //10 秒任务定时器
         time10S = TimerTask(&time10S, 10000/50, &Timer10sTouch);                        //10 秒任务定时器
+        time30S = TimerTask(&time30S, 30000/50, &Timer30sTouch);                        //30 秒任务定时器
         time1Min = TimerTask(&time1Min, 60000/50, &Timer1MinTouch);                     //1  分钟任务定时器
         time2Min = TimerTask(&time2Min, 120000/50, &Timer2MinTouch);                    //2  分钟任务定时器
         time2Min_1 = TimerTask(&time2Min_1, 122000/50, &Timer2MinTouch_1);              //2  分钟任务定时器
@@ -286,16 +294,6 @@ void UdpTaskEntry(void* parameter)
                 }
             }
 
-//            //心跳包检测,如果超时2分钟,断掉连接
-//            if(GetTcpSocket() > 0)
-//            {
-//                if(getTimeStamp() > getEthHeart()->last_connet_time + CONNECT_TIME_OUT)
-//                {
-//                    //断开连接
-//                    LOG_E("over 2 min have not recv ack, sock close, sock = %d",tcp_sock);
-//                    closeTcpSocket();
-//                }
-//            }
         }
 
         /* 1秒定时任务*/
@@ -341,6 +339,14 @@ void UdpTaskEntry(void* parameter)
                 cloudCmd.recv_app_flag = YES;
                 strcpy(cloudCmd.cmd, CMD_HUB_REPORT);
             }
+
+        }
+
+        /* 30s*/
+        if(ON == Timer30sTouch) {
+#if(HUB_SELECT == HUB_ENVIRENMENT)
+            SendBroadcastData(testSock, testBroadcastAddr);
+#endif
         }
 
         /* 1min 定时任务 */
