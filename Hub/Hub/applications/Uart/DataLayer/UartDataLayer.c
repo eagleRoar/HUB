@@ -178,6 +178,9 @@ char *GetModelByType(u8 type, char *name, u8 len)
         case MIX_TYPE:
             strncpy(name, "BDS-MIX", len);
             break;
+        case AUTO_WATER_TYPE:
+            strncpy(name, "BDS-AUTO", len);
+            break;
         case HVAC_6_TYPE:
             strncpy(name, "BTS-1", len);
             break;
@@ -315,6 +318,9 @@ u8 GetFuncByType(u8 type)
             break;
         case MIX_TYPE:
             ret = F_MIX;
+            break;
+        case AUTO_WATER_TYPE:
+            ret = F_AUTO_WATER;
             break;
         default:
             break;
@@ -591,6 +597,7 @@ u8 TypeSupported(u8 type)
         case PRO_HUMI_TEMP_TYPE:
         case COOL_TYPE:
         case MIX_TYPE:
+        case AUTO_WATER_TYPE:
         case HVAC_6_TYPE:
         case TIMER_TYPE:
         case AC_4_TYPE:

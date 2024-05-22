@@ -181,68 +181,26 @@ static void GenerateHvacData(device_t *device, u8 state, u16 *res)
     }
 }
 
-//获取红外空调命令
 static void GenerateIrAirCtrlData(u8 state, u16 *res)
 {
-//    u16         temp                = 0;
-    int         tempNow             = GetSensorMainValue(GetMonitor(), F_S_TEMP);
-    u16         coolTarge           = 0;
-    u16         HeatTarge           = 0;
-    u8          coolEn              = OFF;
-    u8          heatEn              = OFF;
+    u16         temp        = 0;
 
     proTempSet_t    tempSet;
     GetNowSysSet(&tempSet, RT_NULL, RT_NULL, RT_NULL, RT_NULL, RT_NULL, RT_NULL);
 
-    if(VALUE_NULL != tempNow)
+    if(ON == state)
     {
         if(DAY_TIME == GetSysSet()->dayOrNight)
         {
-            coolTarge = tempSet.dayCoolingTarget;
-            HeatTarge = tempSet.dayHeatingTarget;
+            temp = tempSet.dayCoolingTarget;
         }
         else if(NIGHT_TIME == GetSysSet()->dayOrNight)
         {
-            coolTarge = tempSet.nightCoolingTarget;
-            HeatTarge = tempSet.nightHeatingTarget;
+            temp = tempSet.nightCoolingTarget;
         }
-    }
 
-    if(tempNow >= coolTarge) {
-        coolEn = ON;
-    }
-    else if(tempNow <= (coolTarge - tempSet.tempDeadband)) {
-        coolEn = OFF;
-    }
-
-    if(tempNow <= HeatTarge) {
-
-        heatEn = ON;
-    }
-    else if(tempNow >= HeatTarge + tempSet.tempDeadband) {
-
-        heatEn = OFF;
-    }
-
-    if(ON == state)
-    {
-//        if(DAY_TIME == GetSysSet()->dayOrNight)
-//        {
-//            temp = tempSet.dayCoolingTarget;
-//        }
-//        else if(NIGHT_TIME == GetSysSet()->dayOrNight)
-//        {
-//            temp = tempSet.nightCoolingTarget;
-//        }
-
-//        changeIrAirCoolCode(temp, res);
-        if(ON == coolEn) {
-            changeIrAirCoolCode(coolTarge, res);
-        } else if(ON == heatEn) {
-            changeIrAirHeatCode(HeatTarge, res);
-        } else {
-            *res = 0x6000;
-        }
+//        changeIrAirCode(temp, res);
+        changeIrAirCoolCode(temp, res);
     }
     else
     {

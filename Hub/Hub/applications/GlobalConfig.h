@@ -58,17 +58,21 @@
  **报警增加过滤时间
  */
 /**
- * 1.2.27
+ * 0.2.27
  **默认四路灯光的实际配置
  */
 /**
- * 1.2.28
+ * 0.2.28
  **广播温度等
  */
+/**
+ * 0.2.30
+ **修改红外手动不开
+ */
 #if(HUB_ENVIRENMENT == HUB_SELECT)
-#define FIRMWAREVISION                  "0.2.28"
+#define FIRMWAREVISION                  "0.2.30"
 #elif(HUB_IRRIGSTION == HUB_SELECT)
-#define FIRMWAREVISION                  "1.2.32"
+#define FIRMWAREVISION                  "1.2.33"
 #endif
 #define FIRMWARE_VERSION_NUM            2
 #define BOOTLOADVISION                  "0.0.1"

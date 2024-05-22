@@ -2165,7 +2165,7 @@ void TempAndHumiProgram(type_monitor_t *monitor, type_uart_class uart)
     if(tempNow <= HeatTarge)
     {
         CtrlAllDeviceByFunc(monitor, F_HEAT, ON, 0);
-        CtrlAllDeviceByFunc(monitor, F_COOL_HEAT, ON, 0);
+//        CtrlAllDeviceByFunc(monitor, F_COOL_HEAT, ON, 0);
     }
     else if(tempNow >= HeatTarge + tempSet.tempDeadband)
     {

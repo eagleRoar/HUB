@@ -621,7 +621,7 @@ enum{
     S_LIGHT_12,
     S_AQUA,
     S_MIX,
-    S_AUTO_WATER,
+    S_AUTO_WATER        = 18,
 };
 
 //后续加入要加在后面
