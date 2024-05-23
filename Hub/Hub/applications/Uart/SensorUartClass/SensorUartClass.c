@@ -83,6 +83,7 @@ static void SignSensorRecvFlag(u8 addr)
         if(addr == sendMoni[i].addr)
         {
             sendMoni[i].SendCnt = 0;
+            sendMoni[i].recvTime = getTimerRun();//标识接收到数据的时间
             return;
         }
     }
@@ -458,7 +459,8 @@ static void RecvListHandle(void)
     {
         //1.已经发送数据了 但是数据接收超时判断为失联
 
-        if(sendMoni[i].SendCnt > 2)
+        if((sendMoni[i].SendCnt > 2) ||
+           (getTimerRun() > sendMoni[i].recvTime + 10000))
         {
             GetSensorByAddr(monitor, sendMoni[i].addr)->conn_state = CON_FAIL;
         }
@@ -482,6 +484,9 @@ static void RecvListHandle(void)
                         sendMoni[i].addr,sendMoni[i].SendCnt);
             }
         }
+
+
+        //LOG_I("addr = %d, time goes %d",sendMoni[i].addr,(getTimerRun() - sendMoni[i].recvTime) / 1000);
     }
 }
 
@@ -520,6 +525,7 @@ static void Optimization(type_monitor_t *monitor)
                 {
                     sendMoni[j].addr = monitor->sensor[i].addr;
                     sendMoni[j].sendTime = 0;
+                    sendMoni[j].recvTime = 0;
                     sendMoni[j].ctrl = 0;
 
                     break;

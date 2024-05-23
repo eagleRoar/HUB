@@ -242,6 +242,7 @@ static void SignLightRecvFlag(u8 addr)
         if(addr == sendMoni[i].addr)
         {
             sendMoni[i].SendCnt = 0;
+            sendMoni[i].recvTime = getTimerRun();
             return;
         }
     }
@@ -340,6 +341,7 @@ static void Optimization(type_monitor_t *monitor)
                 {
                     sendMoni[j].addr = monitor->line[i].addr;
                     sendMoni[j].sendTime = 0;
+                    sendMoni[j].recvTime = 0;
                     rt_memset( sendMoni[j].ctrl, 0, LINE_PORT_MAX);
 
                     break;
@@ -902,7 +904,8 @@ static void RecvListHandle(void)
     for(u8 i = 0; i < LINE_MAX; i++)
     {
         //1.已经发送数据了 但是数据接收超时判断为失联
-        if(sendMoni[i].SendCnt > 2)
+        if((sendMoni[i].SendCnt > 2) ||
+           (getTimerRun() > sendMoni[i].recvTime + 3 * UART_LONG_CONN_TIME))
         {
             GetLineByAddr(monitor, sendMoni[i].addr)->conn_state = CON_FAIL;
         }

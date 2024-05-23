@@ -5527,7 +5527,7 @@ char *ReplyGetPortSet(char *cmd, cloudcmd_t cloud)
                 }
                 else if(MIX_TYPE == module->port[port].type)
                 {
-                    cJSON_AddNumberToObject(json, "ferWithMix", module->special_data.mix_fertilizing & (1 << port));//是否跟随aqua搅拌
+                    cJSON_AddNumberToObject(json, "ferWithMix", (module->special_data.mix_fertilizing & (1 << port)) > 0 ? 1 : 0);//是否跟随aqua搅拌
                     cJSON_AddNumberToObject(json, "reservoirDailyBlendState", module->port[port].timer[0].en);//注意 这里是复用了timer时间上只有一个en
                     cJSON_AddNumberToObject(json, "reservoirDailyBlendStart", module->port[port].timer[0].on_at);//注意 这里是复用了timer时间上只有一个开始时间
                     cJSON_AddNumberToObject(json, "reservoirDailyBlendEnd", module->port[port].timer[0].duration);//注意 这里是duration复用为结束时间

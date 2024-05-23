@@ -1557,6 +1557,7 @@ void AquaMixProgram(sys_tank_t *list, type_monitor_t *monitor)
     u8              port        = 0;
     u8              aquaRunFlg  = 0;
     u8              state       = 0;
+    u8              state1       = 0;
     type_sys_time   time_for;
     u32             nowTime     = 0;
 
@@ -1588,11 +1589,11 @@ void AquaMixProgram(sys_tank_t *list, type_monitor_t *monitor)
             {
                 if(YES == aquaRunFlg)
                 {
-                    state = 1;
+                    state1 = 1;
                 }
                 else
                 {
-                    state = 0;
+                    state1 = 0;
                 }
             }
         }
@@ -1640,7 +1641,12 @@ void AquaMixProgram(sys_tank_t *list, type_monitor_t *monitor)
                 }
             }
 
-            device->port[port].ctrl.d_state = state;
+            if(state || state1) {
+
+                device->port[port].ctrl.d_state = 1;
+            } else {
+                device->port[port].ctrl.d_state = 0;
+            }
         }
     }
 }

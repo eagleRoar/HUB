@@ -1855,6 +1855,7 @@ void sendOfflinewarnning(type_monitor_t *monitor)
             if(YES == offline[index])
             {
                 sendWarnReport(WARN_OFFLINE - 1, VALUE_NULL, index, YES, RT_NULL);
+                LOG_E("------------- device offline");//Justing debug
             }
         }
     }

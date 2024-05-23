@@ -76,6 +76,7 @@ typedef struct uartSendMonitor{
     u8 addr;
     u16 ctrl;
     time_t sendTime;
+    time_t recvTime;
     u8 SendCnt;
 }uart_send_monitor;
 
@@ -83,6 +84,7 @@ typedef struct uartSendLine{
     u8 addr;
     u16 ctrl[LINE_PORT_MAX];
     time_t sendTime;
+    time_t recvTime;
     u8 SendCnt;
 }uart_send_line;
 
@@ -91,6 +93,7 @@ typedef struct uartSendAqua{
     u16 ctrl;
     u8 recipe_i;    //使用的recipe 号
     time_t sendTime;
+    time_t recvTime;
     u8 SendCnt;
 }uart_send_aqua;
 
