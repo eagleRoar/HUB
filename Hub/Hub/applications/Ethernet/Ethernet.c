@@ -30,6 +30,7 @@ eth_heart_t             eth_heart;
 
 int                 linkState = 1;
 u8                  sendWarnFlag = NO;
+u8                  sendAquaWarnFlag = NO;
 u8                  tcp_recv_flag           = NO;
 int                 tcp_sock                = -1;
 u8                  udpSendBuffer[30];
@@ -45,6 +46,16 @@ void SetSendWarnFlag(u8 flag)
 u8 GetSendWarnFlag(void)
 {
     return sendWarnFlag;
+}
+
+void SetSendAquaWarnFlag(u8 flag)
+{
+    sendAquaWarnFlag = flag;
+}
+
+u8 GetSendAquaWarnFlag(void)
+{
+    return sendAquaWarnFlag;
 }
 
 int getSockState(int sock)
@@ -328,6 +339,7 @@ void UdpTaskEntry(void* parameter)
                 sendWarnCnt ++;
             } else {
                 SetSendWarnFlag(NO);
+                SetSendAquaWarnFlag(NO);
             }
         }
 

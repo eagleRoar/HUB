@@ -1171,8 +1171,8 @@ void CmdSetTank(char *data, cloudcmd_t *cmd)
 
         GetValueByU8(temp, "tankNo", &cmd->tank_no);
         //提取tank
-
-        if((cmd->tank_no < TANK_LIST_MAX) && (cmd->tank_no > 0))
+        //LOG_I("cmd->tank_no = %d",cmd->tank_no);
+        if((cmd->tank_no <= TANK_LIST_MAX) && (cmd->tank_no > 0))
         {
             LOG_D("set tank info");
 
@@ -1181,6 +1181,7 @@ void CmdSetTank(char *data, cloudcmd_t *cmd)
 
             GetValueByC16(temp, "name", tank->name, TANK_NAMESZ);
             GetValueByU16(temp, "autoFillValveId", &tank->autoFillValveId);
+            //LOG_W("autoFillValveId = %d",tank->autoFillValveId);//Justin debug
             GetValueByU16(temp, "autoFillHeight", &tank->autoFillHeight);
             GetValueByU16(temp, "autoFillFulfilHeight", &tank->autoFillFulfilHeight);
             GetValueByU16(temp, "highEcProtection", &tank->highEcProtection);
@@ -2458,7 +2459,12 @@ char *SendHubReportWarn(char *cmd, sys_set_t *set, u8 warn_no, u16 value, u8 off
         type = GetReportType(warn);
 
         cJSON_AddNumberToObject(json, "type", type);
-        cJSON_AddNumberToObject(json, "warning", warn);
+        if(YES == GetSendAquaWarnFlag()) {
+            cJSON_AddNumberToObject(json, "warning", warn + 62500);
+        } else {
+            cJSON_AddNumberToObject(json, "warning", warn);
+        }
+//        cJSON_AddNumberToObject(json, "warning", warn);
         if(WARN_OFFLINE == warn)
         {
             if(YES == deviceOrNo)
@@ -2477,14 +2483,20 @@ char *SendHubReportWarn(char *cmd, sys_set_t *set, u8 warn_no, u16 value, u8 off
                 }
 #endif
             }
-            cJSON_AddNumberToObject(json, "value", VALUE_NULL);
+
+            if(YES != GetSendAquaWarnFlag()) {
+                cJSON_AddNumberToObject(json, "value", VALUE_NULL);
+            }
         }
         else
         {
             if(RT_NULL != info){
                 cJSON_AddStringToObject(json, "name", info);
             }
-            cJSON_AddNumberToObject(json, "value", value);
+
+            if(YES != GetSendAquaWarnFlag()) {
+                cJSON_AddNumberToObject(json, "value", value);
+            }
         }
         cJSON_AddStringToObject(json, "ntpzone", "+00:00");//唐工要求固定返回+00:00
         cJSON_AddNumberToObject(json, "timestamp", ReplyTimeStamp());
@@ -6906,7 +6918,7 @@ char *ReplyGetDeviceList_new(char *cmd, char *msgid, u8 deviceType, u8 no)
                             }
                         }
                     }
-                    else if(VALVE_TYPE == module->type)
+                    else if(/*VALVE_TYPE*/AUTO_WATER_TYPE == module->type)//Justin
                     {
                         GetTankNoById(GetSysTank(), module->addr, &no);
                         cJSON_AddNumberToObject(item, "tankNo", no);
@@ -6995,7 +7007,7 @@ char *ReplyGetDeviceList_new(char *cmd, char *msgid, u8 deviceType, u8 no)
                                         }
                                     }
                                 }
-                                else if(VALVE_TYPE == module->port[storage].type)
+                                else if(/*VALVE_TYPE*/AUTO_WATER_TYPE == module->port[storage].type)
                                 {
                                     GetTankNoById(GetSysTank(), (module->addr << 8) | storage, &no);
                                     cJSON_AddNumberToObject(port, "tankNo", no);

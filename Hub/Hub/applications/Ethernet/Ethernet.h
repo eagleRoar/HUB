@@ -90,4 +90,6 @@ eth_heart_t *getEthHeart(void);
 void SetSendWarnFlag(u8 flag);
 u8 GetSendWarnFlag(void);
 void closeTcpSocket(void);
+void SetSendAquaWarnFlag(u8 flag);
+u8 GetSendAquaWarnFlag(void);
 #endif /* APPLICATIONS_ETHERNET_H_ */

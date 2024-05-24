@@ -70,13 +70,13 @@
  **修改红外手动不开
  */
 /**
- * 0.2.31 1.2.34
+ * 0.2.31 1.2.36
  * *优化失联判断
  */
 #if(HUB_ENVIRENMENT == HUB_SELECT)
 #define FIRMWAREVISION                  "0.2.31"
 #elif(HUB_IRRIGSTION == HUB_SELECT)
-#define FIRMWAREVISION                  "1.2.34"
+#define FIRMWAREVISION                  "1.2.37"
 #endif
 #define FIRMWARE_VERSION_NUM            2
 #define BOOTLOADVISION                  "0.0.1"
