@@ -1181,7 +1181,7 @@ void CmdSetTank(char *data, cloudcmd_t *cmd)
 
             GetValueByC16(temp, "name", tank->name, TANK_NAMESZ);
             GetValueByU16(temp, "autoFillValveId", &tank->autoFillValveId);
-            //LOG_W("autoFillValveId = %d",tank->autoFillValveId);//Justin debug
+            //LOG_W("autoFillValveId = %d",tank->autoFillValveId);
             GetValueByU16(temp, "autoFillHeight", &tank->autoFillHeight);
             GetValueByU16(temp, "autoFillFulfilHeight", &tank->autoFillFulfilHeight);
             GetValueByU16(temp, "highEcProtection", &tank->highEcProtection);
@@ -6918,7 +6918,7 @@ char *ReplyGetDeviceList_new(char *cmd, char *msgid, u8 deviceType, u8 no)
                             }
                         }
                     }
-                    else if(/*VALVE_TYPE*/AUTO_WATER_TYPE == module->type)//Justin
+                    else if(/*VALVE_TYPE*/AUTO_WATER_TYPE == module->type)
                     {
                         GetTankNoById(GetSysTank(), module->addr, &no);
                         cJSON_AddNumberToObject(item, "tankNo", no);

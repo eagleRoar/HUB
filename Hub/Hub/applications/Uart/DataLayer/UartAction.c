@@ -222,8 +222,8 @@ void monitorTankAquaWarn(sys_tank_t *list, sys_set_t *set)
                     if(GetAquaByAddr(GetMonitor(), aquaWarnState[index].id)) {
                         sprintf(info, "aqua name %s", GetAquaByAddr(GetMonitor(), aquaWarnState[index].id)->name);
                     }
-                    sendWarnReport(temp - 1, value, 0, NO, info);//Justin
-                    SetSendAquaWarnFlag(YES);//Justin
+                    sendWarnReport(temp - 1, value, 0, NO, info);
+                    SetSendAquaWarnFlag(YES);
                 }
 
                 tankStatePre[index][bit] = warnFlag;
@@ -434,6 +434,7 @@ void monitorTankTimeOutWarn(sys_tank_t *list, sys_set_t *set)
                                 if(F_S_WL == sensor->__stora[port].func)
                                 {
                                     sensorData = sensor->__stora[port].value;
+                                    break;
                                     //相对于
                                     //sensorData /= 10;
                                 }
@@ -480,12 +481,16 @@ void monitorTankTimeOutWarn(sys_tank_t *list, sys_set_t *set)
                 preState[index] = state[index];
 
                 //发送补水超时
+                if(YES == GetSysSet()->sysWarn.autoFillTimeout && WATERlEVEL_TYPE == sensor->type) { //如果不使能报警
 
-                sendWarnReport(warnLow, 0, 0, NO, tank->name);
+                    sendWarnReport(warnLow, 0, 0, NO, tank->name);
+                }
 
             }
         }
     }
+
+
 }
 #endif
 void warnProgram(type_monitor_t *monitor, sys_set_t *set)
