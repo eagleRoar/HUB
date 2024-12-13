@@ -252,6 +252,8 @@ int main(void)
     static u16      time60S             = 0;
     static u16      timeInit            = 0;
     static u8       preStartMqttFlag    = 0;
+    static u8       checkMqttState      = 0;//如果mqtt处于失联状态那么2分钟后重启eth 底层
+           time_t   mqttDisConTime      = 0;
 #if(HUB_SELECT == HUB_ENVIRENMENT)
     static u8       startProgram        = NO;
 #endif
@@ -462,18 +464,47 @@ int main(void)
                 rt_hw_cpu_reset();
             }
 
-            if(preStartMqttFlag != GetMqttRealStartFlg())
+//            if(preStartMqttFlag != GetMqttRealStartFlg())
+//            {
+//                if((1 == preStartMqttFlag) && (0 == GetMqttRealStartFlg()))
+//                {
+//                    saveModuleFlag = 1;
+//                    preResetSysFlag = 1;
+//                }
+//
+//                preStartMqttFlag = GetMqttRealStartFlg();
+//            }//暂时屏蔽
+
+            //通过mqtt状态重启底层网络硬件措施
+            if(0 == checkMqttState)
             {
-                if((1 == preStartMqttFlag) && (0 == GetMqttRealStartFlg()))
+                //1.如果检测到mqtt未连接 那么开始计时
+                if(0 == GetMqttRealStartFlg())
                 {
-                    saveModuleFlag = 1;
-                    preResetSysFlag = 1;
+                    mqttDisConTime = getTimeStamp();
+                    checkMqttState = 1;
                 }
-
-                preStartMqttFlag = GetMqttRealStartFlg();
             }
-
-//            LOG_I("GetMqttRealStartFlg = %d-----",GetMqttRealStartFlg());
+            else//checkMqttState 被标记mqtt失联
+            {
+                //1.如果mqtt恢复连接 那么需要清除计数
+                if(1 == GetMqttRealStartFlg())
+                {
+                    checkMqttState = 0;
+                    mqttDisConTime = getTimeStamp();
+                }
+                //2.如果超过两分钟
+                else
+                {
+                    if(getTimeStamp() > mqttDisConTime + /*2 * 60*/60)//Justin 仅仅为了测试
+                    {
+                        LOG_W("mqtt 超过1分钟未连接 重启lwip");
+                        phy_reset();
+                        lwip_system_init();
+                        checkMqttState = 0;
+                    }
+                }
+            }
 
 #if(HUB_IRRIGSTION == HUB_SELECT)
             sendRealAquaCtrlToList(GetMonitor(), aquaObj);
@@ -481,11 +512,6 @@ int main(void)
 #if(HUB_SELECT == HUB_ENVIRENMENT)
             startProgram = YES;
 #endif
-
-//            printSensor(module);
-//            for(int i = 0; i < GetMonitor()->sensor_size; i++) {
-//                printSensor(GetMonitor()->sensor[i]);
-//            }
         }
 
         //60s 主动发送给云服务

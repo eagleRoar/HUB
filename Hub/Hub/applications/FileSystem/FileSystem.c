@@ -612,119 +612,20 @@ static void saveErrorLog(char *data)
  * @param list
  * @param fileName
  */
-//static void GetSysTankFromFile(sys_tank_t *list, char *fileName)
-//{
-//    static u8       FileHeadSpace       = 5;
-//    u16             length              = 0;
-//
-//    //1.由于tank 设置出现数据被串改的情况，需要做多备份去测试
-//    length = FileHeadSpace;
-//    if(RT_EOK == ReadFileData(fileName, (u8 *)list, length, sizeof(sys_tank_t)))
-//    {
-//        LOG_I("Get tankList data OK");
-//    }
-//    else
-//    {
-//        LOG_E("Get tankList data Fail");
-//    }
-//
-//    list->tank_size = TANK_LIST_MAX;
-//    for(int i = 0; i < TANK_LIST_MAX; i++)
-//    {
-//        list->tank[i].tankNo = i + 1;
-//        printTankInfo(&list->tank[i]);
-//    }
-//}
-
-static void GetSysTankFromFile(sys_tank_t *list, char *fileName, char *file_backup1, char *file_backup2)
+static void GetSysTankFromFile(sys_tank_t *list, char *fileName)
 {
     static u8       FileHeadSpace       = 5;
     u16             length              = 0;
-    sys_tank_t      tankList;
-    u16             crc                 = 0;
-    u16             crc1                = 0;
-    u16             crc2                = 0;
-    char            errData[50]         = "";
-    u8              stateFlag           = 0;
-    u8              stateFlag1          = 0;
-    u8              stateFlag2          = 0;
-    type_sys_time       time_for;
 
-
-    //1.显示时间
-    getRealTimeForMat(&time_for);
-
+    //1.由于tank 设置出现数据被串改的情况，需要做多备份去测试
     length = FileHeadSpace;
-    if(RT_EOK != ReadFileData(fileName, (u8 *)&tankList, length, sizeof(sys_tank_t)))
+    if(RT_EOK == ReadFileData(fileName, (u8 *)list, length, sizeof(sys_tank_t)))
+    {
+        LOG_I("Get tankList data OK");
+    }
+    else
     {
         LOG_E("Get tankList data Fail");
-    }
-    else
-    {
-        crc = usModbusRTU_CRC((u8 *)&tankList + 2, sizeof(sys_tank_t) - 2);
-        //如果是crc 错误会写入错误
-        if(crc != tankList.crc)
-        {
-            sprintf(errData, "%s: %s%d%d%d%d%d%d\r\n", ERR_NO_1, "get tanklist error",
-                    time_for.year, time_for.month, time_for.day, time_for.hour, time_for.minute, time_for.second);
-            saveErrorLog(errData);
-            stateFlag = 1;
-        }
-    }
-
-    if(RT_EOK != ReadFileData(file_backup1, (u8 *)&tankList, length, sizeof(sys_tank_t)))
-    {
-        LOG_E("Get tankList backup1 data Fail");
-    }
-    else
-    {
-        crc1 = usModbusRTU_CRC((u8 *)&tankList + 2, sizeof(sys_tank_t) - 2);
-        if(crc1 != tankList.crc)
-        {
-            sprintf(errData, "%s: %s%d%d%d%d%d%d\r\n", ERR_NO_2, "get tanklist error",
-                    time_for.year, time_for.month, time_for.day, time_for.hour, time_for.minute, time_for.second);
-            saveErrorLog(errData);
-            stateFlag1 = 1;
-        }
-    }
-
-    if(RT_EOK != ReadFileData(file_backup2, (u8 *)&tankList, length, sizeof(sys_tank_t)))
-    {
-        LOG_E("Get tankList backup2 data Fail");
-    }
-    else
-    {
-        crc2 = usModbusRTU_CRC((u8 *)&tankList + 2, sizeof(sys_tank_t) - 2);
-        if(crc2 != tankList.crc)
-        {
-            sprintf(errData, "%s: %s%d%d%d%d%d%d\r\n", ERR_NO_3, "get tanklist error",
-                    time_for.year, time_for.month, time_for.day, time_for.hour, time_for.minute, time_for.second);
-            saveErrorLog(errData);
-            stateFlag2 = 1;
-        }
-    }
-
-    if((0 == stateFlag && 0 == stateFlag1) && (crc == crc1))
-    {
-        ReadFileData(fileName, (u8 *)&tankList, length, sizeof(sys_tank_t));
-        memcpy(list, (u8 *)&tankList, sizeof(sys_tank_t));
-    }
-    else if((0 == stateFlag && 0 == stateFlag2) && (crc == crc2))
-    {
-        ReadFileData(fileName, (u8 *)&tankList, length, sizeof(sys_tank_t));
-        memcpy(list, (u8 *)&tankList, sizeof(sys_tank_t));
-    }
-    else if((0 == stateFlag1 && 0 == stateFlag2) && (crc1 == crc2))
-    {
-        ReadFileData(file_backup1, (u8 *)&tankList, length, sizeof(sys_tank_t));
-        memcpy(list, (u8 *)&tankList, sizeof(sys_tank_t));
-    }
-    else
-    {
-        memset((u8 *)list, 0, sizeof(sys_tank_t));
-        sprintf(errData, "%s: %s%d%d%d%d%d%d\r\n", ERR_NO_4, "set tanklist data 0",
-                time_for.year, time_for.month, time_for.day, time_for.hour, time_for.minute, time_for.second);
-        saveErrorLog(errData);
     }
 
     list->tank_size = TANK_LIST_MAX;
@@ -734,6 +635,105 @@ static void GetSysTankFromFile(sys_tank_t *list, char *fileName, char *file_back
         printTankInfo(&list->tank[i]);
     }
 }
+
+//static void GetSysTankFromFile(sys_tank_t *list, char *fileName, char *file_backup1, char *file_backup2)
+//{
+//    static u8       FileHeadSpace       = 5;
+//    u16             length              = 0;
+//    sys_tank_t      tankList;
+//    u16             crc                 = 0;
+//    u16             crc1                = 0;
+//    u16             crc2                = 0;
+//    char            errData[50]         = "";
+//    u8              stateFlag           = 0;
+//    u8              stateFlag1          = 0;
+//    u8              stateFlag2          = 0;
+//    type_sys_time       time_for;
+//
+//
+//    //1.显示时间
+//    getRealTimeForMat(&time_for);
+//
+//    length = FileHeadSpace;
+//    if(RT_EOK != ReadFileData(fileName, (u8 *)&tankList, length, sizeof(sys_tank_t)))
+//    {
+//        LOG_E("Get tankList data Fail");
+//    }
+//    else
+//    {
+//        crc = usModbusRTU_CRC((u8 *)&tankList + 2, sizeof(sys_tank_t) - 2);
+//        //如果是crc 错误会写入错误
+//        if(crc != tankList.crc)
+//        {
+//            sprintf(errData, "%s: %s%d%d%d%d%d%d\r\n", ERR_NO_1, "get tanklist error",
+//                    time_for.year, time_for.month, time_for.day, time_for.hour, time_for.minute, time_for.second);
+//            saveErrorLog(errData);
+//            stateFlag = 1;
+//        }
+//    }
+//
+//    if(RT_EOK != ReadFileData(file_backup1, (u8 *)&tankList, length, sizeof(sys_tank_t)))
+//    {
+//        LOG_E("Get tankList backup1 data Fail");
+//    }
+//    else
+//    {
+//        crc1 = usModbusRTU_CRC((u8 *)&tankList + 2, sizeof(sys_tank_t) - 2);
+//        if(crc1 != tankList.crc)
+//        {
+//            sprintf(errData, "%s: %s%d%d%d%d%d%d\r\n", ERR_NO_2, "get tanklist error",
+//                    time_for.year, time_for.month, time_for.day, time_for.hour, time_for.minute, time_for.second);
+//            saveErrorLog(errData);
+//            stateFlag1 = 1;
+//        }
+//    }
+//
+//    if(RT_EOK != ReadFileData(file_backup2, (u8 *)&tankList, length, sizeof(sys_tank_t)))
+//    {
+//        LOG_E("Get tankList backup2 data Fail");
+//    }
+//    else
+//    {
+//        crc2 = usModbusRTU_CRC((u8 *)&tankList + 2, sizeof(sys_tank_t) - 2);
+//        if(crc2 != tankList.crc)
+//        {
+//            sprintf(errData, "%s: %s%d%d%d%d%d%d\r\n", ERR_NO_3, "get tanklist error",
+//                    time_for.year, time_for.month, time_for.day, time_for.hour, time_for.minute, time_for.second);
+//            saveErrorLog(errData);
+//            stateFlag2 = 1;
+//        }
+//    }
+//
+//    if((0 == stateFlag && 0 == stateFlag1) && (crc == crc1))
+//    {
+//        ReadFileData(fileName, (u8 *)&tankList, length, sizeof(sys_tank_t));
+//        memcpy(list, (u8 *)&tankList, sizeof(sys_tank_t));
+//    }
+//    else if((0 == stateFlag && 0 == stateFlag2) && (crc == crc2))
+//    {
+//        ReadFileData(fileName, (u8 *)&tankList, length, sizeof(sys_tank_t));
+//        memcpy(list, (u8 *)&tankList, sizeof(sys_tank_t));
+//    }
+//    else if((0 == stateFlag1 && 0 == stateFlag2) && (crc1 == crc2))
+//    {
+//        ReadFileData(file_backup1, (u8 *)&tankList, length, sizeof(sys_tank_t));
+//        memcpy(list, (u8 *)&tankList, sizeof(sys_tank_t));
+//    }
+//    else
+//    {
+//        memset((u8 *)list, 0, sizeof(sys_tank_t));
+//        sprintf(errData, "%s: %s%d%d%d%d%d%d\r\n", ERR_NO_4, "set tanklist data 0",
+//                time_for.year, time_for.month, time_for.day, time_for.hour, time_for.minute, time_for.second);
+//        saveErrorLog(errData);
+//    }
+//
+//    list->tank_size = TANK_LIST_MAX;
+//    for(int i = 0; i < TANK_LIST_MAX; i++)
+//    {
+//        list->tank[i].tankNo = i + 1;
+//        printTankInfo(&list->tank[i]);
+//    }
+//}
 
 static void SaveSysTankToFile(sys_tank_t *list, char *fileName)
 {
@@ -1054,7 +1054,8 @@ void FileSystemInit(void)
 #if(HUB_ENVIRENMENT == HUB_SELECT)
         GetRecipeListFromFile(GetSysRecipt(), new_recipe_file);
 #elif(HUB_IRRIGSTION == HUB_SELECT)
-        GetSysTankFromFile(GetSysTank(), new_tank_file, new_tank_backup1_file, new_tank_backup2_file);
+//        GetSysTankFromFile(GetSysTank(), new_tank_file, new_tank_backup1_file, new_tank_backup2_file);
+        GetSysTankFromFile(GetSysTank(), new_tank_file);
         GetSysAquaInfoFromFile(GetAquaInfoList(), new_aqua_info_file);
         GetSysAquaSetFromFile(GetAquaSetList(), new_aqua_set_file);
 #endif

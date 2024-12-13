@@ -89,10 +89,14 @@
  ** 0.2.37 1.2.53
  ** 增加了云服务器重启
  */
+/**
+ * 1.2.55
+ * 增加周期check mqtt是否在线 不在线重启lwip(该操作很危险 需谨慎)
+ */
 #if(HUB_ENVIRENMENT == HUB_SELECT)
 #define FIRMWAREVISION                  "0.2.38"
 #elif(HUB_IRRIGSTION == HUB_SELECT)
-#define FIRMWAREVISION                  "1.2.53"
+#define FIRMWAREVISION                  "1.2.55"
 #endif
 #define FIRMWARE_VERSION_NUM            2
 #define BOOTLOADVISION                  "0.0.1"
