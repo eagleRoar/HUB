@@ -19,8 +19,8 @@
 #define             DEVICE_UART3            "uart3"
 
 #define             UART_MSG_SIZE           512
-#define             UART_PERIOD             100//70//50 //注意周期不应该低于50,因为发送心跳包的操作太快的话发送有问题
-#define             CONNRCT_MISS_MAX        5//10
+#define             UART_PERIOD             100
+#define             CONNRCT_MISS_MAX        5
 /* 串口接收消息结构*/
 struct rx_msg
 {
@@ -64,10 +64,5 @@ void SensorUart2TaskEntry(void* parameter);
 void SensorUart2TaskInit(void);
 type_monitor_t *GetMonitor(void);
 void initMonitor(void);
-ph_cal_t *getPhCal(void);
-ec_cal_t *getEcCal(void);
-ph_cal_t *getPhCalByuuid(u32);
-ec_cal_t *getEcCalByuuid(u32);
-void setPhCalWithUUID(u32);
-void setEcCalWithUUID(u32);
+
 #endif /* APPLICATIONS_UART_H_ */

@@ -105,7 +105,7 @@ void LedTaskInit(void)
     rt_err_t threadStart = RT_NULL;
 
     /* 创建led 线程 */
-    rt_thread_t thread = rt_thread_create("led task", LedTaskEntry, RT_NULL, 256, LED_PRIORITY, 10);
+    rt_thread_t thread = rt_thread_create("led task", LedTaskEntry, RT_NULL, 1024, LED_PRIORITY, 10);
 
     /* 如果线程创建成功则开始启动线程，否则提示线程创建失败 */
     if (RT_NULL != thread) {
@@ -131,9 +131,10 @@ void LedTaskEntry(void* parameter)
     static      u8              Timer1sTouch        = OFF;
     static      u16             time500ms           = 0;
     static      u16             time1s              = 0;
+
     while(1)
     {
-        time500ms = TimerTask(&time500ms, 500/100, &Timer500msTouch);                       //1s定时任务
+        time500ms = TimerTask(&time500ms, 500/100, &Timer500msTouch);               //1s定时任务
         time1s = TimerTask(&time1s, 1000/100, &Timer1sTouch);                       //1s定时任务
 
         //100ms
@@ -144,12 +145,7 @@ void LedTaskEntry(void* parameter)
         //500ms 定时器
         if(ON == Timer500msTouch)
         {
-            if(NO == getFactoryMode())
-            {
-#if(HUB_SELECT == HUB_ENVIRENMENT)
-                AlarmLedProgram();
-#endif
-            }
+
         }
 
         //1s 定时器
@@ -162,28 +158,10 @@ void LedTaskEntry(void* parameter)
         rt_thread_mdelay(100);
     }
 }
-#if(HUB_SELECT == HUB_ENVIRENMENT)
+//#if(HUB_SELECT == HUB_ENVIRENMENT)
 //报警逻辑: 如果是有标志报警的话就一直报 否则关闭
-void AlarmLedProgram(void)
-{
-    if((ON == GetSysSet()->sysWarn.dayCo2Buzz && DAY_TIME == GetSysSet()->dayOrNight) ||
-       (ON == GetSysSet()->sysWarn.nightCo2Buzz && NIGHT_TIME == GetSysSet()->dayOrNight))
-    {
-        if(ON == GetSysSet()->warn[WARN_CO2_HIGHT - 1])
-        {
-            rt_pin_write(ALARM_OUT, ON);
-        }
-        else
-        {
-            rt_pin_write(ALARM_OUT, OFF);
-        }
-    }
-    else
-    {
-        rt_pin_write(ALARM_OUT, OFF);
-    }
-}
-#endif
+
+//#endif
 
 void LedProgram(void)
 {

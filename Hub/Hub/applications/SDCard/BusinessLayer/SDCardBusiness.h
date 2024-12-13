@@ -14,15 +14,14 @@
 #include "SDCardData.h"
 #include "Recipe.h"
 
-#define         DOWNLOAD_DIR            "/download"                                                 //APP升级包文件夹
-#define         MODULE_DIR              "/moduleInfo"                                               //模块相关信息文件夹
-//#define         SETTING_DIR             "/master"
-#define         DOWNLOAD_FILE           "download/downloadFile.bin"                                 //APP升级包文件
 
-#define         MODULE_FILE             "moduleInfo/module.bin"                                     //模块信息文件
-#define         SYSSET_FILE             "moduleInfo/sys_set.bin"                                    //模块信息文件
-#define         RECIPE_FILE             "moduleInfo/recipe.bin"                                     //配方信息文件
-#define         TANK_FILE               "moduleInfo/tank.bin"                                       //桶信息
+#ifdef          FIRMWARE_VERSION_NUM
+#define         DOWNLOAD_FILE           "/backup/download/downloadFile.bin"                         //APP升级包文件
+#else
+#define         DOWNLOAD_FILE           "download/downloadFile.bin"                                 //APP升级包文件
+#endif
+#define         CJSON_DIR               "/cjson"                                 //APP升级包文件
+#define         CJSON_FILE              "cjson/cjson.bin"                                 //APP升级包文件
 
 
 #define     SD_HEAD_CORE        0xa5a55a5a                             //该core 主要是为了验证该文件是否有写过

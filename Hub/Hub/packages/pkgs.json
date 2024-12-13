@@ -1,1 +1,7 @@
-[]
+[
+ {
+  "path": "/packages/system/syswatch", 
+  "ver": "latest", 
+  "name": "SYSWATCH"
+ }
+]

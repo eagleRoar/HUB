@@ -1,4 +1,5 @@
 /*
+#include <DeviceUartClass/UartClass.h>
  * Copyright (c) 2006-2021, RT-Thread Development Team
  *
  * SPDX-License-Identifier: Apache-2.0
@@ -15,7 +16,6 @@
 #include "Command.h"
 #include "InformationMonitor.h"
 #include "UartDataLayer.h"
-#include "UartBussiness.h"
 #include "Sdcard.h"
 #include "CloudProtocol.h"
 #include "Module.h"
@@ -23,9 +23,15 @@
 #include "TcpProgram.h"
 #include "Oled1309.h"
 #include "OledBusiness.h"
+#include "SensorUartClass.h"
+#include "LightUartClass.h"
+#include "AquaUartClass.h"
+#include "SeqList.h"
+#include "UartEventType.h"
+#include "FileSystem.h"
 
 __attribute__((section(".ccmbss"))) type_monitor_t monitor;
-__attribute__((section(".ccmbss"))) u8 uart_task[1024 * 6];
+__attribute__((section(".ccmbss"))) u8 uart_task[1024 * 4];
 __attribute__((section(".ccmbss"))) struct rt_thread uart_thread;
 
 struct rx_msg uart1_msg;                      //接收串口数据以及相关消息
@@ -33,111 +39,8 @@ struct rx_msg uart2_msg;                      //接收串口数据以及相关�
 struct rx_msg uart3_msg;                      //接收串口数据以及相关消息
 
 rt_device_t     uart2_serial;
-
-extern  __attribute__((section(".ccmbss"))) struct sdCardState      sdCard;
-extern  type_sys_time           sys_time;
-extern  sys_set_t               sys_set;
-extern  cloudcmd_t              cloudCmd;
-
-extern void warnProgram(type_monitor_t *, sys_set_t *);
-extern void pumpProgram(type_monitor_t *, sys_tank_t *);
-extern void co2CalibraterResPage(u8);
-extern void autoValveClose(type_monitor_t *, sys_tank_t *);
-extern void phCalibrate1(sensor_t *, type_monitor_t *, ph_cal_t *ph, sys_set_t *);
-extern void ecCalibrate1(sensor_t *, type_monitor_t *, ec_cal_t *, sys_set_t *);
-
-ph_cal_t ph_cal[SENSOR_MAX];
-ec_cal_t ec_cal[SENSOR_MAX];
-phcal_data_t phdataTemp[SENSOR_MAX];
-eccal_data_t ecdataTemp[SENSOR_MAX];
-
-void initPhEcCal(void)
-{
-    rt_memset((u8 *)ph_cal, 0, sizeof(ph_cal_t) * SENSOR_MAX);
-    rt_memset((u8 *)ec_cal, 0, sizeof(ec_cal_t) * SENSOR_MAX);
-    rt_memset((u8 *)phdataTemp, 0, sizeof(phcal_data_t) * SENSOR_MAX);
-    rt_memset((u8 *)ecdataTemp, 0, sizeof(eccal_data_t) * SENSOR_MAX);
-}
-
-//
-void setPhCalWithUUID(u32 uuid)
-{
-    u8 index = 0;
-
-    for(index = 0; index < SENSOR_MAX; index++)
-    {
-        if(ph_cal[index].uuid == uuid)
-        {
-            break;
-        }
-    }
-
-    if(index == SENSOR_MAX)
-    {
-        //当前没有存储该uuid
-        for(index = 0; index < SENSOR_MAX; index++)
-        {
-            if(0 == ph_cal[index].uuid)
-            {
-                ph_cal[index].uuid = uuid;
-                break;
-            }
-        }
-    }
-}
-
-void setEcCalWithUUID(u32 uuid)
-{
-    u8 index = 0;
-
-    for(index = 0; index < SENSOR_MAX; index++)
-    {
-        if(ec_cal[index].uuid == uuid)
-        {
-            break;
-        }
-    }
-
-    if(index == SENSOR_MAX)
-    {
-        //当前没有存储该uuid
-        for(index = 0; index < SENSOR_MAX; index++)
-        {
-            if(0 == ec_cal[index].uuid)
-            {
-                ec_cal[index].uuid = uuid;
-                break;
-            }
-        }
-    }
-}
-
-ph_cal_t *getPhCalByuuid(u32 uuid)
-{
-    for(int i = 0; i < SENSOR_MAX; i++)
-    {
-        if(uuid == ph_cal[i].uuid)
-        {
-            return &ph_cal[i];
-        }
-    }
-
-    return RT_NULL;
-}
-
-ec_cal_t *getEcCalByuuid(u32 uuid)
-{
-    for(int i = 0; i < SENSOR_MAX; i++)
-    {
-        if(uuid == ec_cal[i].uuid)
-        {
-            return &ec_cal[i];
-        }
-    }
-
-    return RT_NULL;
-}
-
+rt_device_t     uart1_serial;
+rt_device_t     uart3_serial;
 
 /**
  * @brief  : 接收回调函数
@@ -150,21 +53,9 @@ static rt_err_t Uart1_input(rt_device_t dev, rt_size_t size)
 {
     u16 crc16 = 0x0000;
 
-    /* 必须要等待从sd卡读取到的monitor 才能执行以下功能 */
-    if (YES != sdCard.readInfo)
-    {
-        return RT_ERROR;
-    }
-
     uart1_msg.dev = dev;
     uart1_msg.size = size;
     rt_device_read(uart1_msg.dev, 0, uart1_msg.data, uart1_msg.size);
-
-//    for(int i = 0; i < uart1_msg.size; i++)
-//    {
-//        rt_kprintf("%x ",uart1_msg.data[i]);
-//    }
-//    rt_kprintf("\r\n");
 
     if(2 > size)
     {
@@ -187,13 +78,6 @@ static rt_err_t Uart1_input(rt_device_t dev, rt_size_t size)
 static rt_err_t Uart2_input(rt_device_t dev, rt_size_t size)
 {
     u16 crc16 = 0x0000;
-
-    /* 必须要等待从sd卡读取到的monitor 才能执行以下功能   */
-
-    if (YES != sdCard.readInfo)
-    {
-        return RT_ERROR;
-    }
 
     uart2_msg.dev = dev;
     uart2_msg.size = size;
@@ -221,12 +105,6 @@ static rt_err_t Uart3_input(rt_device_t dev, rt_size_t size)
 {
     u16 crc16 = 0x0000;
 
-    /* 必须要等待从sd卡读取到的monitor 才能执行以下功能 */
-    if (YES != sdCard.readInfo)
-    {
-        return RT_ERROR;
-    }
-
     uart3_msg.dev = dev;
     uart3_msg.size = size;
     rt_device_read(uart3_msg.dev, 0, uart3_msg.data, uart3_msg.size);
@@ -249,42 +127,10 @@ static rt_err_t Uart3_input(rt_device_t dev, rt_size_t size)
     }
 }
 
-/**
- * @brief  : 传感器类串口线程入口
- */
-void SensorUart2TaskEntry(void* parameter)
+
+//注册串口
+static void UartRegister(void)
 {
-//#if (HUB_SELECT == HUB_ENVIRENMENT)
-    u8                          data[13];
-//#endif
-//                u16             crc16Result     = 0;
-#if(HUB_SELECT == HUB_IRRIGSTION)
-    u8                          tank_i          = 0;
-#endif
-    static      u8              Timer1sTouch    = OFF;
-    static      u8              Timer3sTouch    = OFF;
-    static      u8              Timer60sTouch    = OFF;
-    static      u16             time1S = 0;
-    static      u16             time3S = 0;
-    static      u16             time60S = 0;
-    static      rt_device_t     uart1_serial;
-    static      rt_device_t     uart3_serial;
-    static      u8              device_start    = 0;
-    static      u8              sensor_start    = 0;
-    static      u8              line_start      = 0;
-    static      type_sys_time   sys_time_pre;
-    static      u8              specailFlag     = 0;
-    static      u8              re_allocate_dec   = OFF;
-    static      u8              re_allocate_line   = OFF;
-    static      u8              re_allocate_sen   = OFF;
-    static      u8              allocate_i      = 0;
-    static      u8              allo_line_i      = 0;
-    static      u8              allo_sen_i      = 0;
-
-    rt_memset((u8 *)&sys_time_pre, 0, sizeof(type_sys_time));
-    initConnectState();
-    initCtrlPre();
-
     /* 查找串口设备 */
     uart1_serial = rt_device_find(DEVICE_UART1);
     rt_device_open(uart1_serial, RT_DEVICE_FLAG_DMA_RX);
@@ -298,293 +144,427 @@ void SensorUart2TaskEntry(void* parameter)
     rt_device_open(uart3_serial, RT_DEVICE_FLAG_DMA_RX);
     rt_device_set_rx_indicate(uart3_serial, Uart3_input);
 
-    initOfflineFlag();                      //初始化离线报警flag
-    setDeviceEvent(EV_ASK_PORT_TYPE);       //设置询问AC_4端口事件
-    initPhEcCal();
+}
+
+static void GenerateBroadcastTime(type_uart_class *uart)
+{
+    KV          keyValue;
+    seq_key_t   seq_key;
+    time_t time = getTimeStamp();
+    u8          data[13];
+
+    //1.生成数据
+    data[0] = 0x00;
+    data[1] = WRITE_MUTI;
+    data[2] = 0x00;
+    data[3] = 0x09;
+    data[4] = 0x00;
+    data[5] = 0x02;
+    data[6] = 0x04;
+    data[7] = time >> 24;
+    data[8] = time >> 16;
+    data[9] = time >> 8;
+    data[10] = time;
+    data[11] = usModbusRTU_CRC(data, 11);
+    data[12] = usModbusRTU_CRC(data, 11) >> 8;
+
+    seq_key.addr = 0x00;
+    seq_key.regH = 0x00;
+    seq_key.regL = 0x09;
+    seq_key.regSize = 2;
+    keyValue.key = SeqKeyToLong(seq_key);
+    keyValue.dataSegment.len = 13;
+    keyValue.dataSegment.data = rt_malloc(keyValue.dataSegment.len);
+    if(keyValue.dataSegment.data)
+    {
+        //5.复制实际数据
+        rt_memcpy(keyValue.dataSegment.data, data, keyValue.dataSegment.len);
+
+        uart->taskList.AddToList(keyValue, NO);
+
+        //6.回收空间
+        rt_free(keyValue.dataSegment.data);
+        keyValue.dataSegment.data = RT_NULL;
+    }
+}
+
+static void GenerateBroadcastSensorValue(type_uart_class *uart)
+{
+    KV          keyValue;
+    seq_key_t   seq_key;
+    u8          data[17];
+    int         co2         = GetSensorMainValue(GetMonitor(), F_S_CO2);
+    int         humi        = GetSensorMainValue(GetMonitor(), F_S_HUMI);
+    int         temp        = GetSensorMainValue(GetMonitor(), F_S_TEMP);
+    int         light       = GetSensorMainValue(GetMonitor(), F_S_LIGHT);
+
+    //1.生成数据
+    data[0] = 0x00;
+    data[1] = WRITE_MUTI;
+    data[2] = 0xf0;
+    data[3] = 0x00;
+    data[4] = 0x00;
+    data[5] = 0x04;
+    data[6] = 0x08;
+    data[7] = co2 >> 8;
+    data[8] = co2;
+    data[9] = humi >> 8;
+    data[10] = humi;
+    data[11] = temp >> 8;
+    data[12] = temp;
+    data[13] = light >> 8;
+    data[14] = light;
+    data[15] = usModbusRTU_CRC(data, 15);
+    data[16] = usModbusRTU_CRC(data, 15) >> 8;
+
+    seq_key.addr = 0x00;
+    seq_key.regH = 0xf0;
+    seq_key.regL = 0x00;
+    seq_key.regSize = 4;
+    keyValue.key = SeqKeyToLong(seq_key);
+    keyValue.dataSegment.len = 17;
+    keyValue.dataSegment.data = rt_malloc(keyValue.dataSegment.len);
+    if(keyValue.dataSegment.data)
+    {
+        //5.复制实际数据
+        rt_memcpy(keyValue.dataSegment.data, data, keyValue.dataSegment.len);
+
+        uart->taskList.AddToList(keyValue, NO);
+
+        //6.回收空间
+        rt_free(keyValue.dataSegment.data);
+        keyValue.dataSegment.data = RT_NULL;
+    }
+}
+
+//特殊注册
+static void specialRegister(type_monitor_t *monitor)
+{
+//    u8                          data[13];
+#if (HUB_SELECT == HUB_ENVIRENMENT)
+                //特殊设备处理
+                if(RT_ERROR == CheckSensorCorrect(monitor, 0x00000000, 0x18, PAR_TYPE))
+                {
+                    SetSensorDefault(monitor, 0x00000000, PAR_TYPE, 0x18);
+                }
+
+#elif (HUB_SELECT == HUB_IRRIGSTION)
+                if(RT_ERROR == CheckSensorCorrect(monitor, 0x00000001, 0xE0, PHEC_TYPE))
+                {
+                    SetSensorDefault(monitor, 0x00000001, PHEC_TYPE, 0xE0);
+                }
+                if(RT_ERROR == CheckSensorCorrect(monitor, 0x00000002, 0xE1, PHEC_TYPE))
+                {
+                    SetSensorDefault(monitor, 0x00000002, PHEC_TYPE, 0xE1);
+                }
+                if(RT_ERROR == CheckSensorCorrect(monitor, 0x00000003, 0xE2, PHEC_TYPE))
+                {
+                    SetSensorDefault(monitor, 0x00000003, PHEC_TYPE, 0xE2);
+                }
+                if(RT_ERROR == CheckSensorCorrect(monitor, 0x00000004, 0xE3, PHEC_TYPE))
+                {
+                    SetSensorDefault(monitor, 0x00000004, PHEC_TYPE, 0xE3);
+                }
+
+                if(RT_ERROR == CheckSensorCorrect(monitor, 0x00000005, 0xE4, WATERlEVEL_TYPE))
+                {
+                    SetSensorDefault(monitor, 0x00000005, WATERlEVEL_TYPE, 0xE4);
+                }
+                if(RT_ERROR == CheckSensorCorrect(monitor, 0x00000006, 0xE5, WATERlEVEL_TYPE))
+                {
+                    SetSensorDefault(monitor, 0x00000006, WATERlEVEL_TYPE, 0xE5);
+                }
+                if(RT_ERROR == CheckSensorCorrect(monitor, 0x00000007, 0xE6, WATERlEVEL_TYPE))
+                {
+                    SetSensorDefault(monitor, 0x00000007, WATERlEVEL_TYPE, 0xE6);
+                }
+                if(RT_ERROR == CheckSensorCorrect(monitor, 0x00000008, 0xE7, WATERlEVEL_TYPE))
+                {
+                    SetSensorDefault(monitor, 0x00000008, WATERlEVEL_TYPE, 0xE7);
+                }
+
+                if(RT_ERROR == CheckSensorCorrect(monitor, 0x00000009, 0xE8, SOIL_T_H_TYPE))
+                {
+                    SetSensorDefault(monitor, 0x00000009, SOIL_T_H_TYPE, 0xE8);
+                }
+                if(RT_ERROR == CheckSensorCorrect(monitor, 0x0000000a, 0xE9, SOIL_T_H_TYPE))
+                {
+                    SetSensorDefault(monitor, 0x0000000a, SOIL_T_H_TYPE, 0xE9);
+                }
+                if(RT_ERROR == CheckSensorCorrect(monitor, 0x0000000b, 0xEA, SOIL_T_H_TYPE))
+                {
+                    SetSensorDefault(monitor, 0x0000000b, SOIL_T_H_TYPE, 0xEA);
+                }
+                if(RT_ERROR == CheckSensorCorrect(monitor, 0x0000000c, 0xEB, SOIL_T_H_TYPE))
+                {
+                    SetSensorDefault(monitor, 0x0000000c, SOIL_T_H_TYPE, 0xEB);
+                }
+#endif
+
+}
+
+/**
+ * @brief  : 传感器类串口线程入口
+ */
+void SensorUart2TaskEntry(void* parameter)
+{
+    static      u8              Timer300msTouch    = OFF;
+    static      u8              Timer500msTouch    = OFF;
+    static      u8              Timer1sTouch    = OFF;
+    static      u8              Timer2sTouch    = OFF;
+    static      u8              Timer10sTouch   = OFF;
+    static      u8              Timer1mTouch   = OFF;
+    static      u8              Timer10mTouch   = OFF;
+    static      u16             time300mS = 0;
+    static      u16             time500mS = 0;
+    static      u16             time1S = 0;
+    static      u16             time2S = 0;
+    static      u16             time10S = 0;
+    static      u16             time1M = 0;
+    static      u16             time10M = 0;
+    static      u8              deviceSize = NO;
+    type_uart_class             *deviceObj          = GetDeviceObject();
+    type_uart_class             *sensorObj          = GetSensorObject();
+#if(HUB_SELECT == HUB_ENVIRENMENT)
+    type_uart_class             *lineObj            = GetLightObject();
+#elif(HUB_SELECT == HUB_IRRIGSTION)
+    type_uart_class             *aquaObj            = GetAquaObject();
+#endif
+    device_t                    *device             = RT_NULL;
+
+    UartRegister();
+    InitUart2Object();
+    InitSensorObject();
+#if(HUB_SELECT == HUB_ENVIRENMENT)
+    InitLightObject();
+#elif(HUB_SELECT == HUB_IRRIGSTION)
+    InitAquaObject();
+#endif
+
+    //需要指定device
+    sensorObj->ConfigureUart(&uart1_serial);
+    deviceObj->ConfigureUart(&uart2_serial);
+#if(HUB_SELECT == HUB_ENVIRENMENT)
+    lineObj->ConfigureUart(&uart3_serial);
+#elif(HUB_SELECT == HUB_IRRIGSTION)
+    aquaObj->ConfigureUart(&uart3_serial);
+#endif
+    specialRegister(GetMonitor());
+
     while (1)
     {
         time1S = TimerTask(&time1S, 1000/UART_PERIOD, &Timer1sTouch);                       //1s定时任务
-        time3S = TimerTask(&time3S, 3000/UART_PERIOD, &Timer3sTouch);                       //3s定时任务
-        time60S = TimerTask(&time60S, 60000/UART_PERIOD, &Timer60sTouch);                       //5s定时任务
+        time300mS = TimerTask(&time300mS, 300/UART_PERIOD, &Timer300msTouch);               //300ms定时任务
+        time500mS = TimerTask(&time500mS, /*500*/1000/UART_PERIOD, &Timer500msTouch);               //500ms定时任务
+        time2S = TimerTask(&time2S, 4000/UART_PERIOD, &Timer2sTouch);                       //3s定时任务
+        time10S = TimerTask(&time10S, 10000/UART_PERIOD, &Timer10sTouch);                   //10s定时任务
+        time1M = TimerTask(&time1M, 60000/UART_PERIOD, &Timer1mTouch);                      //1m定时任务
+        time10M = TimerTask(&time10M, 600000/UART_PERIOD, &Timer10mTouch);                  //10m定时任务
 
-        if(YES == sdCard.readInfo)                                  //必须要等待从sd卡读取到的monitor 才能执行以下功能
+        //1.文件系统如果没有准备好
+        if(YES != GetFileSystemState())
         {
-            if(0 == specailFlag)
+            //初始化设备的连接状态
+            for(u8 index = 0; index < GetMonitor()->device_size; index++)
             {
-#if (HUB_SELECT == HUB_ENVIRENMENT)
-                //特殊设备处理
-                getRegisterData(data, 13, 0x00000000,PAR_TYPE);
-                AnlyzeDeviceRegister(&monitor, uart1_serial ,data, 13, 0x18);//注册par
-#elif (HUB_SELECT == HUB_IRRIGSTION)
-                getRegisterData(data, 13, 0x00000001,PHEC_TYPE);
-                AnlyzeDeviceRegister(&monitor, uart1_serial ,data, 13, 0xE0);
-                getRegisterData(data, 13, 0x00000002,PHEC_TYPE);
-                AnlyzeDeviceRegister(&monitor, uart1_serial ,data, 13, 0xE1);
-                getRegisterData(data, 13, 0x00000003,PHEC_TYPE);
-                AnlyzeDeviceRegister(&monitor, uart1_serial ,data, 13, 0xE2);
-                getRegisterData(data, 13, 0x00000004,PHEC_TYPE);
-                AnlyzeDeviceRegister(&monitor, uart1_serial ,data, 13, 0xE3);
-
-                getRegisterData(data, 13, 0x00000005,WATERlEVEL_TYPE);
-                AnlyzeDeviceRegister(&monitor, uart1_serial ,data, 13, 0xE4);
-                getRegisterData(data, 13, 0x00000006,WATERlEVEL_TYPE);
-                AnlyzeDeviceRegister(&monitor, uart1_serial ,data, 13, 0xE5);
-                getRegisterData(data, 13, 0x00000007,WATERlEVEL_TYPE);
-                AnlyzeDeviceRegister(&monitor, uart1_serial ,data, 13, 0xE6);
-                getRegisterData(data, 13, 0x00000008,WATERlEVEL_TYPE);
-                AnlyzeDeviceRegister(&monitor, uart1_serial ,data, 13, 0xE7);
-
-                getRegisterData(data, 13, 0x00000009, SOIL_T_H_TYPE);
-                AnlyzeDeviceRegister(&monitor, uart1_serial ,data, 13, 0xE8);
-                getRegisterData(data, 13, 0x0000000a, SOIL_T_H_TYPE);
-                AnlyzeDeviceRegister(&monitor, uart1_serial ,data, 13, 0xE9);
-                getRegisterData(data, 13, 0x0000000b, SOIL_T_H_TYPE);
-                AnlyzeDeviceRegister(&monitor, uart1_serial ,data, 13, 0xEA);
-                getRegisterData(data, 13, 0x0000000c, SOIL_T_H_TYPE);
-                AnlyzeDeviceRegister(&monitor, uart1_serial ,data, 13, 0xEB);
-
-#endif
-                specailFlag = 1;
+                GetMonitor()->device[index].conn_state = CON_SUCCESS;
             }
 
-            /* 50ms 事件 */
+            for(u8 index = 0; index < GetMonitor()->sensor_size; index++)
             {
-                if(ON == uart1_msg.messageFlag)
-                {
-                    uart1_msg.messageFlag = OFF;
-                    AnalyzeData(uart1_serial, &monitor, uart1_msg.data, uart1_msg.size);
-                }
-                else
-                {
-                    if(1 == sensor_start)
-                    {
-                        if(YES == askSensorStorage(&monitor, uart1_serial))
-                        {
-                            sensor_start = 0;
-                        }
-                    }
-                }
-
-                if(ON == uart2_msg.messageFlag)
-                {
-                    AnalyzeData(uart2_serial, &monitor, uart2_msg.data, uart2_msg.size);
-                    uart2_msg.messageFlag = OFF;
-                }
-                else
-                {
-                    if(1 == device_start)
-                    {
-                        if(YES == askDeviceHeart_new(&monitor, uart2_serial, getDeviceEvent()))
-                        {
-                            device_start = 0;
-                        }
-                    }
-                }
-
-                if(ON == uart3_msg.messageFlag)
-                {
-                    uart3_msg.messageFlag = OFF;
-                    AnalyzeData(uart3_serial, &monitor, uart3_msg.data, uart3_msg.size);
-                }
-                else
-                {
-                    if(1 == line_start)
-                    {
-                        if(YES == askLineHeart(&monitor, uart3_serial))
-                        {
-                            line_start = 0;
-                        }
-                    }
-                }
-
-                if(0 != rt_memcmp((u8 *)&sys_time_pre, (u8 *)&sys_time, sizeof(type_sys_time)))
-                {
-                    rt_memcpy((u8 *)&sys_time_pre, (u8 *)&sys_time, sizeof(type_sys_time));
-
-                    //校准时间
-                    rtcTest(sys_time);
-                    getEthHeart()->last_connet_time = getTimeStamp();//一定要更新时间
-                }
-
-                //1.有可能出现hub,重新分配地址出现不成功的情况
-                if(ON == re_allocate_dec)
-                {
-                    devRegisterAnswer(GetMonitor(), uart2_serial, GetMonitor()->device[allocate_i].uuid);
-
-                    if(allocate_i < GetMonitor()->device_size - 1)
-                    {
-                        allocate_i++;
-                    }
-                    else
-                    {
-                        allocate_i = 0;
-                        re_allocate_dec = OFF;
-                    }
-                }
-
-                if(ON == re_allocate_line)
-                {
-                    devRegisterAnswer(GetMonitor(), uart3_serial, GetMonitor()->line[allo_line_i].uuid);
-
-                    if(allo_line_i < GetMonitor()->line_size - 1)
-                    {
-                        allo_line_i++;
-                    }
-                    else
-                    {
-                        allo_line_i = 0;
-                        re_allocate_line = OFF;
-                    }
-                }
-
-                if(ON == re_allocate_sen)
-                {
-                    devRegisterAnswer(GetMonitor(), uart1_serial, GetMonitor()->sensor[allo_sen_i].uuid);
-
-                    if(allo_sen_i < GetMonitor()->sensor_size - 1)
-                    {
-                        allo_sen_i++;
-                    }
-                    else
-                    {
-                        allo_sen_i = 0;
-                        re_allocate_sen = OFF;
-                    }
-                }
+                GetMonitor()->sensor[index].conn_state = CON_SUCCESS;
             }
-
-            /* 1s 事件 */
-            if(ON == Timer1sTouch)
+#if(HUB_SELECT == HUB_ENVIRENMENT)
+            for(u8 index = 0; index < GetMonitor()->line_size; index++)
             {
-                sensor_start = 1;
-                line_start = 1;
-
-                MonitorModuleConnect(GetMonitor());
-                if(NO == getFactoryMode())
-                {
-#if(HUB_SELECT == HUB_ENVIRENMENT)      //环控版才有以下功能
-                    tempProgram(GetMonitor());
-                    co2Program(GetMonitor(), 1000);
-                    humiProgram(GetMonitor());
-                    lineProgram_new(GetMonitor(), 0, 1000);
-                    lineProgram_new(GetMonitor(), 1, 1000);
+                GetMonitor()->line[index].conn_state = CON_SUCCESS;
+            }
 #elif(HUB_SELECT == HUB_IRRIGSTION)
-                    autoValveClose(GetMonitor(), GetSysTank());//如果是原来关联的自动阀取消关联之后需要关闭
-                    pumpProgram(GetMonitor(), GetSysTank());            //水泵的工作
-                    autoBindPumpTotank(GetMonitor(), GetSysTank());
-                    for(tank_i = 0; tank_i < GetSysTank()->tank_size; tank_i++)
-                    {
-                        u16 id = GetSysTank()->tank[tank_i].pumpId;
-
-                        if(id > 0xFF)
-                        {
-                            u8 addr = id >> 8;
-                            u8 port = id;
-                            if(RT_NULL != GetDeviceByAddr(GetMonitor(), addr))
-                            {
-                                if(PUMP_TYPE != GetDeviceByAddr(GetMonitor(), addr)->port[port].type)
-                                {
-                                    rt_memset((u8 *)&(GetSysTank()->tank[tank_i]), 0, sizeof(tank_t));
-                                }
-                            }
-                            else
-                            {
-                                rt_memset((u8 *)&(GetSysTank()->tank[tank_i]), 0, sizeof(tank_t));
-                            }
-                        }
-                        else
-                        {
-                            u8 addr = id;
-                            if(RT_NULL != GetDeviceByAddr(GetMonitor(), addr))
-                            {
-                                if(PUMP_TYPE != GetDeviceByAddr(GetMonitor(), addr)->type)
-                                {
-                                    rt_memset((u8 *)&GetSysTank()->tank[tank_i], 0, sizeof(tank_t));
-                                }
-                            }
-                            else
-                            {
-                                rt_memset((u8 *)&GetSysTank()->tank[tank_i], 0, sizeof(tank_t));
-                            }
-                        }
-                    }
-
-                    for(tank_i = 0; tank_i < GetSysTank()->tank_size; tank_i++)
-                    {
-                        if(0 == GetSysTank()->tank[tank_i].pumpId)
-                        {
-                            break;
-                        }
-                    }
-
-                    if(tank_i != GetSysTank()->tank_size)
-                    {
-                        for(;tank_i < GetSysTank()->tank_size - 1; tank_i++)
-                        {
-                            rt_memcpy((u8 *)&GetSysTank()->tank[tank_i], (u8 *)&GetSysTank()->tank[tank_i + 1], sizeof(tank_t));
-                            GetSysTank()->tank[tank_i].tankNo = tank_i+1;
-                            rt_memset((u8 *)&GetSysTank()->tank[tank_i + 1], 0, sizeof(tank_t));
-                        }
-
-                        GetSysTank()->tank_size -= 1;
-                    }
+            for(u8 index = 0; index < GetMonitor()->aqua_size; index++)
+            {
+                GetMonitor()->aqua[index].conn_state = CON_SUCCESS;
+            }
 #endif
-                    timmerProgram(GetMonitor());
-                    findDeviceLocation(GetMonitor(), &cloudCmd, uart2_serial);
-                    findLineLocation(GetMonitor(), &cloudCmd, uart3_serial);
-                    warnProgram(GetMonitor(), GetSysSet());             //监听告警信息
+            continue;
+        }
 
-                    //co2 校准
-                    if(YES == GetSysSet()->startCalFlg)
+        //50ms 任务
+        {
+            TimerRunning(UART_PERIOD);
+
+            {
+                //询问端口类型
+                if(deviceSize != GetMonitor()->device_size)
+                {
+                    deviceSize = GetMonitor()->device_size;
+                    for(int i = 0; i < deviceSize; i++)
                     {
-                        co2Calibrate(GetMonitor(), GetSysSet()->co2Cal, &GetSysSet()->startCalFlg, &GetSysSet()->saveFlag, co2CalibraterResPage);
-                    }
-
-                    //phec 校准
-                    for(u8 phec_i = 0; phec_i < getPhEcList(GetMonitor(), YES)->num; phec_i++)
-                    {
-                        ph_cal_t *ph = RT_NULL;
-                        ph = getPhCalByuuid(GetSensorByAddr(GetMonitor(), getPhEcList(GetMonitor(), YES)->addr[phec_i])->uuid);
-                        if(RT_NULL != ph)
+                        device = &GetMonitor()->device[i];
+                        if((AC_4_TYPE == device->type) ||
+                           (IO_4_TYPE == device->type) ||
+                           (IO_12_TYPE == device->type))
                         {
-                            if((CAL_INCAL == ph->cal_7_flag) || (CAL_INCAL == ph->cal_4_flag))
-                            {
-                                phCalibrate1(GetSensorByAddr(GetMonitor(), getPhEcList(GetMonitor(), YES)->addr[phec_i]),
-                                        GetMonitor(),ph, GetSysSet());
-                            }
-                        }
-
-                        ec_cal_t *ec = RT_NULL;
-                        ec = getEcCalByuuid(GetSensorByAddr(GetMonitor(), getPhEcList(GetMonitor(), YES)->addr[phec_i])->uuid);
-                        if(RT_NULL != ec)
-                        {
-                            if((CAL_INCAL == ec->cal_0_flag) || (CAL_INCAL == ec->cal_141_flag))
-                            {
-                                ecCalibrate1(GetSensorByAddr(GetMonitor(), getPhEcList(GetMonitor(), YES)->addr[phec_i]),
-                                        GetMonitor(),ec, GetSysSet());
-                            }
+                            u16 reg = 0;
+                            GetReadRegAddrByType(device->type, &reg);
+                            deviceObj->AskDevice(device, reg);
                         }
                     }
                 }
             }
 
-            /* 3s 事件*/
-            if(ON == Timer3sTouch)
+            if(ON == uart1_msg.messageFlag)
             {
-                device_start = 1;
+                sensorObj->RecvCmd(uart1_msg.data, uart1_msg.size);
+                uart1_msg.messageFlag = OFF;
 
-                //非法地址处理
-                deleteModule(GetMonitor(), 0);
+
+//                rt_kprintf("print sensor data : ");
+//                for(int i = 0; i < uart1_msg.size; i++)
+//                {
+//                    rt_kprintf(" %x", uart1_msg.data[i]);
+//                }
+//                rt_kprintf("\r\n");
+            }
+            else
+            {
+                sensorObj->SendCmd();
             }
 
-            /* 60s 事件 */
-            if(ON == Timer60sTouch)
+            if(ON == uart2_msg.messageFlag)
             {
-                re_allocate_dec = ON;
-                re_allocate_line = ON;
-                re_allocate_sen = ON;
+                deviceObj->RecvCmd(uart2_msg.data, uart2_msg.size);
+
+                uart2_msg.messageFlag = OFF;
+
+//                {
+////                    if(HVAC_6_TYPE == GetDeviceByAddr(GetMonitor(), uart2_msg.data[0])->type  ||
+////                            0xFA == uart2_msg.data[0])
+//                    {
+//                        rt_kprintf("print device data : ");
+//                        for(int i = 0; i < uart2_msg.size; i++)
+//                        {
+//                            rt_kprintf(" %x", uart2_msg.data[i]);
+//                        }
+//                        rt_kprintf("\r\n");
+//                    }
+//                }
             }
+            else
+            {
+                //实际发送串口
+                deviceObj->SendCmd();
+            }
+
+            if(ON == uart3_msg.messageFlag)
+            {
+#if(HUB_SELECT == HUB_ENVIRENMENT)
+                lineObj->RecvCmd(uart3_msg.data, uart3_msg.size);
+#elif(HUB_SELECT == HUB_IRRIGSTION)
+                aquaObj->RecvCmd(uart3_msg.data, uart3_msg.size);
+#endif
+
+//                rt_kprintf("print aqua data : ");
+//                for(int i = 0; i < uart3_msg.size; i++)
+//                {
+//                    rt_kprintf(" %x", uart3_msg.data[i]);
+//                }
+//                rt_kprintf("\r\n");
+
+                uart3_msg.messageFlag = OFF;
+            }
+            else
+            {
+                //实际发送串口
+#if(HUB_SELECT == HUB_ENVIRENMENT)
+                lineObj->SendCmd();
+#elif(HUB_SELECT == HUB_IRRIGSTION)
+#endif
+            }
+
         }
+
+        if(ON == Timer1sTouch)
+        {
+            //1.数据处理,包括设备注册以及设备开关状态接收
+            deviceObj->RecvListHandle();
+            //数据发送优化 减少设备的一直发送
+            deviceObj->Optimization(GetMonitor());
+
+            //2.sensor数据处理
+            sensorObj->RecvListHandle();
+            sensorObj->Optimization(GetMonitor());
+#if(HUB_SELECT == HUB_ENVIRENMENT)
+            //3.数据处理,包括设备注册以及设备开关状态接收
+            lineObj->RecvListHandle();
+            //数据发送优化 减少设备的一直发送
+            lineObj->Optimization(GetMonitor());
+
+            //co2定标
+            if(YES == GetSysSet()->startCalFlg)
+            {
+                sensorObj->CalibrateCo2();
+
+                GetSysSet()->startCalFlg = NO;
+                co2CalibraterResPage(YES);
+            }
+#elif(HUB_SELECT == HUB_IRRIGSTION)
+            //4.数据处理,包括设备注册以及设备开关状态接收
+            aquaObj->RecvListHandle();
+            //数据发送优化 减少设备的一直发送
+            aquaObj->Optimization(GetMonitor());
+#endif
+        }
+
+        if(ON == Timer300msTouch)
+        {
+            deviceObj->KeepConnect(GetMonitor());
+
+#if(HUB_SELECT == HUB_ENVIRENMENT)
+            lineObj->KeepConnect(GetMonitor());
+#endif
+        }
+
+        if(ON == Timer500msTouch)
+        {
+#if(HUB_SELECT == HUB_IRRIGSTION)
+            if(OFF == uart3_msg.messageFlag) {
+                aquaObj->SendCmd();
+            }
+#endif
+        }
+
+        //循环发送询问命令
+        sensorObj->KeepConnect(GetMonitor());
+
+        //2s
+//        if(ON == Timer2sTouch)
+        {
+#if(HUB_SELECT == HUB_IRRIGSTION)
+            aquaObj->AskAquaState(UART_PERIOD);
+#endif
+        }
+
+        //10s
+        if(ON == Timer10sTouch)
+        {
+
+        }
+
+        if(ON == Timer1mTouch)
+        {
+            //广播传感器数据
+            GenerateBroadcastSensorValue(deviceObj);
+        }
+
+        if(ON == Timer10mTouch)
+        {
+            //发送广播时间
+            GenerateBroadcastTime(deviceObj);
+#if(HUB_SELECT == HUB_IRRIGSTION)
+            GenerateBroadcastTime(aquaObj);
+#endif
+        }
+
         rt_thread_mdelay(UART_PERIOD);
     }
 }

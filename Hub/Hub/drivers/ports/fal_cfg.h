@@ -43,7 +43,7 @@ extern struct fal_flash_dev nor_flash0;
 {                                                                                           \
     /*{FAL_PART_MAGIC_WORD,   "app",            "onchip_flash_512k",     128*1024,   128*1024,  0},*/  \
     /*{FAL_PART_MAGIC_WORD,   "download",       "onchip_flash_512k",     256*1024,  256*1024,  0},*/  \
-    {FAL_PART_MAGIC_WORD,   "filesys",      NOR_FLASH_DEV_NAME, 0,          4*1024*1024,  0}, \
+    {FAL_PART_MAGIC_WORD,   "filesys",      NOR_FLASH_DEV_NAME, 0,       2*1024*1024,  0}, \
 }
 #endif /* FAL_PART_HAS_TABLE_CFG */
 #endif /* _FAL_CFG_H_ */

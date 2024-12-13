@@ -12,13 +12,16 @@
 #include "Oled1309.h"
 #include "OledBusiness.h"
 #include "Uart.h"
-#include "UartBussiness.h"
 #include "Module.h"
 
 #include "ascii_fonts.h"
 #include "qrcode.h"
 #include "ST7567.h"
 #include "SDCard.h"
+#include "UartAction.h"
+#include "FileSystem.h"
+#include "Ethernet.h"
+#include "Udp.h"
 
 char    data[80];
 u32     now_phec_uuid = 0;
@@ -27,6 +30,9 @@ extern u8      next_flag;
 extern void GetUpdataFileFromWeb(u8 *ret);
 extern  __attribute__((section(".ccmbss"))) struct sdCardState      sdCard;
 extern type_page_t     pageSelect;
+extern int                 tcp_sock ;
+extern  void getAppVersion(char *);
+extern struct ethDeviceStruct  *eth;
 
 void cleanHomePage(void)
 {
@@ -43,12 +49,12 @@ void HomePage(type_page_t *page, type_monitor_t *monitor)
     char                time[22]    = "";
 #if (HUB_SELECT == HUB_ENVIRENMENT)
     char                name[5]     = "";
-    int                 data;
+    int                 data        = 0;
     char                day_night[6] = "";
 #elif (HUB_SELECT == HUB_IRRIGSTION)
     u8                  sensor_i    = 0;
     u8                  addr        = 0;
-    u8                  port        = 0;
+//    u8                  port        = 0;
     tank_t              *tank       = RT_NULL;
     sensor_t            *sensor     = RT_NULL;
     int                 data[6]     = {VALUE_NULL,VALUE_NULL,VALUE_NULL,VALUE_NULL,VALUE_NULL,VALUE_NULL};
@@ -56,6 +62,7 @@ void HomePage(type_page_t *page, type_monitor_t *monitor)
     static u8           tankSizePre = 0;
     static u8           pagePart    = 0;
     static u8           pagePartPre = 0;
+    aqua_t              *aqua       = RT_NULL;
 #endif
     char                value[5]    = "";
     type_sys_time       time_for;
@@ -107,7 +114,7 @@ void HomePage(type_page_t *page, type_monitor_t *monitor)
     ST7567_Puts(name, &Font_6x12, 1);
 
     data = getSensorDataByFunc(monitor, F_S_TEMP);
-    if((VALUE_NULL == data) || (YES != sdCard.readInfo))
+    if((VALUE_NULL == data) || (YES != GetFileSystemState()))
     {
         ST7567_GotoXY(0, 32);
         ST7567_Puts("    ", &Font_8x16, 1);
@@ -137,7 +144,7 @@ void HomePage(type_page_t *page, type_monitor_t *monitor)
     ST7567_Puts(name, &Font_6x12, 1);
 
     data = getSensorDataByFunc(monitor, F_S_HUMI);
-    if((VALUE_NULL == data) || (YES != sdCard.readInfo))
+    if((VALUE_NULL == data) || (YES != GetFileSystemState()))
     {
         ST7567_GotoXY(8 + 8*5, 32);
         ST7567_Puts("    ", &Font_8x16, 1);
@@ -166,7 +173,7 @@ void HomePage(type_page_t *page, type_monitor_t *monitor)
     ST7567_Puts(name, &Font_6x12, 1);
 
     data = getSensorDataByFunc(monitor, F_S_CO2);
-    if((VALUE_NULL == data) || (YES != sdCard.readInfo))
+    if((VALUE_NULL == data) || (YES != GetFileSystemState()))
     {
         ST7567_GotoXY(8 + 8*9 + 4, 32);
         ST7567_Puts("      ", &Font_8x16, 1);
@@ -192,7 +199,7 @@ void HomePage(type_page_t *page, type_monitor_t *monitor)
     ST7567_GotoXY(0, 0);
     ST7567_Puts(time, &Font_6x12, 0);
 
-    if(YES == sdCard.readInfo)
+    if(YES == GetFileSystemState())
     {
         if(tankSizePre != GetSysTank()->tank_size)
         {
@@ -234,19 +241,18 @@ void HomePage(type_page_t *page, type_monitor_t *monitor)
             }
 
             tank = &GetSysTank()->tank[tank_index];
+            aqua = GetAquaByAddr(GetMonitor(), tank->aquaId);
 
             //显示泵名
             if(tank->pumpId > 0xFF)
             {
                 addr = tank->pumpId >> 8;
-                port = tank->pumpId;
             }
             else
             {
                 addr = tank->pumpId;
-                port = 0;
             }
-            sprintf(time," %02d:%02d:%02d%11s",time_for.hour,time_for.minute,time_for.second,
+            sprintf(time," %02d:%02d:%02d%12s",time_for.hour,time_for.minute,time_for.second,
                     tank->name);
             time[21] = '\0';
             ST7567_GotoXY(0, 0);
@@ -276,7 +282,7 @@ void HomePage(type_page_t *page, type_monitor_t *monitor)
 
             for(sensor_i = 0; sensor_i < TANK_SENSOR_MAX; sensor_i++)
             {
-                if((0 == pagePart) || (2 == pagePart) || (3 == pagePart))//Justin debug 询问一下基质寄存器是否是在桶内
+                if((0 == pagePart) || (2 == pagePart) || (3 == pagePart))
                 {
                     if(tank->sensorId[0][sensor_i] > 0xFF)
                     {
@@ -342,7 +348,7 @@ void HomePage(type_page_t *page, type_monitor_t *monitor)
                 {
                     if(CON_FAIL != sensor->conn_state)
                     {
-                        if (PHEC_TYPE == sensor->type)
+                        if ((PHEC_TYPE == sensor->type) || (PHEC_NEW_TYPE ==  sensor->type))
                         {
                             data[0] = getSensorDataByAddr(GetMonitor(), addr, 1);
                             data[1] = getSensorDataByAddr(GetMonitor(), addr, 0);
@@ -374,6 +380,23 @@ void HomePage(type_page_t *page, type_monitor_t *monitor)
                         ST7567_Puts("--", &Font_8x16, 1);
                         ST7567_GotoXY(98, 28);
                         ST7567_Puts("--", &Font_8x16, 1);
+                    }
+                }
+            }
+
+            //如果该桶有aqua 那么显示aqua 数据
+            if(0 == pagePart)
+            {
+                if(aqua) {
+                    aqua_state_t *state = GetAquaWarnByAddr(aqua->addr);
+                    if(CON_SUCCESS == aqua->conn_state) {
+                        data[0] = state->ph;
+                        data[1] = state->ec;
+                        data[2] = state->wt;
+                    } else {
+                        data[0] = VALUE_NULL;
+                        data[1] = VALUE_NULL;
+                        data[2] = VALUE_NULL;
                     }
                 }
             }
@@ -505,19 +528,18 @@ void HomePage(type_page_t *page, type_monitor_t *monitor)
             }
             else if(3 == pagePart)
             {
-                if(VALUE_NULL != data[5])//wl 取出来是厘米
+                if(VALUE_NULL != data[5])
                 {
                     ST7567_GotoXY(68, 32);
-                    rt_memcpy(value, "   ", 3);
+                    rt_memcpy(value, "   ", 4);
 //                    if(data[5] > 10)
 //                    {
-//                        sprintf(value, "%3d", data[5]/10);
+                        sprintf(value, "%01.2f", (float)data[5]/100);
 //                    }
 //                    else
 //                    {
-//                        sprintf(value, " %02d", data[5]/10);
+//                        sprintf(value, " %02d", (float)data[5]/10);
 //                    }
-                    sprintf(value, "%.2f", (float)data[5]/100);
                     value[4] = '\0';
                     ST7567_Puts(value, &Font_11x18, 1);
 //                    ST7567_DrawRectangle(89, 46, 1, 1, 1);
@@ -570,9 +592,13 @@ void SettingPage(type_page_t page, u8 canShow)
     char                temp1[4];
     type_sys_time       time_for;
 #if(HUB_SELECT == HUB_ENVIRENMENT)
-    char                show[6][16] = {"Sensor List", "Device List", "Light List", "QR Code", "Update Firmware", "CO2 Calibration"};
+    char                show[13][16] = {"Sensor List", "Device List", "Light List", "QR Code", "Update Firmware", "CO2 Calibration",
+                                       "Data Export", "Data Import", "Server Url", "Verson Info", "Ip Info", "Restore Settings",
+                                       "Memory Info"};
 #elif (HUB_SELECT == HUB_IRRIGSTION)
-    char                show[5][16] = {"Sensor List", "Device List", "QR Code", "Update Firmware", "Sensor Calibrate"};
+    char                show[12][16] = {"Sensor List", "Device List", "QR Code", "Update Firmware", "Sensor Calibrate",
+                                       "Data Export", "Data Import", "Server Url", "Verson Info", "Ip Info", "Restore Settings",
+                                       "Memory Info"};
 #endif
     type_sys_time       sys_time;
     u8                  line        = LINE_HIGHT;
@@ -686,7 +712,7 @@ void SensorList(u64 *pageInfo, type_page_t *page,type_monitor_t *monitor)
 {
     u8                      canshow     = 4;
     char                    show[17]    = "";
-    u8                      port        = 0;
+//    u8                      port        = 0;
     sensor_t                *sensor     = RT_NULL;
     static u8               show_home   = 1;
     static u8               show_end    = 4;
@@ -695,10 +721,10 @@ void SensorList(u64 *pageInfo, type_page_t *page,type_monitor_t *monitor)
     clear_screen();
 
     //2.显示状态
-    if(YES != sdCard.readInfo)
+    if(YES != GetFileSystemState())
     {
         ST7567_GotoXY(LINE_HIGHT, 0);
-        ST7567_Puts("SD is not init", &Font_8x16, 0);
+        ST7567_Puts("File system is not init", &Font_8x16, 0);
     }
     else
     {
@@ -758,7 +784,11 @@ void SensorList(u64 *pageInfo, type_page_t *page,type_monitor_t *monitor)
                 if(index <= page->cusor_max)
                 {
                     ST7567_GotoXY(8, 16 * (index - show_home));
-                    sprintf(show, "%8s   #%d",sensor->name, sensor->addr);
+                    if(CON_SUCCESS == sensor->conn_state) {
+                        sprintf(show, "%8s   #%d",sensor->name, sensor->addr);
+                    } else {
+                        sprintf(show, "%8s   #%d!",sensor->name, sensor->addr);
+                    }
 
                     ST7567_Puts(show, &Font_7x10, index == page->cusor ? 0 : 1);
                 }
@@ -1105,10 +1135,10 @@ void DeviceStatePage_new(type_monitor_t *monitor)
     clear_screen();
 
     //2.显示状态
-    if(YES != sdCard.readInfo)
+    if(YES != GetFileSystemState())
     {
         ST7567_GotoXY(LINE_HIGHT, 0);
-        ST7567_Puts("SD is not init", &Font_8x16, 0);
+        ST7567_Puts("File system is not init", &Font_8x16, 0);
     }
     else
     {
@@ -1182,6 +1212,7 @@ void DeviceStatePage_new(type_monitor_t *monitor)
     ST7567_UpdateScreen();
 }
 
+#if(HUB_SELECT == HUB_ENVIRENMENT)
 void LineStatePage_new(type_monitor_t *monitor)
 {
 #define     CAN_SHOW        4
@@ -1197,10 +1228,10 @@ void LineStatePage_new(type_monitor_t *monitor)
     //1.清除界面
     clear_screen();
 
-    if(YES != sdCard.readInfo)
+    if(YES != GetFileSystemState())
     {
         ST7567_GotoXY(LINE_HIGHT, 0);
-        ST7567_Puts("SD is not init", &Font_8x16, 0);
+        ST7567_Puts("File system is not init", &Font_8x16, 0);
     }
     else
     {
@@ -1273,59 +1304,7 @@ void LineStatePage_new(type_monitor_t *monitor)
     //4.刷新界面
     ST7567_UpdateScreen();
 }
-
-void qrcode(void)
-{
-#define DEFAULT_QR_VERSION 6
-
-    QRCode qrc;
-    uint8_t x, y, *qrcodeBytes = (uint8_t *)rt_calloc(1, qrcode_getBufferSize(DEFAULT_QR_VERSION));
-    int8_t result;
-    char qrstr[13] = " ";
-
-    rt_memset(qrstr, ' ', 13);
-    GetSnName(qrstr, 12);
-    LOG_D("sn = %s",qrstr);
-
-    if (qrcodeBytes)
-    {
-        result = qrcode_initText(&qrc, qrcodeBytes, DEFAULT_QR_VERSION, ECC_LOW, qrstr);
-
-        if (result >= 0)
-        {
-            rt_kprintf("\n");
-            for (y = 0; y < qrc.size; y++)
-            {
-                for (x = 0; x < qrc.size; x++)
-                {
-                    if (qrcode_getModule(&qrc, x, y))
-                    {
-                        ST7567_DrawLine(x, y, x, y, 1);
-                    }
-                    else
-                    {
-                    }
-                }
-            }
-        }
-        else
-        {
-            rt_kprintf("QR CODE(%s) General FAILED(%d)\n", qrstr, result);
-        }
-
-        LOG_D("qrc.size = %d",qrc.size);
-
-        rt_free(qrcodeBytes);
-
-        ST7567_GotoXY(0, 48);
-        ST7567_Puts(qrstr, &Font_8x16, 1);
-        ST7567_UpdateScreen();
-    }
-    else
-    {
-        rt_kprintf("Warning: no memory!\n");
-    }
-}
+#endif
 
 void UpdateAppProgram(type_page_t *page, u64 *info)
 {
@@ -1412,6 +1391,8 @@ void UpdateAppProgram(type_page_t *page, u64 *info)
     ST7567_UpdateScreen();
 }
 
+#if(HUB_SELECT == HUB_ENVIRENMENT)
+
 void co2CalibratePage(type_page_t *page, u64 *info)
 {
     if(NO == GetSysSet()->startCalFlg)
@@ -1465,6 +1446,39 @@ void co2CalibratePage(type_page_t *page, u64 *info)
     //3
     ST7567_UpdateScreen();
 }
+
+void co2CalibraterResPage(u8 flag)
+{
+   if(NO == flag)
+   {
+       //失败
+       ST7567_GotoXY(LINE_HIGHT, 0);
+       ST7567_Puts("Calibrate fail ", &Font_8x16, 1);
+       ST7567_GotoXY(LINE_HIGHT, 16);
+       ST7567_Puts("                ", &Font_8x16, 1);
+       ST7567_GotoXY(LINE_HIGHT, 16*2);
+       ST7567_Puts("                ", &Font_8x16, 1);
+       ST7567_GotoXY(LINE_HIGHT, 16*3);
+       ST7567_Puts("                ", &Font_8x16, 1);
+   }
+   else if(YES == flag)
+   {
+       //成功
+       ST7567_GotoXY(LINE_HIGHT, 0);
+       ST7567_Puts("Calibrate OK  ", &Font_8x16, 1);
+       ST7567_GotoXY(LINE_HIGHT, 16);
+       ST7567_Puts("                ", &Font_8x16, 1);
+       ST7567_GotoXY(LINE_HIGHT, 16*2);
+       ST7567_Puts("                ", &Font_8x16, 1);
+       ST7567_GotoXY(LINE_HIGHT, 16*3);
+       ST7567_Puts("                ", &Font_8x16, 1);
+   }
+
+   ST7567_UpdateScreen();
+   pageSelect.cusor = 1;//避免客户直接点击YES 又再次校准
+}
+
+#elif(HUB_SELECT == HUB_IRRIGSTION)
 
 void PhEcCalibratePage(type_page_t *page)
 {
@@ -1700,10 +1714,10 @@ void phecOnlinePage(u64 *pageInfo, type_page_t *page, type_monitor_t *monitor, u
     clear_screen();
 
     //2.显示状态
-    if(YES != sdCard.readInfo)
+    if(YES != GetFileSystemState())
     {
         ST7567_GotoXY(LINE_HIGHT, 0);
-        ST7567_Puts("SD is not init", &Font_8x16, 0);
+        ST7567_Puts("File system is not init", &Font_8x16, 0);
     }
     else
     {
@@ -1804,36 +1818,7 @@ void phecOnlinePage(u64 *pageInfo, type_page_t *page, type_monitor_t *monitor, u
     ST7567_UpdateScreen();
 }
 
-void co2CalibraterResPage(u8 flag)
-{
-   if(NO == flag)
-   {
-       //失败
-       ST7567_GotoXY(LINE_HIGHT, 0);
-       ST7567_Puts("Calibrate fail ", &Font_8x16, 1);
-       ST7567_GotoXY(LINE_HIGHT, 16);
-       ST7567_Puts("                ", &Font_8x16, 1);
-       ST7567_GotoXY(LINE_HIGHT, 16*2);
-       ST7567_Puts("                ", &Font_8x16, 1);
-       ST7567_GotoXY(LINE_HIGHT, 16*3);
-       ST7567_Puts("                ", &Font_8x16, 1);
-   }
-   else if(YES == flag)
-   {
-       //成功
-       ST7567_GotoXY(LINE_HIGHT, 0);
-       ST7567_Puts("Calibrate OK  ", &Font_8x16, 1);
-       ST7567_GotoXY(LINE_HIGHT, 16);
-       ST7567_Puts("                ", &Font_8x16, 1);
-       ST7567_GotoXY(LINE_HIGHT, 16*2);
-       ST7567_Puts("                ", &Font_8x16, 1);
-       ST7567_GotoXY(LINE_HIGHT, 16*3);
-       ST7567_Puts("                ", &Font_8x16, 1);
-   }
-
-   ST7567_UpdateScreen();
-   pageSelect.cusor = 1;//避免客户直接点击YES 又再次校准
-}
+#endif
 
 void factoryPage(type_page_t page, u8 canShow)
 {
@@ -1909,7 +1894,7 @@ void SensorStatePage_fac(type_monitor_t *monitor, u8 canShow)
             //如果是上次状态是在线这次掉线，则删除
             if(CON_FAIL == monitor->sensor[index].conn_state)
             {
-                deleteModule(monitor, monitor->sensor[index].addr);
+                DeleteModule(monitor, monitor->sensor[index].uuid);
             }
 
             connect[index] = monitor->sensor[index].conn_state;
@@ -1950,6 +1935,7 @@ void SensorStatePage_fac(type_monitor_t *monitor, u8 canShow)
     }
 }
 
+#if(HUB_SELECT == HUB_ENVIRENMENT)
 void lineStatePage_fac(type_page_t *page, type_monitor_t *monitor, u8 canShow)
 {
 
@@ -1977,7 +1963,7 @@ void lineStatePage_fac(type_page_t *page, type_monitor_t *monitor, u8 canShow)
             //如果是上次状态是在线这次掉线，则删除
             if(/*(CON_SUCCESS == connect[index]) && */(CON_FAIL == monitor->line[index].conn_state))
             {
-                deleteModule(monitor, monitor->line[index].addr);
+                DeleteModule(monitor, monitor->line[index].uuid);
             }
 
             connect[index] = monitor->line[index].conn_state;
@@ -2010,13 +1996,13 @@ void lineStatePage_fac(type_page_t *page, type_monitor_t *monitor, u8 canShow)
 //        else
         if(CON_SUCCESS == data)
         {
-            if(OFF == GetMonitor()->line[index].d_state)
+            if(OFF == GetMonitor()->line[index].port[0].ctrl.d_state)
             {
                 sprintf(temp,"%6s   OFF", name);
             }
             else
             {
-                sprintf(temp,"%6s   %3d%%", name, GetMonitor()->line[index].d_value);
+                sprintf(temp,"%6s   %3d%%", name, GetMonitor()->line[index].port[0].ctrl.d_value);
             }
             temp[16] = '\0';
             ST7567_Puts(temp, &Font_8x16, 1);
@@ -2058,6 +2044,7 @@ void lineStatePage_fac(type_page_t *page, type_monitor_t *monitor, u8 canShow)
         }
     }
 }
+#endif
 
 void deviceStatePage_fac(type_page_t *page, type_monitor_t *monitor, u8 canShow)
 {
@@ -2085,7 +2072,7 @@ void deviceStatePage_fac(type_page_t *page, type_monitor_t *monitor, u8 canShow)
             //如果是上次状态是在线这次掉线，则删除
             if(/*(CON_SUCCESS == connect[index]) && */(CON_FAIL == monitor->device[index].conn_state))
             {
-                deleteModule(monitor, monitor->device[index].addr);
+                DeleteModule(monitor, monitor->device[index].uuid);
             }
 
             connect[index] = monitor->device[index].conn_state;
@@ -2256,7 +2243,8 @@ void openDevices_Fa(type_monitor_t *monitor)
         for(port = 0; port < device->storage_size; port++)
         {
             device->port[port].manual.manual = MANUAL_HAND_ON;
-            device->port[port].manual.manual_on_time = 65535;
+            device->port[port].manual.manual_on_time = 1000;
+            device->port[port].manual.manual_on_time_save = getTimeStamp();
         }
     }
 }
@@ -2278,12 +2266,14 @@ void closeDevices_Fa(type_monitor_t *monitor)
     }
 }
 
+#if(HUB_SELECT == HUB_ENVIRENMENT)
 void lineStage_Fa(type_monitor_t *monitor)
 {
     u8              index               = 0;
     line_t          *line               = RT_NULL;
     static u8       value[LINE_MAX]     = {0,0};
-    static u8       stage[3] = {0, 49, 100};
+    static u8       stage[3]            = {0, 49, 100};
+    u16             ctrl[4]             = {0, 0, 0, 0};
 
     for(index = 0; index < LINE_MAX; index++)
     {
@@ -2298,8 +2288,18 @@ void lineStage_Fa(type_monitor_t *monitor)
             value[index] = 0;
         }
 
-        line->d_state = ON;
-        line->d_value = stage[value[index]];
+        if(LINE_4_TYPE == line->type)
+        {
+            for(int i = 0;  i < 4; i++)
+            {
+                ctrl[i] = (stage[value[index]] << 8) | stage[value[index]];
+            }
+            GetLightObject()->Line4Ctrl(line, ctrl);
+        }
+        else
+        {
+            GetLightObject()->LineCtrl(line, 0, ON, stage[value[index]]);
+        }
     }
 }
 
@@ -2307,15 +2307,33 @@ void lineStageClose_Fa(type_monitor_t *monitor)
 {
     u8              index               = 0;
     line_t          *line               = RT_NULL;
+    u16             ctrl[4]             = {0,0,0,0};
 
     for(index = 0; index < LINE_MAX; index++)
     {
         line = &monitor->line[index];
 
-        line->d_state = OFF;
-        line->d_value = 0;
+        if(LINE_4_TYPE == line->type)
+        {
+            GetLightObject()->Line4Ctrl(line, ctrl);
+        }
+        else
+        {
+            GetLightObject()->LineCtrl(line, 0, OFF, 0);
+        }
     }
 }
+
+#else
+void lineStage_Fa(type_monitor_t *monitor)
+{
+}
+
+void lineStageClose_Fa(type_monitor_t *monitor)
+{
+}
+
+#endif
 
 void openDryFac(type_monitor_t *monitor)
 {
@@ -2415,6 +2433,511 @@ void testPage(void)
 
     ST7567_GotoXY(LINE_HIGHT, 32);
     ST7567_Puts(show, &Font_8x16, 1);
+
+    ST7567_UpdateScreen();
+}
+
+void dataExportPage(type_page_t *page, u64 *info)
+{
+    u8              line        = LINE_HIGHT;
+    u8              column      = 0;
+
+    //2.提示是否要下载
+    ST7567_GotoXY(LINE_HIGHT, 0);
+    ST7567_Puts("export data?", &Font_8x16, 1);
+
+    //3.确定是否升级
+    line = 28;
+    column = 32;
+    ST7567_GotoXY(line, column);
+    if(1 == page->cusor)
+    {
+        ST7567_Puts("NO", &Font_12x24, 0);
+    }
+    else
+    {
+        ST7567_Puts("NO", &Font_12x24, 1);
+    }
+
+    line = 64;
+    column = 32;
+    ST7567_GotoXY(line, column);
+    if(2 == page->cusor)
+    {
+        ST7567_Puts("YES", &Font_12x24, 0);
+    }
+    else
+    {
+        ST7567_Puts("YES", &Font_12x24, 1);
+    }
+
+    //4.判断按键确定是否
+    if(ON == page->select)
+    {
+        if(2 == page->cusor)
+        {
+            DataExport();
+            LOG_I("export data");
+        }
+
+        //返回上一页
+        *info >>= 8;
+    }
+
+    //5.刷新界面
+    ST7567_UpdateScreen();
+}
+
+void dataImportPage(type_page_t *page, u64 *info)
+{
+    u8              line        = LINE_HIGHT;
+    u8              column      = 0;
+
+    //2.提示是否要下载
+    ST7567_GotoXY(LINE_HIGHT, 0);
+    ST7567_Puts("import data?", &Font_8x16, 1);
+
+    //3.确定是否升级
+    line = 28;
+    column = 32;
+    ST7567_GotoXY(line, column);
+    if(1 == page->cusor)
+    {
+        ST7567_Puts("NO", &Font_12x24, 0);
+    }
+    else
+    {
+        ST7567_Puts("NO", &Font_12x24, 1);
+    }
+
+    line = 64;
+    column = 32;
+    ST7567_GotoXY(line, column);
+    if(2 == page->cusor)
+    {
+        ST7567_Puts("YES", &Font_12x24, 0);
+    }
+    else
+    {
+        ST7567_Puts("YES", &Font_12x24, 1);
+    }
+
+    //4.判断按键确定是否
+    if(ON == page->select)
+    {
+        if(2 == page->cusor)
+        {
+            DataImport();
+            LOG_I("Import data");
+            //重启
+            rt_hw_cpu_reset();
+        }
+
+        //返回上一页
+        *info >>= 8;
+    }
+
+    //5.刷新界面
+    ST7567_UpdateScreen();
+}
+
+void ServerUrlPage(type_btn_event *event, u64 *info)
+{
+    u8              line        = LINE_HIGHT;
+    u8              column      = 0;
+    static int      use         = 0;
+    static int      position    = 0;
+    char            name[22]    = " ";
+    char            temp[5]     = " ";
+    static u8       ip_num[4]   = {0,0,0,0};
+    char            *p          = RT_NULL;
+    static u8       flag = 0;
+
+    if(YES != GetFileSystemState())
+    {
+        ST7567_GotoXY(LINE_HIGHT, 0);
+        ST7567_Puts("File system is not init", &Font_8x16, 0);
+    }
+    else
+    {
+        clear_screen();
+
+        if(0 == flag)
+        {
+            strcpy(name, getMqttUrlUse()->use_ip);
+            p = strtok(name, ".");
+            ip_num[0] = atoi(p);
+            p = strtok(NULL, ".");
+            ip_num[1] = atoi(p);
+            p = strtok(NULL, ".");
+            ip_num[2] = atoi(p);
+            p = strtok(NULL, ".");
+            ip_num[3] = atoi(p);
+
+            position = 0;
+            if(USE_AMAZON == GetMqttUse())
+            {
+                use = 0;
+            }
+            else if(USE_ALIYUN == GetMqttUse())
+            {
+                use = 1;
+            }
+            else if(USE_IP == GetMqttUse())
+            {
+                use = 2;
+            }
+
+            flag = 1;
+        }
+
+        //1.显示使用的类型
+        ST7567_GotoXY(LINE_HIGHT, 0);
+        strcpy(name, "use : ");
+        ST7567_Puts(name, &Font_8x16, 1);
+
+        //2.判断确认事件
+        if(YES == event->btn_enter)
+        {
+            if(0 == position)
+            {
+                if(0 == use || 1 == use)
+                {
+                    position = 5;
+                }
+                else if(2 == use)
+                {
+                    position = 1;
+                }
+            }
+            else
+            {
+                if(position < 5)
+                {
+                    position++;
+                }
+                else if(5 == position)
+                {
+                    //返回上一页
+                    *info >>= 8;
+                    flag = 0;
+                }
+                else if(6 == position)
+                {
+                    u8 mqtt_use = USE_AMAZON;
+                    if(0 == use)
+                    {
+                        mqtt_use = USE_AMAZON;
+                    }
+                    else if(1 == use)
+                    {
+                        mqtt_use = USE_ALIYUN;
+                    }
+                    else if(2 == use)
+                    {
+                        mqtt_use = USE_IP;
+                    }
+                    setMqttUse(mqtt_use);
+                    itoa(ip_num[0], temp, 10);
+                    strcpy(name, temp);
+                    strcat(name, ".");
+                    itoa(ip_num[1], temp, 10);
+                    strcat(name, temp);
+                    strcat(name, ".");
+                    itoa(ip_num[2], temp, 10);
+                    strcat(name, temp);
+                    strcat(name, ".");
+                    itoa(ip_num[3], temp, 10);
+                    strcat(name, temp);
+
+                    setMqttUseIp(name);
+
+                    setMqttUrlFileFlag(YES);
+                }
+            }
+
+            event->btn_enter = NO;
+        }
+        else if(YES == event->btn_down)
+        {
+            if(0 == position)
+            {
+                if(use < 2)
+                {
+                    use++;
+                }
+                else
+                {
+                    use = 0;
+                }
+            }
+            else if(1 == position)
+            {
+                ip_num[0] ++;
+            }
+            else if(2 == position)
+            {
+                ip_num[1] ++;
+            }
+            else if(3 == position)
+            {
+                ip_num[2] ++;
+            }
+            else if(4 == position)
+            {
+                ip_num[3] ++;
+            }
+            else if(5 == position)
+            {
+                position = 6;
+            }
+            else if(6 == position)
+            {
+                position = 0;
+            }
+
+            event->btn_down = NO;
+        }
+        else if(YES == event->btn_up)
+        {
+            if(0 == position)
+            {
+                if(use > 0)
+                {
+                    use--;
+                }
+                else
+                {
+                    use = 2;
+                }
+            }
+            else if(1 == position)
+            {
+                ip_num[0] --;
+            }
+            else if(2 == position)
+            {
+                ip_num[1] --;
+            }
+            else if(3 == position)
+            {
+                ip_num[2] --;
+            }
+            else if(4 == position)
+            {
+                ip_num[3] --;
+            }
+            else if(5 == position)
+            {
+                position = 0;
+            }
+            else if(6 == position)
+            {
+                position = 5;
+            }
+            event->btn_up = NO;
+        }
+
+        //3.显示可选择的类型
+        if(0 == use)
+        {
+            strcpy(name, "Amazon");
+        }
+        else if(1 == use)
+        {
+            strcpy(name, "Aliyun");
+        }
+        else if(2 == use)
+        {
+            strcpy(name, "Specify IP");
+        }
+        ST7567_GotoXY(LINE_HIGHT + 6 * LINE_HIGHT, 4);
+        ST7567_Puts(name, &Font_6x12, 0 == position ? 0 : 1);
+
+        //4.如果是选择ip的话显示
+        if(2 == use)
+        {
+            strcpy(name, "ip : ");
+            ST7567_GotoXY(0, 20);
+            ST7567_Puts(name, &Font_6x12, 1);
+
+            itoa(ip_num[0], temp, 10);
+            ST7567_GotoXY(5 * 6, 20);
+            sprintf(name, "%3s%s", temp, ".");
+            ST7567_Puts(name, &Font_6x12, 1 == position ? 0 : 1);
+
+            itoa(ip_num[1], temp, 10);
+            ST7567_GotoXY(5 * 6 + 4 * 6, 20);
+            sprintf(name, "%3s%s", temp, ".");
+            ST7567_Puts(name, &Font_6x12, 2 == position ? 0 : 1);
+
+            itoa(ip_num[2], temp, 10);
+            ST7567_GotoXY(5 * 6 + 8 * 6, 20);
+            sprintf(name, "%3s%s", temp, ".");
+            ST7567_Puts(name, &Font_6x12, 3 == position ? 0 : 1);
+
+            itoa(ip_num[3], temp, 10);
+            ST7567_GotoXY(5 * 6 + 12 * 6, 20);
+            sprintf(name, "%3s", temp);
+            ST7567_Puts(name, &Font_6x12, 4 == position ? 0 : 1);
+        }
+
+        //5.显示确认/否
+        line = 28;
+        column = 32;
+        ST7567_GotoXY(line, column);
+        if(5 == position)
+        {
+            ST7567_Puts("NO", &Font_12x24, 0);
+        }
+        else
+        {
+            ST7567_Puts("NO", &Font_12x24, 1);
+        }
+
+        line = 64;
+        column = 32;
+        ST7567_GotoXY(line, column);
+        if(6 == position)
+        {
+            ST7567_Puts("YES", &Font_12x24, 0);
+        }
+        else
+        {
+            ST7567_Puts("YES", &Font_12x24, 1);
+        }
+    }
+    //6.刷新界面
+    ST7567_UpdateScreen();
+}
+
+void hubInfoPage(type_page_t *page)
+{
+    u8              line        = 0;
+    u8              column      = 0;
+    char            data[20]    = " ";
+    char            ver[20]    = " ";
+
+    //1.显示hub名称和版本号
+    sprintf(data, "Name:%s",GetHub()->name);
+    ST7567_GotoXY(line, column);
+    ST7567_Puts(data, &Font_8x16, 1);
+
+    //2.显示版本号
+    column += 16;
+    getAppVersion(ver);
+    sprintf(data, "Ver:%s",ver);
+    ST7567_GotoXY(line, column);
+    ST7567_Puts(data, &Font_8x16, 1);
+
+    ST7567_UpdateScreen();
+}
+
+void ipInfoPage(type_page_t *page)
+{
+    u8              line        = 0;
+    u8              column      = 0;
+    u8              ip[4];
+    int             tcpState    = 0;
+    char            data[20]    = " ";
+    struct netdev   *ethDev     = RT_NULL;
+
+    //1.显示ip
+    GetIPAddress(ip);
+    sprintf(data, "ip:%d.%d.%d.%d",ip[3],ip[2],ip[1],ip[0]);
+    ST7567_GotoXY(line, column);
+    ST7567_Puts(data, &Font_8x16, 1);
+
+    //2.显示是否连接外网
+//    ethDev = netdev_get_first_by_flags(NETDEV_FLAG_INTERNET_UP);
+    column += 16;
+    if(1 == GetMqttRealStartFlg()){
+        sprintf(data, "network:  OK");
+    } else {
+        sprintf(data, "network:Fail");
+    }
+    ST7567_GotoXY(line, column);
+    ST7567_Puts(data, &Font_8x16, 1);
+
+    //3.显示和app的连接
+    column += 16;
+
+    tcpState = getSockState(tcp_sock);
+    if(tcpState < 0){
+        sprintf(data, "%s", "app :Fail");
+        ST7567_GotoXY(line, column);
+        ST7567_Puts(data, &Font_8x16, 1);
+        sprintf(data, " ");
+    } else {
+        if(eth) {
+            sprintf(data, "%s", "app :     ");
+            ST7567_GotoXY(line, column);
+            ST7567_Puts(data, &Font_8x16, 1);
+            sprintf(data, eth->GetIp());
+        } else {
+            sprintf(data, "%s", "app : Fail");
+            ST7567_GotoXY(line, column);
+            ST7567_Puts(data, &Font_8x16, 1);
+            sprintf(data, " ");
+        }
+        column += 16;
+        ST7567_GotoXY(line, column);
+        ST7567_Puts(data, &Font_8x16, 1);
+    }
+
+    ST7567_UpdateScreen();
+}
+
+void memoryInfoPage(type_page_t *page)
+{
+    u8              line        = 0;
+    u8              column      = 0;
+    char            data[20]    = " ";
+    rt_uint32_t     total;
+    rt_uint32_t     used;
+    rt_uint32_t     max_used;
+
+    rt_memory_info(&total, &used, &max_used);
+
+    sprintf(data, "total %5d", total);
+    ST7567_GotoXY(line, column);
+    ST7567_Puts(data, &Font_8x16, 1);
+
+    column += 16;
+    sprintf(data, "used %5d", used);
+    ST7567_GotoXY(line, column);
+    ST7567_Puts(data, &Font_8x16, 1);
+
+    column += 16;
+    sprintf(data, "max used %5d", max_used);
+    ST7567_GotoXY(line, column);
+    ST7567_Puts(data, &Font_8x16, 1);
+
+    ST7567_UpdateScreen();
+}
+
+void restoreSettingsPage(type_page_t *page)
+{
+    u8              line        = 0;
+    u8              column      = 0;
+    char            data[20]    = " ";
+
+    //1.显示是否清空数据
+    sprintf(data, "restore setting");
+    ST7567_GotoXY(line, column);
+    ST7567_Puts(data, &Font_8x16, 1);
+
+    //2.显示选择
+    line = 28;
+    column = 32;
+    ST7567_GotoXY(line, column);
+    ST7567_Puts("NO", &Font_12x24, 1 == page->cusor ? 0 : 1);
+
+
+    line = 64;
+    column = 32;
+    ST7567_GotoXY(line, column);
+    ST7567_Puts("YES", &Font_12x24, 2 == page->cusor ? 0 : 1);
 
     ST7567_UpdateScreen();
 }

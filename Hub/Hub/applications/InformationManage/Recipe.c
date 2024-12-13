@@ -9,7 +9,8 @@
  */
 #include "Recipe.h"
 
-sys_recipe_t sys_recipe;
+#if(HUB_SELECT == HUB_ENVIRENMENT)
+__attribute__((section(".ccmbss"))) sys_recipe_t sys_recipe;
 
 void initSysRecipe(void)
 {
@@ -141,3 +142,4 @@ sys_recipe_t *GetSysRecipt(void)
 {
     return &sys_recipe;
 }
+#endif

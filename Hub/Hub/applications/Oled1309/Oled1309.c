@@ -18,12 +18,13 @@ extern "C" {
 #include "Oled1309.h"
 #include "OledBusiness.h"
 #include "Uart.h"
-#include "UartBussiness.h"
 #include "ButtonTask.h"
 #include "ascii_fonts.h"
 #include "ST7567.h"
 #include "qrcode.h"
 #include "Module.h"
+#include "UartAction.h"
+#include "FileSystem.h"
 
 #define  GO_RIGHT  1
 #define  GO_LEFT   2
@@ -33,9 +34,10 @@ type_page_t     pageSelect;
 u64             pageInfor           = 0x00000000;   //只支持最多四级目录
 time_t          backlightTime;
 u8              factory_mode        = NO;
-u8      next_flag   = NO;
+u8              next_flag           = NO;
+type_btn_event  btn_event;
 
-__attribute__((section(".ccmbss"))) u8 oled_task[1024*3];
+__attribute__((section(".ccmbss"))) u8 oled_task[1024 * 3];
 __attribute__((section(".ccmbss"))) struct rt_thread oled_thread;
 
 extern void PhCalibratePage(type_page_t *, ph_cal_t *);
@@ -112,6 +114,8 @@ void monitorBackLight(time_t time)
 void EnterBtnCallBack(u8 type)
 {
     u8      info    = 0;
+
+    info = pageInfor;
     if(SHORT_PRESS == type)
     {
         //唤醒屏幕
@@ -119,12 +123,16 @@ void EnterBtnCallBack(u8 type)
         pageSelect.select = ON;
         //提示界面刷新
         reflash_flag = ON;
+
+        if(SERVER_URL == info)
+        {
+            btn_event.btn_enter = YES;
+        }
     }
     else if(LONG_PRESS == type)
     {
 
         clear_screen();
-        info = pageInfor;
 
         //如果是工厂模式退出去的话就直接关闭工厂模式
         if(FACTORY_PAGE == info)
@@ -174,13 +182,20 @@ void UpBtnCallBack(u8 type)
 #endif
         //提示界面刷新
         reflash_flag = ON;
+        if(SERVER_URL == nowPage)
+        {
+            btn_event.btn_up = YES;
+        }
     }
 }
 void DowmBtnCallBack(u8 type)
 {
+    u8 nowPage      = 0;
+
     if(SHORT_PRESS == type)
     {
         //LOG_I("DowmBtnCallBack 1");
+        nowPage = pageInfor & 0x000000FF;
         //唤醒屏幕
         wakeUpOledBackLight(&backlightTime);
         if(pageSelect.cusor_max > 0)
@@ -200,6 +215,10 @@ void DowmBtnCallBack(u8 type)
         reflash_flag = ON;
 
         next_flag = YES;//仅仅是灌溉版首页需要使用
+        if(SERVER_URL == nowPage)
+        {
+            btn_event.btn_down = YES;
+        }
     }
 }
 
@@ -213,7 +232,8 @@ void pageSelectSet(u8 show,u8 home, u8 max)
 
 static void pageSetting(u8 page)
 {
-    phec_sensor_t *phec;
+    phec_sensor_t   *phec;
+    u8              temp = 0;
 
     switch (page)
     {
@@ -222,9 +242,9 @@ static void pageSetting(u8 page)
             break;
         case SETTING_PAGE:
 #if(HUB_SELECT == HUB_ENVIRENMENT)
-            pageSelectSet(YES, 1, 6);
+            pageSelectSet(YES, 1, 13);
 #elif(HUB_SELECT == HUB_IRRIGSTION)
-            pageSelectSet(YES, 1, 5);
+            pageSelectSet(YES, 1, 12);
 #endif
             break;
         case FACTORY_PAGE:
@@ -276,6 +296,25 @@ static void pageSetting(u8 page)
         case PH_CALIBRATE_PAGE:
             pageSelectSet(NO, 1, 3);
             break;
+        case DATA_EXPORT:
+            pageSelectSet(NO, 1, 2);
+            break;
+
+        case DATA_IMPORT:
+            pageSelectSet(NO, 1, 2);
+            break;
+
+        case HUB_INFO:
+            pageSelectSet(NO, 1, 1);
+            break;
+
+        case IP_INFO:
+            pageSelectSet(NO, 1, 1);
+            break;
+
+        case MEMORY_INFO:
+            pageSelectSet(NO, 1, 1);
+            break;
 
         case FA_SENSOR_PAGE:
             pageSelectSet(NO, 0, 0);
@@ -291,6 +330,30 @@ static void pageSetting(u8 page)
             break;
         case FA_TEST_PAGE:
             pageSelectSet(NO, 1, 5);
+            break;
+
+        case SERVER_URL:
+
+            switch(GetMqttUse())
+            {
+                case USE_AMAZON:
+                    temp = 1;
+                    break;
+                case USE_ALIYUN:
+                    temp = 2;
+                    break;
+                case USE_IP:
+                    temp = 3;
+                    break;
+                default :
+                    temp = 1;
+                    break;
+            }
+            pageSelectSet(NO, temp, 8);
+            break;
+
+        case RESTORE_SETTINGS:
+            pageSelectSet(NO, 1, 2);
             break;
 
         default:
@@ -362,6 +425,41 @@ static void pageProgram(u8 page)
                     pageInfor <<= 8;
                     pageInfor |= CO2_CALIBRATE_PAGE;
                 }
+                else if(7 == pageSelect.cusor)
+                {
+                    pageInfor <<= 8;
+                    pageInfor |= DATA_EXPORT;
+                }
+                else if(8 == pageSelect.cusor)
+                {
+                    pageInfor <<= 8;
+                    pageInfor |= DATA_IMPORT;
+                }
+                else if(9 == pageSelect.cusor)
+                {
+                    pageInfor <<= 8;
+                    pageInfor |= SERVER_URL;
+                }
+                else if(10 == pageSelect.cusor)
+                {
+                    pageInfor <<= 8;
+                    pageInfor |= HUB_INFO;
+                }
+                else if(11 == pageSelect.cusor)
+                {
+                    pageInfor <<= 8;
+                    pageInfor |= IP_INFO;
+                }
+                else if(12 == pageSelect.cusor)
+                {
+                    pageInfor <<= 8;
+                    pageInfor |= RESTORE_SETTINGS;
+                }
+                else if(13 == pageSelect.cusor)
+                {
+                    pageInfor <<= 8;
+                    pageInfor |= MEMORY_INFO;
+                }
 #elif (HUB_SELECT == HUB_IRRIGSTION)
 
                 if(1 == pageSelect.cusor)
@@ -388,6 +486,41 @@ static void pageProgram(u8 page)
                 {
                     pageInfor <<= 8;
                     pageInfor |= PHEC_CALIBRATE_PAGE;
+                }
+                else if(6 == pageSelect.cusor)
+                {
+                    pageInfor <<= 8;
+                    pageInfor |= DATA_EXPORT;
+                }
+                else if(7 == pageSelect.cusor)
+                {
+                    pageInfor <<= 8;
+                    pageInfor |= DATA_IMPORT;
+                }
+                else if(8 == pageSelect.cusor)
+                {
+                    pageInfor <<= 8;
+                    pageInfor |= SERVER_URL;
+                }
+                else if(9 == pageSelect.cusor)
+                {
+                    pageInfor <<= 8;
+                    pageInfor |= HUB_INFO;
+                }
+                else if(10 == pageSelect.cusor)
+                {
+                    pageInfor <<= 8;
+                    pageInfor |= IP_INFO;
+                }
+                else if(11 == pageSelect.cusor)
+                {
+                    pageInfor <<= 8;
+                    pageInfor |= RESTORE_SETTINGS;
+                }
+                else if(12 == pageSelect.cusor)
+                {
+                    pageInfor <<= 8;
+                    pageInfor |= MEMORY_INFO;
                 }
 #endif
                 pageSelect.select = OFF;
@@ -448,7 +581,7 @@ static void pageProgram(u8 page)
                 pageSelect.select = OFF;
             }
             break;
-
+#if(HUB_SELECT == HUB_ENVIRENMENT)
         case LINE_STATE_PAGE:
             LineStatePage_new(GetMonitor());
             if(ON == pageSelect.select)
@@ -456,7 +589,7 @@ static void pageProgram(u8 page)
                 pageSelect.select = OFF;
             }
             break;
-
+#endif
         case QRCODE_PAGE:
             qrcode();
             ST7567_UpdateScreen();
@@ -469,7 +602,7 @@ static void pageProgram(u8 page)
         case APP_UPDATE_PAGE:
             UpdateAppProgram(&pageSelect, &pageInfor);
             break;
-
+#if(HUB_SELECT == HUB_ENVIRENMENT)
         case CO2_CALIBRATE_PAGE:
             co2CalibratePage(&pageSelect, &pageInfor);
             if(ON == pageSelect.select)
@@ -477,7 +610,7 @@ static void pageProgram(u8 page)
                 pageSelect.select = OFF;
             }
             break;
-
+#elif(HUB_SELECT == HUB_IRRIGSTION)
         case PHEC_CALIBRATE_PAGE:
             PhEcCalibratePage(&pageSelect);
             if(ON == pageSelect.select)
@@ -531,7 +664,7 @@ static void pageProgram(u8 page)
                 pageSelect.select = OFF;
             }
             break;
-
+#endif
         case FA_SENSOR_PAGE:
             SensorStatePage_fac(GetMonitor(), 4);
             if(ON == pageSelect.select)
@@ -543,11 +676,11 @@ static void pageProgram(u8 page)
         case FA_DEVICE_PAGE:
             deviceStatePage_fac(&pageSelect, GetMonitor(), 3);
             break;
-
+#if(HUB_SELECT == HUB_ENVIRENMENT)
         case FA_LINE_PAGE:
             lineStatePage_fac(&pageSelect, GetMonitor(), 3);
             break;
-
+#endif
         case FA_SD_PAGE:
             SDState_Fac();
             if(ON == pageSelect.select)
@@ -565,6 +698,68 @@ static void pageProgram(u8 page)
             testPage();
             break;
 
+        case DATA_EXPORT:
+            dataExportPage(&pageSelect, &pageInfor);
+            if(ON == pageSelect.select)
+            {
+                pageSelect.select = OFF;
+            }
+            break;
+
+        case DATA_IMPORT:
+            dataImportPage(&pageSelect, &pageInfor);
+            if(ON == pageSelect.select)
+            {
+                pageSelect.select = OFF;
+            }
+            break;
+        case SERVER_URL:
+            ServerUrlPage(&btn_event, &pageInfor);
+            if(ON == pageSelect.select)
+            {
+                pageSelect.select = OFF;
+            }
+            break;
+
+        case HUB_INFO:
+            hubInfoPage(&pageSelect);
+            if(ON == pageSelect.select)
+            {
+                pageSelect.select = OFF;
+            }
+            break;
+
+        case IP_INFO:
+            ipInfoPage(&pageSelect);
+            if(ON == pageSelect.select)
+            {
+                pageSelect.select = OFF;
+            }
+            break;
+
+        case RESTORE_SETTINGS:
+            restoreSettingsPage(&pageSelect);
+            if(ON == pageSelect.select)
+            {
+                if(1 == pageSelect.cusor) {
+                    pageInfor >>= 8;
+                } else if(2 == pageSelect.cusor) {
+                    RestoreFactorySettings();
+                    rt_hw_cpu_reset();
+                }
+
+                pageSelect.select = OFF;
+            }
+            break;
+
+        case MEMORY_INFO:
+            memoryInfoPage(&pageSelect);
+            if(ON == pageSelect.select)
+            {
+                pageSelect.select = OFF;
+            }
+            break;
+
         default:
             break;
     }
@@ -575,6 +770,8 @@ static void pageProgram(u8 page)
 void OledTaskEntry(void* parameter)
 {
                 u8              nowPage             = 0;
+    static      u8              Timer300msTouch     = OFF;
+    static      u16             time300mS           = 0;
     static      u8              Timer1sTouch        = OFF;
     static      u16             time1S              = 0;
     static      u8              Timer3sTouch        = OFF;
@@ -586,8 +783,10 @@ void OledTaskEntry(void* parameter)
     pageInfor <<= 8;
     pageInfor |= HOME_PAGE;
     wakeUpOledBackLight(&backlightTime);
+    rt_memset(&btn_event, 0, sizeof(btn_event));
     while(1)
     {
+        time300mS = TimerTask(&time300mS, 6, &Timer300msTouch);
         time1S = TimerTask(&time1S, 20, &Timer1sTouch);
         time3S = TimerTask(&time3S, 60, &Timer3sTouch);
 
@@ -629,11 +828,19 @@ void OledTaskEntry(void* parameter)
             timeFactory = 0;
         }
 
+        if(ON == Timer300msTouch)
+        {
+            if(HOME_PAGE == nowPage)
+            {
+                reflash_flag = ON;
+            }
+        }
+
         //1s event
         if(ON == Timer1sTouch)
         {
             monitorBackLight(backlightTime);
-            if((HOME_PAGE == nowPage) || (SETTING_PAGE == nowPage) /*|| (CO2_CALIBRATE_PAGE == nowPage)*/)
+            if(/*(HOME_PAGE == nowPage) || */(SETTING_PAGE == nowPage))
             {
                 //需要刷新
                 reflash_flag = ON;
@@ -652,7 +859,11 @@ void OledTaskEntry(void* parameter)
                (FA_SD_PAGE == nowPage) ||
                (FA_TEST_PAGE == nowPage) ||
                (PH_CALIBRATE_PAGE == nowPage) ||
-               (EC_CALIBRATE_PAGE == nowPage))
+               (EC_CALIBRATE_PAGE == nowPage) ||
+               (SERVER_URL == nowPage) ||
+               (HUB_INFO == nowPage) ||
+               (IP_INFO == nowPage) ||
+               (MEMORY_INFO == nowPage))
             {
                 //需要刷新
                 reflash_flag = ON;

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <projectDescription>
-  <name>Hub</name>
+  <name>Hub_Plus</name>
   <comment />
   <projects>
 	</projects>
@@ -24,6 +24,5 @@
     <nature>org.eclipse.cdt.managedbuilder.core.managedBuildNature</nature>
     <nature>org.eclipse.cdt.managedbuilder.core.ScannerConfigNature</nature>
   </natures>
-  <name>Hub</name>
   <linkedResources />
 </projectDescription>

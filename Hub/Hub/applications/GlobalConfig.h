@@ -10,22 +10,91 @@
 #ifndef GLOBALCONFIG_H_
 #define GLOBALCONFIG_H_
 
-#define HUB_ENVIRENMENT                 1
-#define HUB_IRRIGSTION                  2
+#define HUB_ENVIRENMENT                 1   //环控
+#define HUB_IRRIGSTION                  2   //灌溉
 
-#define DEBUG_MODE                      0//1//                 //1.如果是debug mode 的话不需要偏移位置，否则偏移位置SD卡升级 2.修改link.lds
-#define HUB_SELECT                      HUB_ENVIRENMENT//HUB_IRRIGSTION//
+//#define FACTORY_MODE                  //是否支持工厂模式
+
+#define DEBUG_MODE                      0//1                    //1.如果是debug mode 的话不需要偏移位置，否则偏移位置SD卡升级 2.修改link.lds
+#define HUB_SELECT                      HUB_IRRIGSTION          //
 
 /* 软件号的 第一个分配为:
     0 : HUB_ENVIRENMENT
     1 : HUB_IRRIGSTION
-    版本特殊说明，在软件版本(环控版<=0.0.4 灌溉版<=1.0.6之前没有数据兼容性处理)
+    软件版本(环控 0.1.6，灌溉1.1.8)开始之后就增加软件看门狗
 */
+/**
+ * 0.2.22
+ * 1.2.24
+ **增加:1.识别客人信息定制化客人的模块名称
+ **增加:2.增加定时上传数据
+ **增加:3.增加sensor定位
+ * 0.2.23
+ * 1.2.25
+ **增加:1.内存不足时重启hub
+ **增加:2.显示内存情况
+ *
+ *
+ */
+/**
+ * 0.2.24
+ * 1.2.29
+ **解决内存泄漏问题
+ */
+/**
+ * 1.2.31
+ **增加tcp没响应重启
+ */
+/**
+ * 0.2.25
+ **四合一增加定标功能(原先定标为在hub上面定标，现在修改为在传感器上面定标)
+ */
+/**
+ * 0.2.26
+ **增加制热也启动红外空调
+ */
+/**
+ * 1.2.32
+ **报警增加过滤时间
+ */
+/**
+ * 0.2.27
+ **默认四路灯光的实际配置
+ */
+/**
+ * 0.2.28
+ **广播温度等
+ */
+/**
+ * 0.2.30
+ **修改红外手动不开
+ */
+/**
+ * 0.2.31 1.2.36
+ * *优化失联判断
+ */
+/**
+ * 1.2.47
+ **增加漏水报警直接打开干接点报警
+ */
+/**
+ ** 0.2.34
+ ** 修复死机问题
+ */
+/**
+ ** 0.2.35 1.2.49
+ ** 增加了云服务器重启
+ */
+/**
+ ** 0.2.37 1.2.53
+ ** 增加了云服务器重启
+ */
 #if(HUB_ENVIRENMENT == HUB_SELECT)
-#define FIRMWAREVISION                  "0.0.7"
+#define FIRMWAREVISION                  "0.2.38"
 #elif(HUB_IRRIGSTION == HUB_SELECT)
-#define FIRMWAREVISION                  "1.0.7"
+#define FIRMWAREVISION                  "1.2.53"
 #endif
+#define FIRMWARE_VERSION_NUM            2
 #define BOOTLOADVISION                  "0.0.1"
 
 #define UDP_TASK                        "udp_task"
@@ -36,21 +105,26 @@
 #define OLED_TASK                       "oled task"
 #define UART_TASK                       "usart_task"
 #define BUTTON_TASK                     "button_task"
+#define SPI_TASK                        "spi_task"
+#define FILE_SYS_TASK                   "filesys_task"
 
 /* 线程优先级管理 */
+#define FILE_SYS_PRIORITY               12
+//#define SPI_PRIORITY                    12
 #define SDCARD_PRIORITY                 16
 #define UART_PRIORITY                   21
 #define BUTTON_PRIORITY                 22
 #define OLED_PRIORITY                   23
 #define TCP_PRIORITY                    24
 #define UDP_PRIORITY                    25
-#define SPI_PRIORITY                    26
+//#define SPI_PRIORITY                    26
 #define MQTT_PRIORITY                   27
 #define LED_PRIORITY                    28
 
 //线程周期
 #define BUTTON_TASK_PERIOD              20
-
+#define FILE_SYS_PERIOD                 100
+#define MAIN_PERIOD                     50
 /* 配置button */
 #define PKG_USING_BUTTON
 #define SINGLE_AND_DOUBLE_TRIGGER
@@ -95,5 +169,9 @@
 #elif (HUB_SELECT == HUB_IRRIGSTION)
 #define     HUB_NAME    "BHI"
 #endif
+
+/*存储区名称*/
+#define FLASH_MEMORY_NAME       "norflash0"
+#define SDCARD_MEMORY_NAME      "sd0"
 
 #endif /* GLOBALCONFIG_H_ */

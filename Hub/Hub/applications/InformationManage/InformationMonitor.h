@@ -1,3 +1,4 @@
+
 /*
  * Copyright (c) 2006-2021, RT-Thread Development Team
  *
@@ -7,25 +8,29 @@
  * Date           Author       Notes
  * 2022-04-08     QiuYijie     1.0.0   该文件主要功能是监控设备、主机、本机之间的通讯
  */
+/**
+ * 注意：以下结构体不要随便修改，否则会影响到对旧结构体的数据迁移
+ */
 #ifndef APPLICATIONS_INFORMATIONMANAGE_INFORMATIONMONITOR_H_
 #define APPLICATIONS_INFORMATIONMANAGE_INFORMATIONMONITOR_H_
 
 #include "Gpio.h"
 
-#define     name_null                       "null"     //长度32的空字符串
+#define     HUB_VER_NO                      2           //区分现在hub第几期
+#define     name_null                       "null"      //长度32的空字符串
 #define     VALUE_NULL                      -9999       //如果没有值上传给MQTT的值
 
-#define     ALLOCATE_ADDRESS_SIZE           256//100
+#define     ALLOCATE_ADDRESS_SIZE           256
 #define     HUB_NAMESZ                      13
 #define     MODULE_NAMESZ                   9
 #define     STORAGE_NAMESZ                  9
 #define     RECIPE_NAMESZ                   9
+#define     AQUA_RECIPE_NAMESZ              10
 #define     STORAGE_MAX                     12
 
 typedef     struct packageEth               type_package_t;
 
 typedef     struct hub                      hub_t;
-//typedef     struct monitor                  type_monitor_t;
 typedef     struct sensor                   sensor_t;
 typedef     struct timer                    type_timmer_t;
 typedef     struct cycle                    type_cycle_t;
@@ -42,13 +47,20 @@ typedef     struct eth_heart                eth_heart_t;
 #define     SENSOR_MAX                      20
 #define     DEVICE_MAX                      16
 #define     DEVICE_PORT_MAX                 12
-#define     LINE_MAX                        2
+#define     LINE_PORT_MAX                   4
+#define     LINE_MAX                        16
 #define     VALVE_MAX                       16
+#define     TANK_PUMP_LIST_MX               4
+#define     TANK_SINGLE_GROUD               2
 #define     TANK_SENSOR_MAX                 4
-#define     LINE_MAX                        2
 #define     SENSOR_VALUE_MAX                4
 #define     TIMER_GROUP                     12
-#define     WARN_MAX                        34
+#define     WARN_MAX                        35
+#define     TANK_LIST_MAX                   4
+#define     TANK_WARN_ITEM_MAX              8
+#define     AQUA_RECIPE_MX                  9
+#define     AQUA_RECIPE_PUMP_MX             8
+#define     AQUA_SCHEDULE_MX                8
 
 //默认值
 #define     COOLING_TARGET                  320
@@ -59,8 +71,35 @@ typedef     struct eth_heart                eth_heart_t;
 #define     POWER_VALUE                     80
 #define     AUTO_DIMMING                    1200
 #define     MANUAL_TIME_DEFAULT             10
-#define     TEMPSTARTDIMMINGTARGET          350
-#define     TEMPOFFDIMMINGTARGET            400
+
+#define     MONITOR_VER                     1
+#define     SYS_SET_VER                     1
+#define     SYS_RECIPE_VER                  1
+#define     SYS_TANK_VER                    1
+
+#define     HVAC_DAY_POINT                  25
+#define     HVAC_NIGHT_POINT                25
+
+//特殊版本
+#define     SPECIAL_VER_AGRICOVA            1
+
+/**
+ ** 默认 0
+ ** 版本 1 夏春客人(agricova)定制版本
+ */
+u8 specialVersion;//特殊版本
+
+//如果修改了结构体要修改相应的结构体的版本号
+#pragma pack(1)
+
+//各个结构体版本
+typedef struct system_ver{
+    char hub_ver[20];
+    int monitor_ver;
+    int sys_set_ver;
+    int recipe_ver;
+    int tank_ver;
+}sys_ver_t;
 
 struct hub{
     u16 crc;
@@ -78,6 +117,14 @@ struct system_time
     u8  second;
 };
 
+typedef struct reportWarnPara{
+    u8      warn_no;
+    u16     value;
+    u8      offline_no;
+    u8      deviceOrNo;
+    char    info[20];
+}type_warn_para;
+
 enum{
     WORK_NO = 0,
     WORK_DOWN,
@@ -85,9 +132,9 @@ enum{
 };
 
 struct sen_stora{
-        char            name[STORAGE_NAMESZ];
-        u8              func;
-        s16             value;
+    char            name[STORAGE_NAMESZ];
+    u8              func;
+    s16             value;
 };
 
 struct sensor
@@ -102,29 +149,33 @@ struct sensor
     u8              reg_state;                              //注册状态
     u8              save_state;                             //是否已经存储
     u8              storage_size;                           //寄存器数量
+    u8              isMainSensor;                           //是否是主传感器（目前只有四合一才设置主传感器）
     sen_stora_t     __stora[SENSOR_VALUE_MAX];
 };//占35字节
 
 struct cycle
 {
-    time_t start_at_timestamp;                     //保存当天的时间戳
-    u16     startAt;                                // 开启时间点 8:00 8*60=480
+    time_t start_at_timestamp;                      //保存当天的时间戳
+    u16     startAt;                                //开启时间点 8:00 8*60=480
     int     duration;                               //持续时间 秒
     int     pauseTime;                              //停止时间 秒
     u16     times;
 };
+
 struct timer
 {
     int     on_at;                                  //开始的时间
     int     duration;                               //持续时间 //该时间以秒为单位的
     u8      en;
 };
+
 struct manual
 {
-    u8              manual;                                 //手动开关/ 开、关
-    u16             manual_on_time;                         //手动开启的时间
-    timer_t         manual_on_time_save;                    //保存手动开的时间
+    u8      manual;                                 //手动开关/ 开、关
+    u16     manual_on_time;                         //手动开启的时间
+    timer_t manual_on_time_save;                    //保存手动开的时间
 };
+
 struct control
 {
     u8      d_state;                                //device 的状态位
@@ -138,12 +189,24 @@ struct line{
     char            name[MODULE_NAMESZ];                    //产品名称
     u8              addr;                                   //hub管控的地址
     u16             ctrl_addr;                              //终端控制的寄存器地址
-    u8              d_state;                                //device 的状态位
-    u8              d_value;                                //device 的控制数值
+    struct linePort{
+        type_ctrl_t     ctrl;
+        type_manual_t   _manual;
+    }port[LINE_PORT_MAX];
+    u8              storage_size;
     u8              save_state;                             //是否已经存储
     u8              conn_state;
-    type_manual_t   _manual;
+    u8              lineNo;                                 //指定该路灯是第几路
 };
+
+//恒温恒湿特有类型
+typedef struct humiAndTemp{
+    u8 mode;
+    u16 dayTempSetpoint;//白天温度设定点
+    u16 nightTempSetpoint;//夜晚温度设定点
+    u16 dayHumidSetpoint;//白天湿度设定点
+    u16 nightHumidSetpoint;//夜晚湿度设定点
+}type_ht_t;
 
 struct device{
     u16             crc;
@@ -167,19 +230,45 @@ struct device{
         u8      mode;                                       // 模式 1-By Schedule 2-By Recycle
         u8      func;
         //timer
-        type_timmer_t timer[TIMER_GROUP];
+        union{
+            type_timmer_t timer[TIMER_GROUP];
+            type_ht_t ht;   //恒温恒湿特有类型
+        };
         type_cycle_t cycle;
+        type_cycle_t cycle1;//灌溉泵有白天黑夜的cycle模式
         type_manual_t manual;
         type_ctrl_t ctrl;
+        u8  weekDayEn;//星期1-7使能
+//        u16 startDelay;//对于cool heat dehumi humi 的设备做阶梯控制
     }port[DEVICE_PORT_MAX];
     //特殊处理
-    struct hvac
-    {
-        u8      manualOnMode;        //1-cooling 2-heating //手动开关的时候 该选项才有意义
-        u8      fanNormallyOpen;     //风扇常开 1-常开 0-自动
-        u8      hvacMode;            //1-conventional 模式 2-HEAT PUM 模式 O 模式 3-HEAT PUM 模式 B 模式
-    }_hvac;
+    union special{
+        struct hvac
+        {
+            u8      dayPoint;               //白天point
+            u8      fanNormallyOpen;        //风扇常开 1-常开 0-自动
+            u8      nightPoint;             //夜晚point
+        }_hvac;
+        u16 mix_fertilizing;                //是否跟随aqua的配肥状态 /bit0~bit12表示对应的port口
+    }special_data;
+
 };
+
+typedef struct aqua{
+    u16             crc;
+    u8              type;                                   //产品类型号
+    u32             uuid;
+    char            name[MODULE_NAMESZ];                    //产品名称
+    u8              addr;                                   //hub管控的地址
+    u16             ctrl_addr;                              //终端控制的寄存器地址
+    u8              main_type;                              //主类型 如co2 温度 湿度 line timer
+    type_ctrl_t     ctrl;
+    type_manual_t   manual;
+    u8              storage_size;
+    u8              save_state;                             //是否已经存储
+    u8              conn_state;
+    u8              pumpSize;                               //泵数量有 4 6 8的选择
+}aqua_t;
 
 typedef struct phec_sensor{
     u8 addr[SENSOR_MAX];
@@ -211,7 +300,8 @@ enum{
 enum{
     DEVICE_TYPE = 0x01,
     SENSOR_TYPE = 0x02,
-    LINE1OR2_TYPE
+    LINE1OR2_TYPE = 0x03,
+    AQUA_TYPE
 };
 
 enum
@@ -321,6 +411,18 @@ enum
     EV_CHG_PORT_TYPE
 };
 
+enum{
+    CON_NULL = 0x00,
+    CON_WAITING ,//等待中
+    CON_FAIL,
+    CON_SUCCESS,
+};
+
+enum{
+    SENSOR_CTRL_AVE = 0x01,//平均方式
+    SENSOR_CTRL_MAIN
+};
+
 struct allocate
 {
     u8 address[ALLOCATE_ADDRESS_SIZE];
@@ -328,7 +430,6 @@ struct allocate
 
 /** 一下结构顺序不能打乱 否则存取SD卡的GetMonitorFromSdCard相关逻辑要改 **/
 
-#pragma pack(1)
 typedef struct monitor
 {
     /* 以下为统一分配 */
@@ -338,9 +439,104 @@ typedef struct monitor
     u8                  line_size;
     sensor_t            sensor[SENSOR_MAX];
     device_t            device[DEVICE_MAX];
+#if(HUB_SELECT == HUB_ENVIRENMENT)
     line_t              line[LINE_MAX];
+#elif(HUB_SELECT == HUB_IRRIGSTION)
+    u8                  aqua_size;
+    aqua_t              aqua[TANK_LIST_MAX];
+#endif
     u16                 crc;
 }type_monitor_t;
+
+typedef struct mqtt_ip{
+    u8 mqtt_url_use;
+    char use_ip[16];
+}type_mqtt_ip;
+
+typedef struct tankSensorData{
+    u16 min;
+    u16 max;
+}tankSensorData_t;
+
+#if(HUB_SELECT == HUB_IRRIGSTION)
+
+typedef struct aquaSetSchedule{
+    u8 state;   //选中状态，0:关; 1:开;
+    u8 days;    //运行天数
+    u8 form;    //运行配方
+}aqua_set_schedule;
+
+//aqua 设置
+typedef struct aquaSet{
+    u32 uuid;
+    u8 monitor;                 //0:自动配肥; 1:监控不配肥;
+    u8 ecDailySupFerState;      //EC 每日配肥计划启用状态，0:不启用; 1:启用;
+    u16 ecDailySupFerStart;     //EC 每日配肥计划起始时间 18:00 18*60=1080
+    u16 ecDailySupFerEnd;       //EC 每日配肥计划截止时间 18:30 18*60+30=1110
+    u8 phDailySupFerState;      //PH 每日配肥计划启用状态，0:不启用; 1:启用;
+    u16 phDailySupFerStart;     //PH 每日配肥计划起始时间 18:00 18*60=1080
+    u16 phDailySupFerEnd;       //PH 每日配肥计划截止时间 18:30 18*60+30=1110
+    u8 currRunMode;             //配肥当前运行模式 0:单种配方运行; 1:周期运行;
+    u8 singleRunFormula;        //单个计划运行配方编号 1-9，如果是 0 表示无配方运
+    u16 scheduleStart[3];      //周期运行起始时间
+    u16 scheduleEnd[3];        //周期运行结束时间
+    u8 scheduleRunFormula;      //周期运行时当前运行配方编号
+    aqua_set_schedule scheduleList[AQUA_SCHEDULE_MX];
+    time_t runModeTime;
+}aqua_set;
+
+//aqua 配方
+typedef struct aquaRecipePump
+{
+    u8 state;   //蠕动泵启用状态，0:未启用，1:启用
+    u8 type;    //蠕动泵工作类型，0:None; 1:EC; 2:PH+, 3:PH-
+    u8 ratio;   //蠕动泵工作时间百分比，单位%
+}aqua_recipe_pump;
+
+//Aqua 配方
+typedef struct aquaRecipe{
+    u8 formulaNumber;                       //配方编号 1-9
+    char formName[AQUA_RECIPE_NAMESZ];      //配方名称
+    u16 ecTarget;                           //EC 目标值，单位:0.01
+    u16 ecDeadband;                         //EC 校准值，单位:0.01
+    u16 ecHigh;                             //EC 高报警值，单位 0.01
+    u16 ecLow;                              //EC 低报警值，单位 0.01
+    u16 ecDosingTime;                       //EC 单次加肥时间，单位秒
+    u16 ecMixingTime;                       //EC 单次加肥间隔时间，单位秒
+    u16 ecMaxDosingCycles;                   //EC 最大加肥循环次数
+    u16 phTarget;                           //PH 目标值，单位:0.01
+    u16 phDeadband;                         //PH 校准值，单位:0.01
+    u16 phHigh;                             //PH 高报警值，单位 0.01
+    u16 phLow;                              //PH 低报警值，单位 0.01
+    u16 phDosingTime;                       //PH 单次加肥时间，单位秒
+    u16 phMixingTime;                       //PH 单次加肥间隔时间，单位秒
+    u16 phMaxDosingCycles;                  //PH 最大加肥循环次数
+    u16 pumpFlowRate;                       //蠕动泵流量，单位 mL/min
+    aqua_recipe_pump pumpList[AQUA_RECIPE_PUMP_MX];
+}aqua_recipe;
+
+typedef struct aquaInfo{
+    u32 uuid;
+    aqua_recipe list[AQUA_RECIPE_MX];
+}aqua_info_t;
+
+typedef struct aquaWarn{
+    u8 id;
+    u16 reciptChange;
+    u8 pumpSize;
+    u16 ec;
+    u16 ph;
+    u16 wt;
+    u16 pumpState;
+    u16 warn;
+    u16 work;
+    u8 isAquaRunning;   //是否处于配肥
+    u16 aqua_firm_ver;  //软件版本号
+    u16 aqua_hmi_ver;   //屏幕软件号
+}aqua_state_t;
+
+#endif
+
 #pragma pack()
 
 typedef     void (*FAC_FUNC)(type_monitor_t *);
@@ -360,32 +556,42 @@ typedef     void (*FAC_FUNC)(type_monitor_t *);
 #define     NAME_ENV                "hub_envi"                   //环境控制从机hub名称
 #define     NAME_IRR                "hub_irri"                   //灌溉控制从机hub名称
 
-#define     HUB_TYPE        0xFF
-#define     LINE_TYPE       0x22        //灯光类
-#define     BHS_TYPE        0x03
-#define     PHEC_TYPE       0x05
-#define     PAR_TYPE        0x08
-#define     WATERlEVEL_TYPE 0x0A
-#define     SOIL_T_H_TYPE   0x0D        //土壤温湿度
-#define     O2_TYPE         0x0E        //氧气传感器
-#define     SMOG_TYPE       0x16        //烟雾传感器
-#define     LEAKAGE_TYPE    0x17        //漏水传感器
-#define     CO2_UP_TYPE     0x41
-#define     HEAT_TYPE       0x42
-#define     HUMI_TYPE       0x43
-#define     DEHUMI_TYPE     0x44
-#define     COOL_TYPE       0x45
-#define     VALVE_TYPE      0x49        //阀
-#define     CO2_DOWN_TYPE   0x4A
-#define     PUMP_TYPE       0x4B        //水泵
-#define     TIMER_TYPE      0x4f
-#define     HVAC_6_TYPE     0x61
-#define     AC_4_TYPE       0x50
-#define     IO_12_TYPE      0x80
-#define     IO_4_TYPE       0x81
-#define     IR_AIR_TYPE     0xB4        //红外空调
-#define     PRO_DEHUMI_TYPE 0xB8        //协议转换模块-除湿
-
+#define     NULL_TYPE           0x00
+#define     HUB_TYPE            0xFF
+#define     LINE_TYPE           0x22        //灯光类
+#define     LINE1_TYPE          0x23        //灯光类
+#define     LINE2_TYPE          0x24        //灯光类
+#define     LINE_4_TYPE         0x25        //灯光类
+#define     PHEC_NEW_TYPE       0x02
+#define     BHS_TYPE            0x03
+#define     PHEC_TYPE           0x05
+#define     PAR_TYPE            0x08
+#define     WATERlEVEL_TYPE     0x0A
+#define     SOIL_T_H_TYPE       0x0D        //土壤温湿度
+#define     O2_TYPE             0x0E        //氧气传感器
+#define     SMOG_TYPE           0x16        //烟雾传感器
+#define     LEAKAGE_TYPE        0x17        //漏水传感器
+#define     CO2_UP_TYPE         0x41
+#define     HEAT_TYPE           0x42
+#define     HUMI_TYPE           0x43
+#define     DEHUMI_TYPE         0x44
+#define     COOL_TYPE           0x45
+#define     VALVE_TYPE          0x49        //阀
+#define     CO2_DOWN_TYPE       0x4A
+#define     PUMP_TYPE           0x4B        //水泵
+#define     TIMER_TYPE          0x4f
+#define     AUTO_WATER_TYPE     0x54
+#define     HVAC_6_TYPE         0x61
+#define     AC_4_TYPE           0x50
+#define     IO_12_TYPE          0x80
+#define     LIGHT_12_TYPE       0x82        //12路灯光干接点
+#define     IO_4_TYPE           0x81
+#define     IR_AIR_TYPE         0xB4        //红外空调
+#define     AQUE_SLAVE_TYPE     0XC1        //aqua 从机模式
+#define     MIX_TYPE            0x4C
+#define     PRO_DEHUMI_TYPE     0xB8        //协议转换模块-除湿
+#define     PRO_HUMI_TYPE       0xB9        //协议转换模块-加湿
+#define     PRO_HUMI_TEMP_TYPE  0xBA        //协议转换模块-恒温恒湿
 /**************************************从机 End*******************************************/
 
 /************************************** 功能码定义 **************************************/
@@ -411,11 +617,17 @@ enum{
     S_PUMP,
     S_VALVE,
     S_IO_12,
-    S_IO_4
+    S_IO_4,
+    S_LIGHT_12,
+    S_AQUA,
+    S_MIX,
+    S_AUTO_WATER        = 18,
 };
 
+//后续加入要加在后面
 enum{
     /*****************************device 类型功能*/
+    F_NULL = 0,
     F_Co2_UP = 1,
     F_Co2_DOWN,
     F_HUMI,
@@ -443,6 +655,11 @@ enum{
     F_S_SM,     //烟雾传感器
     F_S_LK,     //漏水传感器
     F_S_O2,     //氧气传感器
+    /*****************************device 类型功能*/
+    F_MIX,
+    F_AUTO_WATER,
+    F_HVAC,
+    F_HUMI_TEMP,//恒温恒湿
 };
 
 /*设备工作状态 0-Off 1-On 2-PPM UP 3-FUZZY LOGIC
@@ -488,6 +705,14 @@ enum
     CAL_INCAL,
     CAL_YES,
     CAL_FAIL
+};
+
+//使用的服务器网址
+enum
+{
+    USE_AMAZON = 0x01,
+    USE_ALIYUN,
+    USE_IP,
 };
 
 /******************************************* 类型定义 END*****************************/

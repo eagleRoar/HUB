@@ -20,8 +20,6 @@
 #define RT_TIMER_THREAD_STACK_SIZE 512
 #define RT_DEBUG
 #define RT_DEBUG_COLOR
-#define RT_DEBUG_INIT_CONFIG
-#define RT_DEBUG_INIT 1
 
 /* Inter-Thread communication */
 
@@ -57,7 +55,7 @@
 
 #define RT_USING_COMPONENTS_INIT
 #define RT_USING_USER_MAIN
-#define RT_MAIN_THREAD_STACK_SIZE 4096
+#define RT_MAIN_THREAD_STACK_SIZE 10240
 #define RT_MAIN_THREAD_PRIORITY 10
 
 /* C++ features */
@@ -72,7 +70,7 @@
 
 #define RT_USING_DFS
 #define DFS_USING_WORKDIR
-#define DFS_FILESYSTEMS_MAX 2
+#define DFS_FILESYSTEMS_MAX 3
 #define DFS_FILESYSTEM_TYPES_MAX 2
 #define DFS_FD_MAX 16
 #define RT_USING_DFS_ELMFAT
@@ -87,7 +85,7 @@
 #define RT_DFS_ELM_LFN_UNICODE 0
 #define RT_DFS_ELM_MAX_LFN 255
 #define RT_DFS_ELM_DRIVES 2
-#define RT_DFS_ELM_MAX_SECTOR_SIZE 512
+#define RT_DFS_ELM_MAX_SECTOR_SIZE 4096
 #define RT_DFS_ELM_REENTRANT
 /* end of elm-chan's FatFs, Generic FAT Filesystem Module */
 #define RT_USING_DFS_DEVFS
@@ -112,6 +110,12 @@
 #define RT_MMCSD_STACK_SIZE 1024
 #define RT_MMCSD_THREAD_PREORITY 22
 #define RT_MMCSD_MAX_PARTITION 16
+#define RT_USING_SPI
+#define RT_USING_SFUD
+#define RT_SFUD_USING_SFDP
+#define RT_SFUD_USING_FLASH_INFO_TABLE
+#define RT_SFUD_SPI_MAX_HZ 50000000
+#define RT_USING_WDT
 #define RT_USING_PULSE_ENCODER
 
 /* Using USB */
@@ -229,6 +233,18 @@
 /* Wiced WiFi */
 
 /* end of Wiced WiFi */
+
+/* CYW43012 WiFi */
+
+/* end of CYW43012 WiFi */
+
+/* BL808 WiFi */
+
+/* end of BL808 WiFi */
+
+/* CYW43439 WiFi */
+
+/* end of CYW43439 WiFi */
 /* end of Wi-Fi */
 
 /* IoT Cloud */
@@ -260,10 +276,6 @@
 /* u8g2: a monochrome graphic library */
 
 /* end of u8g2: a monochrome graphic library */
-
-/* PainterEngine: A cross-platform graphics application framework written in C language */
-
-/* end of PainterEngine: A cross-platform graphics application framework written in C language */
 /* end of multimedia packages */
 
 /* tools packages */
@@ -287,9 +299,36 @@
 /* Micrium: Micrium software products porting for RT-Thread */
 
 /* end of Micrium: Micrium software products porting for RT-Thread */
+#define PKG_USING_SYSWATCH
+#define SYSWATCH_EXCEPT_RESOLVE_MODE_0
+#define SYSWATCH_EXCEPT_RESOLVE_MODE 0
+#define SYSWATCH_EXCEPT_TIMEOUT 60
+#define SYSWATCH_EXCEPT_CONFIRM_TMO 30
+#define SYSWATCH_EXCEPT_RESUME_DLY 30
+#define SYSWATCH_THREAD_PRIO 0
+#define SYSWATCH_THREAD_STK_SIZE 1024
+#define SYSWATCH_THREAD_NAME "syswatch"
+#define SYSWATCH_WDT_NAME "wdt"
+#define SYSWATCH_WDT_TIMEOUT 5
+#define PKG_USING_SYSWATCH_LATEST_VERSION
 /* end of system packages */
 
 /* peripheral libraries and drivers */
+
+/* HAL & SDK Drivers */
+
+/* STM32 HAL & SDK Drivers */
+
+/* end of STM32 HAL & SDK Drivers */
+
+/* Infineon HAL Packages */
+
+/* end of Infineon HAL Packages */
+
+/* Kendryte SDK */
+
+/* end of Kendryte SDK */
+/* end of HAL & SDK Drivers */
 
 /* sensors drivers */
 
@@ -298,10 +337,6 @@
 /* touch drivers */
 
 /* end of touch drivers */
-
-/* Kendryte SDK */
-
-/* end of Kendryte SDK */
 #define PKG_USING_EXTERN_RTC_DRIVERS
 /* end of peripheral libraries and drivers */
 
@@ -331,9 +366,9 @@
 /* Arduino libraries */
 
 
-/* Projects */
+/* Projects and Demos */
 
-/* end of Projects */
+/* end of Projects and Demos */
 
 /* Sensors */
 
@@ -362,6 +397,8 @@
 /* end of Device Control */
 
 /* Other */
+
+/* end of Other */
 
 /* Signal IO */
 

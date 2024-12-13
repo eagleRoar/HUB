@@ -37,6 +37,7 @@
 
 #include "mqtt_client.h"
 #include "Gpio.h"
+#include "FileSystem.h"
 
 /*********************************************************************************************************
 **  ��������
@@ -57,7 +58,7 @@
 #error "Please update the 'rtdbg.h' file to GitHub latest version (https://github.com/RT-Thread/rt-thread/blob/master/include/rtdbg.h)"
 #endif
 
-static char mqtt_thread_stack[1024 * 3];
+static char mqtt_thread_stack[1024 * 2];
 static struct rt_thread mqtt_thread;
 
 /*********************************************************************************************************
@@ -1117,6 +1118,11 @@ __mqtt_start:
     fd_set readset;
     struct timeval timeout;
 
+    if(YES != GetFileSystemState())
+    {
+        continue;
+    }
+
     tick_now = rt_tick_get();
     time_diff = ((tick_now - c->tick_ping) / RT_TICK_PER_SECOND);
     if(time_diff >= c->keepalive_interval) {
@@ -1147,6 +1153,7 @@ __mqtt_start:
     FD_ZERO(&readset);
     FD_SET(c->sock, &readset);
     /* int select(maxfdp1, readset, writeset, exceptset, timeout); */
+    SetMqttRealStartFlg(1);
     res = select(c->sock+ 1, &readset, RT_NULL, RT_NULL, &timeout);
     if (res < 0) {
       LOG_E("select res: %d", res);
@@ -1177,6 +1184,7 @@ __mqtt_restart:
   rt_thread_delay(c->reconnect_interval > 0 ? 
                   (c->reconnect_interval *  RT_TICK_PER_SECOND) : (RT_TICK_PER_SECOND * 5));
   LOG_D("restart!");
+  SetMqttRealStartFlg(0);
   goto __mqtt_start;
   
 __mqtt_disconnect_exit:

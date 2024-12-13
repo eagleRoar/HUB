@@ -13,8 +13,5 @@
 
 #include "Gpio.h"
 
-u32 GetFileLength(char*);
-u8 WriteSdData(char* , void* , u32 , u32);
-u8 ReadSdData(char* , void* , u32 , u32);
 
 #endif /* APPLICATIONS_SDCARD_DATALAYER_SDCARDDATA_H_ */

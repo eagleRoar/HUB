@@ -17,7 +17,7 @@
 #include "GlobalConfig.h"
 #include "typedef.h"
 
-rt_err_t GetIPAddress(void);
+rt_err_t GetIPAddress(u8 *ip);
 void SetUdpSocketStatus(u8);
 u8 GetUdpSocketStatus(void);
 void SetUdpNotifySocketChange(u8);

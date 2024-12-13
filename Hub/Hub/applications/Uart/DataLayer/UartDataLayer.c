@@ -9,7 +9,6 @@
  */
 /* 该文件主要处理数据解析 */
 #include "UartDataLayer.h"
-#include "UartBussiness.h"
 #include "InformationMonitor.h"
 #include "Module.h"
 #include "Uart.h"
@@ -26,9 +25,9 @@ void setDeviceDefaultPara(device_t *module, char *name, u16 ctrl_addr, u8 main_t
 
     if(HVAC_6_TYPE == type)
     {
-        module->_hvac.manualOnMode = HVAC_COOL;
-        module->_hvac.fanNormallyOpen = HVAC_FAN_AUTO;
-        module->_hvac.hvacMode = HVAC_CONVENTIONAL;
+        module->special_data._hvac.dayPoint = HVAC_DAY_POINT;
+        module->special_data._hvac.fanNormallyOpen = HVAC_FAN_AUTO;
+        module->special_data._hvac.nightPoint = HVAC_NIGHT_POINT;
     }
 }
 
@@ -82,6 +81,7 @@ void setDeviceDefaultStora(device_t *dev, u8 index, char *name, u8 func, u8 type
     dev->port[index].manual.manual = 0;
     dev->port[index].manual.manual_on_time = MANUAL_TIME_DEFAULT;
     dev->port[index].manual.manual_on_time_save = 0;
+    dev->port[index].weekDayEn = 0x7F;//默认1-7都开
 }
 
 char *GetModelByType(u8 type, char *name, u8 len)
@@ -96,31 +96,90 @@ char *GetModelByType(u8 type, char *name, u8 len)
 #endif
             break;
         case BHS_TYPE:
-            strncpy(name, "BLS-4", len);
+            if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+                strncpy(name, "XAe-09", len);
+            } else {
+
+                strncpy(name, "BLS-4", len);
+            }
         break;
         case PAR_TYPE:
-            strncpy(name, "BLS-PAR", len);
+            if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+                strncpy(name, "XAe-08", len);
+            } else {
+                strncpy(name, "BLS-PAR", len);
+            }
         break;
         case CO2_UP_TYPE:
-            strncpy(name, "BCS-PU", len);
+            if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+                strncpy(name, "XAe-06", len);
+            } else {
+
+                strncpy(name, "BCS-PU", len);
+            }
             break;
         case CO2_DOWN_TYPE:
-            strncpy(name, "BCS-PD", len);
+            if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+                strncpy(name, "XAe-06", len);
+            } else {
+
+                strncpy(name, "BCS-PD", len);
+            }
             break;
         case HEAT_TYPE:
-            strncpy(name, "BTS-H", len);
+            if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+                strncpy(name, "XAe-06", len);
+            } else {
+                strncpy(name, "BTS-H", len);
+            }
             break;
         case HUMI_TYPE:
-            strncpy(name, "BHS-H", len);
+            if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+                strncpy(name, "XAe-06", len);
+            } else {
+                strncpy(name, "BHS-H", len);
+            }
             break;
         case DEHUMI_TYPE:
-            strncpy(name, "BHS-D", len);
+            if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+                strncpy(name, "XAe-06", len);
+            } else {
+                strncpy(name, "BHS-D", len);
+            }
             break;
         case PRO_DEHUMI_TYPE:
-            strncpy(name, "BRC-DH", len);
+            if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+                strncpy(name, "XAe-06", len);
+            } else {
+                strncpy(name, "BRC-DH", len);
+            }
+            break;
+        case PRO_HUMI_TYPE:
+            if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+                strncpy(name, "XAe-06", len);
+            } else {
+                strncpy(name, "BRC-H", len);
+            }
+            break;
+        case PRO_HUMI_TEMP_TYPE:
+            if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+                strncpy(name, "XAe-05", len);
+            } else {
+                strncpy(name, "BRC-HT", len);
+            }
             break;
         case COOL_TYPE:
-            strncpy(name, "BTS-C", len);
+            if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+                strncpy(name, "XAe-06", len);
+            } else {
+                strncpy(name, "BTS-C", len);
+            }
+            break;
+        case MIX_TYPE:
+            strncpy(name, "BDS-MIX", len);
+            break;
+        case AUTO_WATER_TYPE:
+            strncpy(name, "BDS-AUTO", len);
             break;
         case HVAC_6_TYPE:
             strncpy(name, "BTS-1", len);
@@ -129,7 +188,16 @@ char *GetModelByType(u8 type, char *name, u8 len)
             strncpy(name, "BPS", len);
             break;
         case LINE_TYPE:
-            strncpy(name, "LDA", len);
+        case LINE1_TYPE:
+        case LINE2_TYPE:
+            if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+                strncpy(name, "XAe-07", len);
+            } else {
+                strncpy(name, "LDA", len);
+            }
+            break;
+        case LINE_4_TYPE:
+            strncpy(name, "LDA-SPE", len);
             break;
         case PUMP_TYPE:
             strncpy(name, "BIS-P", len);
@@ -138,19 +206,52 @@ char *GetModelByType(u8 type, char *name, u8 len)
             strncpy(name, "BIS-V", len);
             break;
         case AC_4_TYPE:
-            strncpy(name, "BSS-4", len);
+            if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+#if (HUB_SELECT == HUB_ENVIRENMENT)
+                strncpy(name, "XAe-02", len);
+#elif (HUB_SELECT == HUB_IRRIGSTION)
+                strncpy(name, "XAi-02", len);
+#endif
+            } else {
+                strncpy(name, "BSS-4", len);
+            }
             break;
         case IO_12_TYPE:
-            strncpy(name, "BDC-12", len);
+
+            if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+#if (HUB_SELECT == HUB_IRRIGSTION)
+                strncpy(name, "XAi-04", len);
+#endif
+            } else {
+
+                strncpy(name, "BDC-12", len);
+            }
             break;
         case IO_4_TYPE:
-            strncpy(name, "BDC-4", len);
+            if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+#if (HUB_SELECT == HUB_ENVIRENMENT)
+                strncpy(name, "XAe-03", len);
+#endif
+            } else {
+
+                strncpy(name, "BDC-4", len);
+            }
             break;
         case IR_AIR_TYPE:
-            strncpy(name, "BTS-AR", len);
+            if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+                strncpy(name, "XAe-04", len);
+            } else {
+
+                strncpy(name, "BTS-AR", len);
+            }
             break;
         case SOIL_T_H_TYPE:
-            strncpy(name, "BLS-MM", len);
+            if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+                strncpy(name, "XAi-07", len);
+            } else {
+
+                strncpy(name, "BLS-MM", len);
+            }
             break;
         case SMOG_TYPE:
             strncpy(name, "BLS-SD", len);
@@ -160,6 +261,15 @@ char *GetModelByType(u8 type, char *name, u8 len)
             break;
         case O2_TYPE:
             strncpy(name, "BLS-O2", len);
+            break;
+        case PHEC_NEW_TYPE:
+        case PHEC_TYPE:
+            if(SPECIAL_VER_AGRICOVA == GetSpecialVersion()) {
+                strncpy(name, "XAi-03", len);
+            } else {
+                strncpy(name, "BSB-I", len);
+            }
+
             break;
         default:
             break;
@@ -183,7 +293,11 @@ u8 GetFuncByType(u8 type)
             ret = F_HEAT;
             break;
         case HUMI_TYPE:
+        case PRO_HUMI_TYPE:
             ret = F_HUMI;
+            break;
+        case PRO_HUMI_TEMP_TYPE:
+            ret = F_HUMI_TEMP;
             break;
         case DEHUMI_TYPE:
         case PRO_DEHUMI_TYPE:
@@ -202,7 +316,37 @@ u8 GetFuncByType(u8 type)
         case TIMER_TYPE:
             ret = F_TIMER;
             break;
+        case MIX_TYPE:
+            ret = F_MIX;
+            break;
+        case AUTO_WATER_TYPE:
+            ret = F_AUTO_WATER;
+            break;
         default:
+            break;
+    }
+
+    return ret;
+}
+
+//主要是返回特殊的device读取的寄存器
+rt_err_t GetReadRegAddrByType(u8 type, u16 *reg)
+{
+    rt_err_t ret = RT_EOK;
+    *reg = 0;
+
+    switch (type)
+    {
+        case IO_4_TYPE:
+        case AC_4_TYPE:
+        case IO_12_TYPE:
+
+            *reg = 0x0440;
+            ret = RT_EOK;
+            break;
+
+        default:
+            ret = RT_ERROR;
             break;
     }
 
@@ -303,7 +447,11 @@ char *GetFunNameByType(u8 type, char *name, u8 len)
             strncpy(name, "Heat", len);
             break;
         case HUMI_TYPE:
+        case PRO_HUMI_TYPE:
             strncpy(name, "Humi", len);
+            break;
+        case PRO_HUMI_TEMP_TYPE:
+            strncpy(name, "HT", len);
             break;
         case DEHUMI_TYPE:
         case PRO_DEHUMI_TYPE:
@@ -324,219 +472,20 @@ char *GetFunNameByType(u8 type, char *name, u8 len)
         case TIMER_TYPE:
             strncpy(name, "timer", len);
             break;
+        case MIX_TYPE:
+            strncpy(name, "mix", len);
+            break;
+        case AUTO_WATER_TYPE:
+            strncpy(name, "water", len);
+            break;
+        case IR_AIR_TYPE:
+            strncpy(name, "BTS-AR", len);
+            break;
         default:
             break;
     }
 
     return name;
-}
-
-rt_err_t setSensorDefault(sensor_t *module)
-{
-    rt_err_t ret = RT_EOK;
-    sen_stora_t sen_stora[4];
-    switch (module->type)
-    {
-        case BHS_TYPE:
-            setSensorDefaultPara(module, "BLS-4", 0x0010, module->type, 4);
-            strncpy(sen_stora[0].name, "Co2", STORAGE_NAMESZ);
-            strncpy(sen_stora[1].name, "Humi", STORAGE_NAMESZ);
-            strncpy(sen_stora[2].name, "Temp", STORAGE_NAMESZ);
-            strncpy(sen_stora[3].name, "Light", STORAGE_NAMESZ);
-            sen_stora[0].value = 0;
-            sen_stora[1].value = 0;
-            sen_stora[2].value = 0;
-            sen_stora[3].value = 0;
-            sen_stora[0].func = F_S_CO2;
-            sen_stora[1].func = F_S_HUMI;
-            sen_stora[2].func = F_S_TEMP;
-            sen_stora[3].func = F_S_LIGHT;
-            setSensorDefuleStora(module, sen_stora[0], sen_stora[1], sen_stora[2], sen_stora[3]);
-            break;
-        case PAR_TYPE:
-            setSensorDefaultPara(module, "BLS-PAR", 0x0000, module->type, 1);
-            strncpy(module->__stora[0].name, "Par", STORAGE_NAMESZ);
-            module->__stora[0].value = 0;
-            module->__stora[0].func = F_S_PAR;
-            break;
-        case PHEC_TYPE:
-            setSensorDefaultPara(module, "BSB-I", 0x0000, module->type, 3);
-            strncpy(module->__stora[0].name, "Ec", STORAGE_NAMESZ);
-            strncpy(module->__stora[1].name, "Ph", STORAGE_NAMESZ);
-            strncpy(module->__stora[2].name, "Wt", STORAGE_NAMESZ);
-            module->__stora[0].value = 0;
-            module->__stora[0].func = F_S_EC;
-            module->__stora[1].value = 0;
-            module->__stora[1].func = F_S_PH;
-            module->__stora[2].value = 0;
-            module->__stora[2].func = F_S_WT;
-            break;
-        case WATERlEVEL_TYPE:
-            setSensorDefaultPara(module, "BLS-WL", 0x0004, module->type, 1);
-            strncpy(module->__stora[0].name, "Wl", STORAGE_NAMESZ);
-            module->__stora[0].value = 0;
-            module->__stora[0].func = F_S_WL;
-            break;
-        case SOIL_T_H_TYPE:     //土壤温湿度
-            setSensorDefaultPara(module, "BLS-MM", 0x0000, module->type, 3);
-            strncpy(module->__stora[0].name, "Soil_W", STORAGE_NAMESZ);
-            module->__stora[0].value = 0;
-            module->__stora[0].func = F_S_SW;
-            strncpy(module->__stora[1].name, "Soil_T", STORAGE_NAMESZ);
-            module->__stora[1].value = 0;
-            module->__stora[1].func = F_S_ST;
-            strncpy(module->__stora[2].name, "Soil_EC", STORAGE_NAMESZ);
-            module->__stora[2].value = 0;
-            module->__stora[2].func = F_S_SEC;
-            break;
-        case SMOG_TYPE:
-            setSensorDefaultPara(module, "BLS-SD", 0x0010, module->type, 1);
-            strncpy(module->__stora[0].name, "Water", STORAGE_NAMESZ);
-            module->__stora[0].value = 0;
-            module->__stora[0].func = F_S_SM;
-            break;
-        case LEAKAGE_TYPE:
-            setSensorDefaultPara(module, "BLS-WD", 0x0010, module->type, 1);
-            strncpy(module->__stora[0].name, "Smoke", STORAGE_NAMESZ);
-            module->__stora[0].value = 0;
-            module->__stora[0].func = F_S_LK;
-            break;
-        case O2_TYPE:
-            setSensorDefaultPara(module, "BLS-O2", 0x0010, module->type, 1);//寄存器为0x0010
-            strncpy(module->__stora[0].name, "O2", STORAGE_NAMESZ);
-            module->__stora[0].value = 0;
-            module->__stora[0].func = F_S_O2;
-            break;
-        default:
-            ret = RT_ERROR;
-            break;
-    }
-
-    return ret;
-}
-
-rt_err_t setDeviceDefault(device_t *module)
-{
-    rt_err_t    ret = RT_EOK;
-    u16         addr;
-    char        name[STORAGE_NAMESZ] = " ";
-    switch (module->type) {
-
-        case CO2_UP_TYPE:
-            setDeviceDefaultPara(module, "BCS-PU", 0x0040, S_CO2, module->type, 1);
-            addr = module->addr;
-            setDeviceDefaultStora(module, 0 ,"Co2_U", F_Co2_UP, module->type, addr , MANUAL_NO_HAND, 0);
-            break;
-        case CO2_DOWN_TYPE:
-            setDeviceDefaultPara(module, "BCS-PD", 0x0040, S_CO2, module->type, 1);
-            addr = module->addr;
-            setDeviceDefaultStora(module, 0 ,"Co2_D", F_Co2_DOWN, module->type, addr , MANUAL_NO_HAND, 0);
-            break;
-        case HEAT_TYPE:
-            setDeviceDefaultPara(module, "BTS-H", 0x0040, S_TEMP, module->type, 1);
-            addr = module->addr;
-            setDeviceDefaultStora(module, 0 ,"Heat", F_HEAT, module->type, addr , MANUAL_NO_HAND, 0);
-            break;
-        case HUMI_TYPE:
-            setDeviceDefaultPara(module, "BHS-H", 0x0040, S_HUMI, module->type, 1);
-            addr = module->addr;
-            setDeviceDefaultStora(module, 0 , "Humi", F_HUMI, module->type, addr , MANUAL_NO_HAND, 0);
-            break;
-        case DEHUMI_TYPE:
-            setDeviceDefaultPara(module, "BHS-D", 0x0040, S_HUMI, module->type, 1);
-            addr = module->addr;
-            setDeviceDefaultStora(module, 0 , "Dehumi", F_DEHUMI, module->type, addr , MANUAL_NO_HAND, 0);
-            break;
-        case PRO_DEHUMI_TYPE:
-            setDeviceDefaultPara(module, "BRC-DH", 0x0100, S_HUMI, module->type, 1);
-            addr = module->addr;
-            setDeviceDefaultStora(module, 0 , "Dehumi", F_DEHUMI, module->type, addr , MANUAL_NO_HAND, 0);
-            break;
-        case COOL_TYPE:
-            setDeviceDefaultPara(module, "BTS-C", 0x0040, S_TEMP, module->type, 1);
-            addr = module->addr;
-            setDeviceDefaultStora(module, 0 , "Cool", F_COOL, module->type, addr , MANUAL_NO_HAND, 0);
-            break;
-        case HVAC_6_TYPE:
-            setDeviceDefaultPara(module, "BTS-1", 0x0401, S_TEMP, module->type, 1);
-            addr = module->addr;
-            setDeviceDefaultStora(module, 0 , "Hvac", F_COOL, module->type, addr, MANUAL_NO_HAND, 0);
-            break;
-        case TIMER_TYPE:
-            setDeviceDefaultPara(module, "BPS", 0x0040, S_TIMER, module->type, 1);
-            addr = module->addr;
-            setDeviceDefaultStora(module, 0 , "Timer", F_TIMER, module->type, addr , MANUAL_NO_HAND, 0);
-            break;
-        case AC_4_TYPE:
-            setDeviceDefaultPara(module, "BSS-4", 0x0401, S_AC_4, module->type, 4);
-            for(u8 index = 0; index < module->storage_size; index++)
-            {
-                strcpy(name," ");
-                sprintf(name,"%s%d","port",index+1);
-                strncpy(module->port[index].name, name, STORAGE_NAMESZ);
-                module->port[index].manual.manual_on_time = MANUAL_TIME_DEFAULT;
-            }
-            break;
-        case PUMP_TYPE:
-            setDeviceDefaultPara(module, "BIS-P", 0x0040, S_PUMP, module->type, 1);
-            addr = module->addr;
-            setDeviceDefaultStora(module, 0 , "Pump", F_PUMP, module->type, addr , MANUAL_NO_HAND, 0);
-            break;
-
-        case VALVE_TYPE:
-                setDeviceDefaultPara(module, "BIS-V", 0x0040, S_VALVE, module->type, 1);
-                addr = module->addr;
-                setDeviceDefaultStora(module, 0 , "Valve", F_VALVE, module->type, addr , MANUAL_NO_HAND, 0);
-            break;
-
-        case IO_12_TYPE:
-            setDeviceDefaultPara(module, "BCB-12", 0x0401, S_IO_12, module->type, 12);
-            for(u8 index = 0; index < module->storage_size; index++)
-            {
-                module->port[index].type = VALVE_TYPE;//目前暂定都是阀
-                module->port[index].func = F_VALVE;
-                strcpy(name," ");
-                sprintf(name,"%s%d","port",index+1);
-                strncpy(module->port[index].name, name, STORAGE_NAMESZ);
-                module->port[index].manual.manual_on_time = MANUAL_TIME_DEFAULT;
-            }
-            break;
-        case IO_4_TYPE:
-            setDeviceDefaultPara(module, "BDC-4", 0x0401, S_IO_4, module->type, 4);
-            for(u8 index = 0; index < module->storage_size; index++)
-            {
-                module->port[index].type = VALVE_TYPE;//目前暂定都是阀
-                module->port[index].func = F_VALVE;
-                strcpy(name," ");
-                sprintf(name,"%s%d","port",index+1);
-                strncpy(module->port[index].name, name, STORAGE_NAMESZ);
-                module->port[index].manual.manual_on_time = MANUAL_TIME_DEFAULT;
-            }
-            break;
-        case IR_AIR_TYPE:
-            setDeviceDefaultPara(module, "BTS-AR", 0x0100, S_TEMP, module->type, 1);
-            addr = module->addr;
-            setDeviceDefaultStora(module, 0 , "IR_AIR", F_COOL, module->type, addr , MANUAL_NO_HAND, 0);
-            break;
-        default:
-            ret = RT_ERROR;
-            break;
-    }
-
-    return ret;
-}
-
-rt_err_t setLineDefault(line_t *line)
-{
-    strncpy(line->name, "line", MODULE_NAMESZ);
-    line->ctrl_addr = 0x0060;
-    line->d_state = 0;
-    line->d_value = 0;
-
-    line->_manual.manual = MANUAL_NO_HAND;
-    line->_manual.manual_on_time = MANUAL_TIME_DEFAULT;
-
-    return RT_EOK;
 }
 
 //获取当前分配的最大的地址
@@ -560,7 +509,7 @@ u8 getMonitorMaxAddr(type_monitor_t *monitor)
             max_addr = monitor->device[index].addr;
         }
     }
-
+#if(HUB_SELECT == HUB_ENVIRENMENT)
     for(index = 0; index < monitor->line_size; index++)
     {
         if(monitor->line[index].addr > max_addr)
@@ -568,75 +517,69 @@ u8 getMonitorMaxAddr(type_monitor_t *monitor)
             max_addr = monitor->line[index].addr;
         }
     }
-
+#endif
     return max_addr;
 }
 
 /* 获取分配的地址 */
 //0xE0~0xEF预留
-u8 getAllocateAddress(type_monitor_t *monitor, u8 type)
+u8 getAllocateAddress(type_monitor_t *monitor)
 {
     u16 i = 0;
 
-    if(PAR_TYPE == type)
+    if(getMonitorMaxAddr(monitor) + 2 > ALLOCATE_ADDRESS_SIZE)
     {
-        return 0xEE;
+        i = 2;
     }
     else
     {
-        if(getMonitorMaxAddr(monitor) + 2 > ALLOCATE_ADDRESS_SIZE)
-        {
-            i = 2;
-        }
-        else
-        {
-            i = getMonitorMaxAddr(monitor) + 1;
-        }
-
-        for(; i < ALLOCATE_ADDRESS_SIZE; i++)
-        {
-            if(i < 128)//只用前128地址
-            {
-                if((monitor->allocateStr.address[i] != i) &&
-                    (i != 0xFA) && (i != 0xFE) &&
-                    !((i <= 0xEF) && (i >= 0xE0))
-                    && (i >= 2) && (i != 0xFF) && (i != 0x18) &&
-                    (i != 0xFD))//0xFA 是注册的代码 0xFE是PHEC通用 0x18是par特殊, 0xFD为广播地址
-                {
-                    monitor->allocateStr.address[i] = i;
-                    return i;
-                }
-            }
-        }
-
-        i = 2;
-        for(; i < ALLOCATE_ADDRESS_SIZE; i++)
-        {
-            if(i < 128)//只用前128地址
-            {
-                if((monitor->allocateStr.address[i] != i) &&
-                    (i != 0xFA) && (i != 0xFE) &&
-                    !((i <= 0xEF) && (i >= 0xE0))
-                    && (i >= 2) && (i != 0xFF) && (i != 0x18) &&
-                    (i != 0xFD))//0xFA 是注册的代码 0xFE是PHEC通用 0x18是par特殊
-                {
-                    monitor->allocateStr.address[i] = i;
-                    return i;
-                }
-            }
-        }
-        LOG_E("the address full");
+        i = getMonitorMaxAddr(monitor) + 1;
     }
+
+    for(; i < ALLOCATE_ADDRESS_SIZE; i++)
+    {
+        if(i < 128)//只用前128地址
+        {
+            if((monitor->allocateStr.address[i] != i) &&
+                (i != 0xFA) && (i != 0xFE) &&
+                !((i <= 0xEF) && (i >= 0xE0))
+                && (i >= 2) && (i != 0xFF) && (i != 0x18) &&
+                (i != 0xFD))//0xFA 是注册的代码 0xFE是PHEC通用 0x18是par特殊, 0xFD为广播地址
+            {
+                monitor->allocateStr.address[i] = i;
+                return i;
+            }
+        }
+    }
+
+    i = 2;
+    for(; i < ALLOCATE_ADDRESS_SIZE; i++)
+    {
+        if(i < 128)//只用前128地址
+        {
+            if((monitor->allocateStr.address[i] != i) &&
+                (i != 0xFA) && (i != 0xFE) &&
+                !((i <= 0xEF) && (i >= 0xE0))
+                && (i >= 2) && (i != 0xFF) && (i != 0x18) &&
+                (i != 0xFD))//0xFA 是注册的代码 0xFE是PHEC通用 0x18是par特殊
+            {
+                monitor->allocateStr.address[i] = i;
+                return i;
+            }
+        }
+    }
+
     return 0;
 }
 
-u8 getSOrD(u8 type)
+u8 TypeSupported(u8 type)
 {
     u8 ret = 0;
     switch (type) {
         case BHS_TYPE:
         case PAR_TYPE:
         case PHEC_TYPE:
+        case PHEC_NEW_TYPE:
         case WATERlEVEL_TYPE:
         case SOIL_T_H_TYPE:
         case SMOG_TYPE:
@@ -650,7 +593,11 @@ u8 getSOrD(u8 type)
         case HUMI_TYPE:
         case DEHUMI_TYPE:
         case PRO_DEHUMI_TYPE:
+        case PRO_HUMI_TYPE:
+        case PRO_HUMI_TEMP_TYPE:
         case COOL_TYPE:
+        case MIX_TYPE:
+        case AUTO_WATER_TYPE:
         case HVAC_6_TYPE:
         case TIMER_TYPE:
         case AC_4_TYPE:
@@ -659,10 +606,17 @@ u8 getSOrD(u8 type)
         case IO_12_TYPE:
         case IO_4_TYPE:
         case IR_AIR_TYPE:
+        case LIGHT_12_TYPE:
             ret = DEVICE_TYPE;
             break;
         case LINE_TYPE:
+        case LINE1_TYPE://固定在第一路
+        case LINE2_TYPE://固定在第二路
+        case LINE_4_TYPE://为4路输出
             ret = LINE1OR2_TYPE;
+            break;
+        case AQUE_SLAVE_TYPE:
+            ret = AQUA_TYPE;
             break;
         default:
             LOG_E("type %x is not support",type);
@@ -670,128 +624,6 @@ u8 getSOrD(u8 type)
     }
 
     return ret;
-}
-
-/* 注册新模块 */
-//specialAddr 仅仅适用于PHEC 水位
-void AnlyzeDeviceRegister(type_monitor_t *monitor, rt_device_t serial, u8 *data, u8 dataLen, u8 specialAddr)
-{
-    u8                  no          = 0;
-    u8                  s_or_d      = 0;
-    sensor_t            sensor;
-    device_t            device;
-    line_t              line;
-
-    rt_memset(&sensor, 0, sizeof(sensor_t));
-    rt_memset(&device, 0, sizeof(device_t));
-    rt_memset(&line, 0, sizeof(line_t));
-
-    sensor.type = data[8];
-    sensor.uuid = (data[9] << 24) | (data[10] << 16) | (data[11] << 8) | data[12];
-    device.type = data[8];
-    device.uuid = (data[9] << 24) | (data[10] << 16) | (data[11] << 8) | data[12];
-    line.type = data[8];
-    line.uuid = (data[9] << 24) | (data[10] << 16) | (data[11] << 8) | data[12];
-
-    s_or_d = getSOrD(data[8]);
-
-    if(SENSOR_TYPE == s_or_d)
-    {
-        //1.该判断为了避免sensor device line类型插到错误的接口
-        if(serial == rt_device_find(DEVICE_UART1))
-        {
-            if(NO == FindSensor(monitor, sensor, &no))
-            {
-                if((PHEC_TYPE != sensor.type) &&
-                   (WATERlEVEL_TYPE != sensor.type) &&
-                   (PAR_TYPE != sensor.type) &&
-                   (SOIL_T_H_TYPE != sensor.type))
-                {
-                    sensor.addr = getAllocateAddress(monitor, sensor.type);
-                }
-                else
-                {
-                    sensor.addr = specialAddr;
-                }
-                if(RT_EOK == setSensorDefault(&sensor))
-                {
-                    InsertSensorToTable(monitor, sensor, no);
-                }
-                else
-                {
-                    LOG_E("The sensor is not supported");
-                }
-            }
-            else
-            {
-                LOG_D("sensor name %s have exist",GetSensorByType(monitor, sensor.type)->name);
-            }
-            /* 发送注册回复 */
-            //特殊处理 如果是PAR 不用回复
-            if((PAR_TYPE != sensor.type) &&
-               (PHEC_TYPE != sensor.type) &&
-               (WATERlEVEL_TYPE != sensor.type))
-            {
-                senRegisterAnswer(monitor, serial, sensor.uuid);
-            }
-        }
-        else
-        {
-            LOG_E("The 485 line is wrong");
-        }
-    }
-    else if(DEVICE_TYPE == s_or_d)
-    {
-        if(serial == rt_device_find(DEVICE_UART2))
-        {
-            if(NO == FindDevice(monitor, device, &no))
-            {
-                device.addr = getAllocateAddress(monitor, device.type);
-                if(RT_EOK == setDeviceDefault(&device))
-                {
-                    InsertDeviceToTable(monitor, device, no);
-                }
-                else
-                {
-                    LOG_E("The device is not supported");
-                }
-            }
-            else
-            {
-
-                LOG_D("device have exist, type = %x, really addr = %d",
-                        data[8],data[7]);
-            }
-            /* 发送注册回复 */
-            devRegisterAnswer(monitor, serial, device.uuid);
-        }
-        else
-        {
-            LOG_E("The 485 line is wrong");
-        }
-    }
-    else if(LINE1OR2_TYPE == s_or_d)
-    {
-        if(serial == rt_device_find(DEVICE_UART3))
-        {
-            if(NO == FindLine(monitor, line, &no))
-            {
-                line.addr = getAllocateAddress(monitor, line.type);
-                setLineDefault(&line);
-                InsertLineToTable(monitor, line, no);
-            }
-            else
-            {
-                LOG_D("line have exist");
-            }
-
-            lineAnswer(monitor, serial, line.uuid);
-        }
-        else
-        {
-            LOG_E("The 485 line is wrong");
-        }
-    }
 }
 
 void senRegisterAnswer(type_monitor_t *monitor, rt_device_t serial, u32 uuid)
@@ -866,42 +698,6 @@ void devRegisterAnswer(type_monitor_t *monitor, rt_device_t serial, u32 uuid)
     rt_device_write(serial, 0, buffer, 15);
 }
 
-void lineAnswer(type_monitor_t *monitor, rt_device_t serial, u32 uuid)
-{
-    u16 i = 0;
-    u8 buffer[15];
-    u16 crc16Result = 0x0000;
-    u32 id;
-
-    buffer[0] = REGISTER_CODE;
-    buffer[1] = 0x80;
-    for(i = 0; i < monitor->line_size; i++)
-    {
-        if(uuid == monitor->line[i].uuid)
-        {
-            buffer[2] = monitor->line[i].uuid >> 24;
-            buffer[3] = monitor->line[i].uuid >> 16;
-            buffer[4] = monitor->line[i].uuid >> 8;
-            buffer[5] = monitor->line[i].uuid;
-            buffer[6] = 0x06;
-            buffer[7] = monitor->line[i].addr;
-            buffer[8] = monitor->line[i].type;
-        }
-    }
-
-    ReadUniqueId(&id);
-    buffer[9] = id >> 24;
-    buffer[10] = id >> 16;
-    buffer[11] = id >> 8;
-    buffer[12] = id;
-
-    crc16Result = usModbusRTU_CRC(buffer, 13);
-    buffer[13] = crc16Result;                         //CRC16低位
-    buffer[14] = (crc16Result>>8);                    //CRC16高位
-
-    rt_device_write(serial, 0, buffer, 15);
-}
-
 
 /* 接收sensor 寄存器 */
 void AnlyzeStorage(type_monitor_t *monitor, u8 addr, u8 read, u8 *data, u8 length)
@@ -924,25 +720,5 @@ void AnlyzeStorage(type_monitor_t *monitor, u8 addr, u8 read, u8 *data, u8 lengt
             }
         }
 
-    }
-}
-
-void getRegisterData(u8* data, u8 len, u32 uuid,u8 type)
-{
-    if(len >= 13)
-    {
-        data[0] = 0xFA;
-        data[1] = 0x00;
-        data[2] = 0x00;
-        data[3] = 0x00;
-        data[4] = 0x00;
-        data[5] = 0x00;
-        data[6] = 6;
-        data[7] = 0x01;
-        data[8] = type;
-        data[9] = uuid >> 24;
-        data[10] = uuid >> 16;
-        data[11] = uuid >> 8;
-        data[12] = uuid;
     }
 }

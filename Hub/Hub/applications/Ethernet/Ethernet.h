@@ -13,6 +13,7 @@
 #include "Gpio.h"
 #include "Gpio.h"
 #include "EthernetBusiness.h"
+#include "netdev_ipaddr.h"
 
 #define TC_TCPCLIENT_CLOSE (1 << 0)
 #define TC_EXIT_THREAD (1 << 1)
@@ -23,7 +24,8 @@
 
 #define TEST_PORT                 9897
 #define MASTER_PORT               9898
-#define UDP_BROADCAST_PORT        TEST_PORT//9899//
+#define UDP_BROADCAST_PORT        TEST_PORT
+#define UDP_SEND_BROADCAST_PORT   10001
 #define RCV_ETH_BUFFSZ            1024 * 2
 #define SEND_ETH_BUFFSZ           1024 * 8
 #define CONNECT_TIME_OUT          120
@@ -51,12 +53,13 @@ struct masterBroadInfo
     u32 time;
     u32 version;
 };
-
+#pragma pack(1)
 struct eth_heart
 {
     u8      connect;
     time_t  last_connet_time;
 };
+#pragma pack()
 
 enum
 {
@@ -82,4 +85,11 @@ void UdpTaskEntry(void* parameter);
 void EthernetTaskInit(void);
 eth_heart_t *getEthHeart(void);
 int getSockState(int);
+int GetTcpSocket(void);
+eth_heart_t *getEthHeart(void);
+void SetSendWarnFlag(u8 flag);
+u8 GetSendWarnFlag(void);
+void closeTcpSocket(void);
+void SetSendAquaWarnFlag(u8 flag);
+u8 GetSendAquaWarnFlag(void);
 #endif /* APPLICATIONS_ETHERNET_H_ */

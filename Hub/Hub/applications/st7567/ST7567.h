@@ -3,7 +3,7 @@
 
 
 #include "gpio.h"
-#include "spi.h"
+//#include "spi.h"
 #include "ascii_fonts.h"
 
 

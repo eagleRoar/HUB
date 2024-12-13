@@ -25,6 +25,12 @@ struct pageSelect
     u8  select;
 };
 
+typedef struct btn_monitor{
+    u8 btn_down;
+    u8 btn_up;
+    u8 btn_enter;
+}type_btn_event;
+
 #define     LINE_HIGHT              8
 #define     COLUMN_HIGHT            13          //实际是13为了留间距
 //
@@ -43,21 +49,28 @@ struct pageSelect
 enum
 {
 //一级界面
-HOME_PAGE = 0x00,//主页面
-SETTING_PAGE,//主页面
-FACTORY_PAGE,//工厂界面
+HOME_PAGE = 0x00,       //主页面
+SETTING_PAGE,           //主页面
+FACTORY_PAGE,           //工厂界面
 //二级界面
-SENSOR_STATE_PAGE,//
-DEVICE_STATE_PAGE,//
-LINE_STATE_PAGE,//
-QRCODE_PAGE,//
-APP_UPDATE_PAGE,//
-CO2_CALIBRATE_PAGE,//CO2校准
-PHEC_CALIBRATE_PAGE,//phec 校准
+SENSOR_STATE_PAGE,      //
+DEVICE_STATE_PAGE,      //
+LINE_STATE_PAGE,        //
+QRCODE_PAGE,            //
+APP_UPDATE_PAGE,        //
+CO2_CALIBRATE_PAGE,     //CO2校准
+PHEC_CALIBRATE_PAGE,    //phec 校准
 PH_ONLINE_PAGE,
 PH_CALIBRATE_PAGE,
 EC_ONLINE_PAGE,
 EC_CALIBRATE_PAGE,
+DATA_EXPORT,            //数据导出
+DATA_IMPORT,            //数据导入
+SERVER_URL,             //选择服务器网址
+HUB_INFO,
+IP_INFO,
+RESTORE_SETTINGS,       //恢复出厂设置
+MEMORY_INFO,            //内存使用情况
 //工厂版本
 FA_SENSOR_PAGE,
 FA_DEVICE_PAGE,

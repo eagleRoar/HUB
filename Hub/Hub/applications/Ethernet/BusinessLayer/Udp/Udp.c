@@ -16,9 +16,9 @@
  * @author  : Qiuyijie
  * @date    : 2022.03.03
  */
-rt_err_t GetIPAddress(void)
+rt_err_t GetIPAddress(u8 *ip)
 {
-    u8  ip[4];
+//    u8  ip[4];
     u32 ipAddress;
 
     ipAddress = netdev_default->ip_addr.addr;
@@ -28,7 +28,7 @@ rt_err_t GetIPAddress(void)
     ip[1] = ipAddress >> 16;
     ip[0] = ipAddress >> 24;
 
-    LOG_D("ip address = %d.%d.%d.%d",ip[3],ip[2],ip[1],ip[0]);
+//    LOG_D("ip address = %d.%d.%d.%d",ip[3],ip[2],ip[1],ip[0]);
 
     return RT_EOK;
 }
@@ -53,7 +53,34 @@ void setnonblocking(int sockfd)
 
 void DestoryUdpSocket( int sock)
 {
+    shutdown(sock, SHUT_RDWR);
     closesocket(sock);
+    sock = -1;
+}
+
+void UdpSetingInit1(int *sock, struct sockaddr_in *server_addr)
+{
+    int optval = 1;
+    struct hostent *host;
+//    struct sockaddr_in server_addr;
+
+    /* 通过函数入口参数url获得host地址（如果是域名，会做域名解析） */
+    host = (struct hostent *) gethostbyname("255.255.255.255");
+
+    /* 创建一个socket，类型是SOCK_DGRAM，UDP类型 */
+    if ((*sock = socket(AF_INET, SOCK_DGRAM, 0)) == -1)
+    {
+        rt_kprintf("Socket error\n");
+        return;
+    }
+
+    /* 初始化预连接的服务端地址 */
+    server_addr->sin_family = AF_INET;
+    server_addr->sin_port = htons(10001);
+    server_addr->sin_addr = *((struct in_addr *)host->h_addr);
+    rt_memset(&(server_addr->sin_zero), 0, sizeof(server_addr->sin_zero));
+
+    setsockopt(*sock,SOL_SOCKET,SO_BROADCAST,( void *)&optval,sizeof(optval));
 }
 
 /**

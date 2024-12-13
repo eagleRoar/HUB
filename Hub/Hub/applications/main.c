@@ -12,6 +12,7 @@
 #include "Gpio.h"
 #include "Ethernet.h"
 #include "Oled1309.h"
+#include "OledBusiness.h"
 #include "SDCard.h"
 #include "Uart.h"
 #include "Spi.h"
@@ -21,28 +22,224 @@
 #include "CloudProtocol.h"
 #include "module.h"
 #include "TcpProgram.h"
+#include "FileSystem.h"
+#include "UartAction.h"
+#include "CloudProtocol.h"
+#include "qrcode.h"
+#include <syswatch.h>
 
 #define DBG_TAG "main"
 #define DBG_LVL DBG_LOG
 #include <rtdbg.h>
 
-extern struct ethDeviceStruct *eth;
-extern int tcp_sock;
-extern const u8    HEAD_CODE[4];
-
-extern  cloudcmd_t              cloudCmd;
 extern rt_uint8_t GetEthDriverLinkStatus(void);            //获取网口连接状态
+extern cloudcmd_t      cloudCmd;
+extern u8              saveMqttUrlFile;
 
+extern cloudcmd_t      cloudCmd;
+extern volatile u8           statePre[TANK_LIST_MAX][TANK_WARN_ITEM_MAX];
+extern u8 saveModuleFlag;
+extern time_t connectToMqttTime;
+
+u8       preResetSysFlag     = 0;
+
+//初始化一些必要的参数
+static void InitParameter(void)
+{
+    initMonitor();
+#if(HUB_SELECT == HUB_ENVIRENMENT)
+    initSysRecipe();
+#elif(HUB_SELECT == HUB_IRRIGSTION)
+    initAquaSetAndInfo();
+    initTankWarnState();
+    InitAquaWarn();
+#endif
+    initSysTank();
+    initSysSet();
+    initCloudProtocol();
+    GetSnName(GetSysSet()->hub_info.name, 13);
+    InitMqttUrlUse();
+    initSysSetExtern();
+}
+
+void list_mem(void)
+{
+    rt_uint32_t total;
+    rt_uint32_t used;
+    rt_uint32_t max_used;
+    rt_memory_info(&total, &used, &max_used);
+    rt_kprintf("total memory: %d\n", total);
+    rt_kprintf("used memory : %d\n", used);
+    rt_kprintf("maximum allocated memory: %d\n", max_used);
+
+    //如果可以用的内存不足1000 则重启
+//    if(used + 1000 >= total)
+//    {
+//        LOG_E("--------------------------------内存不足，重启");
+//        rt_hw_cpu_reset();
+//    }
+}
+
+void AlarmLedProgram(void)
+{
+    u8          state           = OFF;
+    volatile sys_set_t   *set            = GetSysSet();
+    u8          dayOrNight      = 0;
+#if(HUB_SELECT == HUB_ENVIRENMENT)
+    dayOrNight      = GetSysSet()->dayOrNight;
+    if(DAY_TIME == dayOrNight)
+    {
+        if(ON == set->sysWarn.dayTempEn)
+        {
+            if(ON == set->sysWarn.dayTempBuzz)
+            {
+                if(ON ==set->warn[WARN_TEMP_HIGHT - 1] || ON == set->warn[WARN_TEMP_LOW - 1])
+                {
+                    state = ON;
+                }
+            }
+        }
+
+        if(ON == set->sysWarn.dayhumidEn)
+        {
+            if(ON == set->sysWarn.dayhumidBuzz)
+            {
+                if(ON == set->warn[WARN_HUMI_HIGHT - 1] || ON == set->warn[WARN_HUMI_LOW - 1])
+                {
+                    state = ON;
+                }
+            }
+        }
+
+        if(ON == set->sysWarn.dayCo2En)
+        {
+            if(ON == set->sysWarn.dayCo2Buzz)
+            {
+                if(ON == set->warn[WARN_CO2_HIGHT - 1] || ON == set->warn[WARN_CO2_LOW - 1])
+                {
+                    state = ON;
+                }
+            }
+        }
+    }
+    else
+    {
+        if(ON == set->sysWarn.nightTempEn)
+        {
+            if(ON == set->sysWarn.nightTempBuzz)
+            {
+                if(ON ==set->warn[WARN_TEMP_HIGHT - 1] || ON == set->warn[WARN_TEMP_LOW - 1])
+                {
+                    state = ON;
+                }
+            }
+        }
+
+        if(ON == set->sysWarn.nighthumidEn)
+        {
+            if(ON == set->sysWarn.nighthumidBuzz)
+            {
+                if(ON == set->warn[WARN_HUMI_HIGHT - 1] || ON == set->warn[WARN_HUMI_LOW - 1])
+                {
+                    state = ON;
+                }
+            }
+        }
+
+        if(ON == set->sysWarn.nightCo2En)
+        {
+            if(ON == set->sysWarn.nightCo2Buzz)
+            {
+                if(ON == set->warn[WARN_CO2_HIGHT - 1] || ON == set->warn[WARN_CO2_LOW - 1])
+                {
+                    state = ON;
+                }
+            }
+        }
+    }
+#else
+
+    if(ON == set->sysWarn.phEn && ON == set->sysWarn.phBuzz) {
+        for(int i = 0; i < TANK_LIST_MAX; i++) {
+            if(statePre[i][1]) {
+                state = ON;
+                break;
+            }
+        }
+    }
+    if(ON == set->sysWarn.ecEn && ON == set->sysWarn.ecBuzz) {
+        for(int i = 0; i < TANK_LIST_MAX; i++) {
+            if(statePre[i][0]) {
+                state = ON;
+                break;
+            }
+        }
+    }
+    if(ON == set->sysWarn.wtEn && ON == set->sysWarn.wtBuzz) {
+        for(int i = 0; i < TANK_LIST_MAX; i++) {
+            if(statePre[i][2]) {
+                state = ON;
+                break;
+            }
+        }
+    }
+    if(ON == set->sysWarn.wlEn && ON == set->sysWarn.wlBuzz) {
+        for(int i = 0; i < TANK_LIST_MAX; i++) {
+            if(statePre[i][3]) {
+                state = ON;
+                break;
+            }
+        }
+    }
+    if(ON == set->sysWarn.mmEn && ON == set->sysWarn.mmBuzz) {
+        for(int i = 0; i < TANK_LIST_MAX; i++) {
+            if(statePre[i][4]) {
+                state = ON;
+                break;
+            }
+        }
+    }
+    if(ON == set->sysWarn.meEn && ON == set->sysWarn.meBuzz) {
+        for(int i = 0; i < TANK_LIST_MAX; i++) {
+            if(statePre[i][5]) {
+                state = ON;
+                break;
+            }
+        }
+    }
+    if(ON == set->sysWarn.mtEn && ON == set->sysWarn.mtBuzz) {
+        for(int i = 0; i < TANK_LIST_MAX; i++) {
+            if(statePre[i][6]) {
+                state = ON;
+                break;
+            }
+        }
+    }
+    //漏水检测
+    if(ON == set->sysWarn.waterEn) {
+        if(ON == set->warn[WARN_WATER - 1]) {
+            state = ON;
+        }
+    }
+
+#endif
+
+    rt_pin_write(ALARM_OUT, state);
+}
+
+extern void changeBigToLittle(u16 src, u8 *data);
 int main(void)
 {
     rt_uint8_t      ethStatus           = LINKDOWN;
-    u16             length              = 0;
-    u8              *buf                = RT_NULL;
-    u8              res                 = 0;
-    static u8       sensor_size         = 0;
-    static u8       device_size         = 0;
-    static u8       line_size           = 0;
-    static u8       cnt                 = 0;
+//    u8              res                 = 0;
+    type_uart_class *deviceObj          = GetDeviceObject();
+#if(HUB_SELECT == HUB_ENVIRENMENT)
+    type_uart_class *lineObj            = GetLightObject();
+    line_t          *line               = RT_NULL;
+#elif(HUB_SELECT == HUB_IRRIGSTION)
+    type_uart_class *aquaObj            = GetAquaObject();
+    static u8       sendWarnFlag        = NO;
+#endif
     static u8       start_warn_flg      = NO;
     static u8       Timer100msTouch     = OFF;
     static u8       Timer1sTouch        = OFF;
@@ -54,10 +251,21 @@ int main(void)
     static u16      time10S             = 0;
     static u16      time60S             = 0;
     static u16      timeInit            = 0;
-    type_sys_time   time;
+    static u8       preStartMqttFlag    = 0;
+#if(HUB_SELECT == HUB_ENVIRENMENT)
+    static u8       startProgram        = NO;
+#endif
 
+
+    syswatch_init();
     //初始化GPIO口
     GpioInit();
+
+    //初始化参数
+    InitParameter();
+
+    //spi初始化挂载
+    bsp_spi_attach_init();
 
     //灯光
     LedTaskInit();
@@ -82,26 +290,31 @@ int main(void)
         rt_thread_mdelay(100);
     } while (LINKDOWN == ethStatus);
 
+    //初始化文件系统
+    FileSystemInit();
+
     if(LINKUP == ethStatus)
     {
         /*初始化网络线程，处理和主机之间的交互，Tcp和Udp协议*/
         EthernetTaskInit();
     }
 
-    //初始化SD卡处理线程
-    SDCardTaskInit();
-
     //初始化串口接收传感器类线程
     SensorUart2TaskInit();
 
     //MQTT线程
     mqtt_start();
+
+    //初始化报警设置fun
+    initWarnningFun();
     while(1)
     {
-        time100mS = TimerTask(&time100mS, 5, &Timer100msTouch);             //100毫秒任务定时器
-        time1S = TimerTask(&time1S, 50, &Timer1sTouch);                     //1秒任务定时器
-        time10S = TimerTask(&time10S, 500, &Timer10sTouch);                 //1秒任务定时器
-        time60S = TimerTask(&time60S, 3000, &Timer60sTouch);                //60秒任务定时器
+        time100mS = TimerTask(&time100mS, 100/MAIN_PERIOD, &Timer100msTouch);               //100毫秒任务定时器
+        time1S = TimerTask(&time1S, 1000/MAIN_PERIOD, &Timer1sTouch);                       //1秒任务定时器
+        time10S = TimerTask(&time10S, 10000/MAIN_PERIOD, &Timer10sTouch);                   //1秒任务定时器
+        time60S = TimerTask(&time60S, 60000/MAIN_PERIOD, &Timer60sTouch);                   //60秒任务定时
+
+        GetSysSet()->ver = HUB_VER_NO;
 
         /* 监视网络模块是否上线 */
         ethStatus = GetEthDriverLinkStatus();
@@ -116,184 +329,182 @@ int main(void)
             }
         }
 
-        //50ms 云服务器
+        //回复app和云端服务器
         if(ON == GetRecvMqttFlg())
         {
             if(0 == rt_memcmp(CMD_GET_DEVICELIST, cloudCmd.cmd, sizeof(CMD_GET_DEVICELIST)))
             {
-                res = ReplyDeviceListDataToCloud(GetMqttClient(), RT_NULL, YES);
+                ReplyDeviceListDataToCloud(GetMqttClient(), RT_NULL, YES);
             }
             else
             {
-                res = ReplyDataToCloud(GetMqttClient(), RT_NULL, YES);
+                ReplyDataToCloud(GetMqttClient(), RT_NULL, YES);
             }
 
-            if(RT_EOK == res)
+            SetRecvMqttFlg(OFF);
+        }
+
+        //主动发送告警
+        if(GetTcpSocket() > 0)
+        {
+            if(YES == start_warn_flg)
             {
-                SetRecvMqttFlg(OFF);
+                sendOfflinewarnning(GetMonitor());      //发送离线报警
+#if(HUB_SELECT == HUB_ENVIRENMENT)
+                sendwarnningInfo();                     //该报警函数写的很乱，需要优化
+#endif
             }
-            else
+        }
+
+        if(Timer1sTouch)
+        {
+
+            //分辨白天黑夜
+            monitorDayAndNight();
+
+            //环控版功能
+#if(HUB_SELECT == HUB_ENVIRENMENT)
+            if(YES == GetFileSystemState())
             {
-                if(cnt < 10)
+//                if(YES == startProgram)
                 {
-                    cnt++;
+                    co2Program(GetMonitor(), *deviceObj, 1000);
+                    TempAndHumiProgram(GetMonitor(), *deviceObj);
+
+                    for(int i = 0; i < GetMonitor()->line_size; i++)
+                    {
+                        line = &GetMonitor()->line[i];
+                        if(1 == line->lineNo)
+                        {
+                            if(LINE_4_TYPE == line->type)
+                            {
+                                line_4Program(line, *lineObj);
+                            }
+                            else
+                            {
+                                lineProgram(GetMonitor(), line, 0, *lineObj, 1000);
+                            }
+                        }
+                        else if(2 == line->lineNo)
+                        {
+                            lineProgram(GetMonitor(), line, 1, *lineObj, 1000);
+                        }
+                    }
+
+                    Light12Program(GetMonitor(), *deviceObj);
                 }
-                else
-                {
-                    cnt = 0;
-                    SetRecvMqttFlg(OFF);
-                }
-                LOG_E("reply ReplyDataToCloud err");
             }
+
+            //co2 校准
+//            if(YES == GetSysSet()->startCalFlg)
+//            {
+//                co2Calibrate1(GetMonitor(), GetSysSet()->co2Cal, &GetSysSet()->startCalFlg, &GetSysSet()->saveFlag, co2CalibraterResPage);
+//            }
+#elif(HUB_SELECT == HUB_IRRIGSTION)
+
+            //水泵的工作
+            closeUnUseDevice(GetMonitor(), deviceObj);
+            pumpProgram(GetMonitor(), GetSysTank(), *deviceObj);
+
+            //Aqua 混合装置工作
+            AquaMixProgram(GetSysTank(), GetMonitor());
+#endif
+            timmerProgram(GetMonitor(), *deviceObj);
+#if(HUB_SELECT == HUB_ENVIRENMENT)
+            //执行手动功能
+            menualHandProgram(GetMonitor(), deviceObj, lineObj, RT_NULL);
+#elif(HUB_SELECT == HUB_IRRIGSTION)
+            //执行手动功能
+            menualHandProgram(GetMonitor(), deviceObj, RT_NULL, aquaObj);
+#endif
+            //报警功能
+#if(HUB_SELECT == HUB_IRRIGSTION)
+            if(YES == sendWarnFlag)
+#endif
+            {
+                warnProgram(GetMonitor(), GetSysSet());             //监听告警信息
+            }
+
+            //发送实际发送的数据
+            sendReadDeviceCtrlToList(GetMonitor(), deviceObj);
+
+//            LOG_E("now %d, last time %d",getTimeStamp(),getEthHeart()->last_connet_time);
+
+            if(NO == getFactoryMode())
+            {
+                AlarmLedProgram();
+            }
+
+//            LOG_D("lightOn = %d, lightOff = %d",GetSysSet()->line1Set.lightOn,GetSysSet()->line1Set.lightOff);
+        }
+
+        //10s
+        if(ON == Timer10sTouch)
+        {
+            //心跳包检测,如果超时2分钟,断掉连接(原本放在UDP线程，后来该线程有问题)
+            if(GetTcpSocket() > 0)
+            {
+                if(getTimeStamp() > getEthHeart()->last_connet_time + CONNECT_TIME_OUT )
+                {
+                    if(0 == preResetSysFlag)
+                    {
+                        saveModuleFlag = 1;
+                        preResetSysFlag = 1;
+                        LOG_E("------------------- 即将重启-------------------");
+                    }
+                }
+            }
+
+            if(1 == preResetSysFlag)
+            {
+                //重启
+                LOG_E("超过2min没响应重启");//超过2min没响应重启
+                rt_hw_cpu_reset();
+            }
+
+            if(preStartMqttFlag != GetMqttRealStartFlg())
+            {
+                if((1 == preStartMqttFlag) && (0 == GetMqttRealStartFlg()))
+                {
+                    saveModuleFlag = 1;
+                    preResetSysFlag = 1;
+                }
+
+                preStartMqttFlag = GetMqttRealStartFlg();
+            }
+
+//            LOG_I("GetMqttRealStartFlg = %d-----",GetMqttRealStartFlg());
+
+#if(HUB_IRRIGSTION == HUB_SELECT)
+            sendRealAquaCtrlToList(GetMonitor(), aquaObj);
+#endif
+#if(HUB_SELECT == HUB_ENVIRENMENT)
+            startProgram = YES;
+#endif
+
+//            printSensor(module);
+//            for(int i = 0; i < GetMonitor()->sensor_size; i++) {
+//                printSensor(GetMonitor()->sensor[i]);
+//            }
         }
 
         //60s 主动发送给云服务
         if(ON == Timer60sTouch)
         {
             start_warn_flg = YES;
-            if(LINKUP == ethStatus)
-            {
-                if(YES == GetMqttStartFlg())
-                {
-                    SendDataToCloud(GetMqttClient(), CMD_HUB_REPORT, 0 , 0, RT_NULL, RT_NULL, YES, 0);
-                }
-            }
+
+#if(HUB_SELECT == HUB_IRRIGSTION)
+            sendWarnFlag = YES;
+#endif
+
+            list_mem();
         }
 
-        //主动发送告警
-        if(LINKUP == ethStatus)
-        {
-            if(YES == start_warn_flg)
-            {
-                sendOfflinewarnning(GetMonitor());      //发送离线报警
-                sendwarnningInfo();
-            }
-        }
-
-        //1s event
-        if(ON == Timer1sTouch)
-        {
-            //分辨白天黑夜
-            if(DAY_BY_TIME == GetSysSet()->sysPara.dayNightMode)//按时间分辨
-            {
-                getRealTimeForMat(&time);
-
-                if(GetSysSet()->sysPara.dayTime < GetSysSet()->sysPara.nightTime)
-                {
-                    if(((time.hour * 60 + time.minute) >= GetSysSet()->sysPara.dayTime) &&
-                       ((time.hour * 60 + time.minute) < GetSysSet()->sysPara.nightTime))
-                    {
-                        GetSysSet()->dayOrNight = DAY_TIME;
-                    }
-                    else
-                    {
-                        GetSysSet()->dayOrNight = NIGHT_TIME;
-                    }
-
-                }
-                else
-                {
-                    if(((time.hour * 60 + time.minute) >= GetSysSet()->sysPara.nightTime) &&
-                       ((time.hour * 60 + time.minute) < GetSysSet()->sysPara.dayTime))
-                    {
-                        GetSysSet()->dayOrNight = NIGHT_TIME;
-                    }
-                    else
-                    {
-                        GetSysSet()->dayOrNight = DAY_TIME;
-                    }
-                }
-            }
-            else if(DAY_BY_PHOTOCELL == GetSysSet()->sysPara.dayNightMode)//按灯光分辨
-            {
-                if(VALUE_NULL != getSensorDataByFunc(GetMonitor(), F_S_LIGHT))
-                {
-                    if(getSensorDataByFunc(GetMonitor(), F_S_LIGHT) > GetSysSet()->sysPara.photocellSensitivity)
-                    {
-                        GetSysSet()->dayOrNight = DAY_TIME;
-                    }
-                    else
-                    {
-                        GetSysSet()->dayOrNight = NIGHT_TIME;
-                    }
-                }
-            }
-
-            if(sensor_size != GetMonitor()->sensor_size)
-            {
-                sensor_size = GetMonitor()->sensor_size;
-
-                for(int index = 0; index < sensor_size; index++)
-                {
-                    printSensor(GetMonitor()->sensor[index]);
-                }
-            }
-            if(device_size != GetMonitor()->device_size)
-            {
-                device_size = GetMonitor()->device_size;
-
-                for(int index = 0; index < device_size; index++)
-                {
-                    printDevice(GetMonitor()->device[index]);
-                }
-            }
-            if(line_size != GetMonitor()->line_size)
-            {
-                line_size = GetMonitor()->line_size;
-
-                for(int index = 0; index < line_size; index++)
-                {
-                    printLine(GetMonitor()->line[index]);
-                }
-            }
-        }
-
-        //10s
-        if(ON == Timer10sTouch)
-        {
-            if(LINKUP == ethStatus)
-            {
-                if((OFF == eth->tcp.GetConnectTry()) &&
-                   (ON == eth->tcp.GetConnectStatus()))
-                {
-                    //申请内存
-                    buf = rt_malloc(1024 * 2);
-                    if(RT_NULL != buf)
-                    {
-                        //rt_memset(package.data, ' ', SEND_ETH_BUFFSZ);
-                        rt_memcpy(buf, HEAD_CODE, 4);
-                        if(RT_EOK == SendDataToCloud(RT_NULL, CMD_HUB_REPORT, 0 , 0, buf + sizeof(eth_page_head), &length, NO, 0))
-                        {
-                            if(length > 0)
-                            {
-                                rt_memcpy(buf + 4, &length, 2);
-                                if (RT_EOK != TcpSendMsg(&tcp_sock, buf, length + sizeof(eth_page_head)))
-                                {
-                                    LOG_E("send tcp err 3");
-                                    eth->tcp.SetConnectStatus(OFF);
-                                    eth->tcp.SetConnectTry(ON);
-                                }
-                            }
-                        }
-                    }
-
-                    //释放内存
-                    if(RT_NULL != buf)
-                    {
-                        rt_free(buf);
-                        buf = RT_NULL;
-                    }
-
-                }
-            }
-        }
-
-        rt_thread_mdelay(20);
+        rt_thread_mdelay(MAIN_PERIOD);
     }
 
     return RT_EOK;
 }
-
 
 void ReadUniqueId(u32 *id)
 {
@@ -369,5 +580,3 @@ u16 usModbusRTU_CRC(const u8* pucData, u32 ulLen)
     }
     return usCRC;
 }
-
-

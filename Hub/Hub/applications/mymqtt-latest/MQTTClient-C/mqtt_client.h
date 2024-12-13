@@ -61,13 +61,13 @@ extern "C" {
 // TLS���ܴ���ʱʹ�ã����ڽ��ճ�ʱ
 #define MQTT_SOCKET_TIMEO       5000
 
-//Justin debug 仅仅测试
-#define MQTT_URI                "tcp://mqtt.pro-leaf.com:1883"//"tcp://192.168.0.222:1883"//
+#define MQTT_URI                "tcp://192.168.0.222:1883"//"tcp://mqtt.pro-leaf.com:1883"//
 #define MQTT_USERNAME           "hydro"//"admin"//
 #define MQTT_PASSWORD           "hydro"//"password"
 #define MQTT_WILLMSG            "Goodbye!"
 
 /*********************************************************************************************************
+ * sd
 **  MQTT��Ϣ��·����ֵ����
 *********************************************************************************************************/
 enum QoS { QOS0, QOS1, QOS2, SUBFAIL=0x80 };
@@ -185,6 +185,12 @@ int mqtt_start(void);
 void SetRecvMqttFlg(u8);
 int GetMqttStartFlg(void);
 u8 GetRecvMqttFlg(void);
+void InitMqttUrlUse(void);
+u8 GetMqttUse(void);
+void setMqttUse(u8 use);
+void setMqttUseIp(char *ip);
+char *getMqttUseIp(void);
+type_mqtt_ip *getMqttUrlUse(void);
 #ifdef __cplusplus
     }           // __cplusplus
 #endif
