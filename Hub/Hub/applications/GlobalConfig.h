@@ -16,7 +16,7 @@
 //#define FACTORY_MODE                  //是否支持工厂模式
 
 #define DEBUG_MODE                      0//1                    //1.如果是debug mode 的话不需要偏移位置，否则偏移位置SD卡升级 2.修改link.lds
-#define HUB_SELECT                      HUB_IRRIGSTION          //
+#define HUB_SELECT                      HUB_ENVIRENMENT          //
 
 /* 软件号的 第一个分配为:
     0 : HUB_ENVIRENMENT
@@ -93,10 +93,15 @@
  * 1.2.55
  * 增加周期check mqtt是否在线 不在线重启lwip(该操作很危险 需谨慎)
  */
+/**
+ ** 0.2.39 1.2.56
+ ** 由于在保存tank数据以及sys set数据的时候save flag写在保存完之后
+ ** 会导致一开机就会保存数据可能导致保存错误数据
+ */
 #if(HUB_ENVIRENMENT == HUB_SELECT)
-#define FIRMWAREVISION                  "0.2.38"
+#define FIRMWAREVISION                  "0.2.39"
 #elif(HUB_IRRIGSTION == HUB_SELECT)
-#define FIRMWAREVISION                  "1.2.55"
+#define FIRMWAREVISION                  "1.2.56"
 #endif
 #define FIRMWARE_VERSION_NUM            2
 #define BOOTLOADVISION                  "0.0.1"

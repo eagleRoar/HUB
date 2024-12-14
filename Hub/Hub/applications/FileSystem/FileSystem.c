@@ -593,7 +593,7 @@ void printTankInfo(tank_t *tank)
     }
     rt_kprintf("\r\n");
 }
-//Justin 未完待续
+
 static void saveErrorLog(char *data)
 {
     int length = GetFileLength(error_log_file);
@@ -938,33 +938,32 @@ void FileSystemEntry(void* parameter)
         {
             if(YES == sys_set_ex->saveFlag)
             {
-                SaveSysSetExToFile(GetSysSetExtern(), new_sysset_ex_file);
                 sys_set_ex->saveFlag = NO;
+                SaveSysSetExToFile(GetSysSetExtern(), new_sysset_ex_file);
             }
 
             if(YES == GetSysSet()->saveFlag)
             {
-                SaveSysSetToFile(GetSysSet(), new_sysset_file);
-
-                GetSysSet()->crc = usModbusRTU_CRC((u8 *)GetSysSet()+2, sizeof(sys_set_t) - 2);
                 GetSysSet()->saveFlag = NO;
+                GetSysSet()->crc = usModbusRTU_CRC((u8 *)GetSysSet()+2, sizeof(sys_set_t) - 2);
+                SaveSysSetToFile(GetSysSet(), new_sysset_file);
             }
 #if(HUB_ENVIRENMENT == HUB_SELECT)
             if(YES == GetSysRecipt()->saveFlag)
             {
-                SaveRecipeListToFile(GetSysRecipt(), new_recipe_file);
-
-                GetSysRecipt()->crc = usModbusRTU_CRC((u8 *)GetSysRecipt()+2, sizeof(sys_recipe_t) - 2);
                 GetSysRecipt()->saveFlag = NO;
+                GetSysRecipt()->crc = usModbusRTU_CRC((u8 *)GetSysRecipt()+2, sizeof(sys_recipe_t) - 2);
+                SaveRecipeListToFile(GetSysRecipt(), new_recipe_file);
             }
 #elif(HUB_IRRIGSTION == HUB_SELECT)
             if(YES == GetSysTank()->saveFlag)
             {
+                GetSysTank()->saveFlag = NO;
+                GetSysTank()->crc = usModbusRTU_CRC((u8 *)GetSysTank() + 2, sizeof(sys_tank_t) - 2);
                 SaveSysTankToFile(GetSysTank(), new_tank_file);
                 LOG_I("---------------------SaveSysTankToFile");
 
-                GetSysTank()->crc = usModbusRTU_CRC((u8 *)GetSysTank() + 2, sizeof(sys_tank_t) - 2);
-                GetSysTank()->saveFlag = NO;
+//                GetSysTank()->saveFlag = NO;//放的位置错误会导致重启就会保存
             }
 #endif
 
